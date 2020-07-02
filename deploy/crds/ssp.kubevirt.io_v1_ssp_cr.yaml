@@ -1,7 +1,5 @@
 apiVersion: ssp.kubevirt.io/v1
 kind: SSP
 metadata:
-  name: example-ssp
-spec:
-  # Add fields here
-  size: 3
+  name: kubevirt-ssp
+spec: {}
