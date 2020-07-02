@@ -16,4 +16,16 @@ operator-build: operator-sdk
 operator-push:
 	docker push $(IMAGE_REGISTRY)/$(OPERATOR_IMAGE):$(IMAGE_TAG)
 
-.PHONY: operator-build operator-push
+generate: operator-sdk
+	./operator-sdk generate k8s
+	./operator-sdk generate crds
+
+test: operator-sdk
+	./operator-sdk test local .
+
+clean:
+	-rm -f operator-sdk
+	-rm -rf build/_output
+
+
+.PHONY: operator-build operator-push generate test clean
