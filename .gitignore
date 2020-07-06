@@ -1,0 +1,6 @@
+.vscode/*
+.history
+.idea
+/operator-sdk
+_out/*
+build/_output/*
