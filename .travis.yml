@@ -1,0 +1,12 @@
+dist: xenial
+language: go
+go: "1.13"
+
+services:
+  - docker
+
+before_script:
+  - make operator-build
+
+script:
+  - make test
