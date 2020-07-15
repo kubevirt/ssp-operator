@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 )
 
@@ -48,6 +50,24 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	return addSecondaryWatches(c,
+		metrics.WatchTypes,
+		// TODO - add other watch types here
+	)
+}
+
+func addSecondaryWatches(c controller.Controller, watchTypesGetters ...func() []runtime.Object) error {
+	for _, watchTypes := range watchTypesGetters {
+		for _, t := range watchTypes() {
+			err := c.Watch(&source.Kind{Type: t}, &handler.EnqueueRequestForOwner{
+				IsController: true,
+				OwnerType:    &sspv1.SSP{},
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -64,8 +84,6 @@ type ReconcileSSP struct {
 
 // Reconcile reads that state of the cluster for a SSP object and makes changes based on the state read
 // and what is in the SSP.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -73,9 +91,17 @@ func (r *ReconcileSSP) Reconcile(request reconcile.Request) (reconcile.Result, e
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling SSP")
 
+	sspRequest := &common.Request{
+		Request: request,
+		Client:  r.client,
+		Scheme:  r.scheme,
+		Context: context.TODO(),
+		Logger:  reqLogger,
+	}
+
 	// Fetch the SSP instance
 	instance := &sspv1.SSP{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(sspRequest.Context, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -86,5 +112,17 @@ func (r *ReconcileSSP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	sspRequest.Instance = instance
+
+	for _, f := range []func(*common.Request) error{
+		metrics.Reconcile,
+		// TODO - add other reconcile methods here
+	} {
+		if err := f(sspRequest); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
 	return reconcile.Result{}, nil
 }

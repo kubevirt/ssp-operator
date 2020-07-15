@@ -3,6 +3,10 @@ module kubevirt.io/ssp-operator
 go 1.13
 
 require (
+	github.com/coreos/prometheus-operator v0.38.1-0.20200424145508-7e176fda06cc
+	github.com/go-logr/logr v0.1.0
+	github.com/onsi/ginkgo v1.12.0
+	github.com/onsi/gomega v1.9.0
 	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.18.2
