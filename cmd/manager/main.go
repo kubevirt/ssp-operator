@@ -13,6 +13,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
+	metricsoperand "kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/pkg/apis"
 	"kubevirt.io/ssp-operator/pkg/controller"
 	"kubevirt.io/ssp-operator/version"
@@ -25,6 +26,7 @@ import (
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -117,9 +119,14 @@ func main() {
 	log.Info("Registering Components.")
 
 	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "")
-		os.Exit(1)
+	for _, f := range []func(scheme *apiruntime.Scheme) error{
+		apis.AddToScheme,
+		metricsoperand.AddWatchTypesToScheme,
+	} {
+		if err := f(mgr.GetScheme()); err != nil {
+			log.Error(err, "Failed to add to scheme")
+			os.Exit(1)
+		}
 	}
 
 	// Setup all Controllers

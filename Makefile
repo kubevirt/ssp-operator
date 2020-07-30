@@ -20,8 +20,8 @@ generate: operator-sdk
 	./operator-sdk generate k8s
 	./operator-sdk generate crds
 
-test: operator-sdk
-	./operator-sdk test local .
+test:
+	go test ./...
 
 clean:
 	-rm -f operator-sdk
