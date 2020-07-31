@@ -3,8 +3,10 @@ package ssp
 import (
 	"context"
 
+	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -15,15 +17,11 @@ import (
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 )
 
 var log = logf.Log.WithName("controller_ssp")
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new SSP Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -50,19 +48,47 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	return addSecondaryWatches(c,
+	err = watchClusterResources(c,
+		template_validator.WatchClusterTypes,
+		// TODO - add other watch types here
+	)
+	if err != nil {
+		return err
+	}
+
+	return watchNamespacedResources(c,
 		metrics.WatchTypes,
+		template_validator.WatchTypes,
 		// TODO - add other watch types here
 	)
 }
 
-func addSecondaryWatches(c controller.Controller, watchTypesGetters ...func() []runtime.Object) error {
+func watchNamespacedResources(c controller.Controller, watchTypesGetters ...func() []runtime.Object) error {
+	return watchResources(c,
+		&handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &sspv1.SSP{},
+		},
+		watchTypesGetters...,
+	)
+}
+
+func watchClusterResources(c controller.Controller, watchTypesGetters ...func() []runtime.Object) error {
+	return watchResources(c,
+		&libhandler.EnqueueRequestForAnnotation{
+			Type: schema.GroupKind{
+				Group: "ssp.kubevirt.io",
+				Kind:  "SSP",
+			},
+		},
+		watchTypesGetters...,
+	)
+}
+
+func watchResources(c controller.Controller, handler handler.EventHandler, watchTypesGetters ...func() []runtime.Object) error {
 	for _, watchTypes := range watchTypesGetters {
 		for _, t := range watchTypes() {
-			err := c.Watch(&source.Kind{Type: t}, &handler.EnqueueRequestForOwner{
-				IsController: true,
-				OwnerType:    &sspv1.SSP{},
-			})
+			err := c.Watch(&source.Kind{Type: t}, handler)
 			if err != nil {
 				return err
 			}
@@ -117,6 +143,7 @@ func (r *ReconcileSSP) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	for _, f := range []func(*common.Request) error{
 		metrics.Reconcile,
+		template_validator.Reconcile,
 		// TODO - add other reconcile methods here
 	} {
 		if err := f(sspRequest); err != nil {

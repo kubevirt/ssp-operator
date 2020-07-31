@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
+	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 )
 
 type Resource interface {
@@ -18,11 +21,20 @@ type Resource interface {
 
 type ResourceUpdateFunc = func(new Resource, found Resource) bool
 
+func NoUpdate(_ Resource, _ Resource) bool {
+	return false
+}
+
 func CreateOrUpdateResource(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
 	err := controllerutil.SetControllerReference(request.Instance, resource, request.Scheme)
 	if err != nil {
 		return err
 	}
+	return createOrUpdate(request, resource, found, updateResource)
+}
+
+func CreateOrUpdateClusterResource(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
+	addOwnerAnnotations(resource, request.Instance)
 	return createOrUpdate(request, resource, found, updateResource)
 }
 
@@ -57,6 +69,15 @@ func createOrUpdate(request *Request, resource Resource, found Resource, updateR
 	}
 
 	return nil
+}
+
+func addOwnerAnnotations(resource Resource, ssp *sspv1.SSP) {
+	if resource.GetAnnotations() == nil {
+		resource.SetAnnotations(map[string]string{})
+	}
+	annotations := resource.GetAnnotations()
+	annotations[libhandler.TypeAnnotation] = "SSP.ssp.kubevirt.io"
+	annotations[libhandler.NamespacedNameAnnotation] = ssp.Namespace + "/" + ssp.Name
 }
 
 func updateAnnotations(new Resource, found Resource) bool {

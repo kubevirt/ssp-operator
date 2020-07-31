@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -61,9 +62,7 @@ var _ = Describe("Create or update resource", func() {
 		Expect(CreateOrUpdateResource(&request,
 			newTestResource(namespace),
 			newEmptyResource(),
-			func(_ Resource, _ Resource) bool {
-				return false
-			},
+			NoUpdate,
 		)).ToNot(HaveOccurred())
 		expectEqualResourceExists(newTestResource(namespace), request)
 	})
@@ -94,9 +93,7 @@ var _ = Describe("Create or update resource", func() {
 		Expect(CreateOrUpdateResource(&request,
 			newTestResource(namespace),
 			newEmptyResource(),
-			func(_ Resource, _ Resource) bool {
-				return false
-			},
+			NoUpdate,
 		)).ToNot(HaveOccurred())
 
 		key, err := client.ObjectKeyFromObject(newTestResource(namespace))
@@ -109,6 +106,23 @@ var _ = Describe("Create or update resource", func() {
 		owner := found.GetOwnerReferences()[0]
 
 		Expect(owner.Kind).To(Equal("SSP"))
+	})
+
+	It("should set owner annotations", func() {
+		Expect(CreateOrUpdateClusterResource(&request,
+			newTestResource(""),
+			newEmptyResource(),
+			NoUpdate,
+		)).ToNot(HaveOccurred())
+
+		key, err := client.ObjectKeyFromObject(newTestResource(""))
+		Expect(err).ToNot(HaveOccurred())
+
+		found := newEmptyResource()
+		Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
+
+		Expect(found.GetAnnotations()).To(HaveKeyWithValue(libhandler.TypeAnnotation, "SSP.ssp.kubevirt.io"))
+		Expect(found.GetAnnotations()).To(HaveKey(libhandler.NamespacedNameAnnotation))
 	})
 })
 
