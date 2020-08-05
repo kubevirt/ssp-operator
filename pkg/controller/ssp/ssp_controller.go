@@ -5,10 +5,12 @@ import (
 
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -22,6 +24,8 @@ import (
 )
 
 var log = logf.Log.WithName("controller_ssp")
+
+const finalizerName = "finalize.ssp.kubevirt.io"
 
 // Add creates a new SSP Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -141,6 +145,18 @@ func (r *ReconcileSSP) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	sspRequest.Instance = instance
 
+	updated, err := initialize(sspRequest)
+	if updated || err != nil {
+		// No need to requeue here, because
+		// the update will trigger reconciliation again
+		return reconcile.Result{}, err
+	}
+
+	if isBeingDeleted(sspRequest.Instance) {
+		err := cleanup(sspRequest)
+		return reconcile.Result{}, err
+	}
+
 	for _, f := range []func(*common.Request) error{
 		metrics.Reconcile,
 		template_validator.Reconcile,
@@ -152,4 +168,48 @@ func (r *ReconcileSSP) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func isBeingDeleted(object metav1.Object) bool {
+	return !object.GetDeletionTimestamp().IsZero()
+}
+
+func initialize(request *common.Request) (bool, error) {
+	changed := false
+
+	if !isBeingDeleted(request.Instance) {
+		if !hasFinalizer(request.Instance, finalizerName) {
+			controllerutil.AddFinalizer(request.Instance, finalizerName)
+			changed = true
+		}
+	}
+
+	var err error
+	if changed {
+		err = request.Client.Update(request.Context, request.Instance)
+	}
+	return changed, err
+}
+
+func cleanup(request *common.Request) error {
+	if !hasFinalizer(request.Instance, finalizerName) {
+		return nil
+	}
+
+	err := template_validator.Cleanup(request)
+	if err != nil {
+		return err
+	}
+
+	controllerutil.RemoveFinalizer(request.Instance, finalizerName)
+	return request.Client.Update(request.Context, request.Instance)
+}
+
+func hasFinalizer(object metav1.Object, finalizer string) bool {
+	for _, f := range object.GetFinalizers() {
+		if finalizer == f {
+			return true
+		}
+	}
+	return false
 }

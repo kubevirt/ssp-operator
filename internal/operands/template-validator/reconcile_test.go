@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	admission "k8s.io/api/admissionregistration/v1"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -104,12 +105,35 @@ var _ = Describe("Template validator operand", func() {
 		Expect(request.Client.Get(request.Context, key, updatedService)).ToNot(HaveOccurred())
 		Expect(updatedService.Spec.ClusterIP).To(Equal(testClusterIp))
 	})
+
+	It("should remove cluster resources on cleanup", func() {
+		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+
+		expectResourceExists(newClusterRole(namespace), request)
+		expectResourceExists(newClusterRoleBinding(namespace), request)
+		expectResourceExists(newValidatingWebhook(namespace), request)
+
+		Expect(Cleanup(&request)).ToNot(HaveOccurred())
+
+		expectResourceNotExists(newClusterRole(namespace), request)
+		expectResourceNotExists(newClusterRoleBinding(namespace), request)
+		expectResourceNotExists(newValidatingWebhook(namespace), request)
+	})
 })
 
 func expectResourceExists(resource common.Resource, request common.Request) {
 	key, err := client.ObjectKeyFromObject(resource)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
+}
+
+func expectResourceNotExists(resource common.Resource, request common.Request) {
+	key, err := client.ObjectKeyFromObject(resource)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = request.Client.Get(request.Context, key, resource)
+	Expect(err).To(HaveOccurred())
+	Expect(errors.IsNotFound(err)).To(BeTrue())
 }
 
 func TestValidator(t *testing.T) {

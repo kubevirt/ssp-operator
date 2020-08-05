@@ -1,12 +1,14 @@
 package template_validator
 
 import (
+	"fmt"
 	"reflect"
 
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -39,6 +41,21 @@ func Reconcile(request *common.Request) error {
 		reconcileValidatingWebhook,
 	} {
 		if err := f(request); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func Cleanup(request *common.Request) error {
+	for _, obj := range []common.Resource{
+		newClusterRole(request.Namespace),
+		newClusterRoleBinding(request.Namespace),
+		newValidatingWebhook(request.Namespace),
+	} {
+		err := request.Client.Delete(request.Context, obj)
+		if err != nil && !errors.IsNotFound(err) {
+			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", obj.GetName(), err))
 			return err
 		}
 	}
