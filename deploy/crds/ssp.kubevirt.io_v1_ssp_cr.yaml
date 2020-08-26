@@ -1,7 +1,0 @@
-apiVersion: ssp.kubevirt.io/v1
-kind: SSP
-metadata:
-  name: kubevirt-ssp
-spec:
-  templateValidator:
-    replicas: 2
