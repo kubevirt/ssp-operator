@@ -2,7 +2,6 @@ package tests
 
 import (
 	"k8s.io/apimachinery/pkg/api/errors"
-	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 	"reflect"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
@@ -181,7 +181,7 @@ var _ = Describe("Template validator", func() {
 	})
 
 	Context("placement API", func() {
-		var originalSSP *sspv1.SSP
+		var originalSSP *sspv1alpha1.SSP
 
 		BeforeEach(func() {
 			originalSSP = ssp.DeepCopy()
@@ -192,7 +192,7 @@ var _ = Describe("Template validator", func() {
 				Name:      originalSSP.Name,
 				Namespace: originalSSP.Namespace,
 			}
-			foundSsp := &sspv1.SSP{}
+			foundSsp := &sspv1alpha1.SSP{}
 			err := apiClient.Get(ctx, key, foundSsp)
 			if err == nil {
 				foundSsp.Spec = originalSSP.Spec
@@ -235,7 +235,7 @@ var _ = Describe("Template validator", func() {
 				Effect:   core.TaintEffectNoExecute,
 			}}
 
-			updateSsp(func(foundSsp *sspv1.SSP) {
+			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
 				foundSsp.Spec.TemplateValidator.Affinity = affinity
 				foundSsp.Spec.TemplateValidator.NodeSelector = nodeSelector
 				foundSsp.Spec.TemplateValidator.Tolerations = tolerations
@@ -252,7 +252,7 @@ var _ = Describe("Template validator", func() {
 					reflect.DeepEqual(podSpec.Tolerations, tolerations)
 			}, timeout, 1*time.Second).Should(BeTrue())
 
-			updateSsp(func(foundSsp *sspv1.SSP) {
+			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
 				foundSsp.Spec.TemplateValidator.Affinity = nil
 				foundSsp.Spec.TemplateValidator.NodeSelector = nil
 				foundSsp.Spec.TemplateValidator.Tolerations = nil
@@ -284,9 +284,9 @@ func hasOwnerAnnotations(annotations map[string]string) bool {
 		annotations[libhandler.NamespacedNameAnnotation] == namespacedName
 }
 
-func updateSsp(updateFunc func(foundSsp *sspv1.SSP)) {
+func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
 	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
-	foundSsp := &sspv1.SSP{}
+	foundSsp := &sspv1alpha1.SSP{}
 	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
 
 	updateFunc(foundSsp)

@@ -17,8 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	"kubevirt.io/ssp-operator/pkg/apis"
-	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
+	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
 const (
@@ -31,7 +30,7 @@ const (
 var (
 	apiClient client.Client
 	ctx       context.Context
-	ssp       *sspv1.SSP
+	ssp       *sspv1alpha1.SSP
 )
 
 var _ = BeforeSuite(func() {
@@ -40,13 +39,13 @@ var _ = BeforeSuite(func() {
 	namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
 	Expect(apiClient.Create(ctx, namespaceObj)).ToNot(HaveOccurred())
 
-	ssp = &sspv1.SSP{
+	ssp = &sspv1alpha1.SSP{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ssp",
 			Namespace: testNamespace,
 		},
-		Spec: sspv1.SSPSpec{
-			TemplateValidator: sspv1.TemplateValidator{
+		Spec: sspv1alpha1.SSPSpec{
+			TemplateValidator: sspv1alpha1.TemplateValidator{
 				Replicas: templateValidatorReplicas,
 			},
 		},
@@ -70,7 +69,7 @@ var _ = AfterSuite(func() {
 		waitForDeletion(client.ObjectKey{
 			Name:      ssp.Name,
 			Namespace: ssp.Namespace,
-		}, &sspv1.SSP{})
+		}, &sspv1alpha1.SSP{})
 	}
 
 	namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
@@ -81,7 +80,7 @@ var _ = AfterSuite(func() {
 })
 
 func setupApiClient() {
-	Expect(apis.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
+	Expect(sspv1alpha1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
 	Expect(promv1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()

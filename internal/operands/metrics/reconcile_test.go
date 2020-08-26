@@ -14,9 +14,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
-	"kubevirt.io/ssp-operator/pkg/apis"
-	v1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 )
 
 var log = logf.Log.WithName("metrics_operand")
@@ -33,7 +32,7 @@ var _ = Describe("Metrics operand", func() {
 
 	It("should create metrics resources", func() {
 		s := scheme.Scheme
-		Expect(apis.AddToScheme(s)).ToNot(HaveOccurred())
+		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
 		Expect(AddWatchTypesToScheme(s)).ToNot(HaveOccurred())
 
 		client := fake.NewFakeClientWithScheme(s)
@@ -47,7 +46,7 @@ var _ = Describe("Metrics operand", func() {
 			Client:  client,
 			Scheme:  s,
 			Context: context.Background(),
-			Instance: &v1.SSP{
+			Instance: &ssp.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,

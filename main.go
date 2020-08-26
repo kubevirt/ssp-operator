@@ -29,6 +29,7 @@ import (
 
 	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/controllers"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -41,6 +42,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(sspv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(metrics.AddWatchTypesToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
