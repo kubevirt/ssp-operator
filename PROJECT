@@ -1,0 +1,7 @@
+domain: kubevirt.io
+layout: go.kubebuilder.io/v2
+projectName: ssp-operator
+repo: kubevirt.io/ssp-operator
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}
