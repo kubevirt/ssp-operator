@@ -1,0 +1,24 @@
+# permissions for end users to edit ssps.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ssp-editor-role
+rules:
+- apiGroups:
+  - ssp.kubevirt.io
+  resources:
+  - ssps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ssp.kubevirt.io
+  resources:
+  - ssps/status
+  verbs:
+  - get
