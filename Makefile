@@ -20,12 +20,15 @@ generate: operator-sdk
 	./operator-sdk generate k8s
 	./operator-sdk generate crds
 
-test:
-	go test ./...
+unittest:
+	go test -count=1 ./cmd/... ./internal/... ./pkg/...
+
+functest:
+	go test -count=1 ./tests/...
 
 clean:
 	-rm -f operator-sdk
 	-rm -rf build/_output
 
 
-.PHONY: operator-build operator-push generate test clean
+.PHONY: operator-build operator-push generate unittest functest clean

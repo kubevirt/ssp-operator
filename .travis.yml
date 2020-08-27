@@ -9,4 +9,4 @@ before_script:
   - make operator-build
 
 script:
-  - make test
+  - make unittest

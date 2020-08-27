@@ -1,15 +1,17 @@
 package metrics
 
 import (
-	"github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func newPrometheusRule(namespace string) *v1.PrometheusRule {
-	return &v1.PrometheusRule{
-		ObjectMeta: v12.ObjectMeta{
-			Name:      "prometheus-k8s-rules-cnv",
+const PrometheusRuleName = "prometheus-k8s-rules-cnv"
+
+func newPrometheusRule(namespace string) *promv1.PrometheusRule {
+	return &promv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      PrometheusRuleName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				"prometheus":  "k8s",
@@ -17,10 +19,10 @@ func newPrometheusRule(namespace string) *v1.PrometheusRule {
 				"kubevirt.io": "prometheus-rules",
 			},
 		},
-		Spec: v1.PrometheusRuleSpec{
-			Groups: []v1.RuleGroup{{
+		Spec: promv1.PrometheusRuleSpec{
+			Groups: []promv1.RuleGroup{{
 				Name: "cnv.rules",
-				Rules: []v1.Rule{{
+				Rules: []promv1.Rule{{
 					Expr:   intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by (node)"),
 					Record: "cnv:vmi_status_running:count",
 				}},
