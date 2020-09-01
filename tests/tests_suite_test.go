@@ -21,9 +21,12 @@ import (
 	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 )
 
-// TODO - maybe randomize namespace
-const testNamespace = "ssp-operator-functests"
-const timeout = 60 * time.Second
+const (
+	// TODO - maybe randomize namespace
+	testNamespace = "ssp-operator-functests"
+	timeout = 60 * time.Second
+	templateValidatorReplicas = 1
+)
 
 var (
 	apiClient client.Client
@@ -37,10 +40,17 @@ var _ = BeforeSuite(func() {
 	namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
 	Expect(apiClient.Create(ctx, namespaceObj)).ToNot(HaveOccurred())
 
-	ssp = &sspv1.SSP{ObjectMeta: metav1.ObjectMeta{
-		Name:      "test-ssp",
-		Namespace: testNamespace,
-	}}
+	ssp = &sspv1.SSP{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ssp",
+			Namespace: testNamespace,
+		},
+		Spec: sspv1.SSPSpec{
+			TemplateValidator: sspv1.TemplateValidator{
+				Replicas: templateValidatorReplicas,
+			},
+		},
+	}
 
 	Expect(apiClient.Create(ctx, ssp)).ToNot(HaveOccurred())
 
