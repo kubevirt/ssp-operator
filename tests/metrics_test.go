@@ -20,7 +20,7 @@ var _ = Describe("Metrics", func() {
 		}
 	)
 
-	It("should create prometheus rule", func() {
+	It("[test_id:4665] should create prometheus rule", func() {
 		Expect(apiClient.Get(ctx, ruleKey, &promv1.PrometheusRule{})).ToNot(HaveOccurred())
 	})
 
@@ -35,7 +35,7 @@ var _ = Describe("Metrics", func() {
 		}, timeout, time.Second).ShouldNot(HaveOccurred())
 	})
 
-	It("should restore modified prometheus rule", func() {
+	It("[test_id:4666] should restore modified prometheus rule", func() {
 		originalRule := promv1.PrometheusRule{}
 		err := apiClient.Get(ctx, ruleKey, &originalRule)
 		Expect(err).ToNot(HaveOccurred())
