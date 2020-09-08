@@ -22,8 +22,8 @@ const (
 	virtTemplateValidator = "virt-template-validator"
 
 	ServiceAccountName = "template-validator"
-	ServiceName = virtTemplateValidator
-	DeploymentName = virtTemplateValidator
+	ServiceName        = virtTemplateValidator
+	DeploymentName     = virtTemplateValidator
 )
 
 var commonLabels = map[string]string{
@@ -204,8 +204,8 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 					Resources:   []string{"virtualmachines"},
 				},
 			}},
-			FailurePolicy:           &fail,
-			SideEffects:             &sideEffectsNone,
+			FailurePolicy: &fail,
+			SideEffects:   &sideEffectsNone,
 			// TODO - add "v1" to the list once the template-validator
 			//        is updated to new API
 			AdmissionReviewVersions: []string{"v1beta1"},

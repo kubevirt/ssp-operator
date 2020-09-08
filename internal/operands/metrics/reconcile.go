@@ -5,6 +5,7 @@ import (
 
 	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	"kubevirt.io/ssp-operator/internal/common"
 )
 

@@ -22,8 +22,8 @@ import (
 
 const (
 	// TODO - maybe randomize namespace
-	testNamespace = "ssp-operator-functests"
-	timeout = 60 * time.Second
+	testNamespace             = "ssp-operator-functests"
+	timeout                   = 60 * time.Second
 	templateValidatorReplicas = 1
 )
 
