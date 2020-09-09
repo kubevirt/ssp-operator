@@ -64,7 +64,8 @@ var _ = Describe("Create or update resource", func() {
 	})
 
 	It("should create resource", func() {
-		Expect(createOrUpdateTestResource(&request)).ToNot(HaveOccurred())
+		_, err := createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
 		expectEqualResourceExists(newTestResource(namespace), &request)
 	})
 
@@ -75,12 +76,14 @@ var _ = Describe("Create or update resource", func() {
 		resource.Labels["test-label"] = "new-change"
 		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
 
-		Expect(createOrUpdateTestResource(&request)).ToNot(HaveOccurred())
+		_, err := createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
 		expectEqualResourceExists(newTestResource(namespace), &request)
 	})
 
 	It("should set owner reference", func() {
-		Expect(createOrUpdateTestResource(&request)).ToNot(HaveOccurred())
+		_, err := createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
 
 		key, err := client.ObjectKeyFromObject(newTestResource(namespace))
 		Expect(err).ToNot(HaveOccurred())
@@ -95,12 +98,13 @@ var _ = Describe("Create or update resource", func() {
 	})
 
 	It("should set owner annotations", func() {
-		Expect(CreateOrUpdateClusterResource(&request,
+		_, err := CreateOrUpdateClusterResource(&request,
 			newTestResource(""),
 			func(expected, found controllerutil.Object) {
 				found.(*v1.Service).Spec = expected.(*v1.Service).Spec
 			},
-		)).ToNot(HaveOccurred())
+		)
+		Expect(err).ToNot(HaveOccurred())
 
 		key, err := client.ObjectKeyFromObject(newTestResource(""))
 		Expect(err).ToNot(HaveOccurred())
@@ -121,7 +125,8 @@ var _ = Describe("Create or update resource", func() {
 
 		request.ResourceVersionCache.Add(resource)
 
-		Expect(createOrUpdateTestResource(&request)).ToNot(HaveOccurred())
+		_, err := createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
 		expectEqualResourceExists(resource, &request)
 	})
 
@@ -137,12 +142,29 @@ var _ = Describe("Create or update resource", func() {
 		resource.Spec.Ports[0].Name = "changed-name-2"
 		Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
 
-		Expect(createOrUpdateTestResource(&request)).ToNot(HaveOccurred())
+		_, err := createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
 		expectEqualResourceExists(newTestResource(namespace), &request)
+	})
+
+	It("should return status on change", func() {
+		// Create resource returns non-empty status
+		status, err := createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(status.NotAvailable).ToNot(BeNil())
+		Expect(status.Progressing).ToNot(BeNil())
+		Expect(status.Degraded).ToNot(BeNil())
+
+		// When resource is created, the status is empty
+		status, err = createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(status.NotAvailable).To(BeNil())
+		Expect(status.Progressing).To(BeNil())
+		Expect(status.Degraded).To(BeNil())
 	})
 })
 
-func createOrUpdateTestResource(request *Request) error {
+func createOrUpdateTestResource(request *Request) (ResourceStatus, error) {
 	return CreateOrUpdateResource(request,
 		newTestResource(namespace),
 		func(expected, found controllerutil.Object) {

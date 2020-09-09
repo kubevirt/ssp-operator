@@ -13,12 +13,18 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes/scheme"
-	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
 const (
@@ -33,6 +39,8 @@ var (
 	apiClient client.Client
 	ctx       context.Context
 	ssp       *sspv1alpha1.SSP
+
+	sspListerWatcher cache.ListerWatcher
 )
 
 var _ = BeforeSuite(func() {
@@ -61,21 +69,6 @@ var _ = BeforeSuite(func() {
 	}
 
 	Expect(apiClient.Create(ctx, ssp)).ToNot(HaveOccurred())
-
-	// Wait for resources creation
-	// TODO - use 'ready' condition on SSP resource, when it is implemented
-	Eventually(func() error {
-		return apiClient.Get(ctx, client.ObjectKey{
-			Name:      metrics.PrometheusRuleName,
-			Namespace: testNamespace,
-		}, &promv1.PrometheusRule{})
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
-	Eventually(func() error {
-		return apiClient.Get(ctx, client.ObjectKey{
-			Name:      "windows10-desktop-medium-v0.11.3",
-			Namespace: commonTemplatesTestNS,
-		}, &templatev1.Template{})
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -111,6 +104,30 @@ func setupApiClient() {
 	Expect(err).ToNot(HaveOccurred())
 
 	ctx = context.Background()
+	sspListerWatcher = createSspListerWatcher(cfg)
+}
+
+func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
+	sspGvk, err := apiutil.GVKForObject(&sspv1alpha1.SSP{}, scheme.Scheme)
+	Expect(err).ToNot(HaveOccurred())
+
+	restClient, err := apiutil.RESTClientForGVK(sspGvk, cfg, serializer.NewCodecFactory(scheme.Scheme))
+	Expect(err).ToNot(HaveOccurred())
+
+	return cache.NewListWatchFromClient(restClient, "ssps", testNamespace, fields.Everything())
+}
+
+func getSsp() *sspv1alpha1.SSP {
+	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
+	foundSsp := &sspv1alpha1.SSP{}
+	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
+	return foundSsp
+}
+
+func waitUntilDeployed() {
+	Eventually(func() bool {
+		return getSsp().Status.Phase == lifecycleapi.PhaseDeployed
+	}, timeout, time.Second).Should(BeTrue())
 }
 
 func waitForDeletion(key client.ObjectKey, obj runtime.Object) {

@@ -48,6 +48,10 @@ var _ = Describe("Node Labeller", func() {
 		}
 	)
 
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
 	Context("resource creation", func() {
 		table.DescribeTable("created cluster resource", func(res *testResource) {
 			resource := res.NewResource()
@@ -119,13 +123,17 @@ var _ = Describe("Node Labeller", func() {
 
 			table.Entry("[test_id:5192] daemonSet", daemonSetRes,
 				func(daemonSet *apps.DaemonSet) {
-					daemonSet.Labels = map[string]string{
-						"test": "test-label",
-					}
+					daemonSet.Spec.Template.Spec.ServiceAccountName = "test-account"
 				},
 				func(old *apps.DaemonSet, new *apps.DaemonSet) bool {
 					return reflect.DeepEqual(old.Spec, new.Spec)
 				}),
 		)
+	})
+
+	It("all pods should be ready when deployed", func() {
+		daemonSet := &apps.DaemonSet{}
+		Expect(apiClient.Get(ctx, daemonSetRes.GetKey(), daemonSet)).ToNot(HaveOccurred())
+		Expect(daemonSet.Status.NumberReady).To(Equal(daemonSet.Status.DesiredNumberScheduled))
 	})
 })

@@ -9,6 +9,10 @@ import (
 )
 
 var _ = Describe("Validation webhook", func() {
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
 	Context("creation", func() {
 		It("[test_id:5242] should fail to create a second SSP CR", func() {
 			ssp2 := &sspv1alpha1.SSP{

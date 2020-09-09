@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
@@ -50,6 +52,10 @@ var _ = Describe("Template validator", func() {
 			resource:   &apps.Deployment{},
 		}
 	)
+
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
 
 	Context("resource creation", func() {
 		table.DescribeTable("created cluster resource", func(res *testResource) {
@@ -143,7 +149,22 @@ var _ = Describe("Template validator", func() {
 		}, timeout, 1*time.Second).Should(BeTrue())
 	})
 
-	Context("placement API", func() {
+	It("should set Deployed phase and conditions when validator pods are running", func() {
+		foundSsp := getSsp()
+
+		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed))
+
+		conditions := foundSsp.Status.Conditions
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionAvailable).Status).To(Equal(core.ConditionTrue))
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionProgressing).Status).To(Equal(core.ConditionFalse))
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionDegraded).Status).To(Equal(core.ConditionFalse))
+
+		deployment := &apps.Deployment{}
+		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
+		Expect(deployment.Status.ReadyReplicas).To(Equal(int32(templateValidatorReplicas)))
+	})
+
+	Context("with SSP resource modification", func() {
 		var originalSSP *sspv1alpha1.SSP
 
 		BeforeEach(func() {
@@ -155,18 +176,20 @@ var _ = Describe("Template validator", func() {
 				Name:      originalSSP.Name,
 				Namespace: originalSSP.Namespace,
 			}
-			foundSsp := &sspv1alpha1.SSP{}
-			err := apiClient.Get(ctx, key, foundSsp)
-			if err == nil {
-				foundSsp.Spec = originalSSP.Spec
-				err = apiClient.Update(ctx, foundSsp)
-			} else {
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred())
+			Eventually(func() error {
+				foundSsp := &sspv1alpha1.SSP{}
+				err := apiClient.Get(ctx, key, foundSsp)
+				if err == nil {
+					foundSsp.Spec = originalSSP.Spec
+					return apiClient.Update(ctx, foundSsp)
 				}
-				err = apiClient.Create(ctx, originalSSP)
-			}
-			Expect(err).ToNot(HaveOccurred())
+				if errors.IsNotFound(err) {
+					return apiClient.Create(ctx, originalSSP)
+				}
+				return err
+			}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+			waitUntilDeployed()
 		})
 
 		It("[test_id:4926] should add and remove placement", func() {
@@ -198,12 +221,16 @@ var _ = Describe("Template validator", func() {
 				Effect:   core.TaintEffectNoExecute,
 			}}
 
+			waitUntilDeployed()
+
 			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
 				placement := &foundSsp.Spec.TemplateValidator.Placement
 				placement.Affinity = affinity
 				placement.NodeSelector = nodeSelector
 				placement.Tolerations = tolerations
 			})
+
+			waitUntilDeployed()
 
 			// Test that placement was added
 			Eventually(func() bool {
@@ -223,6 +250,8 @@ var _ = Describe("Template validator", func() {
 				placement.Tolerations = nil
 			})
 
+			waitUntilDeployed()
+
 			// Test that placement was removed
 			Eventually(func() bool {
 				deployment := apps.Deployment{}
@@ -234,14 +263,42 @@ var _ = Describe("Template validator", func() {
 					podSpec.Tolerations == nil
 			}, timeout, 1*time.Second).Should(BeTrue())
 		})
+
+		// TODO - This test is currently pending, because it can be flaky.
+		//        If the operator is too slow and does not notice Deployment
+		//        state when not all pods are running, the test would fail.
+		PIt("[test_id: TODO]should set available condition when at least one validator pod is running", func() {
+			watch, err := StartWatch(sspListerWatcher)
+			Expect(err).ToNot(HaveOccurred())
+			defer watch.Stop()
+
+			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
+				foundSsp.Spec.TemplateValidator.Replicas = 2
+			})
+
+			err = WatchChangesUntil(watch, isStatusDeploying, timeout)
+			Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
+
+			err = WatchChangesUntil(watch, func(obj *sspv1alpha1.SSP) bool {
+				available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
+				progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
+
+				return obj.Status.Phase == lifecycleapi.PhaseDeploying &&
+					available.Status == core.ConditionTrue &&
+					progressing.Status == core.ConditionTrue
+			}, timeout)
+			Expect(err).ToNot(HaveOccurred(), "SSP should be available, but progressing.")
+
+			err = WatchChangesUntil(watch, isStatusDeployed, timeout)
+			Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
+		})
 	})
 })
 
 func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
-	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
-	foundSsp := &sspv1alpha1.SSP{}
-	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
-
-	updateFunc(foundSsp)
-	Expect(apiClient.Update(ctx, foundSsp)).ToNot(HaveOccurred())
+	Eventually(func() error {
+		foundSsp := getSsp()
+		updateFunc(foundSsp)
+		return apiClient.Update(ctx, foundSsp)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
 }

@@ -38,20 +38,15 @@ func (t *templateValidator) WatchClusterTypes() []runtime.Object {
 	}
 }
 
-func (t *templateValidator) Reconcile(request *common.Request) error {
-	for _, f := range []func(*common.Request) error{
+func (t *templateValidator) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+	return common.CollectResourceStatus(request,
 		reconcileClusterRole,
 		reconcileServiceAccount,
 		reconcileClusterRoleBinding,
 		reconcileService,
 		reconcileDeployment,
 		reconcileValidatingWebhook,
-	} {
-		if err := f(request); err != nil {
-			return err
-		}
-	}
-	return nil
+	)
 }
 
 func (t *templateValidator) Cleanup(request *common.Request) error {
@@ -75,7 +70,7 @@ func GetOperand() operands.Operand {
 	return &templateValidator{}
 }
 
-func reconcileClusterRole(request *common.Request) error {
+func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRole(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {
@@ -83,13 +78,13 @@ func reconcileClusterRole(request *common.Request) error {
 		})
 }
 
-func reconcileServiceAccount(request *common.Request) error {
+func reconcileServiceAccount(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
 		newServiceAccount(request.Namespace),
 		func(_, _ controllerutil.Object) {})
 }
 
-func reconcileClusterRoleBinding(request *common.Request) error {
+func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRoleBinding(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {
@@ -100,7 +95,7 @@ func reconcileClusterRoleBinding(request *common.Request) error {
 		})
 }
 
-func reconcileService(request *common.Request) error {
+func reconcileService(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
 		newService(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {
@@ -114,15 +109,33 @@ func reconcileService(request *common.Request) error {
 		})
 }
 
-func reconcileDeployment(request *common.Request) error {
+func reconcileDeployment(request *common.Request) (common.ResourceStatus, error) {
 	validatorSpec := &request.Instance.Spec.TemplateValidator
 	image := common.GetTemplateValidatorImage()
 	deployment := newDeployment(request.Namespace, validatorSpec.Replicas, image)
 	addPlacementFields(deployment, &validatorSpec.Placement)
-	return common.CreateOrUpdateResource(request,
+	return common.CreateOrUpdateResourceWithStatus(request,
 		deployment,
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
+		},
+		func(res controllerutil.Object) common.ResourceStatus {
+			dep := res.(*apps.Deployment)
+			status := common.ResourceStatus{}
+			if validatorSpec.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
+				msg := fmt.Sprintf("No validator pods are running. Expected: %d", validatorSpec.Replicas)
+				status.NotAvailable = &msg
+			}
+			if dep.Status.AvailableReplicas != validatorSpec.Replicas {
+				msg := fmt.Sprintf(
+					"Not all template validator pods are running. Expected: %d, running: %d",
+					validatorSpec.Replicas,
+					dep.Status.AvailableReplicas,
+				)
+				status.Progressing = &msg
+				status.Degraded = &msg
+			}
+			return status
 		})
 }
 
@@ -133,7 +146,7 @@ func addPlacementFields(deployment *apps.Deployment, nodePlacement *lifecycleapi
 	podSpec.Tolerations = nodePlacement.Tolerations
 }
 
-func reconcileValidatingWebhook(request *common.Request) error {
+func reconcileValidatingWebhook(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
 		newValidatingWebhook(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {

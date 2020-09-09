@@ -17,6 +17,10 @@ var _ = Describe("Metrics", func() {
 		resource:   &promv1.PrometheusRule{},
 	}
 
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
 	It("[test_id:4665] should create prometheus rule", func() {
 		Expect(apiClient.Get(ctx, prometheusRuleRes.GetKey(), &promv1.PrometheusRule{})).ToNot(HaveOccurred())
 	})

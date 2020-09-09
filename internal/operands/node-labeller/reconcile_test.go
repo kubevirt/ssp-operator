@@ -65,7 +65,8 @@ var _ = Describe("Node Labeller operand", func() {
 	})
 
 	It("should create node labeller resources", func() {
-		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
 
 		expectResourceExists(newClusterRole(), request)
 		expectResourceExists(newServiceAccount(namespace), request)
@@ -76,7 +77,8 @@ var _ = Describe("Node Labeller operand", func() {
 	})
 
 	It("should remove cluster resources on cleanup", func() {
-		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
 
 		expectResourceExists(newClusterRole(), request)
 		expectResourceExists(newClusterRoleBinding(namespace), request)

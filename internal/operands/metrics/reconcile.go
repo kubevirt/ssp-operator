@@ -23,12 +23,10 @@ func (m *metrics) WatchClusterTypes() []runtime.Object {
 	return nil
 }
 
-func (m *metrics) Reconcile(request *common.Request) error {
-	return common.CreateOrUpdateResource(request,
-		newPrometheusRule(request.Namespace),
-		func(newRes, foundRes controllerutil.Object) {
-			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
-		})
+func (m *metrics) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+	return common.CollectResourceStatus(request,
+		reconcilePrometheusRule,
+	)
 }
 
 func (m *metrics) Cleanup(*common.Request) error {
@@ -39,4 +37,12 @@ var _ operands.Operand = &metrics{}
 
 func GetOperand() operands.Operand {
 	return &metrics{}
+}
+
+func reconcilePrometheusRule(request *common.Request) (common.ResourceStatus, error) {
+	return common.CreateOrUpdateResource(request,
+		newPrometheusRule(request.Namespace),
+		func(newRes, foundRes controllerutil.Object) {
+			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
+		})
 }

@@ -42,6 +42,10 @@ var _ = Describe("Common templates", func() {
 		}
 	)
 
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
 	Context("resource creation", func() {
 		table.DescribeTable("created cluster resource", func(res *testResource) {
 			resource := res.NewResource()
