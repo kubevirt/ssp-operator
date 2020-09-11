@@ -8,8 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
 type ResourceUpdateFunc = func(new controllerutil.Object, found controllerutil.Object) bool
@@ -27,7 +25,10 @@ func CreateOrUpdateResource(request *Request, resource controllerutil.Object, fo
 }
 
 func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
-	addOwnerAnnotations(resource, request.Instance)
+	err := libhandler.SetOwnerAnnotations(request.Instance, resource)
+	if err != nil {
+		return err
+	}
 	return createOrUpdate(request, resource, found, updateResource)
 }
 
@@ -62,15 +63,6 @@ func createOrUpdate(request *Request, resource controllerutil.Object, found cont
 	}
 
 	return nil
-}
-
-func addOwnerAnnotations(resource controllerutil.Object, ssp *ssp.SSP) {
-	if resource.GetAnnotations() == nil {
-		resource.SetAnnotations(map[string]string{})
-	}
-	annotations := resource.GetAnnotations()
-	annotations[libhandler.TypeAnnotation] = "SSP.ssp.kubevirt.io"
-	annotations[libhandler.NamespacedNameAnnotation] = ssp.Namespace + "/" + ssp.Name
 }
 
 func updateAnnotations(new controllerutil.Object, found controllerutil.Object) bool {

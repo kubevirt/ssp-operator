@@ -49,6 +49,10 @@ var _ = Describe("Create or update resource", func() {
 			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "SSP",
+					APIVersion: ssp.GroupVersion.String(),
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,

@@ -48,6 +48,10 @@ var _ = Describe("Template validator operand", func() {
 			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
+				TypeMeta: meta.TypeMeta{
+					Kind:       "SSP",
+					APIVersion: ssp.GroupVersion.String(),
+				},
 				ObjectMeta: meta.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
