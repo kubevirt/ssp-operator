@@ -10,8 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 
-	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
 )
 
@@ -105,7 +105,7 @@ func reconcileDeployment(request *common.Request) error {
 	validatorSpec := &request.Instance.Spec.TemplateValidator
 	image := common.GetTemplateValidatorImage()
 	deployment := newDeployment(request.Namespace, validatorSpec.Replicas, image)
-	addPlacementFields(deployment, validatorSpec)
+	addPlacementFields(deployment, &validatorSpec.Placement)
 	return common.CreateOrUpdateResource(request,
 		deployment,
 		func(newRes, foundRes controllerutil.Object) {
@@ -113,11 +113,11 @@ func reconcileDeployment(request *common.Request) error {
 		})
 }
 
-func addPlacementFields(deployment *apps.Deployment, validatorSpec *ssp.TemplateValidator) {
+func addPlacementFields(deployment *apps.Deployment, nodePlacement *lifecycleapi.NodePlacement) {
 	podSpec := &deployment.Spec.Template.Spec
-	podSpec.Affinity = validatorSpec.Affinity
-	podSpec.NodeSelector = validatorSpec.NodeSelector
-	podSpec.Tolerations = validatorSpec.Tolerations
+	podSpec.Affinity = nodePlacement.Affinity
+	podSpec.NodeSelector = nodePlacement.NodeSelector
+	podSpec.Tolerations = nodePlacement.Tolerations
 }
 
 func reconcileValidatingWebhook(request *common.Request) error {

@@ -236,9 +236,10 @@ var _ = Describe("Template validator", func() {
 			}}
 
 			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
-				foundSsp.Spec.TemplateValidator.Affinity = affinity
-				foundSsp.Spec.TemplateValidator.NodeSelector = nodeSelector
-				foundSsp.Spec.TemplateValidator.Tolerations = tolerations
+				placement := &foundSsp.Spec.TemplateValidator.Placement
+				placement.Affinity = affinity
+				placement.NodeSelector = nodeSelector
+				placement.Tolerations = tolerations
 			})
 
 			// Test that placement was added
@@ -253,9 +254,10 @@ var _ = Describe("Template validator", func() {
 			}, timeout, 1*time.Second).Should(BeTrue())
 
 			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
-				foundSsp.Spec.TemplateValidator.Affinity = nil
-				foundSsp.Spec.TemplateValidator.NodeSelector = nil
-				foundSsp.Spec.TemplateValidator.Tolerations = nil
+				placement := &foundSsp.Spec.TemplateValidator.Placement
+				placement.Affinity = nil
+				placement.NodeSelector = nil
+				placement.Tolerations = nil
 			})
 
 			// Test that placement was removed
