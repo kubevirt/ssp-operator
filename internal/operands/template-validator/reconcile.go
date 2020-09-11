@@ -2,7 +2,6 @@ package template_validator
 
 import (
 	"fmt"
-	"reflect"
 
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -67,14 +66,8 @@ func reconcileClusterRole(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRole(request.Namespace),
 		&rbac.ClusterRole{},
-		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
-			newRole := newRes.(*rbac.ClusterRole)
-			foundRole := foundRes.(*rbac.ClusterRole)
-			if !reflect.DeepEqual(newRole.Rules, foundRole.Rules) {
-				foundRole.Rules = newRole.Rules
-				return true
-			}
-			return false
+		func(newRes, foundRes controllerutil.Object) {
+			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
 		})
 }
 
@@ -82,23 +75,18 @@ func reconcileServiceAccount(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newServiceAccount(request.Namespace),
 		&v1.ServiceAccount{},
-		common.NoUpdate)
+		func(_, _ controllerutil.Object) {})
 }
 
 func reconcileClusterRoleBinding(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRoleBinding(request.Namespace),
 		&rbac.ClusterRoleBinding{},
-		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
+		func(newRes, foundRes controllerutil.Object) {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
-			if !reflect.DeepEqual(newBinding.RoleRef, foundBinding.RoleRef) ||
-				!reflect.DeepEqual(newBinding.Subjects, foundBinding.Subjects) {
-				foundBinding.RoleRef = newBinding.RoleRef
-				foundBinding.Subjects = newBinding.Subjects
-				return true
-			}
-			return false
+			foundBinding.RoleRef = newBinding.RoleRef
+			foundBinding.Subjects = newBinding.Subjects
 		})
 }
 
@@ -106,18 +94,14 @@ func reconcileService(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newService(request.Namespace),
 		&v1.Service{},
-		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
+		func(newRes, foundRes controllerutil.Object) {
 			newService := newRes.(*v1.Service)
 			foundService := foundRes.(*v1.Service)
 
 			// ClusterIP should not be updated
 			newService.Spec.ClusterIP = foundService.Spec.ClusterIP
 
-			if !reflect.DeepEqual(newService.Spec, foundService.Spec) {
-				foundService.Spec = newService.Spec
-				return true
-			}
-			return false
+			foundService.Spec = newService.Spec
 		})
 }
 
@@ -129,14 +113,8 @@ func reconcileDeployment(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		deployment,
 		&apps.Deployment{},
-		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
-			newDep := newRes.(*apps.Deployment)
-			foundDep := foundRes.(*apps.Deployment)
-			if !reflect.DeepEqual(newDep.Spec, foundDep.Spec) {
-				foundDep.Spec = newDep.Spec
-				return true
-			}
-			return false
+		func(newRes, foundRes controllerutil.Object) {
+			foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
 		})
 }
 
@@ -151,7 +129,7 @@ func reconcileValidatingWebhook(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newValidatingWebhook(request.Namespace),
 		&admission.ValidatingWebhookConfiguration{},
-		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
+		func(newRes, foundRes controllerutil.Object) {
 			newWebhookConf := newRes.(*admission.ValidatingWebhookConfiguration)
 			foundWebhookConf := foundRes.(*admission.ValidatingWebhookConfiguration)
 
@@ -159,12 +137,7 @@ func reconcileValidatingWebhook(request *common.Request) error {
 			// so it will not be overwritten
 			copyFoundCaBundles(newWebhookConf.Webhooks, foundWebhookConf.Webhooks)
 
-			if !reflect.DeepEqual(newWebhookConf.Webhooks, foundWebhookConf.Webhooks) {
-				foundWebhookConf.Webhooks = newWebhookConf.Webhooks
-				return true
-			}
-
-			return false
+			foundWebhookConf.Webhooks = newWebhookConf.Webhooks
 		})
 }
 

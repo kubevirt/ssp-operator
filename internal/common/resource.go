@@ -2,19 +2,13 @@ package common
 
 import (
 	"fmt"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"github.com/go-logr/logr"
 
 	libhandler "github.com/operator-framework/operator-lib/handler"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-type ResourceUpdateFunc = func(new controllerutil.Object, found controllerutil.Object) bool
-
-func NoUpdate(_ controllerutil.Object, _ controllerutil.Object) bool {
-	return false
-}
+type ResourceUpdateFunc = func(expected, found controllerutil.Object)
 
 func CreateOrUpdateResource(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
 	err := controllerutil.SetControllerReference(request.Instance, resource, request.Scheme)
@@ -33,68 +27,59 @@ func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Obj
 }
 
 func createOrUpdate(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
-	err := request.Client.Get(request.Context,
-		types.NamespacedName{Name: resource.GetName(), Namespace: resource.GetNamespace()},
-		found)
-	if errors.IsNotFound(err) {
-		gvk, _ := apiutil.GVKForObject(resource, request.Scheme)
-		request.Logger.Info(fmt.Sprintf("Creating %s resource: %s",
-			gvk.Kind,
-			resource.GetName()))
-		return request.Client.Create(request.Context, resource)
-	}
+	found.SetName(resource.GetName())
+	found.SetNamespace(resource.GetNamespace())
+	res, err := controllerutil.CreateOrUpdate(request.Context, request.Client, found, func() error {
+		// We expect users will not add any other owner references,
+		// if that is not correct, this code needs to be changed.
+		found.SetOwnerReferences(resource.GetOwnerReferences())
+
+		updateLabels(resource, found)
+		updateAnnotations(resource, found)
+		updateResource(resource, found)
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
-	resource.SetResourceVersion(found.GetResourceVersion())
-
-	// The order of the || operator arguments is chosen
-	// to avoid short-circuit evaluation
-	resourceChanged := updateLabels(resource, found)
-	resourceChanged = updateAnnotations(resource, found) || resourceChanged
-	resourceChanged = updateResource(resource, found) || resourceChanged
-
-	if resourceChanged {
-		request.Logger.Info(fmt.Sprintf("Updating %s resource: %s",
-			found.GetObjectKind().GroupVersionKind().Kind,
-			found.GetName()))
-		return request.Client.Update(request.Context, found)
-	}
-
+	logOperation(res, found, request.Logger)
 	return nil
 }
 
-func updateAnnotations(new controllerutil.Object, found controllerutil.Object) bool {
-	if new.GetAnnotations() == nil || len(new.GetAnnotations()) == 0 {
-		return false
-	}
+func updateAnnotations(expected, found controllerutil.Object) {
 	if found.GetAnnotations() == nil {
-		found.SetAnnotations(new.GetAnnotations())
-		return true
+		found.SetAnnotations(expected.GetAnnotations())
+		return
 	}
-	return updateStringMap(new.GetAnnotations(), found.GetAnnotations())
+	updateStringMap(expected.GetAnnotations(), found.GetAnnotations())
 }
 
-func updateLabels(new controllerutil.Object, found controllerutil.Object) bool {
-	if new.GetLabels() == nil || len(new.GetLabels()) == 0 {
-		return false
-	}
+func updateLabels(expected, found controllerutil.Object) {
 	if found.GetLabels() == nil {
-		found.SetLabels(new.GetLabels())
-		return true
+		found.SetLabels(expected.GetLabels())
+		return
 	}
-	return updateStringMap(new.GetLabels(), found.GetLabels())
+	updateStringMap(expected.GetLabels(), found.GetLabels())
 }
 
-func updateStringMap(new map[string]string, found map[string]string) bool {
-	changed := false
-	for label, labelVal := range new {
-		foundVal, ok := found[label]
-		if !ok || foundVal != labelVal {
-			found[label] = labelVal
-			changed = true
-		}
+func updateStringMap(expected, found map[string]string) {
+	if expected == nil {
+		return
 	}
-	return changed
+	for key, val := range expected {
+		found[key] = val
+	}
+}
+
+func logOperation(result controllerutil.OperationResult, resource controllerutil.Object, logger logr.Logger) {
+	if result == controllerutil.OperationResultCreated {
+		logger.Info(fmt.Sprintf("Created %s resource: %s",
+			resource.GetObjectKind().GroupVersionKind().Kind,
+			resource.GetName()))
+	} else if result == controllerutil.OperationResultUpdated {
+		logger.Info(fmt.Sprintf("Updated %s resource: %s",
+			resource.GetObjectKind().GroupVersionKind().Kind,
+			resource.GetName()))
+	}
 }

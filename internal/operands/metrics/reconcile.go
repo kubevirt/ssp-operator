@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"reflect"
-
 	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -22,13 +20,7 @@ func Reconcile(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newPrometheusRule(request.Namespace),
 		&promv1.PrometheusRule{},
-		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
-			newRule := newRes.(*promv1.PrometheusRule)
-			foundRule := foundRes.(*promv1.PrometheusRule)
-			if !reflect.DeepEqual(newRule.Spec, foundRule.Spec) {
-				foundRule.Spec = newRule.Spec
-				return true
-			}
-			return false
+		func(newRes, foundRes controllerutil.Object) {
+			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
 		})
 }
