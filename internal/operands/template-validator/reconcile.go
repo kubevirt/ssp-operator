@@ -10,6 +10,7 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -48,7 +49,7 @@ func Reconcile(request *common.Request) error {
 }
 
 func Cleanup(request *common.Request) error {
-	for _, obj := range []common.Resource{
+	for _, obj := range []controllerutil.Object{
 		newClusterRole(request.Namespace),
 		newClusterRoleBinding(request.Namespace),
 		newValidatingWebhook(request.Namespace),
@@ -66,7 +67,7 @@ func reconcileClusterRole(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRole(request.Namespace),
 		&rbac.ClusterRole{},
-		func(newRes common.Resource, foundRes common.Resource) bool {
+		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
 			newRole := newRes.(*rbac.ClusterRole)
 			foundRole := foundRes.(*rbac.ClusterRole)
 			if !reflect.DeepEqual(newRole.Rules, foundRole.Rules) {
@@ -88,7 +89,7 @@ func reconcileClusterRoleBinding(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRoleBinding(request.Namespace),
 		&rbac.ClusterRoleBinding{},
-		func(newRes common.Resource, foundRes common.Resource) bool {
+		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
 			if !reflect.DeepEqual(newBinding.RoleRef, foundBinding.RoleRef) ||
@@ -105,7 +106,7 @@ func reconcileService(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newService(request.Namespace),
 		&v1.Service{},
-		func(newRes common.Resource, foundRes common.Resource) bool {
+		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
 			newService := newRes.(*v1.Service)
 			foundService := foundRes.(*v1.Service)
 
@@ -128,7 +129,7 @@ func reconcileDeployment(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		deployment,
 		&apps.Deployment{},
-		func(newRes common.Resource, foundRes common.Resource) bool {
+		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
 			newDep := newRes.(*apps.Deployment)
 			foundDep := foundRes.(*apps.Deployment)
 			if !reflect.DeepEqual(newDep.Spec, foundDep.Spec) {
@@ -150,7 +151,7 @@ func reconcileValidatingWebhook(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newValidatingWebhook(request.Namespace),
 		&admission.ValidatingWebhookConfiguration{},
-		func(newRes common.Resource, foundRes common.Resource) bool {
+		func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
 			newWebhookConf := newRes.(*admission.ValidatingWebhookConfiguration)
 			foundWebhookConf := foundRes.(*admission.ValidatingWebhookConfiguration)
 

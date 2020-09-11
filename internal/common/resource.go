@@ -6,26 +6,19 @@ import (
 
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
-type Resource interface {
-	metav1.Object
-	runtime.Object
-}
+type ResourceUpdateFunc = func(new controllerutil.Object, found controllerutil.Object) bool
 
-type ResourceUpdateFunc = func(new Resource, found Resource) bool
-
-func NoUpdate(_ Resource, _ Resource) bool {
+func NoUpdate(_ controllerutil.Object, _ controllerutil.Object) bool {
 	return false
 }
 
-func CreateOrUpdateResource(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
+func CreateOrUpdateResource(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
 	err := controllerutil.SetControllerReference(request.Instance, resource, request.Scheme)
 	if err != nil {
 		return err
@@ -33,12 +26,12 @@ func CreateOrUpdateResource(request *Request, resource Resource, found Resource,
 	return createOrUpdate(request, resource, found, updateResource)
 }
 
-func CreateOrUpdateClusterResource(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
+func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
 	addOwnerAnnotations(resource, request.Instance)
 	return createOrUpdate(request, resource, found, updateResource)
 }
 
-func createOrUpdate(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
+func createOrUpdate(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
 	err := request.Client.Get(request.Context,
 		types.NamespacedName{Name: resource.GetName(), Namespace: resource.GetNamespace()},
 		found)
@@ -71,7 +64,7 @@ func createOrUpdate(request *Request, resource Resource, found Resource, updateR
 	return nil
 }
 
-func addOwnerAnnotations(resource Resource, ssp *ssp.SSP) {
+func addOwnerAnnotations(resource controllerutil.Object, ssp *ssp.SSP) {
 	if resource.GetAnnotations() == nil {
 		resource.SetAnnotations(map[string]string{})
 	}
@@ -80,7 +73,7 @@ func addOwnerAnnotations(resource Resource, ssp *ssp.SSP) {
 	annotations[libhandler.NamespacedNameAnnotation] = ssp.Namespace + "/" + ssp.Name
 }
 
-func updateAnnotations(new Resource, found Resource) bool {
+func updateAnnotations(new controllerutil.Object, found controllerutil.Object) bool {
 	if new.GetAnnotations() == nil || len(new.GetAnnotations()) == 0 {
 		return false
 	}
@@ -91,7 +84,7 @@ func updateAnnotations(new Resource, found Resource) bool {
 	return updateStringMap(new.GetAnnotations(), found.GetAnnotations())
 }
 
-func updateLabels(new Resource, found Resource) bool {
+func updateLabels(new controllerutil.Object, found controllerutil.Object) bool {
 	if new.GetLabels() == nil || len(new.GetLabels()) == 0 {
 		return false
 	}

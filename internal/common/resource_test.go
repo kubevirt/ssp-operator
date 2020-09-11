@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -77,7 +78,7 @@ var _ = Describe("Create or update resource", func() {
 		Expect(CreateOrUpdateResource(&request,
 			newTestResource(namespace),
 			newEmptyResource(),
-			func(newRes Resource, foundRes Resource) bool {
+			func(newRes controllerutil.Object, foundRes controllerutil.Object) bool {
 				newService := newRes.(*v1.Service)
 				foundService := foundRes.(*v1.Service)
 				foundService.Spec = newService.Spec
@@ -158,7 +159,7 @@ func newEmptyResource() *v1.Service {
 	return &v1.Service{}
 }
 
-func expectEqualResourceExists(resource Resource, request Request) {
+func expectEqualResourceExists(resource controllerutil.Object, request Request) {
 	key, err := client.ObjectKeyFromObject(resource)
 	Expect(err).ToNot(HaveOccurred())
 
