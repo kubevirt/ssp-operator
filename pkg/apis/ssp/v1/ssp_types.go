@@ -1,17 +1,31 @@
 package v1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type TemplateValidator struct {
+	// Replicas is the number of replicas of the template validator pod
+	Replicas int32 `json:"replicas"`
+
+	// Node Affinity affinity for TemplateValidator pods
+	Affinity *v1.Affinity `json:"affinity,omitempty"`
+
+	// NodeSelector labels for TemplateValidator
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Tolerations for TemplateValidator
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+}
 
 // SSPSpec defines the desired state of SSP
 type SSPSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+
+	// TemplateValidator is configuration of the template validator operand
+	TemplateValidator TemplateValidator `json:"templateValidator"`
 }
 
 // SSPStatus defines the observed state of SSP

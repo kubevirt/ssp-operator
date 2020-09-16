@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,13 +31,12 @@ var _ = Describe("Metrics operand", func() {
 		request common.Request
 	)
 
-	BeforeEach(func() {
+	It("should create metrics resources", func() {
 		s := scheme.Scheme
 		Expect(apis.AddToScheme(s)).ToNot(HaveOccurred())
 		Expect(AddWatchTypesToScheme(s)).ToNot(HaveOccurred())
 
 		client := fake.NewFakeClientWithScheme(s)
-
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -57,32 +55,16 @@ var _ = Describe("Metrics operand", func() {
 			},
 			Logger: log,
 		}
-	})
-
-	It("should create the prometheus rule", func() {
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
-		expectEqualRuleExists(newPrometheusRule(namespace), request)
-	})
-
-	It("should update the prometheus rule", func() {
-		existingRule := newPrometheusRule(namespace)
-		existingRule.Spec.Groups[0].Name = "changed-name"
-		existingRule.Spec.Groups[0].Rules = nil
-		Expect(request.Client.Create(request.Context, existingRule)).ToNot(HaveOccurred())
 
 		Expect(Reconcile(&request)).ToNot(HaveOccurred())
-
-		expectEqualRuleExists(newPrometheusRule(namespace), request)
+		expectResourceExists(newPrometheusRule(namespace), request)
 	})
 })
 
-func expectEqualRuleExists(rule *promv1.PrometheusRule, request common.Request) {
-	key, err := client.ObjectKeyFromObject(rule)
+func expectResourceExists(resource common.Resource, request common.Request) {
+	key, err := client.ObjectKeyFromObject(resource)
 	Expect(err).ToNot(HaveOccurred())
-
-	var found promv1.PrometheusRule
-	Expect(request.Client.Get(request.Context, key, &found)).ToNot(HaveOccurred())
-	Expect(found.Spec).To(Equal(rule.Spec))
+	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
 }
 
 func TestMetrics(t *testing.T) {
