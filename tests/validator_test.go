@@ -60,9 +60,9 @@ var _ = Describe("Template validator", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
 		},
-			table.Entry("cluster role", clusterRoleRes),
-			table.Entry("cluster role binding", clusterRoleBindingRes),
-			table.Entry("validating webhook configuration", webhookConfigRes),
+			table.Entry("[test_id:4907] cluster role", clusterRoleRes),
+			table.Entry("[test_id:4908] cluster role binding", clusterRoleBindingRes),
+			table.Entry("[test_id:4909] validating webhook configuration", webhookConfigRes),
 		)
 
 		table.DescribeTable("created namespaced resource", func(res *testResource) {
@@ -71,9 +71,9 @@ var _ = Describe("Template validator", func() {
 			}, res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("service account", serviceAccountRes),
-			table.Entry("service", serviceRes),
-			table.Entry("deployment", deploymentRes),
+			table.Entry("[test_id:4910] service account", serviceAccountRes),
+			table.Entry("[test_id:4911] service", serviceRes),
+			table.Entry("[test_id:4912] deployment", deploymentRes),
 		)
 	})
 
@@ -90,12 +90,12 @@ var _ = Describe("Template validator", func() {
 				}, resource)
 			}, timeout, time.Second).ShouldNot(HaveOccurred())
 		},
-			table.Entry("cluster role", clusterRoleRes),
-			table.Entry("cluster role binding", clusterRoleBindingRes),
-			table.Entry("validating webhook configuration", webhookConfigRes),
-			table.Entry("service account", serviceAccountRes),
-			table.Entry("service", serviceRes),
-			table.Entry("deployment", deploymentRes),
+			table.Entry("[test_id:4914] cluster role", clusterRoleRes),
+			table.Entry("[test_id:4916] cluster role binding", clusterRoleBindingRes),
+			table.Entry("[test_id:4918] validating webhook configuration", webhookConfigRes),
+			table.Entry("[test_id:4920] service account", serviceAccountRes),
+			table.Entry("[test_id:4922] service", serviceRes),
+			table.Entry("[test_id:4924] deployment", deploymentRes),
 		)
 	})
 
@@ -123,7 +123,7 @@ var _ = Describe("Template validator", func() {
 				return res[0].Interface().(bool)
 			}, timeout, time.Second).Should(BeTrue())
 		},
-			table.Entry("cluster role", clusterRoleRes,
+			table.Entry("[test_id:4915] cluster role", clusterRoleRes,
 				func(role *rbac.ClusterRole) {
 					role.Rules[0].Verbs = []string{"watch"}
 				},
@@ -131,7 +131,7 @@ var _ = Describe("Template validator", func() {
 					return reflect.DeepEqual(old.Rules, new.Rules)
 				}),
 
-			table.Entry("cluster role binding", clusterRoleBindingRes,
+			table.Entry("[test_id:4917] cluster role binding", clusterRoleBindingRes,
 				func(roleBinding *rbac.ClusterRoleBinding) {
 					roleBinding.Subjects = []rbac.Subject{}
 				},
@@ -140,7 +140,7 @@ var _ = Describe("Template validator", func() {
 						reflect.DeepEqual(old.Subjects, new.Subjects)
 				}),
 
-			table.Entry("validating webhook configuration", webhookConfigRes,
+			table.Entry("[test_id:4919] validating webhook configuration", webhookConfigRes,
 				func(webhook *admission.ValidatingWebhookConfiguration) {
 					webhook.Webhooks[0].Rules = []admission.RuleWithOperations{}
 				},
@@ -148,7 +148,7 @@ var _ = Describe("Template validator", func() {
 					return reflect.DeepEqual(old.Webhooks, new.Webhooks)
 				}),
 
-			table.Entry("service", serviceRes,
+			table.Entry("[test_id:4923] service", serviceRes,
 				func(service *core.Service) {
 					service.Spec.Ports[0].Port = 44331
 					service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
@@ -157,7 +157,7 @@ var _ = Describe("Template validator", func() {
 					return reflect.DeepEqual(old.Spec, new.Spec)
 				}),
 
-			table.Entry("deployment", deploymentRes,
+			table.Entry("[test_id:4925] deployment", deploymentRes,
 				func(deployment *apps.Deployment) {
 					deployment.Spec.Replicas = pointer.Int32Ptr(0)
 				},
@@ -167,7 +167,7 @@ var _ = Describe("Template validator", func() {
 		)
 	})
 
-	It("should successfully start template-validator pod", func() {
+	It("[test_id:4913] should successfully start template-validator pod", func() {
 		labels := map[string]string{"kubevirt.io": "virt-template-validator"}
 		Eventually(func() bool {
 			pods := core.PodList{}
@@ -206,7 +206,7 @@ var _ = Describe("Template validator", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should add and remove placement", func() {
+		It("[test_id:4926] should add and remove placement", func() {
 			const testKey = "testKey"
 			const testValue = "testValue"
 
