@@ -19,7 +19,6 @@ func WatchTypes() []runtime.Object {
 func Reconcile(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newPrometheusRule(request.Namespace),
-		&promv1.PrometheusRule{},
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
 		})

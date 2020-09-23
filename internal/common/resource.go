@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"github.com/go-logr/logr"
+	"reflect"
 
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -10,23 +11,24 @@ import (
 
 type ResourceUpdateFunc = func(expected, found controllerutil.Object)
 
-func CreateOrUpdateResource(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
+func CreateOrUpdateResource(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) error {
 	err := controllerutil.SetControllerReference(request.Instance, resource, request.Scheme)
 	if err != nil {
 		return err
 	}
-	return createOrUpdate(request, resource, found, updateResource)
+	return createOrUpdate(request, resource, updateResource)
 }
 
-func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
+func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) error {
 	err := libhandler.SetOwnerAnnotations(request.Instance, resource)
 	if err != nil {
 		return err
 	}
-	return createOrUpdate(request, resource, found, updateResource)
+	return createOrUpdate(request, resource, updateResource)
 }
 
-func createOrUpdate(request *Request, resource controllerutil.Object, found controllerutil.Object, updateResource ResourceUpdateFunc) error {
+func createOrUpdate(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) error {
+	found := newEmptyResource(resource)
 	found.SetName(resource.GetName())
 	found.SetNamespace(resource.GetNamespace())
 	res, err := controllerutil.CreateOrUpdate(request.Context, request.Client, found, func() error {
@@ -45,6 +47,10 @@ func createOrUpdate(request *Request, resource controllerutil.Object, found cont
 
 	logOperation(res, found, request.Logger)
 	return nil
+}
+
+func newEmptyResource(resource controllerutil.Object) controllerutil.Object {
+	return reflect.New(reflect.TypeOf(resource).Elem()).Interface().(controllerutil.Object)
 }
 
 func updateAnnotations(expected, found controllerutil.Object) {

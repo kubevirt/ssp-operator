@@ -84,7 +84,7 @@ var _ = Describe("Create or update resource", func() {
 		key, err := client.ObjectKeyFromObject(newTestResource(namespace))
 		Expect(err).ToNot(HaveOccurred())
 
-		found := newEmptyResource()
+		found := &v1.Service{}
 		Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
 
 		Expect(found.GetOwnerReferences()).To(HaveLen(1))
@@ -96,7 +96,6 @@ var _ = Describe("Create or update resource", func() {
 	It("should set owner annotations", func() {
 		Expect(CreateOrUpdateClusterResource(&request,
 			newTestResource(""),
-			newEmptyResource(),
 			func(expected, found controllerutil.Object) {
 				found.(*v1.Service).Spec = expected.(*v1.Service).Spec
 			},
@@ -105,7 +104,7 @@ var _ = Describe("Create or update resource", func() {
 		key, err := client.ObjectKeyFromObject(newTestResource(""))
 		Expect(err).ToNot(HaveOccurred())
 
-		found := newEmptyResource()
+		found := &v1.Service{}
 		Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
 
 		Expect(found.GetAnnotations()).To(HaveKeyWithValue(libhandler.TypeAnnotation, "SSP.ssp.kubevirt.io"))
@@ -116,7 +115,6 @@ var _ = Describe("Create or update resource", func() {
 func createOrUpdateTestResource(request *Request) error {
 	return CreateOrUpdateResource(request,
 		newTestResource(namespace),
-		newEmptyResource(),
 		func(expected, found controllerutil.Object) {
 			found.(*v1.Service).Spec = expected.(*v1.Service).Spec
 		},
@@ -152,15 +150,11 @@ func newTestResource(namespace string) *v1.Service {
 	}
 }
 
-func newEmptyResource() *v1.Service {
-	return &v1.Service{}
-}
-
 func expectEqualResourceExists(resource controllerutil.Object, request *Request) {
 	key, err := client.ObjectKeyFromObject(resource)
 	Expect(err).ToNot(HaveOccurred())
 
-	found := newEmptyResource()
+	found := newEmptyResource(resource)
 	Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
 
 	resource.SetResourceVersion(found.GetResourceVersion())

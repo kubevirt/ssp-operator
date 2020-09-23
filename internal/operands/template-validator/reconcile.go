@@ -65,7 +65,6 @@ func Cleanup(request *common.Request) error {
 func reconcileClusterRole(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRole(request.Namespace),
-		&rbac.ClusterRole{},
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
 		})
@@ -74,14 +73,12 @@ func reconcileClusterRole(request *common.Request) error {
 func reconcileServiceAccount(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newServiceAccount(request.Namespace),
-		&v1.ServiceAccount{},
 		func(_, _ controllerutil.Object) {})
 }
 
 func reconcileClusterRoleBinding(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRoleBinding(request.Namespace),
-		&rbac.ClusterRoleBinding{},
 		func(newRes, foundRes controllerutil.Object) {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
@@ -93,7 +90,6 @@ func reconcileClusterRoleBinding(request *common.Request) error {
 func reconcileService(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newService(request.Namespace),
-		&v1.Service{},
 		func(newRes, foundRes controllerutil.Object) {
 			newService := newRes.(*v1.Service)
 			foundService := foundRes.(*v1.Service)
@@ -112,7 +108,6 @@ func reconcileDeployment(request *common.Request) error {
 	addPlacementFields(deployment, validatorSpec)
 	return common.CreateOrUpdateResource(request,
 		deployment,
-		&apps.Deployment{},
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
 		})
@@ -128,7 +123,6 @@ func addPlacementFields(deployment *apps.Deployment, validatorSpec *ssp.Template
 func reconcileValidatingWebhook(request *common.Request) error {
 	return common.CreateOrUpdateClusterResource(request,
 		newValidatingWebhook(request.Namespace),
-		&admission.ValidatingWebhookConfiguration{},
 		func(newRes, foundRes controllerutil.Object) {
 			newWebhookConf := newRes.(*admission.ValidatingWebhookConfiguration)
 			foundWebhookConf := foundRes.(*admission.ValidatingWebhookConfiguration)
