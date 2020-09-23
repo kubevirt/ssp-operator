@@ -1,5 +1,7 @@
-# ssp-operator
+# SSP Operator
 Kubevirt SSP Operator
+
+This operator is currently Work In Progress, the current SSP operator can be found here: https://github.com/kubevirt/kubevirt-ssp-operator
 
 ### Building
 To build the binary and container image run:
