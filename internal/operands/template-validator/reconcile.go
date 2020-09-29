@@ -11,8 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
-	ssp "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 )
 
 func WatchTypes() []runtime.Object {

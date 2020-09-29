@@ -2,8 +2,6 @@ package common
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -12,13 +10,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"kubevirt.io/ssp-operator/pkg/apis"
-	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
+	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
 var log = logf.Log.WithName("common_operand_package")
@@ -35,7 +34,7 @@ var _ = Describe("Create or update resource", func() {
 
 	BeforeEach(func() {
 		s := scheme.Scheme
-		Expect(apis.AddToScheme(s)).ToNot(HaveOccurred())
+		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
 
 		client := fake.NewFakeClientWithScheme(s)
 		request = Request{
@@ -48,7 +47,7 @@ var _ = Describe("Create or update resource", func() {
 			Client:  client,
 			Scheme:  s,
 			Context: context.Background(),
-			Instance: &sspv1.SSP{
+			Instance: &ssp.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,

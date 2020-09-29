@@ -17,9 +17,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
-	"kubevirt.io/ssp-operator/pkg/apis"
-	ssp "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
 )
 
 var log = logf.Log.WithName("validator_operand")
@@ -34,7 +33,7 @@ var _ = Describe("Template validator operand", func() {
 
 	BeforeEach(func() {
 		s := scheme.Scheme
-		Expect(apis.AddToScheme(s)).ToNot(HaveOccurred())
+		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
 
 		client := fake.NewFakeClientWithScheme(s)
 		request = common.Request{

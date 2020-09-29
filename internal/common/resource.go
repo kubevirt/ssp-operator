@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	sspv1 "kubevirt.io/ssp-operator/pkg/apis/ssp/v1"
+	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
 type Resource interface {
@@ -71,7 +71,7 @@ func createOrUpdate(request *Request, resource Resource, found Resource, updateR
 	return nil
 }
 
-func addOwnerAnnotations(resource Resource, ssp *sspv1.SSP) {
+func addOwnerAnnotations(resource Resource, ssp *ssp.SSP) {
 	if resource.GetAnnotations() == nil {
 		resource.SetAnnotations(map[string]string{})
 	}
