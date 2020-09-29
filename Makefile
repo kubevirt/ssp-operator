@@ -25,7 +25,7 @@ all: manager
 
 # Run tests
 unittest: generate fmt vet manifests
-	go test -coverprofile cover.out ./api/... ./controllers/... ./internal/...
+	go test -v -coverprofile cover.out ./api/... ./controllers/... ./internal/...
 
 build-util-container:
 	./hack/build-in-container.sh
@@ -40,7 +40,7 @@ run-functest:
 #functest: generate fmt vet manifests build-functests run-functest
 
 functest: generate fmt vet manifests
-	go test -coverprofile cover.out ./tests/...
+	go test -v -coverprofile cover.out ./tests/...
 
 # Build manager binary
 manager: generate fmt vet

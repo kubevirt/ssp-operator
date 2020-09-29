@@ -7,6 +7,7 @@ require (
 	github.com/go-logr/logr v0.1.0
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
+	github.com/openshift/api v0.0.0-20200917102736-0a191b5b9bb0 // release-4.5
 	github.com/operator-framework/operator-lib v0.1.0
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6

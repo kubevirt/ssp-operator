@@ -29,6 +29,11 @@ type TemplateValidator struct {
 	Placement lifecycleapi.NodePlacement `json:"placement,omitempty"`
 }
 
+type CommonTemplates struct {
+	// Namespace is the k8s namespace where CommonTemplates should be installed
+	Namespace string `json:"namespace"`
+}
+
 // SSPSpec defines the desired state of SSP
 type SSPSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -36,6 +41,9 @@ type SSPSpec struct {
 
 	// TemplateValidator is configuration of the template validator operand
 	TemplateValidator TemplateValidator `json:"templateValidator"`
+
+	// CommonTemplates is the configuration of the common templates operand
+	CommonTemplates CommonTemplates `json:"commonTemplates"`
 }
 
 // SSPStatus defines the observed state of SSP
