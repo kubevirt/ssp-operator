@@ -109,7 +109,13 @@ func reconcileDeployment(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		deployment,
 		func(newRes, foundRes controllerutil.Object) {
-			foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
+			foundDep := foundRes.(*apps.Deployment)
+			newDep := newRes.(*apps.Deployment)
+
+			// Copy deprecated service account, so it will be ignored
+			newDep.Spec.Template.Spec.DeprecatedServiceAccount = foundDep.Spec.Template.Spec.DeprecatedServiceAccount
+
+			foundDep.Spec = newDep.Spec
 		})
 }
 

@@ -28,6 +28,8 @@ func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Obj
 }
 
 func createOrUpdate(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) error {
+	request.Scheme.Default(resource)
+
 	found := newEmptyResource(resource)
 	found.SetName(resource.GetName())
 	found.SetNamespace(resource.GetNamespace())

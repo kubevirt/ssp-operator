@@ -27,6 +27,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	// Import modules to initialize defaulter methods
+	_ "kubevirt.io/ssp-operator/internal/k8s/pkg/apis/admissionregistration/v1"
+	_ "kubevirt.io/ssp-operator/internal/k8s/pkg/apis/apps/v1"
+	_ "kubevirt.io/ssp-operator/internal/k8s/pkg/apis/core/v1"
+
 	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
