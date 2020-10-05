@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	"testing"
 	"time"
@@ -55,6 +56,7 @@ var _ = BeforeSuite(func() {
 			CommonTemplates: sspv1alpha1.CommonTemplates{
 				Namespace: commonTemplatesTestNS,
 			},
+			NodeLabeller: sspv1alpha1.NodeLabeller{},
 		},
 	}
 
@@ -101,6 +103,7 @@ func setupApiClient() {
 	Expect(sspv1alpha1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
 	Expect(promv1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
 	Expect(templatev1.Install(scheme.Scheme)).ToNot(HaveOccurred())
+	Expect(secv1.Install(scheme.Scheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
