@@ -2,114 +2,90 @@ package common
 
 import (
 	"fmt"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"github.com/go-logr/logr"
+	"reflect"
 
 	libhandler "github.com/operator-framework/operator-lib/handler"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
-type Resource interface {
-	metav1.Object
-	runtime.Object
-}
+type ResourceUpdateFunc = func(expected, found controllerutil.Object)
 
-type ResourceUpdateFunc = func(new Resource, found Resource) bool
-
-func NoUpdate(_ Resource, _ Resource) bool {
-	return false
-}
-
-func CreateOrUpdateResource(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
+func CreateOrUpdateResource(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) error {
 	err := controllerutil.SetControllerReference(request.Instance, resource, request.Scheme)
 	if err != nil {
 		return err
 	}
-	return createOrUpdate(request, resource, found, updateResource)
+	return createOrUpdate(request, resource, updateResource)
 }
 
-func CreateOrUpdateClusterResource(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
-	addOwnerAnnotations(resource, request.Instance)
-	return createOrUpdate(request, resource, found, updateResource)
-}
-
-func createOrUpdate(request *Request, resource Resource, found Resource, updateResource ResourceUpdateFunc) error {
-	err := request.Client.Get(request.Context,
-		types.NamespacedName{Name: resource.GetName(), Namespace: resource.GetNamespace()},
-		found)
-	if errors.IsNotFound(err) {
-		gvk, _ := apiutil.GVKForObject(resource, request.Scheme)
-		request.Logger.Info(fmt.Sprintf("Creating %s resource: %s",
-			gvk.Kind,
-			resource.GetName()))
-		return request.Client.Create(request.Context, resource)
+func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) error {
+	err := libhandler.SetOwnerAnnotations(request.Instance, resource)
+	if err != nil {
+		return err
 	}
+	return createOrUpdate(request, resource, updateResource)
+}
+
+func createOrUpdate(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) error {
+	found := newEmptyResource(resource)
+	found.SetName(resource.GetName())
+	found.SetNamespace(resource.GetNamespace())
+	res, err := controllerutil.CreateOrUpdate(request.Context, request.Client, found, func() error {
+		// We expect users will not add any other owner references,
+		// if that is not correct, this code needs to be changed.
+		found.SetOwnerReferences(resource.GetOwnerReferences())
+
+		updateLabels(resource, found)
+		updateAnnotations(resource, found)
+		updateResource(resource, found)
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
-	resource.SetResourceVersion(found.GetResourceVersion())
-
-	// The order of the || operator arguments is chosen
-	// to avoid short-circuit evaluation
-	resourceChanged := updateLabels(resource, found)
-	resourceChanged = updateAnnotations(resource, found) || resourceChanged
-	resourceChanged = updateResource(resource, found) || resourceChanged
-
-	if resourceChanged {
-		request.Logger.Info(fmt.Sprintf("Updating %s resource: %s",
-			found.GetObjectKind().GroupVersionKind().Kind,
-			found.GetName()))
-		return request.Client.Update(request.Context, found)
-	}
-
+	logOperation(res, found, request.Logger)
 	return nil
 }
 
-func addOwnerAnnotations(resource Resource, ssp *ssp.SSP) {
-	if resource.GetAnnotations() == nil {
-		resource.SetAnnotations(map[string]string{})
-	}
-	annotations := resource.GetAnnotations()
-	annotations[libhandler.TypeAnnotation] = "SSP.ssp.kubevirt.io"
-	annotations[libhandler.NamespacedNameAnnotation] = ssp.Namespace + "/" + ssp.Name
+func newEmptyResource(resource controllerutil.Object) controllerutil.Object {
+	return reflect.New(reflect.TypeOf(resource).Elem()).Interface().(controllerutil.Object)
 }
 
-func updateAnnotations(new Resource, found Resource) bool {
-	if new.GetAnnotations() == nil || len(new.GetAnnotations()) == 0 {
-		return false
-	}
+func updateAnnotations(expected, found controllerutil.Object) {
 	if found.GetAnnotations() == nil {
-		found.SetAnnotations(new.GetAnnotations())
-		return true
+		found.SetAnnotations(expected.GetAnnotations())
+		return
 	}
-	return updateStringMap(new.GetAnnotations(), found.GetAnnotations())
+	updateStringMap(expected.GetAnnotations(), found.GetAnnotations())
 }
 
-func updateLabels(new Resource, found Resource) bool {
-	if new.GetLabels() == nil || len(new.GetLabels()) == 0 {
-		return false
-	}
+func updateLabels(expected, found controllerutil.Object) {
 	if found.GetLabels() == nil {
-		found.SetLabels(new.GetLabels())
-		return true
+		found.SetLabels(expected.GetLabels())
+		return
 	}
-	return updateStringMap(new.GetLabels(), found.GetLabels())
+	updateStringMap(expected.GetLabels(), found.GetLabels())
 }
 
-func updateStringMap(new map[string]string, found map[string]string) bool {
-	changed := false
-	for label, labelVal := range new {
-		foundVal, ok := found[label]
-		if !ok || foundVal != labelVal {
-			found[label] = labelVal
-			changed = true
-		}
+func updateStringMap(expected, found map[string]string) {
+	if expected == nil {
+		return
 	}
-	return changed
+	for key, val := range expected {
+		found[key] = val
+	}
+}
+
+func logOperation(result controllerutil.OperationResult, resource controllerutil.Object, logger logr.Logger) {
+	if result == controllerutil.OperationResultCreated {
+		logger.Info(fmt.Sprintf("Created %s resource: %s",
+			resource.GetObjectKind().GroupVersionKind().Kind,
+			resource.GetName()))
+	} else if result == controllerutil.OperationResultUpdated {
+		logger.Info(fmt.Sprintf("Updated %s resource: %s",
+			resource.GetObjectKind().GroupVersionKind().Kind,
+			resource.GetName()))
+	}
 }

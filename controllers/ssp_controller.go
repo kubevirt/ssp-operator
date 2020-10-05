@@ -110,7 +110,7 @@ func initialize(request *common.Request) (bool, error) {
 	changed := false
 
 	if !isBeingDeleted(request.Instance) {
-		if !hasFinalizer(request.Instance, finalizerName) {
+		if !controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
 			controllerutil.AddFinalizer(request.Instance, finalizerName)
 			changed = true
 		}
@@ -124,7 +124,7 @@ func initialize(request *common.Request) (bool, error) {
 }
 
 func cleanup(request *common.Request) error {
-	if !hasFinalizer(request.Instance, finalizerName) {
+	if !controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
 		return nil
 	}
 
@@ -135,15 +135,6 @@ func cleanup(request *common.Request) error {
 
 	controllerutil.RemoveFinalizer(request.Instance, finalizerName)
 	return request.Client.Update(request.Context, request.Instance)
-}
-
-func hasFinalizer(object metav1.Object, finalizer string) bool {
-	for _, f := range object.GetFinalizers() {
-		if finalizer == f {
-			return true
-		}
-	}
-	return false
 }
 
 func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {

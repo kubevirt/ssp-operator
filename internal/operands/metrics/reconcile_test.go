@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -47,6 +48,10 @@ var _ = Describe("Metrics operand", func() {
 			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "SSP",
+					APIVersion: ssp.GroupVersion.String(),
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
@@ -60,7 +65,7 @@ var _ = Describe("Metrics operand", func() {
 	})
 })
 
-func expectResourceExists(resource common.Resource, request common.Request) {
+func expectResourceExists(resource controllerutil.Object, request common.Request) {
 	key, err := client.ObjectKeyFromObject(resource)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())

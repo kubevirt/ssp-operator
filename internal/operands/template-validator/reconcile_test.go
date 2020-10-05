@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -47,6 +48,10 @@ var _ = Describe("Template validator operand", func() {
 			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
+				TypeMeta: meta.TypeMeta{
+					Kind:       "SSP",
+					APIVersion: ssp.GroupVersion.String(),
+				},
 				ObjectMeta: meta.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
@@ -120,13 +125,13 @@ var _ = Describe("Template validator operand", func() {
 	})
 })
 
-func expectResourceExists(resource common.Resource, request common.Request) {
+func expectResourceExists(resource controllerutil.Object, request common.Request) {
 	key, err := client.ObjectKeyFromObject(resource)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
 }
 
-func expectResourceNotExists(resource common.Resource, request common.Request) {
+func expectResourceNotExists(resource controllerutil.Object, request common.Request) {
 	key, err := client.ObjectKeyFromObject(resource)
 	Expect(err).ToNot(HaveOccurred())
 

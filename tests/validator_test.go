@@ -16,9 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
-	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
@@ -296,11 +296,11 @@ func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
 type testResource struct {
 	Name       string
 	Namsespace string
-	resource   common.Resource
+	resource   controllerutil.Object
 }
 
-func (r *testResource) NewResource() common.Resource {
-	return r.resource.DeepCopyObject().(common.Resource)
+func (r *testResource) NewResource() controllerutil.Object {
+	return r.resource.DeepCopyObject().(controllerutil.Object)
 }
 
 func (r *testResource) GetKey() client.ObjectKey {
