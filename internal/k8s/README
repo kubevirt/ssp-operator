@@ -1,0 +1,7 @@
+Code in this directory was copied from 'k8s.io/kuberntes' repo.
+
+Packages from that repo cannot be imported using go modules
+because of an error with dependencies.
+
+Version used:
+k8s.io/kuberntes v1.18.6
