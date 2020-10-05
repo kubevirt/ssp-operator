@@ -22,12 +22,12 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/util/parsers"
 	utilpointer "k8s.io/utils/pointer"
+	"kubevirt.io/ssp-operator/internal/k8s/pkg/util/parsers"
 
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
 	utilnet "k8s.io/utils/net"
+	"kubevirt.io/ssp-operator/internal/k8s/pkg/features"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
