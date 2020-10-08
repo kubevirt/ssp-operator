@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"reflect"
+	
 	"github.com/go-logr/logr"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -178,9 +180,15 @@ func watchClusterResources(builder *ctrl.Builder, watchTypesGetters ...func() []
 }
 
 func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesGetters ...func() []runtime.Object) {
+	watchedTypes := make(map[reflect.Type]struct{})
 	for _, watchTypes := range watchTypesGetters {
 		for _, t := range watchTypes() {
+			if _, ok := watchedTypes[reflect.TypeOf(t)]; ok {
+				continue
+			}
+
 			builder.Watches(&source.Kind{Type: t}, handler)
+			watchedTypes[reflect.TypeOf(t)] = struct{}{}
 		}
 	}
 }
