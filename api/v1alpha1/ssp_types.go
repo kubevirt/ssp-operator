@@ -17,22 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 )
 
 type TemplateValidator struct {
 	// Replicas is the number of replicas of the template validator pod
 	Replicas int32 `json:"replicas"`
 
-	// Node Affinity affinity for TemplateValidator pods
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-
-	// NodeSelector labels for TemplateValidator
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// Tolerations for TemplateValidator
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	// Placement describes the node scheduling configuration
+	Placement lifecycleapi.NodePlacement `json:"placement,omitempty"`
 }
 
 // SSPSpec defines the desired state of SSP
@@ -48,6 +42,8 @@ type SSPSpec struct {
 type SSPStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	lifecycleapi.Status `json:",inline"`
 }
 
 // +kubebuilder:object:root=true
