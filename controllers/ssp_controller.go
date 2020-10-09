@@ -19,7 +19,7 @@ package controllers
 import (
 	"context"
 	"reflect"
-	
+
 	"github.com/go-logr/logr"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/apimachinery/pkg/api/errors"
