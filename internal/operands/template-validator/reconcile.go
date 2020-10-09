@@ -9,8 +9,8 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
 )

@@ -48,6 +48,6 @@ These are the steps:
 ```shell
 make install         # Install CRDs to the cluster
 make run             # Start the operator locally
-go test ./tests/...  # Execute functional tests
+make functest        # Execute functional tests
 make uninstall       # Remove CRDs from the cluster
 ```
