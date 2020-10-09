@@ -36,7 +36,11 @@ build-functests:
 run-functest:
 	./hack/run-functest.sh
 
-functest: generate fmt vet manifests build-functests run-functest
+# TODO - skipping build container for functests until OCP CI is ready
+#functest: generate fmt vet manifests build-functests run-functest
+
+functest: generate fmt vet manifests
+	go test -coverprofile cover.out ./tests/...
 
 # Build manager binary
 manager: generate fmt vet
