@@ -34,11 +34,18 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
 const finalizerName = "finalize.ssp.kubevirt.io"
+
+var sspOperands = []operands.Operand{
+	metrics.GetOperand(),
+	template_validator.GetOperand(),
+	// TODO - add other operands here
+}
 
 // SSPReconciler reconciles a SSP object
 type SSPReconciler struct {
@@ -91,12 +98,8 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	for _, f := range []func(*common.Request) error{
-		metrics.Reconcile,
-		template_validator.Reconcile,
-		// TODO - add other reconcile methods here
-	} {
-		if err := f(sspRequest); err != nil {
+	for _, operand := range sspOperands {
+		if err := operand.Reconcile(sspRequest); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -130,9 +133,11 @@ func cleanup(request *common.Request) error {
 		return nil
 	}
 
-	err := template_validator.Cleanup(request)
-	if err != nil {
-		return err
+	for _, operand := range sspOperands {
+		err := operand.Cleanup(request)
+		if err != nil {
+			return err
+		}
 	}
 
 	controllerutil.RemoveFinalizer(request.Instance, finalizerName)
@@ -140,34 +145,23 @@ func cleanup(request *common.Request) error {
 }
 
 func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&ssp.SSP{})
-
-	watchClusterResources(builder,
-		template_validator.WatchClusterTypes,
-		// TODO - add other watch types here
-	)
-
-	watchNamespacedResources(builder,
-		metrics.WatchTypes,
-		template_validator.WatchTypes,
-		// TODO - add other watch types here
-	)
-
+	builder := ctrl.NewControllerManagedBy(mgr).For(&ssp.SSP{})
+	watchClusterResources(builder)
+	watchNamespacedResources(builder)
 	return builder.Complete(r)
 }
 
-func watchNamespacedResources(builder *ctrl.Builder, watchTypesGetters ...func() []runtime.Object) {
+func watchNamespacedResources(builder *ctrl.Builder) {
 	watchResources(builder,
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &ssp.SSP{},
 		},
-		watchTypesGetters...,
+		operands.Operand.WatchTypes,
 	)
 }
 
-func watchClusterResources(builder *ctrl.Builder, watchTypesGetters ...func() []runtime.Object) {
+func watchClusterResources(builder *ctrl.Builder) {
 	watchResources(builder,
 		&libhandler.EnqueueRequestForAnnotation{
 			Type: schema.GroupKind{
@@ -175,14 +169,14 @@ func watchClusterResources(builder *ctrl.Builder, watchTypesGetters ...func() []
 				Kind:  "SSP",
 			},
 		},
-		watchTypesGetters...,
+		operands.Operand.WatchClusterTypes,
 	)
 }
 
-func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesGetters ...func() []runtime.Object) {
+func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesFunc func(operands.Operand) []runtime.Object) {
 	watchedTypes := make(map[reflect.Type]struct{})
-	for _, watchTypes := range watchTypesGetters {
-		for _, t := range watchTypes() {
+	for _, operand := range sspOperands {
+		for _, t := range watchTypesFunc(operand) {
 			if _, ok := watchedTypes[reflect.TypeOf(t)]; ok {
 				continue
 			}
@@ -191,4 +185,14 @@ func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTy
 			watchedTypes[reflect.TypeOf(t)] = struct{}{}
 		}
 	}
+}
+
+func InitScheme(scheme *runtime.Scheme) error {
+	for _, operand := range sspOperands {
+		err := operand.AddWatchTypesToScheme(scheme)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
