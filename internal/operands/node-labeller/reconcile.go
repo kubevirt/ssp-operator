@@ -15,6 +15,17 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands"
 )
 
+// Define RBAC rules needed by this operand:
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+
+// +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=use,resourceNames=privileged
+
+// RBAC for created roles
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;update;patch
+
 type nodeLabeller struct{}
 
 func (nl *nodeLabeller) AddWatchTypesToScheme(s *runtime.Scheme) error {
