@@ -60,7 +60,8 @@ var _ = Describe("Template validator operand", func() {
 					Namespace: namespace,
 				},
 			},
-			Logger: log,
+			Logger:               log,
+			ResourceVersionCache: common.VersionCache{},
 		}
 	})
 

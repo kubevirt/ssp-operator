@@ -18,14 +18,13 @@ package controllers
 
 import (
 	"context"
-	"reflect"
-
 	"github.com/go-logr/logr"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -56,6 +55,9 @@ type SSPReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
+
+	LastSspSpec      ssp.SSPSpec
+	SubresourceCache common.VersionCache
 }
 
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
@@ -66,17 +68,11 @@ type SSPReconciler struct {
 func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
 
-	sspRequest := &common.Request{
-		Request: req,
-		Client:  r,
-		Scheme:  r.Scheme,
-		Context: context.Background(),
-		Logger:  reqLogger,
-	}
+	ctx := context.Background()
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
-	err := r.Get(sspRequest.Context, req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -88,7 +84,17 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	sspRequest.Instance = instance
+	r.clearCacheIfNeeded(instance)
+
+	sspRequest := &common.Request{
+		Request:              req,
+		Client:               r,
+		Scheme:               r.Scheme,
+		Context:              ctx,
+		Instance:             instance,
+		Logger:               reqLogger,
+		ResourceVersionCache: r.SubresourceCache,
+	}
 
 	updated, err := initialize(sspRequest)
 	if updated || err != nil {
@@ -99,7 +105,11 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if isBeingDeleted(sspRequest.Instance) {
 		err := cleanup(sspRequest)
-		return ctrl.Result{}, err
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		r.clearCache()
+		return ctrl.Result{}, nil
 	}
 
 	for _, operand := range sspOperands {
@@ -109,6 +119,18 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *SSPReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
+	if !reflect.DeepEqual(r.LastSspSpec, sspObj.Spec) {
+		r.SubresourceCache = common.VersionCache{}
+		r.LastSspSpec = sspObj.Spec
+	}
+}
+
+func (r *SSPReconciler) clearCache() {
+	r.LastSspSpec = ssp.SSPSpec{}
+	r.SubresourceCache = common.VersionCache{}
 }
 
 func isBeingDeleted(object metav1.Object) bool {
@@ -149,6 +171,8 @@ func cleanup(request *common.Request) error {
 }
 
 func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.SubresourceCache = common.VersionCache{}
+
 	builder := ctrl.NewControllerManagedBy(mgr).For(&ssp.SSP{})
 	watchClusterResources(builder)
 	watchNamespacedResources(builder)

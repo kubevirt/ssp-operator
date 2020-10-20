@@ -58,7 +58,8 @@ var _ = Describe("Metrics operand", func() {
 					Namespace: namespace,
 				},
 			},
-			Logger: log,
+			Logger:               log,
+			ResourceVersionCache: common.VersionCache{},
 		}
 
 		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())

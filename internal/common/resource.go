@@ -32,6 +32,10 @@ func createOrUpdate(request *Request, resource controllerutil.Object, updateReso
 	found.SetName(resource.GetName())
 	found.SetNamespace(resource.GetNamespace())
 	res, err := controllerutil.CreateOrUpdate(request.Context, request.Client, found, func() error {
+		if request.ResourceVersionCache.Contains(found) {
+			return nil
+		}
+
 		// We expect users will not add any other owner references,
 		// if that is not correct, this code needs to be changed.
 		found.SetOwnerReferences(resource.GetOwnerReferences())
@@ -45,6 +49,7 @@ func createOrUpdate(request *Request, resource controllerutil.Object, updateReso
 		return err
 	}
 
+	request.ResourceVersionCache.Add(found)
 	logOperation(res, found, request.Logger)
 	return nil
 }

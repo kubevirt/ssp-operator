@@ -58,7 +58,8 @@ var _ = Describe("Create or update resource", func() {
 					Namespace: namespace,
 				},
 			},
-			Logger: log,
+			Logger:               log,
+			ResourceVersionCache: VersionCache{},
 		}
 	})
 
@@ -109,6 +110,35 @@ var _ = Describe("Create or update resource", func() {
 
 		Expect(found.GetAnnotations()).To(HaveKeyWithValue(libhandler.TypeAnnotation, "SSP.ssp.kubevirt.io"))
 		Expect(found.GetAnnotations()).To(HaveKey(libhandler.NamespacedNameAnnotation))
+	})
+
+	It("should not update resource with cached version", func() {
+		resource := newTestResource(namespace)
+		resource.Spec.Ports[0].Name = "changed-name"
+		resource.Annotations["test-annotation"] = "test-changed"
+		resource.Labels["test-label"] = "new-change"
+		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+		request.ResourceVersionCache.Add(resource)
+
+		Expect(createOrUpdateTestResource(&request)).ToNot(HaveOccurred())
+		expectEqualResourceExists(resource, &request)
+	})
+
+	It("should update resource with different version in cache", func() {
+		resource := newTestResource(namespace)
+		resource.Spec.Ports[0].Name = "changed-name"
+		resource.Annotations["test-annotation"] = "test-changed"
+		resource.Labels["test-label"] = "new-change"
+		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+		request.ResourceVersionCache.Add(resource)
+
+		resource.Spec.Ports[0].Name = "changed-name-2"
+		Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
+
+		Expect(createOrUpdateTestResource(&request)).ToNot(HaveOccurred())
+		expectEqualResourceExists(newTestResource(namespace), &request)
 	})
 })
 
