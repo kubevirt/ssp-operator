@@ -5,21 +5,38 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func AddWatchTypesToScheme(s *runtime.Scheme) error {
-	return promv1.AddToScheme(s)
+type metrics struct{}
+
+func (m *metrics) AddWatchTypesToScheme(scheme *runtime.Scheme) error {
+	return promv1.AddToScheme(scheme)
 }
 
-func WatchTypes() []runtime.Object {
+func (m *metrics) WatchTypes() []runtime.Object {
 	return []runtime.Object{&promv1.PrometheusRule{}}
 }
 
-func Reconcile(request *common.Request) error {
+func (m *metrics) WatchClusterTypes() []runtime.Object {
+	return nil
+}
+
+func (m *metrics) Reconcile(request *common.Request) error {
 	return common.CreateOrUpdateResource(request,
 		newPrometheusRule(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
 		})
+}
+
+func (m *metrics) Cleanup(*common.Request) error {
+	return nil
+}
+
+var _ operands.Operand = &metrics{}
+
+func GetOperand() operands.Operand {
+	return &metrics{}
 }

@@ -29,12 +29,13 @@ var _ = Describe("Metrics operand", func() {
 
 	var (
 		request common.Request
+		operand = GetOperand()
 	)
 
 	It("should create metrics resources", func() {
 		s := scheme.Scheme
 		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
-		Expect(AddWatchTypesToScheme(s)).ToNot(HaveOccurred())
+		Expect(operand.AddWatchTypesToScheme(s)).ToNot(HaveOccurred())
 
 		client := fake.NewFakeClientWithScheme(s)
 		request = common.Request{
@@ -60,7 +61,7 @@ var _ = Describe("Metrics operand", func() {
 			Logger: log,
 		}
 
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
 		expectResourceExists(newPrometheusRule(namespace), request)
 	})
 })

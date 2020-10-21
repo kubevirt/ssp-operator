@@ -30,7 +30,10 @@ var _ = Describe("Template validator operand", func() {
 		name      = "test-ssp"
 	)
 
-	var request common.Request
+	var (
+		request common.Request
+		operand = GetOperand()
+	)
 
 	BeforeEach(func() {
 		s := scheme.Scheme
@@ -62,7 +65,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("should create validator resources", func() {
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
 
 		expectResourceExists(newClusterRole(namespace), request)
 		expectResourceExists(newServiceAccount(namespace), request)
@@ -73,7 +76,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("should not update webhook CA bundle", func() {
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
 
 		key, err := client.ObjectKeyFromObject(newValidatingWebhook(namespace))
 		Expect(err).ToNot(HaveOccurred())
@@ -84,7 +87,7 @@ var _ = Describe("Template validator operand", func() {
 		webhook.Webhooks[0].ClientConfig.CABundle = []byte(testCaBundle)
 		Expect(request.Client.Update(request.Context, webhook)).ToNot(HaveOccurred())
 
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
 
 		updatedWebhook := &admission.ValidatingWebhookConfiguration{}
 		Expect(request.Client.Get(request.Context, key, updatedWebhook)).ToNot(HaveOccurred())
@@ -92,7 +95,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("should not update service cluster IP", func() {
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
 
 		key, err := client.ObjectKeyFromObject(newService(namespace))
 		Expect(err).ToNot(HaveOccurred())
@@ -103,7 +106,7 @@ var _ = Describe("Template validator operand", func() {
 		service.Spec.ClusterIP = testClusterIp
 		Expect(request.Client.Update(request.Context, service)).ToNot(HaveOccurred())
 
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
 
 		updatedService := &core.Service{}
 		Expect(request.Client.Get(request.Context, key, updatedService)).ToNot(HaveOccurred())
@@ -111,13 +114,13 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("should remove cluster resources on cleanup", func() {
-		Expect(Reconcile(&request)).ToNot(HaveOccurred())
+		Expect(operand.Reconcile(&request)).ToNot(HaveOccurred())
 
 		expectResourceExists(newClusterRole(namespace), request)
 		expectResourceExists(newClusterRoleBinding(namespace), request)
 		expectResourceExists(newValidatingWebhook(namespace), request)
 
-		Expect(Cleanup(&request)).ToNot(HaveOccurred())
+		Expect(operand.Cleanup(&request)).ToNot(HaveOccurred())
 
 		expectResourceNotExists(newClusterRole(namespace), request)
 		expectResourceNotExists(newClusterRoleBinding(namespace), request)

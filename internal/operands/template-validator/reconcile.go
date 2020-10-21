@@ -13,9 +13,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands"
 )
 
-func WatchTypes() []runtime.Object {
+type templateValidator struct{}
+
+func (t *templateValidator) AddWatchTypesToScheme(*runtime.Scheme) error {
+	return nil
+}
+
+func (t *templateValidator) WatchTypes() []runtime.Object {
 	return []runtime.Object{
 		&v1.ServiceAccount{},
 		&v1.Service{},
@@ -23,7 +30,7 @@ func WatchTypes() []runtime.Object {
 	}
 }
 
-func WatchClusterTypes() []runtime.Object {
+func (t *templateValidator) WatchClusterTypes() []runtime.Object {
 	return []runtime.Object{
 		&rbac.ClusterRole{},
 		&rbac.ClusterRoleBinding{},
@@ -31,7 +38,7 @@ func WatchClusterTypes() []runtime.Object {
 	}
 }
 
-func Reconcile(request *common.Request) error {
+func (t *templateValidator) Reconcile(request *common.Request) error {
 	for _, f := range []func(*common.Request) error{
 		reconcileClusterRole,
 		reconcileServiceAccount,
@@ -47,7 +54,7 @@ func Reconcile(request *common.Request) error {
 	return nil
 }
 
-func Cleanup(request *common.Request) error {
+func (t *templateValidator) Cleanup(request *common.Request) error {
 	for _, obj := range []controllerutil.Object{
 		newClusterRole(request.Namespace),
 		newClusterRoleBinding(request.Namespace),
@@ -60,6 +67,12 @@ func Cleanup(request *common.Request) error {
 		}
 	}
 	return nil
+}
+
+var _ operands.Operand = &templateValidator{}
+
+func GetOperand() operands.Operand {
+	return &templateValidator{}
 }
 
 func reconcileClusterRole(request *common.Request) error {
