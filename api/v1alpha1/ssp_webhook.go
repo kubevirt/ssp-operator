@@ -17,33 +17,44 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 // log is for logging in this package.
 var ssplog = logf.Log.WithName("ssp-resource")
+var clt client.Client
 
 func (r *SSP) SetupWebhookWithManager(mgr ctrl.Manager) error {
+	clt = mgr.GetClient()
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1alpha1-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1alpha1,name=vssp.kb.io
 
 var _ webhook.Validator = &SSP{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *SSP) ValidateCreate() error {
-	ssplog.Info("validate create", "name", r.Name)
+	var ssps SSPList
 
-	// TODO(user): fill in your validation logic upon object creation.
+	ssplog.Info("validate create", "name", r.Name)
+	err := clt.List(context.TODO(), &ssps, &client.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
+	}
+	if len(ssps.Items) > 0 {
+		return fmt.Errorf("creation failed, an SSP CR already exists: %v", ssps.Items[0].ObjectMeta.Name)
+	}
+
 	return nil
 }
 
@@ -61,4 +72,9 @@ func (r *SSP) ValidateDelete() error {
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
+}
+
+// Forces the value of clt, to be used in unit tests
+func (r *SSP) ForceCltValue(c client.Client) {
+	clt = c
 }
