@@ -46,8 +46,8 @@ without deploying the operator to the cluster. The `KUBECONFIG`
 environment variable has to be set to access the cluster.
 These are the steps:
 ```shell
-make install         # Install CRDs to the cluster
-make run             # Start the operator locally
-make functest        # Execute functional tests
-make uninstall       # Remove CRDs from the cluster
+make install                    # Install CRDs to the cluster
+make run ENABLE_WEBHOOKS=false  # Start the operator locally
+make functest                   # Execute functional tests
+make uninstall                  # Remove CRDs from the cluster
 ```
