@@ -35,6 +35,7 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
@@ -44,6 +45,7 @@ const finalizerName = "finalize.ssp.kubevirt.io"
 var sspOperands = []operands.Operand{
 	metrics.GetOperand(),
 	template_validator.GetOperand(),
+	common_templates.GetOperand(),
 	// TODO - add other operands here
 }
 

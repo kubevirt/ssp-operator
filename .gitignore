@@ -5,3 +5,4 @@
 _out/*
 build/_output/*
 bin/*
+cover.out

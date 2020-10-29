@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	templatev1 "github.com/openshift/api/template/v1"
 	"testing"
 	"time"
 
@@ -13,17 +14,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
 const (
 	// TODO - maybe randomize namespace
 	testNamespace             = "ssp-operator-functests"
-	timeout                   = 60 * time.Second
+	commonTemplatesTestNS     = "ssp-operator-functests-templates"
+	timeout                   = 180 * time.Second
 	templateValidatorReplicas = 1
 )
 
@@ -39,6 +40,9 @@ var _ = BeforeSuite(func() {
 	namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
 	Expect(apiClient.Create(ctx, namespaceObj)).ToNot(HaveOccurred())
 
+	namespaceObj = &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}}
+	Expect(apiClient.Create(ctx, namespaceObj)).ToNot(HaveOccurred())
+
 	ssp = &sspv1alpha1.SSP{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ssp",
@@ -47,6 +51,9 @@ var _ = BeforeSuite(func() {
 		Spec: sspv1alpha1.SSPSpec{
 			TemplateValidator: sspv1alpha1.TemplateValidator{
 				Replicas: templateValidatorReplicas,
+			},
+			CommonTemplates: sspv1alpha1.CommonTemplates{
+				Namespace: commonTemplatesTestNS,
 			},
 		},
 	}
@@ -60,6 +67,12 @@ var _ = BeforeSuite(func() {
 			Name:      metrics.PrometheusRuleName,
 			Namespace: testNamespace,
 		}, &promv1.PrometheusRule{})
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	Eventually(func() error {
+		return apiClient.Get(ctx, client.ObjectKey{
+			Name:      "windows10-desktop-medium-v0.11.3",
+			Namespace: commonTemplatesTestNS,
+		}, &templatev1.Template{})
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
 })
 
@@ -76,12 +89,18 @@ var _ = AfterSuite(func() {
 	err := apiClient.Delete(ctx, namespaceObj)
 	Expect(err == nil || errors.IsNotFound(err)).To(BeTrue())
 
+	namespaceObj = &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}}
+	err = apiClient.Delete(ctx, namespaceObj)
+	Expect(err == nil || errors.IsNotFound(err)).To(BeTrue())
+
 	waitForDeletion(client.ObjectKey{Name: testNamespace}, &v1.Namespace{})
+	waitForDeletion(client.ObjectKey{Name: commonTemplatesTestNS}, &v1.Namespace{})
 })
 
 func setupApiClient() {
 	Expect(sspv1alpha1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
 	Expect(promv1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
+	Expect(templatev1.Install(scheme.Scheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
