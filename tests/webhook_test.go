@@ -23,6 +23,9 @@ var _ = Describe("Validation webhook", func() {
 				},
 			}
 			err := apiClient.Create(ctx, ssp2)
+			if err == nil {
+				apiClient.Delete(ctx, ssp2)
+			}
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists: test-ssp"))
 		})
