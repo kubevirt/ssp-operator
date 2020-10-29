@@ -37,17 +37,17 @@ var (
 	}
 	serviceAccountRes = &testResource{
 		Name:       validator.ServiceAccountName,
-		Namsespace: testNamespace,
+		Namespace: testNamespace,
 		resource:   &core.ServiceAccount{},
 	}
 	serviceRes = &testResource{
 		Name:       validator.ServiceName,
-		Namsespace: testNamespace,
+		Namespace: testNamespace,
 		resource:   &core.Service{},
 	}
 	deploymentRes = &testResource{
 		Name:       validator.DeploymentName,
-		Namsespace: testNamespace,
+		Namespace: testNamespace,
 		resource:   &apps.Deployment{},
 	}
 )
@@ -81,12 +81,12 @@ var _ = Describe("Template validator", func() {
 		table.DescribeTable("recreate after delete", func(res *testResource) {
 			resource := res.NewResource()
 			resource.SetName(res.Name)
-			resource.SetNamespace(res.Namsespace)
+			resource.SetNamespace(res.Namespace)
 			Expect(apiClient.Delete(ctx, resource)).ToNot(HaveOccurred())
 
 			Eventually(func() error {
 				return apiClient.Get(ctx, client.ObjectKey{
-					Name: res.Name, Namespace: res.Namsespace,
+					Name: res.Name, Namespace: res.Namespace,
 				}, resource)
 			}, timeout, time.Second).ShouldNot(HaveOccurred())
 		},
@@ -297,7 +297,7 @@ func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
 
 type testResource struct {
 	Name       string
-	Namsespace string
+	Namespace string
 	resource   controllerutil.Object
 }
 
@@ -308,6 +308,6 @@ func (r *testResource) NewResource() controllerutil.Object {
 func (r *testResource) GetKey() client.ObjectKey {
 	return client.ObjectKey{
 		Name:      r.Name,
-		Namespace: r.Namsespace,
+		Namespace: r.Namespace,
 	}
 }
