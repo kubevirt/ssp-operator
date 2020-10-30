@@ -52,7 +52,7 @@ func (r *SSP) ValidateCreate() error {
 		return fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
 	}
 	if len(ssps.Items) > 0 {
-		return fmt.Errorf("creation failed, an SSP CR already exists: %v", ssps.Items[0].ObjectMeta.Name)
+		return fmt.Errorf("creation failed, an SSP CR already exists in namespace %v: %v", ssps.Items[0].ObjectMeta.Namespace, ssps.Items[0].ObjectMeta.Name)
 	}
 
 	return nil
