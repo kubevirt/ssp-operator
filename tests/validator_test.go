@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	libhandler "github.com/operator-framework/operator-lib/handler"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -16,47 +15,46 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
-var (
-	clusterRoleRes = &testResource{
-		Name:     validator.ClusterRoleName(testNamespace),
-		resource: &rbac.ClusterRole{},
-	}
-	clusterRoleBindingRes = &testResource{
-		Name:     validator.ClusterRoleBindingName(testNamespace),
-		resource: &rbac.ClusterRoleBinding{},
-	}
-	webhookConfigRes = &testResource{
-		Name:     validator.ValidatingWebhookName(testNamespace),
-		resource: &admission.ValidatingWebhookConfiguration{},
-	}
-	serviceAccountRes = &testResource{
-		Name:       validator.ServiceAccountName,
-		Namsespace: testNamespace,
-		resource:   &core.ServiceAccount{},
-	}
-	serviceRes = &testResource{
-		Name:       validator.ServiceName,
-		Namsespace: testNamespace,
-		resource:   &core.Service{},
-	}
-	deploymentRes = &testResource{
-		Name:       validator.DeploymentName,
-		Namsespace: testNamespace,
-		resource:   &apps.Deployment{},
-	}
-)
-
 var _ = Describe("Template validator", func() {
+	var (
+		clusterRoleRes = &testResource{
+			Name:     validator.ClusterRoleName(testNamespace),
+			resource: &rbac.ClusterRole{},
+		}
+		clusterRoleBindingRes = &testResource{
+			Name:     validator.ClusterRoleBindingName(testNamespace),
+			resource: &rbac.ClusterRoleBinding{},
+		}
+		webhookConfigRes = &testResource{
+			Name:     validator.ValidatingWebhookName(testNamespace),
+			resource: &admission.ValidatingWebhookConfiguration{},
+		}
+		serviceAccountRes = &testResource{
+			Name:       validator.ServiceAccountName,
+			Namsespace: testNamespace,
+			resource:   &core.ServiceAccount{},
+		}
+		serviceRes = &testResource{
+			Name:       validator.ServiceName,
+			Namsespace: testNamespace,
+			resource:   &core.Service{},
+		}
+		deploymentRes = &testResource{
+			Name:       validator.DeploymentName,
+			Namsespace: testNamespace,
+			resource:   &apps.Deployment{},
+		}
+	)
+
 	Context("resource creation", func() {
 		table.DescribeTable("created cluster resource", func(res *testResource) {
 			resource := res.NewResource()
-			err := apiClient.Get(ctx, client.ObjectKey{Name: res.Name}, resource)
+			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
 		},
@@ -66,9 +64,7 @@ var _ = Describe("Template validator", func() {
 		)
 
 		table.DescribeTable("created namespaced resource", func(res *testResource) {
-			err := apiClient.Get(ctx, client.ObjectKey{
-				Name: res.Name, Namespace: testNamespace,
-			}, res.NewResource())
+			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
 			table.Entry("[test_id:4910] service account", serviceAccountRes),
@@ -78,18 +74,7 @@ var _ = Describe("Template validator", func() {
 	})
 
 	Context("resource deletion", func() {
-		table.DescribeTable("recreate after delete", func(res *testResource) {
-			resource := res.NewResource()
-			resource.SetName(res.Name)
-			resource.SetNamespace(res.Namsespace)
-			Expect(apiClient.Delete(ctx, resource)).ToNot(HaveOccurred())
-
-			Eventually(func() error {
-				return apiClient.Get(ctx, client.ObjectKey{
-					Name: res.Name, Namespace: res.Namsespace,
-				}, resource)
-			}, timeout, time.Second).ShouldNot(HaveOccurred())
-		},
+		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
 			table.Entry("[test_id:4914] cluster role", clusterRoleRes),
 			table.Entry("[test_id:4916] cluster role binding", clusterRoleBindingRes),
 			table.Entry("[test_id:4918] validating webhook configuration", webhookConfigRes),
@@ -100,29 +85,7 @@ var _ = Describe("Template validator", func() {
 	})
 
 	Context("resource change", func() {
-		table.DescribeTable("should restore modified resource", func(
-			res *testResource,
-			updateFunc interface{},
-			equalsFunc interface{},
-		) {
-			key := res.GetKey()
-			original := res.NewResource()
-			Expect(apiClient.Get(ctx, key, original)).ToNot(HaveOccurred())
-
-			changed := original.DeepCopyObject()
-			reflect.ValueOf(updateFunc).Call([]reflect.Value{reflect.ValueOf(changed)})
-			Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
-
-			newRes := res.NewResource()
-			Eventually(func() bool {
-				Expect(apiClient.Get(ctx, key, newRes)).ToNot(HaveOccurred())
-				res := reflect.ValueOf(equalsFunc).Call([]reflect.Value{
-					reflect.ValueOf(original),
-					reflect.ValueOf(newRes),
-				})
-				return res[0].Interface().(bool)
-			}, timeout, time.Second).Should(BeTrue())
-		},
+		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
 			table.Entry("[test_id:4915] cluster role", clusterRoleRes,
 				func(role *rbac.ClusterRole) {
 					role.Rules[0].Verbs = []string{"watch"}
@@ -274,18 +237,6 @@ var _ = Describe("Template validator", func() {
 	})
 })
 
-func hasOwnerAnnotations(annotations map[string]string) bool {
-	const typeName = "SSP.ssp.kubevirt.io"
-	namespacedName := ssp.Namespace + "/" + ssp.Name
-
-	if annotations == nil {
-		return false
-	}
-
-	return annotations[libhandler.TypeAnnotation] == typeName &&
-		annotations[libhandler.NamespacedNameAnnotation] == namespacedName
-}
-
 func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
 	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
 	foundSsp := &sspv1alpha1.SSP{}
@@ -293,21 +244,4 @@ func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
 
 	updateFunc(foundSsp)
 	Expect(apiClient.Update(ctx, foundSsp)).ToNot(HaveOccurred())
-}
-
-type testResource struct {
-	Name       string
-	Namsespace string
-	resource   controllerutil.Object
-}
-
-func (r *testResource) NewResource() controllerutil.Object {
-	return r.resource.DeepCopyObject().(controllerutil.Object)
-}
-
-func (r *testResource) GetKey() client.ObjectKey {
-	return client.ObjectKey{
-		Name:      r.Name,
-		Namespace: r.Namsespace,
-	}
 }
