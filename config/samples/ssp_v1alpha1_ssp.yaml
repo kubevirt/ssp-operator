@@ -2,4 +2,10 @@ apiVersion: ssp.kubevirt.io/v1alpha1
 kind: SSP
 metadata:
   name: ssp-sample
-spec: {}
+  namespace: test-kubevirt
+spec:
+  nodeLabeller:
+    placement: {}
+  templateValidator:
+    placement: {}
+    replicas: 1

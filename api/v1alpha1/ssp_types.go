@@ -34,6 +34,11 @@ type CommonTemplates struct {
 	Namespace string `json:"namespace"`
 }
 
+type NodeLabeller struct {
+	// Placement describes the node scheduling configuration
+	Placement lifecycleapi.NodePlacement `json:"placement,omitempty"`
+}
+
 // SSPSpec defines the desired state of SSP
 type SSPSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -44,6 +49,9 @@ type SSPSpec struct {
 
 	// CommonTemplates is the configuration of the common templates operand
 	CommonTemplates CommonTemplates `json:"commonTemplates"`
+
+	// NodeLabeller is configuration of the node-labeller operand
+	NodeLabeller NodeLabeller `json:"nodeLabeller"`
 }
 
 // SSPStatus defines the observed state of SSP
