@@ -1,8 +1,6 @@
 package common_templates
 
 const (
-	BundleDir = "data/common-templates-bundle/"
-
 	TemplateVersionLabel         = "template.kubevirt.io/version"
 	TemplateTypeLabel            = "template.kubevirt.io/type"
 	TemplateTypeLabelBaseValue   = "base"

@@ -1,0 +1,308 @@
+# Testing YAML bundle from Version v0.16.2
+---
+# Source: dist/templates/centos8-server-medium.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos8-server-medium
+  annotations:
+    openshift.io/display-name: "CentOS 8.0+ VM"
+    description: >-
+      Template for CentOS 8 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos8: CentOS 8 or higher
+  labels:
+    os.template.kubevirt.io/centos8: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.16.2"
+objects:
+  - apiVersion: kubevirt.io/v1
+    kind: VirtualMachine
+    metadata:
+      name: ${NAME}
+      labels:
+        vm.kubevirt.io/template: centos8-server-medium
+        vm.kubevirt.io/template.version: "v0.16.2"
+        vm.kubevirt.io/template.revision: "1"
+        app: ${NAME}
+      annotations:
+        vm.kubevirt.io/validations: |
+          [
+            {
+              "name": "minimal-required-memory",
+              "path": "jsonpath::.spec.domain.resources.requests.memory",
+              "rule": "integer",
+              "message": "This VM requires more memory.",
+              "min": 1610612736
+            }
+          ]
+    spec:
+      dataVolumeTemplates:
+        - apiVersion: cdi.kubevirt.io/v1beta1
+          kind: DataVolume
+          metadata:
+            name: ${NAME}
+          spec:
+            pvc:
+              accessModes:
+                - ReadWriteMany
+              resources:
+                requests:
+                  storage: 30Gi
+            source:
+              pvc:
+                name: ${SRC_PVC_NAME}
+                namespace: ${SRC_PVC_NAMESPACE}
+      running: false
+      template:
+        metadata:
+          annotations:
+            vm.kubevirt.io/os: "centos8"
+            vm.kubevirt.io/workload: "server"
+            vm.kubevirt.io/flavor: "medium"
+          labels:
+            kubevirt.io/domain: ${NAME}
+            kubevirt.io/size: medium
+        spec:
+          domain:
+            cpu:
+              sockets: 1
+              cores: 1
+              threads: 1
+            resources:
+              requests:
+                memory: 4Gi
+            devices:
+              rng: {}
+              networkInterfaceMultiqueue: true
+              disks:
+                - disk:
+                    bus: virtio
+                  name: ${NAME}
+                - disk:
+                    bus: virtio
+                  name: cloudinitdisk
+              interfaces:
+                - masquerade: {}
+                  name: default
+          terminationGracePeriodSeconds: 180
+          networks:
+            - name: default
+              pod: {}
+          volumes:
+            - dataVolume:
+                name: ${NAME}
+              name: ${NAME}
+            - cloudInitNoCloud:
+                userData: |-
+                  #cloud-config
+                  user: centos
+                  password: ${CLOUD_USER_PASSWORD}
+                  chpasswd: { expire: False }
+              name: cloudinitdisk
+parameters:
+  - description: VM name
+    from: 'centos8-[a-z0-9]{16}'
+    generate: expression
+    name: NAME
+  - name: SRC_PVC_NAME
+    description: Name of the PVC to clone
+    value: 'centos8'
+  - name: SRC_PVC_NAMESPACE
+    description: Namespace of the source PVC
+    value: kubevirt-os-images
+  - description: Randomized password for the cloud-init user centos
+    from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+    generate: expression
+    name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/windows10-desktop-medium.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: windows10-desktop-medium
+  annotations:
+    openshift.io/display-name: "Microsoft Windows 10 VM"
+    description: >-
+      Template for Microsoft Windows 10 VM.
+      A PVC with the Windows disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,windows"
+    iconClass: "icon-windows"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    defaults.template.kubevirt.io/network: default
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/win10: Microsoft Windows 10
+  labels:
+    os.template.kubevirt.io/win10: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.16.2"
+    template.kubevirt.io/default-os-variant: "true"
+objects:
+  - apiVersion: kubevirt.io/v1
+    kind: VirtualMachine
+    metadata:
+      name: ${NAME}
+      labels:
+        vm.kubevirt.io/template: windows10-desktop-medium
+        vm.kubevirt.io/template.version: "v0.16.2"
+        vm.kubevirt.io/template.revision: "1"
+        app: ${NAME}
+      annotations:
+        vm.kubevirt.io/validations: |
+          [
+            {
+              "name": "minimal-required-memory",
+              "path": "jsonpath::.spec.domain.resources.requests.memory",
+              "rule": "integer",
+              "message": "This VM requires more memory.",
+              "min": 2147483648
+            }, {
+              "name": "windows-virtio-bus",
+              "path": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+              "valid": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+              "rule": "enum",
+              "message": "virto disk bus type has better performance, install virtio drivers in VM and change bus type",
+              "values": ["virtio"],
+              "justWarning": true
+            }, {
+              "name": "windows-disk-bus",
+              "path": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+              "valid": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+              "rule": "enum",
+              "message": "disk bus has to be either virtio or sata or scsi",
+              "values": ["virtio", "sata", "scsi"]
+            }, {
+              "name": "windows-cd-bus",
+              "path": "jsonpath::.spec.domain.devices.disks[*].cdrom.bus",
+              "valid": "jsonpath::.spec.domain.devices.disks[*].cdrom.bus",
+              "rule": "enum",
+              "message": "cd bus has to be sata",
+              "values": ["sata"]
+            }
+          ]
+    spec:
+      dataVolumeTemplates:
+        - apiVersion: cdi.kubevirt.io/v1beta1
+          kind: DataVolume
+          metadata:
+            name: ${NAME}
+          spec:
+            pvc:
+              accessModes:
+                - ReadWriteMany
+              resources:
+                requests:
+                  storage: 60Gi
+            source:
+              pvc:
+                name: ${SRC_PVC_NAME}
+                namespace: ${SRC_PVC_NAMESPACE}
+      running: false
+      template:
+        metadata:
+          annotations:
+            vm.kubevirt.io/os: "windows10"
+            vm.kubevirt.io/workload: "desktop"
+            vm.kubevirt.io/flavor: "medium"
+          labels:
+            kubevirt.io/domain: ${NAME}
+            kubevirt.io/size: medium
+        spec:
+          domain:
+            clock:
+              utc: {}
+              timer:
+                hpet:
+                  present: false
+                pit:
+                  tickPolicy: delay
+                rtc:
+                  tickPolicy: catchup
+                hyperv: {}
+            cpu:
+              sockets: 1
+              cores: 1
+              threads: 1
+            resources:
+              requests:
+                memory: 4Gi
+            features:
+              acpi: {}
+              apic: {}
+              hyperv:
+                relaxed: {}
+                vapic: {}
+                vpindex: {}
+                spinlocks:
+                  spinlocks: 8191
+                synic: {}
+                synictimer:
+                  direct: {}
+                tlbflush: {}
+                frequencies: {}
+                reenlightenment: {}
+                ipi: {}
+                runtime: {}
+                reset: {}
+            devices:
+              disks:
+                - disk:
+                    bus: sata
+                  name: ${NAME}
+              interfaces:
+                - masquerade: {}
+                  model: e1000e
+                  name: default
+              inputs:
+                - type: tablet
+                  bus: usb
+                  name: tablet
+          terminationGracePeriodSeconds: 3600
+          volumes:
+            - dataVolume:
+                name: ${NAME}
+              name: ${NAME}
+          networks:
+            - name: default
+              pod: {}
+parameters:
+  - name: NAME
+    description: VM name
+    generate: expression
+    from: "windows-[a-z0-9]{6}"
+  - name: SRC_PVC_NAME
+    description: Name of the PVC to clone
+    value: win10
+  - name: SRC_PVC_NAMESPACE
+    description: Namespace of the source PVC
+    value: kubevirt-os-images

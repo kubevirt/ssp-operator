@@ -1,11 +1,11 @@
 package common_templates
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"strings"
-
-	"path/filepath"
-	"sync"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
@@ -24,8 +25,6 @@ import (
 )
 
 var (
-	loadTemplatesOnce sync.Once
-	templatesBundle   []templatev1.Template
 	deployedTemplates = make(map[string]bool)
 )
 
@@ -51,12 +50,14 @@ func init() {
 	utilruntime.Must(templatev1.Install(common.Scheme))
 }
 
-type commonTemplates struct{}
+type commonTemplates struct {
+	templatesBundle []templatev1.Template
+}
 
 var _ operands.Operand = &commonTemplates{}
 
-func GetOperand() operands.Operand {
-	return &commonTemplates{}
+func New(templates []templatev1.Template) operands.Operand {
+	return &commonTemplates{templatesBundle: templates}
 }
 
 func (c *commonTemplates) Name() string {
@@ -90,25 +91,6 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 		reconcileEditRole,
 	}
 
-	loadTemplates := func() {
-		var err error
-		filename := filepath.Join(BundleDir, "common-templates-"+Version+".yaml")
-		templatesBundle, err = ReadTemplates(filename)
-		if err != nil {
-			request.Logger.Error(err, fmt.Sprintf("Error reading from template bundle, %v", err))
-			panic(err)
-		}
-		if len(templatesBundle) == 0 {
-			panic("No templates could be found in the installed bundle")
-		}
-
-		for _, template := range templatesBundle {
-			deployedTemplates[template.Name] = true
-		}
-	}
-	// Only load templates Once
-	loadTemplatesOnce.Do(loadTemplates)
-
 	oldTemplateFuncs, err := reconcileOlderTemplates(request)
 	if err != nil {
 		return nil, err
@@ -120,7 +102,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 		return nil, err
 	}
 
-	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(request)...)
+	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(c.templatesBundle)...)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +122,9 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 		newEditRole(),
 	}
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
-	for index := range templatesBundle {
-		templatesBundle[index].ObjectMeta.Namespace = namespace
-		objects = append(objects, &templatesBundle[index])
+	for index := range c.templatesBundle {
+		c.templatesBundle[index].ObjectMeta.Namespace = namespace
+		objects = append(objects, &c.templatesBundle[index])
 	}
 	for _, obj := range objects {
 		err := request.Client.Delete(request.Context, obj)
@@ -254,13 +236,13 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 	return funcs, nil
 }
 
-func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
-	namespace := request.Instance.Spec.CommonTemplates.Namespace
+func reconcileTemplatesFuncs(templatesBundle []templatev1.Template) []common.ReconcileFunc {
 	funcs := make([]common.ReconcileFunc, 0, len(templatesBundle))
 	for i := range templatesBundle {
 		template := &templatesBundle[i]
-		template.ObjectMeta.Namespace = namespace
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
+			namespace := request.Instance.Spec.CommonTemplates.Namespace
+			template.ObjectMeta.Namespace = namespace
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
 				WithAppLabels(operandName, operandComponent).
@@ -274,4 +256,26 @@ func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
 		})
 	}
 	return funcs
+}
+
+func ReadTemplates(filename string) ([]templatev1.Template, error) {
+	var bundle []templatev1.Template
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(file), 1024)
+	for {
+		template := templatev1.Template{}
+		err = decoder.Decode(&template)
+		if err == io.EOF {
+			return bundle, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		if template.Name != "" {
+			bundle = append(bundle, template)
+		}
+	}
 }

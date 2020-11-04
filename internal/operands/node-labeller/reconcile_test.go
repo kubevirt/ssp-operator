@@ -29,7 +29,7 @@ var _ = Describe("Node Labeller operand", func() {
 
 	var (
 		request common.Request
-		operand = GetOperand()
+		operand = New()
 	)
 
 	BeforeEach(func() {

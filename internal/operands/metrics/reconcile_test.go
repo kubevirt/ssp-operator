@@ -27,7 +27,7 @@ var _ = Describe("Metrics operand", func() {
 
 	var (
 		request common.Request
-		operand = GetOperand()
+		operand = New()
 	)
 
 	It("should create metrics resources", func() {

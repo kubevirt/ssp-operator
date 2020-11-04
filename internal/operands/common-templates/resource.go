@@ -1,15 +1,9 @@
 package common_templates
 
 import (
-	"bytes"
-	"io"
-	"io/ioutil"
-
-	templatev1 "github.com/openshift/api/template/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1"
 )
 
@@ -17,29 +11,6 @@ const (
 	ViewRoleName        = "os-images.kubevirt.io:view"
 	EditClusterRoleName = "os-images.kubevirt.io:edit"
 )
-
-// ReadTemplates from the combined yaml file and return the list of its templates
-func ReadTemplates(filename string) ([]templatev1.Template, error) {
-	var bundle []templatev1.Template
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(file), 1024)
-	for {
-		template := templatev1.Template{}
-		err = decoder.Decode(&template)
-		if err == io.EOF {
-			return bundle, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		if template.Name != "" {
-			bundle = append(bundle, template)
-		}
-	}
-}
 
 func newGoldenImagesNS(namespace string) *core.Namespace {
 	return &core.Namespace{
