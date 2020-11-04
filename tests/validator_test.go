@@ -25,15 +25,15 @@ import (
 var _ = Describe("Template validator", func() {
 	var (
 		clusterRoleRes = &testResource{
-			Name:     validator.ClusterRoleName(testNamespace),
+			Name:     validator.ClusterRoleName,
 			resource: &rbac.ClusterRole{},
 		}
 		clusterRoleBindingRes = &testResource{
-			Name:     validator.ClusterRoleBindingName(testNamespace),
+			Name:     validator.ClusterRoleBindingName,
 			resource: &rbac.ClusterRoleBinding{},
 		}
 		webhookConfigRes = &testResource{
-			Name:     validator.ValidatingWebhookName(testNamespace),
+			Name:     validator.WebhookName,
 			resource: &admission.ValidatingWebhookConfiguration{},
 		}
 		serviceAccountRes = &testResource{

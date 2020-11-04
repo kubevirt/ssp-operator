@@ -16,38 +16,30 @@ import (
 //        repository, and import it as a go module
 
 const (
-	containerPort         = 8443
-	kubevirtIo            = "kubevirt.io"
-	secretName            = "virt-template-validator-certs"
-	virtTemplateValidator = "virt-template-validator"
-
-	ServiceAccountName = "template-validator"
-	ServiceName        = virtTemplateValidator
-	DeploymentName     = virtTemplateValidator
+	containerPort          = 8443
+	kubevirtIo             = "kubevirt.io"
+	secretName             = "virt-template-validator-certs"
+	virtTemplateValidator  = "virt-template-validator"
+	ClusterRoleName        = "template:view"
+	ClusterRoleBindingName = "template-validator"
+	WebhookName            = "virt-template-validator"
+	ServiceAccountName     = "template-validator"
+	ServiceName            = virtTemplateValidator
+	DeploymentName         = virtTemplateValidator
 )
 
 var commonLabels = map[string]string{
 	kubevirtIo: virtTemplateValidator,
 }
 
-func ClusterRoleName(namespace string) string {
-	const clusterRoleName = "template:view"
-	return clusterRoleName + "-" + namespace
-}
-
-func ClusterRoleBindingName(namespace string) string {
-	return ServiceAccountName + "-" + namespace
-}
-
-func ValidatingWebhookName(namespace string) string {
-	return virtTemplateValidator + "-" + namespace
-}
-
 func newClusterRole(namespace string) *rbac.ClusterRole {
 	return &rbac.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   ClusterRoleName(namespace),
-			Labels: commonLabels,
+			Name:      ClusterRoleName,
+			Namespace: "",
+			Labels: map[string]string{
+				kubevirtIo: "",
+			},
 		},
 		Rules: []rbac.PolicyRule{{
 			APIGroups: []string{"template.openshift.io"},
@@ -70,12 +62,13 @@ func newServiceAccount(namespace string) *core.ServiceAccount {
 func newClusterRoleBinding(namespace string) *rbac.ClusterRoleBinding {
 	return &rbac.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   ClusterRoleBindingName(namespace),
-			Labels: commonLabels,
+			Name:      ClusterRoleBindingName,
+			Namespace: "",
+			Labels:    commonLabels,
 		},
 		RoleRef: rbac.RoleRef{
 			Kind:     "ClusterRole",
-			Name:     ClusterRoleName(namespace),
+			Name:     ClusterRoleName,
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 		Subjects: []rbac.Subject{{
@@ -180,7 +173,7 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 
 	return &admission.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ValidatingWebhookName(namespace),
+			Name: WebhookName,
 			Annotations: map[string]string{
 				"service.beta.openshift.io/inject-cabundle": "true",
 			},
