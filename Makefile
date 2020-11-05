@@ -119,6 +119,13 @@ else
 KUSTOMIZE=$(shell which kustomize)
 endif
 
+olm-catalog: manifests
+	operator-sdk generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image controller=REPLACE_IMAGE:TAG
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS) --input-dir bundle
+	./hack/update-csv.py bundle/manifests/ssp-operator.clusterserviceversion.yaml > config/olm-catalog/ssp-operator.clusterserviceversion.yaml
+	rm -r bundle.Dockerfile
+	
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
 bundle: manifests

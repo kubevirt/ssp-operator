@@ -1,0 +1,55 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.0.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+  name: ssp-operator.vX.Y.Z
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: SSP is the Schema for the ssps API
+      displayName: SSP
+      kind: SSP
+      name: ssps.ssp.kubevirt.io
+      version: v1alpha1
+  description: Manages KubeVirt addons for Scheduling, Scale, Performance
+  displayName: ssp-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - KubeVirt
+  - Virtualization
+  - Template
+  - Performance
+  - VirtualMachine
+  - Node
+  - Labels
+  links:
+  - name: Ssp Operator
+    url: https://ssp-operator.domain
+  maintainers:
+  - email: kubevirt-dev@googlegroups.com
+    name: KubeVirt project
+  maturity: alpha
+  provider:
+    name: ssp-operator
+  version: 0.0.0

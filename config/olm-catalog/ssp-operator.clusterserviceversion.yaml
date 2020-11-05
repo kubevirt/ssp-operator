@@ -1,0 +1,218 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: "[\n  {\n    \"apiVersion\": \"ssp.kubevirt.io/v1alpha1\",\n   \
+      \ \"kind\": \"SSP\",\n    \"metadata\": {\n      \"name\": \"ssp-sample\",\n\
+      \      \"namespace\": \"test-kubevirt\"\n    },\n    \"spec\": {\n      \"nodeLabeller\"\
+      : {\n        \"placement\": {}\n      },\n      \"templateValidator\": {\n \
+      \       \"placement\": {},\n        \"replicas\": 1\n      }\n    }\n  }\n]"
+    capabilities: Basic Install
+    categories: Openshift Optional
+    containerImage: REPLACE_IMAGE
+    description: Manages KubeVirt addons for Scheduling, Scale, Performance
+    operators.operatorframework.io/builder: operator-sdk-v1.0.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+  name: ssp-operator.vPLACEHOLDER_CSV_VERSION
+  namespace: kubevirt
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: SSP is the Schema for the ssps API
+      displayName: SSP
+      kind: SSP
+      name: ssps.ssp.kubevirt.io
+      version: v1alpha1
+  description: KubeVirt Schedule, Scale and Performance Operator
+  displayName: ssp-operator
+  icon:
+  - base64data: ''
+    mediatype: ''
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - ssps
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - ssps/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: default
+      deployments:
+      - name: ssp-operator-update-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --metrics-addr=127.0.0.1:8080
+                - --enable-leader-election
+                command:
+                - /manager
+                image: REPLACE_IMAGE:TAG
+                name: manager
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 30Mi
+                  requests:
+                    cpu: 100m
+                    memory: 20Mi
+                volumeMounts:
+                - mountPath: /tmp/k8s-webhook-server/serving-certs
+                  name: cert
+                  readOnly: true
+              terminationGracePeriodSeconds: 10
+              volumes:
+              - name: cert
+                secret:
+                  defaultMode: 420
+                  secretName: webhook-server-cert
+      permissions:
+      - rules:
+        - apiGroups:
+          - ''
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ''
+          resources:
+          - configmaps/status
+          verbs:
+          - get
+          - update
+          - patch
+        - apiGroups:
+          - ''
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: default
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - KubeVirt
+  - Virtualization
+  - Template
+  - Performance
+  - VirtualMachine
+  - Node
+  - Labels
+  labels:
+    alm-owner-kubevirt: ssp-operator
+    operated-by: ssp-operator
+  links:
+  - name: KubeVirt
+    url: https://kubevirt.io
+  - name: Source Code
+    url: https://github.com/kubevirt/ssp-operator
+  maintainers:
+  - email: kubevirt-dev@googlegroups.com
+    name: KubeVirt project
+  maturity: alpha
+  provider:
+    name: KubeVirt project
+  selector:
+    matchLabels:
+      alm-owner-kubevirt: ssp-operator
+      operated-by: ssp-operator
+  version: vPLACEHOLDER_CSV_VERSION
+  webhookdefinitions:
+  - admissionReviewVersions: null
+    deploymentName: ssp-operator-update-webhook
+    failurePolicy: Fail
+    generateName: vssp.kb.io
+    rules:
+    - apiGroups:
+      - ssp.kubevirt.io
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - ssps
+    sideEffects: null
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-ssp-kubevirt-io-v1alpha1-ssp
