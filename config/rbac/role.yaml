@@ -188,6 +188,54 @@ rules:
 - apiGroups:
   - ssp.kubevirt.io
   resources:
+  - kubevirtcommontemplatesbundles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ssp.kubevirt.io
+  resources:
+  - kubevirtmetricsaggregations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ssp.kubevirt.io
+  resources:
+  - kubevirtnodelabellerbundles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ssp.kubevirt.io
+  resources:
+  - kubevirttemplatevalidators
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ssp.kubevirt.io
+  resources:
   - ssps
   verbs:
   - create

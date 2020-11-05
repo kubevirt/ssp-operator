@@ -22,6 +22,7 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
+	sspopv1 "github.com/kubevirt/kubevirt-ssp-operator/pkg/apis"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/api/core/v1"
@@ -352,6 +353,7 @@ func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTy
 }
 
 func InitScheme(scheme *runtime.Scheme) error {
+	sspopv1.AddToScheme(scheme)
 	for _, operand := range sspOperands {
 		err := operand.AddWatchTypesToScheme(scheme)
 		if err != nil {

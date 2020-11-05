@@ -1,15 +1,20 @@
 package template_validator
 
 import (
+	"context"
 	"fmt"
 
+	kvsspv1 "github.com/kubevirt/kubevirt-ssp-operator/pkg/apis/kubevirt/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -24,6 +29,7 @@ import (
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
 type templateValidator struct{}
 
@@ -48,6 +54,7 @@ func (t *templateValidator) WatchClusterTypes() []runtime.Object {
 }
 
 func (t *templateValidator) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+	pauseCRs(request)
 	return common.CollectResourceStatus(request,
 		reconcileClusterRole,
 		reconcileServiceAccount,
@@ -77,6 +84,32 @@ var _ operands.Operand = &templateValidator{}
 
 func GetOperand() operands.Operand {
 	return &templateValidator{}
+}
+
+func pauseCRs(request *common.Request) {
+	patch := []byte(`{"metadata":{"annotations":{"kubevirt.io/operator.paused": "true"}}}`)
+	var kubevirtTemplateValidators kvsspv1.KubevirtTemplateValidatorList
+	err := request.Client.List(context.TODO(), &kubevirtTemplateValidators, &client.ListOptions{})
+	if err != nil {
+		request.Logger.Error(err, fmt.Sprintf("Error listing template validator CRs: %s", err))
+		return
+	}
+	if err == nil && len(kubevirtTemplateValidators.Items) > 0 {
+		for _, kubevirtTemplateValidator := range kubevirtTemplateValidators.Items {
+			err = request.Client.Patch(context.TODO(), &kvsspv1.KubevirtTemplateValidator{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: kubevirtTemplateValidator.ObjectMeta.Namespace,
+					Name:      kubevirtTemplateValidator.ObjectMeta.Name,
+				},
+			}, client.RawPatch(types.MergePatchType, patch))
+			if err != nil {
+				request.Logger.Error(err, fmt.Sprintf("Error pausing %s from namespace %s: %s",
+					kubevirtTemplateValidator.ObjectMeta.Name,
+					kubevirtTemplateValidator.ObjectMeta.Namespace,
+					err))
+			}
+		}
+	}
 }
 
 func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
