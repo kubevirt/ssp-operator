@@ -23,6 +23,7 @@ import (
 
 type TemplateValidator struct {
 	// Replicas is the number of replicas of the template validator pod
+	//+kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
 
 	// Placement describes the node scheduling configuration
@@ -31,6 +32,8 @@ type TemplateValidator struct {
 
 type CommonTemplates struct {
 	// Namespace is the k8s namespace where CommonTemplates should be installed
+	//+kubebuilder:validation:MaxLength=63
+	//+kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
 	Namespace string `json:"namespace"`
 }
 
@@ -41,9 +44,6 @@ type NodeLabeller struct {
 
 // SSPSpec defines the desired state of SSP
 type SSPSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// TemplateValidator is configuration of the template validator operand
 	TemplateValidator TemplateValidator `json:"templateValidator"`
 
@@ -56,9 +56,6 @@ type SSPSpec struct {
 
 // SSPStatus defines the observed state of SSP
 type SSPStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	lifecycleapi.Status `json:",inline"`
 }
 

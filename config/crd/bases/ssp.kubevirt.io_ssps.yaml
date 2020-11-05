@@ -43,6 +43,8 @@ spec:
                 namespace:
                   description: Namespace is the k8s namespace where CommonTemplates
                     should be installed
+                  maxLength: 63
+                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                   type: string
               required:
               - namespace
@@ -1433,6 +1435,7 @@ spec:
                   description: Replicas is the number of replicas of the template
                     validator pod
                   format: int32
+                  minimum: 0
                   type: integer
               required:
               - replicas

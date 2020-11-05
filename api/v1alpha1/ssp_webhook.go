@@ -62,15 +62,18 @@ func (r *SSP) ValidateCreate() error {
 func (r *SSP) ValidateUpdate(old runtime.Object) error {
 	ssplog.Info("validate update", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object update.
+	oldSsp := old.(*SSP)
+	if r.Spec.CommonTemplates.Namespace != oldSsp.Spec.CommonTemplates.Namespace {
+		return fmt.Errorf("commonTemplates.namespace cannot be changed. Attempting to change from: %v to %v",
+			oldSsp.Spec.CommonTemplates.Namespace,
+			r.Spec.CommonTemplates.Namespace)
+	}
+
 	return nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *SSP) ValidateDelete() error {
-	ssplog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }
 
