@@ -43,19 +43,15 @@ func (c *commonTemplates) WatchTypes() []runtime.Object {
 	return nil
 }
 
-func (c *commonTemplates) Reconcile(request *common.Request) error {
-	for _, f := range []func(*common.Request) error{
+func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+	funcs := []common.ReconcileFunc{
 		reconcileGoldenImagesNS,
 		reconcileViewRole,
 		reconcileViewRoleBinding,
 		reconcileEditRole,
-		reconcileTemplates,
-	} {
-		if err := f(request); err != nil {
-			return err
-		}
 	}
-	return nil
+	funcs = append(funcs, reconcileTemplatesFuncs(request)...)
+	return common.CollectResourceStatus(request, funcs...)
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) error {
@@ -80,7 +76,7 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 	return nil
 }
 
-func reconcileGoldenImagesNS(request *common.Request) error {
+func reconcileGoldenImagesNS(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request, newGoldenImagesNS(GoldenImagesNSname),
 		func(newRes, foundRes controllerutil.Object) {
 			newNS := newRes.(*core.Namespace)
@@ -88,7 +84,7 @@ func reconcileGoldenImagesNS(request *common.Request) error {
 			foundNS.Spec = newNS.Spec
 		})
 }
-func reconcileViewRole(request *common.Request) error {
+func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request, newViewRole(GoldenImagesNSname),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRole := foundRes.(*rbac.Role)
@@ -97,7 +93,7 @@ func reconcileViewRole(request *common.Request) error {
 		})
 }
 
-func reconcileViewRoleBinding(request *common.Request) error {
+func reconcileViewRoleBinding(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request, newViewRoleBinding(GoldenImagesNSname),
 		func(newRes, foundRes controllerutil.Object) {
 			newBinding := newRes.(*rbac.RoleBinding)
@@ -107,7 +103,7 @@ func reconcileViewRoleBinding(request *common.Request) error {
 		})
 }
 
-func reconcileEditRole(request *common.Request) error {
+func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request, newEditRole(),
 		func(newRes, foundRes controllerutil.Object) {
 			newRole := newRes.(*rbac.ClusterRole)
@@ -116,7 +112,7 @@ func reconcileEditRole(request *common.Request) error {
 		})
 }
 
-func reconcileTemplates(request *common.Request) error {
+func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
 	loadTemplates := func() {
 		var err error
 		filename := filepath.Join(bundleDir, "common-templates-"+Version+".yaml")
@@ -133,18 +129,19 @@ func reconcileTemplates(request *common.Request) error {
 	loadTemplatesOnce.Do(loadTemplates)
 
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
-	for _, template := range templatesBundle {
+	funcs := make([]common.ReconcileFunc, 0, len(templatesBundle))
+	for i := range templatesBundle {
+		template := &templatesBundle[i]
 		template.ObjectMeta.Namespace = namespace
-		err := common.CreateOrUpdateClusterResource(request, &template,
-			func(newRes, foundRes controllerutil.Object) {
-				newTemplate := newRes.(*templatev1.Template)
-				foundTemplate := foundRes.(*templatev1.Template)
-				foundTemplate.Objects = newTemplate.Objects
-				foundTemplate.Parameters = newTemplate.Parameters
-			})
-		if err != nil {
-			return err
-		}
+		funcs = append(funcs, func(request *common.Request) (common.ResourceStatus, error) {
+			return common.CreateOrUpdateClusterResource(request, template,
+				func(newRes, foundRes controllerutil.Object) {
+					newTemplate := newRes.(*templatev1.Template)
+					foundTemplate := foundRes.(*templatev1.Template)
+					foundTemplate.Objects = newTemplate.Objects
+					foundTemplate.Parameters = newTemplate.Parameters
+				})
+		})
 	}
-	return nil
+	return funcs
 }

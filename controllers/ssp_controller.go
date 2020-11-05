@@ -18,14 +18,18 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/go-logr/logr"
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -56,6 +60,9 @@ type SSPReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
+
+	LastSspSpec      ssp.SSPSpec
+	SubresourceCache common.VersionCache
 }
 
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
@@ -66,17 +73,11 @@ type SSPReconciler struct {
 func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
 
-	sspRequest := &common.Request{
-		Request: req,
-		Client:  r,
-		Scheme:  r.Scheme,
-		Context: context.Background(),
-		Logger:  reqLogger,
-	}
+	ctx := context.Background()
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
-	err := r.Get(sspRequest.Context, req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -88,10 +89,20 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	sspRequest.Instance = instance
+	r.clearCacheIfNeeded(instance)
 
-	updated, err := initialize(sspRequest)
-	if updated || err != nil {
+	sspRequest := &common.Request{
+		Request:              req,
+		Client:               r,
+		Scheme:               r.Scheme,
+		Context:              ctx,
+		Instance:             instance,
+		Logger:               reqLogger,
+		ResourceVersionCache: r.SubresourceCache,
+	}
+
+	if !isInitialized(sspRequest.Instance) {
+		err := initialize(sspRequest)
 		// No need to requeue here, because
 		// the update will trigger reconciliation again
 		return ctrl.Result{}, err
@@ -99,56 +110,206 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if isBeingDeleted(sspRequest.Instance) {
 		err := cleanup(sspRequest)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		r.clearCache()
+		return ctrl.Result{}, nil
+	}
+
+	statuses, err := reconcileOperands(sspRequest)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	for _, operand := range sspOperands {
-		if err := operand.Reconcile(sspRequest); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
+	err = updateStatus(sspRequest, statuses)
+	return ctrl.Result{}, err
+}
 
-	return ctrl.Result{}, nil
+func (r *SSPReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
+	if !reflect.DeepEqual(r.LastSspSpec, sspObj.Spec) {
+		r.SubresourceCache = common.VersionCache{}
+		r.LastSspSpec = sspObj.Spec
+	}
+}
+
+func (r *SSPReconciler) clearCache() {
+	r.LastSspSpec = ssp.SSPSpec{}
+	r.SubresourceCache = common.VersionCache{}
 }
 
 func isBeingDeleted(object metav1.Object) bool {
 	return !object.GetDeletionTimestamp().IsZero()
 }
 
-func initialize(request *common.Request) (bool, error) {
-	changed := false
+func isInitialized(ssp *ssp.SSP) bool {
+	return isBeingDeleted(ssp) || ssp.Status.Phase != lifecycleapi.PhaseEmpty
+}
 
-	if !isBeingDeleted(request.Instance) {
-		if !controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
-			controllerutil.AddFinalizer(request.Instance, finalizerName)
-			changed = true
-		}
+func initialize(request *common.Request) error {
+	controllerutil.AddFinalizer(request.Instance, finalizerName)
+	err := request.Client.Update(request.Context, request.Instance)
+	if err != nil {
+		return err
 	}
 
-	var err error
-	if changed {
-		err = request.Client.Update(request.Context, request.Instance)
-	}
-	return changed, err
+	request.Instance.Status.Phase = lifecycleapi.PhaseDeploying
+	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
 func cleanup(request *common.Request) error {
-	if !controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
-		return nil
-	}
-
-	for _, operand := range sspOperands {
-		err := operand.Cleanup(request)
+	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
+		request.Instance.Status.Phase = lifecycleapi.PhaseDeleting
+		err := request.Client.Status().Update(request.Context, request.Instance)
+		if err != nil {
+			return err
+		}
+		for _, operand := range sspOperands {
+			err = operand.Cleanup(request)
+			if err != nil {
+				return err
+			}
+		}
+		controllerutil.RemoveFinalizer(request.Instance, finalizerName)
+		err = request.Client.Update(request.Context, request.Instance)
 		if err != nil {
 			return err
 		}
 	}
 
-	controllerutil.RemoveFinalizer(request.Instance, finalizerName)
-	return request.Client.Update(request.Context, request.Instance)
+	request.Instance.Status.Phase = lifecycleapi.PhaseDeleted
+	err := request.Client.Status().Update(request.Context, request.Instance)
+	if errors.IsConflict(err) || errors.IsNotFound(err) {
+		// These errors are ignored. They can happen if the CR was removed
+		// before the status update call is executed.
+		return nil
+	}
+	return err
+}
+
+func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, error) {
+	allStatuses := make([]common.ResourceStatus, 0, len(sspOperands))
+	for _, operand := range sspOperands {
+		statuses, err := operand.Reconcile(sspRequest)
+		if err != nil {
+			return nil, err
+		}
+		allStatuses = append(allStatuses, statuses...)
+	}
+	return allStatuses, nil
+}
+
+func updateStatus(request *common.Request, statuses []common.ResourceStatus) error {
+	notAvailable := make([]common.ResourceStatus, 0, len(statuses))
+	progressing := make([]common.ResourceStatus, 0, len(statuses))
+	degraded := make([]common.ResourceStatus, 0, len(statuses))
+	for _, status := range statuses {
+		if status.NotAvailable != nil {
+			notAvailable = append(notAvailable, status)
+		}
+		if status.Progressing != nil {
+			progressing = append(progressing, status)
+		}
+		if status.Degraded != nil {
+			degraded = append(degraded, status)
+		}
+	}
+
+	sspStatus := &request.Instance.Status
+	switch len(notAvailable) {
+	case 0:
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionAvailable,
+			Status:  v1.ConditionTrue,
+			Reason:  "available",
+			Message: "All SSP resources are available",
+		})
+	case 1:
+		status := notAvailable[0]
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionAvailable,
+			Status:  v1.ConditionFalse,
+			Reason:  "available",
+			Message: prefixResourceTypeAndName(*status.NotAvailable, status.Resource),
+		})
+	default:
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionAvailable,
+			Status:  v1.ConditionFalse,
+			Reason:  "available",
+			Message: fmt.Sprintf("%d SSP resources are not available", len(notAvailable)),
+		})
+	}
+
+	switch len(progressing) {
+	case 0:
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionProgressing,
+			Status:  v1.ConditionFalse,
+			Reason:  "progressing",
+			Message: "No SSP resources are progressing",
+		})
+	case 1:
+		status := progressing[0]
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionProgressing,
+			Status:  v1.ConditionTrue,
+			Reason:  "progressing",
+			Message: prefixResourceTypeAndName(*status.Progressing, status.Resource),
+		})
+	default:
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionProgressing,
+			Status:  v1.ConditionTrue,
+			Reason:  "progressing",
+			Message: fmt.Sprintf("%d SSP resources are progressing", len(progressing)),
+		})
+	}
+
+	switch len(degraded) {
+	case 0:
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionDegraded,
+			Status:  v1.ConditionFalse,
+			Reason:  "degraded",
+			Message: "No SSP resources are degraded",
+		})
+	case 1:
+		status := degraded[0]
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionDegraded,
+			Status:  v1.ConditionTrue,
+			Reason:  "degraded",
+			Message: prefixResourceTypeAndName(*status.Degraded, status.Resource),
+		})
+	default:
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionDegraded,
+			Status:  v1.ConditionTrue,
+			Reason:  "degraded",
+			Message: fmt.Sprintf("%d SSP resources are degraded", len(degraded)),
+		})
+	}
+
+	if len(notAvailable) == 0 && len(progressing) == 0 && len(degraded) == 0 {
+		sspStatus.Phase = lifecycleapi.PhaseDeployed
+	} else {
+		sspStatus.Phase = lifecycleapi.PhaseDeploying
+	}
+	return request.Client.Status().Update(request.Context, request.Instance)
+}
+
+func prefixResourceTypeAndName(message string, resource controllerutil.Object) string {
+	return fmt.Sprintf("%s %s/%s: %s",
+		resource.GetObjectKind().GroupVersionKind().Kind,
+		resource.GetNamespace(),
+		resource.GetName(),
+		message)
 }
 
 func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.SubresourceCache = common.VersionCache{}
+
 	builder := ctrl.NewControllerManagedBy(mgr).For(&ssp.SSP{})
 	watchClusterResources(builder)
 	watchNamespacedResources(builder)

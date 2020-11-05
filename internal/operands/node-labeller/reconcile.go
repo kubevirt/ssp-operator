@@ -37,20 +37,15 @@ func (nl *nodeLabeller) WatchClusterTypes() []runtime.Object {
 	}
 }
 
-func (nl *nodeLabeller) Reconcile(request *common.Request) error {
-	for _, f := range []func(*common.Request) error{
+func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+	return common.CollectResourceStatus(request,
 		reconcileClusterRole,
 		reconcileServiceAccount,
 		reconcileClusterRoleBinding,
 		reconcileConfigMap,
 		reconcileDaemonSet,
 		reconcileSecurityContextConstraint,
-	} {
-		if err := f(request); err != nil {
-			return err
-		}
-	}
-	return nil
+	)
 }
 
 func (nl *nodeLabeller) Cleanup(request *common.Request) error {
@@ -74,7 +69,7 @@ func GetOperand() operands.Operand {
 	return &nodeLabeller{}
 }
 
-func reconcileClusterRole(request *common.Request) error {
+func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRole(),
 		func(newRes, foundRes controllerutil.Object) {
@@ -82,13 +77,13 @@ func reconcileClusterRole(request *common.Request) error {
 		})
 }
 
-func reconcileServiceAccount(request *common.Request) error {
+func reconcileServiceAccount(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
 		newServiceAccount(request.Namespace),
 		func(_, _ controllerutil.Object) {})
 }
 
-func reconcileClusterRoleBinding(request *common.Request) error {
+func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
 		newClusterRoleBinding(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {
@@ -99,7 +94,7 @@ func reconcileClusterRoleBinding(request *common.Request) error {
 		})
 }
 
-func reconcileConfigMap(request *common.Request) error {
+func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
 		newConfigMap(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {
@@ -109,14 +104,27 @@ func reconcileConfigMap(request *common.Request) error {
 		})
 }
 
-func reconcileDaemonSet(request *common.Request) error {
+func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) {
 	nodeLabellerSpec := &request.Instance.Spec.NodeLabeller
 	daemonSet := newDaemonSet(request.Namespace)
 	addPlacementFields(daemonSet, &nodeLabellerSpec.Placement)
-	return common.CreateOrUpdateResource(request,
+	return common.CreateOrUpdateResourceWithStatus(request,
 		daemonSet,
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*apps.DaemonSet).Spec = newRes.(*apps.DaemonSet).Spec
+		},
+		func(res controllerutil.Object) common.ResourceStatus {
+			ds := res.(*apps.DaemonSet)
+			status := common.ResourceStatus{}
+			if ds.Status.NumberReady != ds.Status.DesiredNumberScheduled {
+				msg := fmt.Sprintf("Not all node-labeler pods are ready. (ready pods: %d, desired pods: %d)",
+					ds.Status.NumberReady,
+					ds.Status.DesiredNumberScheduled)
+				status.NotAvailable = &msg
+				status.Progressing = &msg
+				status.Degraded = &msg
+			}
+			return status
 		})
 }
 
@@ -127,7 +135,7 @@ func addPlacementFields(daemonset *apps.DaemonSet, nodePlacement *lifecycleapi.N
 	podSpec.Tolerations = nodePlacement.Tolerations
 }
 
-func reconcileSecurityContextConstraint(request *common.Request) error {
+func reconcileSecurityContextConstraint(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
 		newSecurityContextConstraint(request.Namespace),
 		func(newRes, foundRes controllerutil.Object) {

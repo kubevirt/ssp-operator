@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	libhandler "github.com/operator-framework/operator-lib/handler"
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -15,48 +15,52 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
-var (
-	clusterRoleRes = &testResource{
-		Name:     validator.ClusterRoleName(testNamespace),
-		resource: &rbac.ClusterRole{},
-	}
-	clusterRoleBindingRes = &testResource{
-		Name:     validator.ClusterRoleBindingName(testNamespace),
-		resource: &rbac.ClusterRoleBinding{},
-	}
-	webhookConfigRes = &testResource{
-		Name:     validator.ValidatingWebhookName(testNamespace),
-		resource: &admission.ValidatingWebhookConfiguration{},
-	}
-	serviceAccountRes = &testResource{
-		Name:       validator.ServiceAccountName,
-		Namsespace: testNamespace,
-		resource:   &core.ServiceAccount{},
-	}
-	serviceRes = &testResource{
-		Name:       validator.ServiceName,
-		Namsespace: testNamespace,
-		resource:   &core.Service{},
-	}
-	deploymentRes = &testResource{
-		Name:       validator.DeploymentName,
-		Namsespace: testNamespace,
-		resource:   &apps.Deployment{},
-	}
-)
-
 var _ = Describe("Template validator", func() {
+	var (
+		clusterRoleRes = &testResource{
+			Name:     validator.ClusterRoleName(testNamespace),
+			resource: &rbac.ClusterRole{},
+		}
+		clusterRoleBindingRes = &testResource{
+			Name:     validator.ClusterRoleBindingName(testNamespace),
+			resource: &rbac.ClusterRoleBinding{},
+		}
+		webhookConfigRes = &testResource{
+			Name:     validator.ValidatingWebhookName(testNamespace),
+			resource: &admission.ValidatingWebhookConfiguration{},
+		}
+		serviceAccountRes = &testResource{
+			Name:       validator.ServiceAccountName,
+			Namsespace: testNamespace,
+			resource:   &core.ServiceAccount{},
+		}
+		serviceRes = &testResource{
+			Name:       validator.ServiceName,
+			Namsespace: testNamespace,
+			resource:   &core.Service{},
+		}
+		deploymentRes = &testResource{
+			Name:       validator.DeploymentName,
+			Namsespace: testNamespace,
+			resource:   &apps.Deployment{},
+		}
+	)
+
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
 	Context("resource creation", func() {
 		table.DescribeTable("created cluster resource", func(res *testResource) {
 			resource := res.NewResource()
-			err := apiClient.Get(ctx, client.ObjectKey{Name: res.Name}, resource)
+			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
 		},
@@ -66,9 +70,7 @@ var _ = Describe("Template validator", func() {
 		)
 
 		table.DescribeTable("created namespaced resource", func(res *testResource) {
-			err := apiClient.Get(ctx, client.ObjectKey{
-				Name: res.Name, Namespace: testNamespace,
-			}, res.NewResource())
+			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
 			table.Entry("[test_id:4910] service account", serviceAccountRes),
@@ -78,18 +80,7 @@ var _ = Describe("Template validator", func() {
 	})
 
 	Context("resource deletion", func() {
-		table.DescribeTable("recreate after delete", func(res *testResource) {
-			resource := res.NewResource()
-			resource.SetName(res.Name)
-			resource.SetNamespace(res.Namsespace)
-			Expect(apiClient.Delete(ctx, resource)).ToNot(HaveOccurred())
-
-			Eventually(func() error {
-				return apiClient.Get(ctx, client.ObjectKey{
-					Name: res.Name, Namespace: res.Namsespace,
-				}, resource)
-			}, timeout, time.Second).ShouldNot(HaveOccurred())
-		},
+		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
 			table.Entry("[test_id:4914] cluster role", clusterRoleRes),
 			table.Entry("[test_id:4916] cluster role binding", clusterRoleBindingRes),
 			table.Entry("[test_id:4918] validating webhook configuration", webhookConfigRes),
@@ -100,29 +91,7 @@ var _ = Describe("Template validator", func() {
 	})
 
 	Context("resource change", func() {
-		table.DescribeTable("should restore modified resource", func(
-			res *testResource,
-			updateFunc interface{},
-			equalsFunc interface{},
-		) {
-			key := res.GetKey()
-			original := res.NewResource()
-			Expect(apiClient.Get(ctx, key, original)).ToNot(HaveOccurred())
-
-			changed := original.DeepCopyObject()
-			reflect.ValueOf(updateFunc).Call([]reflect.Value{reflect.ValueOf(changed)})
-			Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
-
-			newRes := res.NewResource()
-			Eventually(func() bool {
-				Expect(apiClient.Get(ctx, key, newRes)).ToNot(HaveOccurred())
-				res := reflect.ValueOf(equalsFunc).Call([]reflect.Value{
-					reflect.ValueOf(original),
-					reflect.ValueOf(newRes),
-				})
-				return res[0].Interface().(bool)
-			}, timeout, time.Second).Should(BeTrue())
-		},
+		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
 			table.Entry("[test_id:4915] cluster role", clusterRoleRes,
 				func(role *rbac.ClusterRole) {
 					role.Rules[0].Verbs = []string{"watch"}
@@ -180,7 +149,22 @@ var _ = Describe("Template validator", func() {
 		}, timeout, 1*time.Second).Should(BeTrue())
 	})
 
-	Context("placement API", func() {
+	It("should set Deployed phase and conditions when validator pods are running", func() {
+		foundSsp := getSsp()
+
+		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed))
+
+		conditions := foundSsp.Status.Conditions
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionAvailable).Status).To(Equal(core.ConditionTrue))
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionProgressing).Status).To(Equal(core.ConditionFalse))
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionDegraded).Status).To(Equal(core.ConditionFalse))
+
+		deployment := &apps.Deployment{}
+		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
+		Expect(deployment.Status.ReadyReplicas).To(Equal(int32(templateValidatorReplicas)))
+	})
+
+	Context("with SSP resource modification", func() {
 		var originalSSP *sspv1alpha1.SSP
 
 		BeforeEach(func() {
@@ -192,18 +176,20 @@ var _ = Describe("Template validator", func() {
 				Name:      originalSSP.Name,
 				Namespace: originalSSP.Namespace,
 			}
-			foundSsp := &sspv1alpha1.SSP{}
-			err := apiClient.Get(ctx, key, foundSsp)
-			if err == nil {
-				foundSsp.Spec = originalSSP.Spec
-				err = apiClient.Update(ctx, foundSsp)
-			} else {
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred())
+			Eventually(func() error {
+				foundSsp := &sspv1alpha1.SSP{}
+				err := apiClient.Get(ctx, key, foundSsp)
+				if err == nil {
+					foundSsp.Spec = originalSSP.Spec
+					return apiClient.Update(ctx, foundSsp)
 				}
-				err = apiClient.Create(ctx, originalSSP)
-			}
-			Expect(err).ToNot(HaveOccurred())
+				if errors.IsNotFound(err) {
+					return apiClient.Create(ctx, originalSSP)
+				}
+				return err
+			}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+			waitUntilDeployed()
 		})
 
 		It("[test_id:4926] should add and remove placement", func() {
@@ -235,12 +221,16 @@ var _ = Describe("Template validator", func() {
 				Effect:   core.TaintEffectNoExecute,
 			}}
 
+			waitUntilDeployed()
+
 			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
 				placement := &foundSsp.Spec.TemplateValidator.Placement
 				placement.Affinity = affinity
 				placement.NodeSelector = nodeSelector
 				placement.Tolerations = tolerations
 			})
+
+			waitUntilDeployed()
 
 			// Test that placement was added
 			Eventually(func() bool {
@@ -260,6 +250,8 @@ var _ = Describe("Template validator", func() {
 				placement.Tolerations = nil
 			})
 
+			waitUntilDeployed()
+
 			// Test that placement was removed
 			Eventually(func() bool {
 				deployment := apps.Deployment{}
@@ -271,43 +263,42 @@ var _ = Describe("Template validator", func() {
 					podSpec.Tolerations == nil
 			}, timeout, 1*time.Second).Should(BeTrue())
 		})
+
+		// TODO - This test is currently pending, because it can be flaky.
+		//        If the operator is too slow and does not notice Deployment
+		//        state when not all pods are running, the test would fail.
+		PIt("[test_id: TODO]should set available condition when at least one validator pod is running", func() {
+			watch, err := StartWatch(sspListerWatcher)
+			Expect(err).ToNot(HaveOccurred())
+			defer watch.Stop()
+
+			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
+				foundSsp.Spec.TemplateValidator.Replicas = 2
+			})
+
+			err = WatchChangesUntil(watch, isStatusDeploying, timeout)
+			Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
+
+			err = WatchChangesUntil(watch, func(obj *sspv1alpha1.SSP) bool {
+				available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
+				progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
+
+				return obj.Status.Phase == lifecycleapi.PhaseDeploying &&
+					available.Status == core.ConditionTrue &&
+					progressing.Status == core.ConditionTrue
+			}, timeout)
+			Expect(err).ToNot(HaveOccurred(), "SSP should be available, but progressing.")
+
+			err = WatchChangesUntil(watch, isStatusDeployed, timeout)
+			Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
+		})
 	})
 })
 
-func hasOwnerAnnotations(annotations map[string]string) bool {
-	const typeName = "SSP.ssp.kubevirt.io"
-	namespacedName := ssp.Namespace + "/" + ssp.Name
-
-	if annotations == nil {
-		return false
-	}
-
-	return annotations[libhandler.TypeAnnotation] == typeName &&
-		annotations[libhandler.NamespacedNameAnnotation] == namespacedName
-}
-
 func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
-	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
-	foundSsp := &sspv1alpha1.SSP{}
-	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
-
-	updateFunc(foundSsp)
-	Expect(apiClient.Update(ctx, foundSsp)).ToNot(HaveOccurred())
-}
-
-type testResource struct {
-	Name       string
-	Namsespace string
-	resource   controllerutil.Object
-}
-
-func (r *testResource) NewResource() controllerutil.Object {
-	return r.resource.DeepCopyObject().(controllerutil.Object)
-}
-
-func (r *testResource) GetKey() client.ObjectKey {
-	return client.ObjectKey{
-		Name:      r.Name,
-		Namespace: r.Namsespace,
-	}
+	Eventually(func() error {
+		foundSsp := getSsp()
+		updateFunc(foundSsp)
+		return apiClient.Update(ctx, foundSsp)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
 }
