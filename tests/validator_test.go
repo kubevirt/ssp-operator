@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"reflect"
 	"time"
 
@@ -51,6 +52,7 @@ var _ = Describe("Template validator", func() {
 			Namsespace: testNamespace,
 			resource:   &apps.Deployment{},
 		}
+		replicas int32 = 2
 	)
 
 	BeforeEach(func() {
@@ -142,10 +144,17 @@ var _ = Describe("Template validator", func() {
 			pods := core.PodList{}
 			err := apiClient.List(ctx, &pods, client.InNamespace(testNamespace), client.MatchingLabels(labels))
 			Expect(err).ToNot(HaveOccurred())
-			if len(pods.Items) != 1 {
+			if len(pods.Items) == 0 {
 				return false
 			}
-			return pods.Items[0].Status.Phase == core.PodRunning
+
+			for _, pod := range pods.Items {
+				if pod.Status.Phase != core.PodRunning {
+					return false
+				}
+			}
+
+			return true
 		}, timeout, 1*time.Second).Should(BeTrue())
 	})
 
@@ -161,7 +170,7 @@ var _ = Describe("Template validator", func() {
 
 		deployment := &apps.Deployment{}
 		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
-		Expect(deployment.Status.ReadyReplicas).To(Equal(int32(templateValidatorReplicas)))
+		Expect(deployment.Status.ReadyReplicas).To(Equal(deployment.Status.Replicas))
 	})
 
 	Context("with SSP resource modification", func() {
@@ -224,10 +233,19 @@ var _ = Describe("Template validator", func() {
 			waitUntilDeployed()
 
 			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
-				placement := &foundSsp.Spec.TemplateValidator.Placement
-				placement.Affinity = affinity
-				placement.NodeSelector = nodeSelector
-				placement.Tolerations = tolerations
+				placement := &api.NodePlacement{
+					Affinity:     affinity,
+					NodeSelector: nodeSelector,
+					Tolerations:  tolerations,
+				}
+
+				if foundSsp.Spec.TemplateValidator != nil {
+					foundSsp.Spec.TemplateValidator.Placement = placement
+				} else {
+					foundSsp.Spec.TemplateValidator = &sspv1alpha1.TemplateValidator{
+						Placement: placement,
+					}
+				}
 			})
 
 			waitUntilDeployed()
@@ -244,7 +262,7 @@ var _ = Describe("Template validator", func() {
 			}, timeout, 1*time.Second).Should(BeTrue())
 
 			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
-				placement := &foundSsp.Spec.TemplateValidator.Placement
+				placement := foundSsp.Spec.TemplateValidator.Placement
 				placement.Affinity = nil
 				placement.NodeSelector = nil
 				placement.Tolerations = nil
@@ -273,7 +291,7 @@ var _ = Describe("Template validator", func() {
 			defer watch.Stop()
 
 			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
-				foundSsp.Spec.TemplateValidator.Replicas = 2
+				foundSsp.Spec.TemplateValidator.Replicas = pointer.Int32Ptr(replicas)
 			})
 
 			err = WatchChangesUntil(watch, isStatusDeploying, timeout)

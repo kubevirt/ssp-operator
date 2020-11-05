@@ -2,6 +2,7 @@ package template_validator
 
 import (
 	"context"
+	"k8s.io/utils/pointer"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -27,9 +28,9 @@ var log = logf.Log.WithName("validator_operand")
 
 var _ = Describe("Template validator operand", func() {
 	const (
-		namespace = "kubevirt"
-		name      = "test-ssp"
-		replicas  = 2
+		namespace       = "kubevirt"
+		name            = "test-ssp"
+		replicas  int32 = 2
 	)
 
 	var (
@@ -62,8 +63,8 @@ var _ = Describe("Template validator operand", func() {
 					Namespace: namespace,
 				},
 				Spec: ssp.SSPSpec{
-					TemplateValidator: ssp.TemplateValidator{
-						Replicas: replicas,
+					TemplateValidator: &ssp.TemplateValidator{
+						Replicas: pointer.Int32Ptr(replicas),
 					},
 				},
 			},

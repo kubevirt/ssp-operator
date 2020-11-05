@@ -12,6 +12,7 @@ import (
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"kubevirt.io/ssp-operator/api/v1alpha1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
@@ -119,10 +120,11 @@ func reconcileService(request *common.Request) (common.ResourceStatus, error) {
 }
 
 func reconcileDeployment(request *common.Request) (common.ResourceStatus, error) {
-	validatorSpec := &request.Instance.Spec.TemplateValidator
-	image := common.GetTemplateValidatorImage()
-	deployment := newDeployment(request.Namespace, validatorSpec.Replicas, image)
-	addPlacementFields(deployment, &validatorSpec.Placement)
+	validatorSpec := request.Instance.Spec.TemplateValidator
+	image := getTemplateValidatorImage()
+	deployment := newDeployment(request.Namespace, getReplicaCount(validatorSpec), image)
+	addPlacementFields(deployment, getPlacement(validatorSpec))
+
 	return common.CreateOrUpdateResourceWithStatus(request,
 		deployment,
 		func(newRes, foundRes controllerutil.Object) {
@@ -131,14 +133,15 @@ func reconcileDeployment(request *common.Request) (common.ResourceStatus, error)
 		func(res controllerutil.Object) common.ResourceStatus {
 			dep := res.(*apps.Deployment)
 			status := common.ResourceStatus{}
-			if validatorSpec.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
-				msg := fmt.Sprintf("No validator pods are running. Expected: %d", validatorSpec.Replicas)
+			if dep.Status.AvailableReplicas == 0 {
+				msg := fmt.Sprintf("No validator pods are running. Expected: %d", dep.Status.Replicas)
 				status.NotAvailable = &msg
-			}
-			if dep.Status.AvailableReplicas != validatorSpec.Replicas {
+				status.Progressing = &msg
+				status.Degraded = &msg
+			} else if dep.Status.UnavailableReplicas != 0 {
 				msg := fmt.Sprintf(
 					"Not all template validator pods are running. Expected: %d, running: %d",
-					validatorSpec.Replicas,
+					dep.Status.Replicas,
 					dep.Status.AvailableReplicas,
 				)
 				status.Progressing = &msg
@@ -181,4 +184,21 @@ func copyFoundCaBundles(newWebhooks []admission.ValidatingWebhook, foundWebhooks
 			}
 		}
 	}
+}
+
+func getReplicaCount(spec *v1alpha1.TemplateValidator) int32 {
+	if spec != nil && spec.Replicas != nil {
+		return *spec.Replicas
+	}
+
+	return defaultReplicas
+}
+
+func getPlacement(spec *v1alpha1.TemplateValidator) *lifecycleapi.NodePlacement {
+	if spec != nil && spec.Placement != nil {
+		return spec.Placement
+	}
+
+	// Default placement is an empty one
+	return &lifecycleapi.NodePlacement{}
 }

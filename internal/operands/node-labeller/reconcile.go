@@ -2,6 +2,8 @@ package node_labeller
 
 import (
 	"fmt"
+	"kubevirt.io/ssp-operator/api/v1alpha1"
+
 	secv1 "github.com/openshift/api/security/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -116,9 +118,10 @@ func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) 
 }
 
 func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) {
-	nodeLabellerSpec := &request.Instance.Spec.NodeLabeller
+	nodeLabellerSpec := request.Instance.Spec.NodeLabeller
 	daemonSet := newDaemonSet(request.Namespace)
-	addPlacementFields(daemonSet, &nodeLabellerSpec.Placement)
+	addPlacementFields(daemonSet, getPlacement(nodeLabellerSpec))
+
 	return common.CreateOrUpdateResourceWithStatus(request,
 		daemonSet,
 		func(newRes, foundRes controllerutil.Object) {
@@ -155,4 +158,13 @@ func reconcileSecurityContextConstraint(request *common.Request) (common.Resourc
 			foundRes.(*secv1.SecurityContextConstraints).SELinuxContext = newRes.(*secv1.SecurityContextConstraints).SELinuxContext
 			foundRes.(*secv1.SecurityContextConstraints).Users = newRes.(*secv1.SecurityContextConstraints).Users
 		})
+}
+
+func getPlacement(spec *v1alpha1.NodeLabeller) *lifecycleapi.NodePlacement {
+	if spec != nil && spec.Placement != nil {
+		return spec.Placement
+	}
+
+	// Default placement is an empty one
+	return &lifecycleapi.NodePlacement{}
 }

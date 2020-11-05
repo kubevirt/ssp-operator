@@ -29,10 +29,9 @@ import (
 
 const (
 	// TODO - maybe randomize namespace
-	testNamespace             = "ssp-operator-functests"
-	commonTemplatesTestNS     = "ssp-operator-functests-templates"
-	timeout                   = 180 * time.Second
-	templateValidatorReplicas = 1
+	testNamespace         = "ssp-operator-functests"
+	commonTemplatesTestNS = "ssp-operator-functests-templates"
+	timeout               = 180 * time.Second
 )
 
 var (
@@ -58,13 +57,9 @@ var _ = BeforeSuite(func() {
 			Namespace: testNamespace,
 		},
 		Spec: sspv1alpha1.SSPSpec{
-			TemplateValidator: sspv1alpha1.TemplateValidator{
-				Replicas: templateValidatorReplicas,
-			},
 			CommonTemplates: sspv1alpha1.CommonTemplates{
 				Namespace: commonTemplatesTestNS,
 			},
-			NodeLabeller: sspv1alpha1.NodeLabeller{},
 		},
 	}
 

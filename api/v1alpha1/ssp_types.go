@@ -24,10 +24,10 @@ import (
 type TemplateValidator struct {
 	// Replicas is the number of replicas of the template validator pod
 	//+kubebuilder:validation:Minimum=0
-	Replicas int32 `json:"replicas"`
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// Placement describes the node scheduling configuration
-	Placement lifecycleapi.NodePlacement `json:"placement,omitempty"`
+	Placement *lifecycleapi.NodePlacement `json:"placement,omitempty"`
 }
 
 type CommonTemplates struct {
@@ -39,19 +39,19 @@ type CommonTemplates struct {
 
 type NodeLabeller struct {
 	// Placement describes the node scheduling configuration
-	Placement lifecycleapi.NodePlacement `json:"placement,omitempty"`
+	Placement *lifecycleapi.NodePlacement `json:"placement,omitempty"`
 }
 
 // SSPSpec defines the desired state of SSP
 type SSPSpec struct {
 	// TemplateValidator is configuration of the template validator operand
-	TemplateValidator TemplateValidator `json:"templateValidator"`
+	TemplateValidator *TemplateValidator `json:"templateValidator,omitempty"`
 
 	// CommonTemplates is the configuration of the common templates operand
 	CommonTemplates CommonTemplates `json:"commonTemplates"`
 
 	// NodeLabeller is configuration of the node-labeller operand
-	NodeLabeller NodeLabeller `json:"nodeLabeller"`
+	NodeLabeller *NodeLabeller `json:"nodeLabeller,omitempty"`
 }
 
 // SSPStatus defines the observed state of SSP

@@ -1437,13 +1437,9 @@ spec:
                   format: int32
                   minimum: 0
                   type: integer
-              required:
-              - replicas
               type: object
           required:
           - commonTemplates
-          - nodeLabeller
-          - templateValidator
           type: object
         status:
           description: SSPStatus defines the observed state of SSP

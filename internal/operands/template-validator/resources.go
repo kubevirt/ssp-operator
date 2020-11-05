@@ -2,6 +2,7 @@ package template_validator
 
 import (
 	"fmt"
+	"kubevirt.io/ssp-operator/internal/common"
 
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -30,6 +31,10 @@ const (
 
 var commonLabels = map[string]string{
 	kubevirtIo: virtTemplateValidator,
+}
+
+func getTemplateValidatorImage() string {
+	return common.EnvOrDefault(common.TemplateValidatorImageKey, defaultTemplateValidatorImage)
 }
 
 func newClusterRole(namespace string) *rbac.ClusterRole {
