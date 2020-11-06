@@ -19,9 +19,13 @@ COPY internal/ internal/
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
+LABEL org.kubevirt.hco.csv-generator.v1="/usr/bin/csv-generator"
+
 WORKDIR /
 COPY --from=builder /workspace/manager .
 COPY data/ data/
 USER 1000
 
+# Copy csv generator
+COPY hack/csv-generator.sh /usr/bin/csv-generator
 ENTRYPOINT ["/manager"]

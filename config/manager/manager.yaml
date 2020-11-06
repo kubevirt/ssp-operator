@@ -27,6 +27,12 @@ spec:
         - /manager
         args:
         - --enable-leader-election
+        env:
+          - name: KVM_IMAGE
+          - name: VALIDATOR_IMAGE
+          - name: VIRT_LAUNCHER_IMAGE
+          - name: NODE_LABELLER_IMAGE
+          - name: CPU_PLUGIN_IMAGE
         image: controller:latest
         name: manager
       terminationGracePeriodSeconds: 10

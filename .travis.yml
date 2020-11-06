@@ -4,6 +4,16 @@ go: "1.13"
 
 services:
   - docker
+jobs:
+  include:
+  - stage: Unit tests
+    name: Unit tests
+    script: make unittest
+  - stage: Test csv-generator
+    name: Test csv-generator
+    script: make container-build && ./tests/test-csv-generator.sh
 
-script:
-  - make unittest
+before_script:
+  - export PATH=$(pwd):$PATH #with this we can call operator-sdk in makefile
+  - make kustomize
+  - make operator-sdk
