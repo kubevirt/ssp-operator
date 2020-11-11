@@ -53,7 +53,7 @@ var _ = Describe("Common templates", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
 		},
-			table.Entry("edit role", editClusterRole),
+			table.Entry("[test_id:4584]edit role", editClusterRole),
 			table.Entry("[test_id:4494]golden images namespace", goldenImageNS),
 		)
 
@@ -73,7 +73,7 @@ var _ = Describe("Common templates", func() {
 
 	Context("resource change", func() {
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("edit cluster role", editClusterRole,
+			table.Entry("[test_id:5315]edit cluster role", editClusterRole,
 				func(role *rbac.ClusterRole) {
 					role.Rules[0].Verbs = []string{"watch"}
 				},
@@ -81,7 +81,7 @@ var _ = Describe("Common templates", func() {
 					return reflect.DeepEqual(old.Rules, new.Rules)
 				}),
 
-			table.Entry("view role", viewRole,
+			table.Entry("[test_id:5316]view role", viewRole,
 				func(roleBinding *rbac.Role) {
 					roleBinding.Rules = []rbac.PolicyRule{}
 				},
@@ -89,7 +89,7 @@ var _ = Describe("Common templates", func() {
 					return reflect.DeepEqual(old.Rules, new.Rules)
 				}),
 
-			table.Entry("view role binding", viewRoleBinding,
+			table.Entry("[test_id:5317]view role binding", viewRoleBinding,
 				func(roleBinding *rbac.RoleBinding) {
 					roleBinding.Subjects = []rbac.Subject{}
 				},
@@ -112,7 +112,7 @@ var _ = Describe("Common templates", func() {
 			table.Entry("[test_id:4773]view role", viewRole),
 			table.Entry("[test_id:4842]view role binding", viewRoleBinding),
 			table.Entry("[test_id:5088]testTemplate in custom NS", testTemplate),
-			table.Entry("edit cluster role", editClusterRole),
+			table.Entry("[test_id:4771]edit cluster role", editClusterRole),
 			table.Entry("[test_id:4770]golden image NS", goldenImageNS),
 		)
 	})
