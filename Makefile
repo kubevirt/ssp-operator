@@ -2,6 +2,9 @@
 VERSION ?= 0.0.1
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
+#operator-sdk version
+OPERATOR_SDK_VERSION ?= v1.0.0
+
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
@@ -85,8 +88,22 @@ vet:
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+operator-sdk:
+	curl -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk-$(OPERATOR_SDK_VERSION)-x86_64-linux-gnu -o operator-sdk
+	chmod 0755 operator-sdk
+
+olm-catalog: manifests
+	operator-sdk generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image controller=REPLACE_IMAGE:TAG
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	mkdir -p data/crd
+	mkdir -p data/olm-catalog
+	./hack/update-csv.py bundle/manifests/ssp-operator.clusterserviceversion.yaml > data/olm-catalog/ssp-operator.clusterserviceversion.yaml
+	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
+	rm -r bundle.Dockerfile
+
 # Build the container image
-container-build: unittest
+container-build: unittest olm-catalog
 	docker build . -t ${IMG}
 
 # Push the container image
