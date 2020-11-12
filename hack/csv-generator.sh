@@ -120,6 +120,7 @@ cat ${TMP_FILE}
 rm ${TMP_FILE}
 if [ "$DUMP_CRDS" = "true" ]; then
     for CRD in $( ls ${CRDS_DIR}/ssp*.yaml ); do
+        echo "---"
         cat ${CRD}
     done
 fi
