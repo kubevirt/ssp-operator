@@ -2,6 +2,8 @@ package tests
 
 import (
 	"context"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -31,7 +33,7 @@ const (
 	// TODO - maybe randomize namespace
 	testNamespace             = "ssp-operator-functests"
 	commonTemplatesTestNS     = "ssp-operator-functests-templates"
-	timeout                   = 180 * time.Second
+	timeout                   = 8 * time.Minute
 	templateValidatorReplicas = 1
 )
 
@@ -41,16 +43,22 @@ var (
 	ssp       *sspv1alpha1.SSP
 
 	sspListerWatcher cache.ListerWatcher
+
+	deploymentTimedOut bool
 )
 
 var _ = BeforeSuite(func() {
 	setupApiClient()
 
-	namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
-	Expect(apiClient.Create(ctx, namespaceObj)).ToNot(HaveOccurred())
+	Eventually(func() error {
+		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
+		return apiClient.Create(ctx, namespaceObj)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
 
-	namespaceObj = &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}}
-	Expect(apiClient.Create(ctx, namespaceObj)).ToNot(HaveOccurred())
+	Eventually(func() error {
+		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}}
+		return apiClient.Create(ctx, namespaceObj)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
 
 	ssp = &sspv1alpha1.SSP{
 		ObjectMeta: metav1.ObjectMeta{
@@ -68,29 +76,42 @@ var _ = BeforeSuite(func() {
 		},
 	}
 
-	Expect(apiClient.Create(ctx, ssp)).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return apiClient.Create(ctx, ssp)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+	// Wait to finish deployment before running any tests
+	waitUntilDeployed()
 })
 
 var _ = AfterSuite(func() {
+	if shouldSkipCleanup() {
+		return
+	}
+
 	if ssp != nil {
-		Expect(apiClient.Delete(ctx, ssp)).ToNot(HaveOccurred())
+		err := apiClient.Delete(ctx, ssp)
+		expectSuccessOrNotFound(err)
 		waitForDeletion(client.ObjectKey{
 			Name:      ssp.Name,
 			Namespace: ssp.Namespace,
 		}, &sspv1alpha1.SSP{})
 	}
 
-	namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
-	err := apiClient.Delete(ctx, namespaceObj)
-	Expect(err == nil || errors.IsNotFound(err)).To(BeTrue())
-
-	namespaceObj = &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}}
-	err = apiClient.Delete(ctx, namespaceObj)
-	Expect(err == nil || errors.IsNotFound(err)).To(BeTrue())
+	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}})
+	err2 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}})
+	expectSuccessOrNotFound(err1)
+	expectSuccessOrNotFound(err2)
 
 	waitForDeletion(client.ObjectKey{Name: testNamespace}, &v1.Namespace{})
 	waitForDeletion(client.ObjectKey{Name: commonTemplatesTestNS}, &v1.Namespace{})
 })
+
+func expectSuccessOrNotFound(err error) {
+	if err != nil && !errors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
 
 func setupApiClient() {
 	Expect(sspv1alpha1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
@@ -125,16 +146,36 @@ func getSsp() *sspv1alpha1.SSP {
 }
 
 func waitUntilDeployed() {
-	Eventually(func() bool {
+	if deploymentTimedOut {
+		Fail("Timed out waiting for SSP to be in phase Deployed.")
+	}
+
+	// Set to true before waiting. In case Eventually fails,
+	// it will panic and the deploymentTimedOut will be left true
+	deploymentTimedOut = true
+	EventuallyWithOffset(1, func() bool {
 		return getSsp().Status.Phase == lifecycleapi.PhaseDeployed
 	}, timeout, time.Second).Should(BeTrue())
+	deploymentTimedOut = false
 }
 
 func waitForDeletion(key client.ObjectKey, obj runtime.Object) {
-	Eventually(func() bool {
+	EventuallyWithOffset(1, func() bool {
 		err := apiClient.Get(ctx, key, obj)
 		return errors.IsNotFound(err)
 	}, timeout, time.Second).Should(BeTrue())
+}
+
+func shouldSkipCleanup() bool {
+	noCleanupEnv := os.Getenv("NO_CLEANUP_AFTER_TESTS")
+	if noCleanupEnv == "" {
+		return false
+	}
+	noCleanup, err := strconv.ParseBool(noCleanupEnv)
+	if err != nil {
+		return false
+	}
+	return noCleanup
 }
 
 func TestFunctional(t *testing.T) {
