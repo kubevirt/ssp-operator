@@ -41,4 +41,18 @@ var _ = Describe("Metrics", func() {
 	It("[test_id:4666] should restore modified prometheus rule", func() {
 		expectRestoreAfterUpdate(&prometheusRuleRes)
 	})
+
+	Context("with pause", func() {
+		BeforeEach(func() {
+			strategy.SkipSspUpdateTestsIfNeeded()
+		})
+
+		JustAfterEach(func() {
+			unpauseSsp()
+		})
+
+		It("[test_id:5397] should recreate modified prometheus rule after pause", func() {
+			expectRestoreAfterUpdateWithPause(&prometheusRuleRes)
+		})
+	})
 })

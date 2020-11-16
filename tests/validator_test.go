@@ -48,7 +48,7 @@ var _ = Describe("Template validator", func() {
 			Name:     validator.ClusterRoleBindingName,
 			Resource: &rbac.ClusterRoleBinding{},
 			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
-				roleBinding.Subjects = []rbac.Subject{}
+				roleBinding.Subjects = nil
 			},
 			EqualsFunc: func(old *rbac.ClusterRoleBinding, new *rbac.ClusterRoleBinding) bool {
 				return reflect.DeepEqual(old.RoleRef, new.RoleRef) &&
@@ -59,7 +59,7 @@ var _ = Describe("Template validator", func() {
 			Name:     validator.WebhookName,
 			Resource: &admission.ValidatingWebhookConfiguration{},
 			UpdateFunc: func(webhook *admission.ValidatingWebhookConfiguration) {
-				webhook.Webhooks[0].Rules = []admission.RuleWithOperations{}
+				webhook.Webhooks[0].Rules = nil
 			},
 			EqualsFunc: func(old *admission.ValidatingWebhookConfiguration, new *admission.ValidatingWebhookConfiguration) bool {
 				return reflect.DeepEqual(old.Webhooks, new.Webhooks)
@@ -138,6 +138,24 @@ var _ = Describe("Template validator", func() {
 			table.Entry("[test_id:4923] service", &serviceRes),
 			table.Entry("[test_id:4925] deployment", &deploymentRes),
 		)
+
+		Context("with pause", func() {
+			BeforeEach(func() {
+				strategy.SkipSspUpdateTestsIfNeeded()
+			})
+
+			JustAfterEach(func() {
+				unpauseSsp()
+			})
+
+			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				table.Entry("[test_id:5534] cluster role", &clusterRoleRes),
+				table.Entry("[test_id:5535] cluster role binding", &clusterRoleBindingRes),
+				table.Entry("[test_id:5536] validating webhook configuration", &webhookConfigRes),
+				table.Entry("[test_id:5538] service", &serviceRes),
+				table.Entry("[test_id:5539] deployment", &deploymentRes),
+			)
+		})
 	})
 
 	It("[test_id:4913] should successfully start template-validator pod", func() {

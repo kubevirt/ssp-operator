@@ -41,7 +41,7 @@ var _ = Describe("Node Labeller", func() {
 			Resource:  &rbac.ClusterRoleBinding{},
 			Namespace: "",
 			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
-				roleBinding.Subjects = []rbac.Subject{}
+				roleBinding.Subjects = nil
 			},
 			EqualsFunc: func(old *rbac.ClusterRoleBinding, new *rbac.ClusterRoleBinding) bool {
 				return reflect.DeepEqual(old.Subjects, new.Subjects)
@@ -132,6 +132,24 @@ var _ = Describe("Node Labeller", func() {
 			table.Entry("[test_id:5201] Config Map", &configMapRes),
 			table.Entry("[test_id:5192] daemonSet", &daemonSetRes),
 		)
+
+		Context("with pause", func() {
+			BeforeEach(func() {
+				strategy.SkipSspUpdateTestsIfNeeded()
+			})
+
+			JustAfterEach(func() {
+				unpauseSsp()
+			})
+
+			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				table.Entry("[test_id:5399] cluster role", &clusterRoleRes),
+				table.Entry("[test_id:5402] cluster role binding", &clusterRoleBindingRes),
+				table.Entry("[test_id:5404] security context constraint", &securityContextConstraintRes),
+				table.Entry("[test_id:5408] configMap", &configMapRes),
+				table.Entry("[test_id:5410] daemonSet", &daemonSetRes),
+			)
+		})
 	})
 
 	It("all pods should be ready when deployed", func() {

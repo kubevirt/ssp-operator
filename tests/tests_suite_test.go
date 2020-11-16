@@ -323,14 +323,6 @@ func getBoolEnv(envName string) bool {
 	return val
 }
 
-func updateSsp(updateFunc func(foundSsp *sspv1beta1.SSP)) {
-	Eventually(func() error {
-		foundSsp := getSsp()
-		updateFunc(foundSsp)
-		return apiClient.Update(ctx, foundSsp)
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
-}
-
 func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 	key := client.ObjectKey{
 		Name:      ssp.Name,

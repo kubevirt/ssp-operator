@@ -44,7 +44,7 @@ var _ = Describe("Common templates", func() {
 			Namespace: commonTemplates.GoldenImagesNSname,
 			Resource:  &rbac.RoleBinding{},
 			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
-				roleBinding.Subjects = []rbac.Subject{}
+				roleBinding.Subjects = nil
 			},
 			EqualsFunc: func(old *rbac.RoleBinding, new *rbac.RoleBinding) bool {
 				return reflect.DeepEqual(old.Subjects, new.Subjects)
@@ -71,7 +71,7 @@ var _ = Describe("Common templates", func() {
 			Namespace: strategy.GetTemplatesNamespace(),
 			Resource:  &templatev1.Template{},
 			UpdateFunc: func(t *templatev1.Template) {
-				t.Parameters = []templatev1.Parameter{}
+				t.Parameters = nil
 			},
 			EqualsFunc: func(old *templatev1.Template, new *templatev1.Template) bool {
 				return reflect.DeepEqual(old.Parameters, new.Parameters)
@@ -196,6 +196,23 @@ var _ = Describe("Common templates", func() {
 			table.Entry("[test_id:5317]view role binding", &viewRoleBinding),
 			table.Entry("[test_id:5087]test template", &testTemplate),
 		)
+
+		Context("with pause", func() {
+			BeforeEach(func() {
+				strategy.SkipSspUpdateTestsIfNeeded()
+			})
+
+			JustAfterEach(func() {
+				unpauseSsp()
+			})
+
+			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				table.Entry("[test_id:5388]view role", &viewRole),
+				table.Entry("[test_id:5389]view role binding", &viewRoleBinding),
+				table.Entry("[test_id:5391]testTemplate in custom NS", &testTemplate),
+				table.Entry("[test_id:5393]edit cluster role", &editClusterRole),
+			)
+		})
 	})
 
 	Context("resource deletion", func() {

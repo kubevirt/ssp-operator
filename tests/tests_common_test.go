@@ -3,6 +3,7 @@ package tests
 import (
 	"github.com/onsi/ginkgo"
 	"reflect"
+	"time"
 
 	. "github.com/onsi/gomega"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
@@ -14,6 +15,8 @@ import (
 
 	"kubevirt.io/ssp-operator/api/v1beta1"
 )
+
+const pauseDuration = 10 * time.Second
 
 type testResource struct {
 	Name      string
@@ -97,6 +100,41 @@ func expectRestoreAfterUpdate(res *testResource) {
 	Expect(res.Equals(original, found)).To(BeTrue())
 }
 
+func expectRestoreAfterUpdateWithPause(res *testResource) {
+	if res.UpdateFunc == nil || res.EqualsFunc == nil {
+		ginkgo.Fail("Update or Equals functions are not defined.")
+	}
+
+	original := res.NewResource()
+	Expect(apiClient.Get(ctx, res.GetKey(), original)).ToNot(HaveOccurred())
+
+	pauseSsp()
+
+	changed := original.DeepCopyObject().(controllerutil.Object)
+	res.Update(changed)
+	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
+
+	Consistently(func() (bool, error) {
+		found := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), found)
+		if err != nil {
+			return false, err
+		}
+		return res.Equals(changed, found), nil
+	}, pauseDuration, time.Second).Should(BeTrue())
+
+	unpauseSsp()
+
+	Eventually(func() (bool, error) {
+		found := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), found)
+		if err != nil {
+			return false, err
+		}
+		return res.Equals(original, found), nil
+	}, timeout, time.Second).Should(BeTrue())
+}
+
 func hasOwnerAnnotations(annotations map[string]string) bool {
 	const typeName = "SSP.ssp.kubevirt.io"
 	namespacedName := strategy.GetNamespace() + "/" + strategy.GetName()
@@ -107,6 +145,35 @@ func hasOwnerAnnotations(annotations map[string]string) bool {
 
 	return annotations[handler.TypeAnnotation] == typeName &&
 		annotations[handler.NamespacedNameAnnotation] == namespacedName
+}
+
+func updateSsp(updateFunc func(foundSsp *v1beta1.SSP)) {
+	Eventually(func() error {
+		foundSsp := getSsp()
+		updateFunc(foundSsp)
+		return apiClient.Update(ctx, foundSsp)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+}
+
+func pauseSsp() {
+	updateSsp(func(foundSsp *v1beta1.SSP) {
+		if foundSsp.Annotations == nil {
+			foundSsp.Annotations = map[string]string{}
+		}
+		foundSsp.Annotations[v1beta1.OperatorPausedAnnotation] = "true"
+	})
+	Eventually(func() bool {
+		return getSsp().Status.Paused
+	}, shortTimeout, time.Second).Should(BeTrue())
+}
+
+func unpauseSsp() {
+	updateSsp(func(foundSsp *v1beta1.SSP) {
+		delete(foundSsp.Annotations, v1beta1.OperatorPausedAnnotation)
+	})
+	Eventually(func() bool {
+		return getSsp().Status.Paused
+	}, shortTimeout, time.Second).Should(BeFalse())
 }
 
 func isStatusDeploying(obj *v1beta1.SSP) bool {
