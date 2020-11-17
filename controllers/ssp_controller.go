@@ -22,14 +22,15 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
-	sspopv1 "github.com/kubevirt/kubevirt-ssp-operator/pkg/apis"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,6 +57,14 @@ var sspOperands = []operands.Operand{
 	// TODO - add other operands here
 }
 
+// List of legacy CRDs and their corresponding kinds
+var kvsspCRDs = map[string]string{
+	"kubevirtmetricsaggregations.ssp.kubevirt.io":    "KubevirtMetricsAggregation",
+	"kubevirttemplatevalidators.ssp.kubevirt.io":     "KubevirtTemplateValidator",
+	"kubevirtcommontemplatesbundles.ssp.kubevirt.io": "KubevirtCommonTemplatesBundle",
+	"kubevirtnodelabellerbundles.ssp.kubevirt.io":    "KubevirtNodeLabellerBundle",
+}
+
 // SSPReconciler reconciles a SSP object
 type SSPReconciler struct {
 	client.Client
@@ -69,6 +78,7 @@ type SSPReconciler struct {
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list
 
 func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
@@ -187,7 +197,51 @@ func cleanup(request *common.Request) error {
 	return err
 }
 
+func pauseCRs(sspRequest *common.Request, kind string) error {
+	patch := []byte(`{"metadata":{"annotations":{"kubevirt.io/operator.paused": "true"}}}`)
+	crs := &unstructured.UnstructuredList{}
+	crs.SetKind(kind)
+	crs.SetAPIVersion("ssp.kubevirt.io/v1")
+	err := sspRequest.Client.List(sspRequest.Context, crs)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			sspRequest.Logger.Info(fmt.Sprintf("No %s CR found", kind))
+			return nil
+		} else {
+			sspRequest.Logger.Error(err, fmt.Sprintf("Error listing %s CRs: %s", kind, err))
+			return err
+		}
+	}
+	for _, item := range crs.Items {
+		err = sspRequest.Client.Patch(sspRequest.Context, &item, client.RawPatch(types.MergePatchType, patch))
+		if err != nil {
+			// Patching failed, maybe the CR just got removed? Log an error but keep going.
+			sspRequest.Logger.Error(err, fmt.Sprintf("Error pausing %s from namespace %s: %s",
+				item.GetName(), item.GetNamespace(), err))
+		}
+	}
+
+	return nil
+}
+
 func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, error) {
+	// Get the list of CRDs and check which legacy CRDs are present
+	crds := &unstructured.UnstructuredList{}
+	crds.SetKind("CustomResourceDefinition")
+	crds.SetAPIVersion("apiextensions.k8s.io/v1")
+	err := sspRequest.Client.List(sspRequest.Context, crds)
+	if err == nil {
+		for _, item := range crds.Items {
+			name := item.GetName()
+			for crd, kind := range kvsspCRDs {
+				if crd == name {
+					pauseCRs(sspRequest, kind)
+					break
+				}
+			}
+		}
+	}
+
 	allStatuses := make([]common.ResourceStatus, 0, len(sspOperands))
 	for _, operand := range sspOperands {
 		statuses, err := operand.Reconcile(sspRequest)
@@ -353,7 +407,6 @@ func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTy
 }
 
 func InitScheme(scheme *runtime.Scheme) error {
-	sspopv1.AddToScheme(scheme)
 	for _, operand := range sspOperands {
 		err := operand.AddWatchTypesToScheme(scheme)
 		if err != nil {

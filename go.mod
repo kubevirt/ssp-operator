@@ -17,7 +17,7 @@ require (
 	k8s.io/api v0.18.6
 	k8s.io/apiextensions-apiserver v0.18.6
 	k8s.io/apimachinery v0.18.6
-	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	k8s.io/client-go v8.0.0+incompatible
 	k8s.io/utils v0.0.0-20200821003339-5e75c0163111
 	kubevirt.io/controller-lifecycle-operator-sdk v0.1.1
 	sigs.k8s.io/controller-runtime v0.6.3

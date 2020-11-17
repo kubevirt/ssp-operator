@@ -1,20 +1,15 @@
 package node_labeller
 
 import (
-	"context"
 	"fmt"
 
-	kvsspv1 "github.com/kubevirt/kubevirt-ssp-operator/pkg/apis/kubevirt/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -28,10 +23,10 @@ import (
 
 // +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=use,resourceNames=privileged
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;update;patch
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
 
 type nodeLabeller struct{}
 
@@ -56,7 +51,6 @@ func (nl *nodeLabeller) WatchClusterTypes() []runtime.Object {
 }
 
 func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
-	pauseCRs(request)
 	return common.CollectResourceStatus(request,
 		reconcileClusterRole,
 		reconcileServiceAccount,
@@ -86,32 +80,6 @@ var _ operands.Operand = &nodeLabeller{}
 
 func GetOperand() operands.Operand {
 	return &nodeLabeller{}
-}
-
-func pauseCRs(request *common.Request) {
-	patch := []byte(`{"metadata":{"annotations":{"kubevirt.io/operator.paused": "true"}}}`)
-	var kubevirtNodeLabellerBundles kvsspv1.KubevirtNodeLabellerBundleList
-	err := request.Client.List(context.TODO(), &kubevirtNodeLabellerBundles, &client.ListOptions{})
-	if err != nil {
-		request.Logger.Error(err, fmt.Sprintf("Error listing node labeller bundles: %s", err))
-		return
-	}
-	if err == nil && len(kubevirtNodeLabellerBundles.Items) > 0 {
-		for _, kubevirtNodeLabellerBundle := range kubevirtNodeLabellerBundles.Items {
-			err = request.Client.Patch(context.TODO(), &kvsspv1.KubevirtNodeLabellerBundle{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: kubevirtNodeLabellerBundle.ObjectMeta.Namespace,
-					Name:      kubevirtNodeLabellerBundle.ObjectMeta.Name,
-				},
-			}, client.RawPatch(types.MergePatchType, patch))
-			if err != nil {
-				request.Logger.Error(err, fmt.Sprintf("Error pausing %s from namespace %s: %s",
-					kubevirtNodeLabellerBundle.ObjectMeta.Name,
-					kubevirtNodeLabellerBundle.ObjectMeta.Namespace,
-					err))
-			}
-		}
-	}
 }
 
 func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
