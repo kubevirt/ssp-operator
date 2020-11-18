@@ -11,13 +11,15 @@ import (
 )
 
 var _ = Describe("Metrics", func() {
-	var prometheusRuleRes = &testResource{
-		Name:       metrics.PrometheusRuleName,
-		Namsespace: testNamespace,
-		resource:   &promv1.PrometheusRule{},
-	}
+	var prometheusRuleRes testResource
 
 	BeforeEach(func() {
+		prometheusRuleRes = testResource{
+			Name:       metrics.PrometheusRuleName,
+			Namsespace: strategy.GetNamespace(),
+			resource:   &promv1.PrometheusRule{},
+		}
+
 		waitUntilDeployed()
 	})
 
@@ -26,11 +28,11 @@ var _ = Describe("Metrics", func() {
 	})
 
 	It("should recreate deleted prometheus rule", func() {
-		expectRecreateAfterDelete(prometheusRuleRes)
+		expectRecreateAfterDelete(&prometheusRuleRes)
 	})
 
 	It("[test_id:4666] should restore modified prometheus rule", func() {
-		expectRestoreAfterUpdate(prometheusRuleRes,
+		expectRestoreAfterUpdate(&prometheusRuleRes,
 			func(rule *promv1.PrometheusRule) {
 				rule.Spec.Groups[0].Name = "changed-name"
 				rule.Spec.Groups[0].Rules = []promv1.Rule{}

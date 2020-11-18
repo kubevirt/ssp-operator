@@ -1,11 +1,9 @@
 package tests
 
 import (
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
 )
 
 var _ = Describe("Validation webhook", func() {
@@ -15,7 +13,8 @@ var _ = Describe("Validation webhook", func() {
 
 	Context("creation", func() {
 		It("[test_id:5242] should fail to create a second SSP CR", func() {
-			ssp2 := ssp.DeepCopy()
+			foundSsp := getSsp()
+			ssp2 := foundSsp.DeepCopy()
 			ssp2.Name = "test-ssp2"
 
 			err := apiClient.Create(ctx, ssp2)
@@ -23,24 +22,29 @@ var _ = Describe("Validation webhook", func() {
 				apiClient.Delete(ctx, ssp2)
 				Fail("Second SSP resource created.")
 			}
-			Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace ssp-operator-functests: test-s"))
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
+				"creation failed, an SSP CR already exists in namespace %v: %v",
+				foundSsp.Namespace,
+				foundSsp.Name,
+			)))
 		})
 	})
 
 	Context("update", func() {
+		BeforeEach(func() {
+			strategy.SkipSspUpdateTestsIfNeeded()
+		})
+
+		AfterEach(func() {
+			strategy.RevertToOriginalSspCr()
+		})
+
 		It("should fail to update commonTemplates.namespace", func() {
-			key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
-			foundSsp := &sspv1alpha1.SSP{}
-			Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
-
-			foundSsp.Spec.CommonTemplates.Namespace = commonTemplatesTestNS + "-updated"
+			foundSsp := getSsp()
+			originalNs := foundSsp.Spec.CommonTemplates.Namespace
+			foundSsp.Spec.CommonTemplates.Namespace = originalNs + "-updated"
 			err := apiClient.Update(ctx, foundSsp)
-			if err == nil {
-				foundSsp.Spec.CommonTemplates.Namespace = commonTemplatesTestNS
-				Expect(apiClient.Update(ctx, foundSsp)).ToNot(HaveOccurred())
-				Fail("update succeeded")
-			}
-
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("commonTemplates.namespace cannot be changed."))
 		})
 	})

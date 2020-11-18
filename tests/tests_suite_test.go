@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"os"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -30,81 +31,224 @@ import (
 )
 
 const (
-	// TODO - maybe randomize namespace
-	testNamespace             = "ssp-operator-functests"
-	commonTemplatesTestNS     = "ssp-operator-functests-templates"
-	timeout                   = 8 * time.Minute
-	templateValidatorReplicas = 1
+	envExistingCrName        = "TEST_EXISTING_CR_NAME"
+	envExistingCrNamespace   = "TEST_EXISTING_CR_NAMESPACE"
+	envSkipUpdateSspTests    = "SKIP_UPDATE_SSP_TESTS"
+	envSkipCleanupAfterTests = "SKIP_CLEANUP_AFTER_TESTS"
+
+	timeout = 10 * time.Minute
 )
 
-var (
-	apiClient client.Client
-	ctx       context.Context
-	ssp       *sspv1alpha1.SSP
+type TestSuiteStrategy interface {
+	Init()
+	Cleanup()
 
-	sspListerWatcher cache.ListerWatcher
+	GetName() string
+	GetNamespace() string
+	GetTemplatesNamespace() string
+	GetValidatorReplicas() int
 
-	deploymentTimedOut bool
-)
+	RevertToOriginalSspCr()
+	SkipSspUpdateTestsIfNeeded()
+}
 
-var _ = BeforeSuite(func() {
-	setupApiClient()
+type newSspStrategy struct {
+	ssp *sspv1alpha1.SSP
+}
 
+var _ TestSuiteStrategy = &newSspStrategy{}
+
+func (s *newSspStrategy) Init() {
 	Eventually(func() error {
-		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
+		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}}
 		return apiClient.Create(ctx, namespaceObj)
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
 
 	Eventually(func() error {
-		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}}
+		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}}
 		return apiClient.Create(ctx, namespaceObj)
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
 
-	ssp = &sspv1alpha1.SSP{
+	newSsp := &sspv1alpha1.SSP{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ssp",
-			Namespace: testNamespace,
+			Name:      s.GetName(),
+			Namespace: s.GetNamespace(),
 		},
 		Spec: sspv1alpha1.SSPSpec{
 			TemplateValidator: sspv1alpha1.TemplateValidator{
-				Replicas: templateValidatorReplicas,
+				Replicas: int32(s.GetValidatorReplicas()),
 			},
 			CommonTemplates: sspv1alpha1.CommonTemplates{
-				Namespace: commonTemplatesTestNS,
+				Namespace: s.GetTemplatesNamespace(),
 			},
 			NodeLabeller: sspv1alpha1.NodeLabeller{},
 		},
 	}
 
 	Eventually(func() error {
-		return apiClient.Create(ctx, ssp)
+		return apiClient.Create(ctx, newSsp)
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	s.ssp = newSsp
+}
+
+func (s *newSspStrategy) Cleanup() {
+	if getBoolEnv(envSkipCleanupAfterTests) {
+		return
+	}
+
+	if s.ssp != nil {
+		err := apiClient.Delete(ctx, s.ssp)
+		expectSuccessOrNotFound(err)
+		waitForDeletion(client.ObjectKey{
+			Name:      s.GetName(),
+			Namespace: s.GetNamespace(),
+		}, &sspv1alpha1.SSP{})
+	}
+
+	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}})
+	err2 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}})
+	expectSuccessOrNotFound(err1)
+	expectSuccessOrNotFound(err2)
+
+	waitForDeletion(client.ObjectKey{Name: s.GetNamespace()}, &v1.Namespace{})
+	waitForDeletion(client.ObjectKey{Name: s.GetTemplatesNamespace()}, &v1.Namespace{})
+}
+
+func (s *newSspStrategy) GetName() string {
+	return "test-ssp"
+}
+
+func (s *newSspStrategy) GetNamespace() string {
+	const testNamespace = "ssp-operator-functests"
+	return testNamespace
+}
+
+func (s *newSspStrategy) GetTemplatesNamespace() string {
+	const commonTemplatesTestNS = "ssp-operator-functests-templates"
+	return commonTemplatesTestNS
+}
+
+func (s *newSspStrategy) GetValidatorReplicas() int {
+	const templateValidatorReplicas = 1
+	return templateValidatorReplicas
+}
+
+func (s *newSspStrategy) RevertToOriginalSspCr() {
+	createOrUpdateSsp(s.ssp)
+}
+
+func (s *newSspStrategy) SkipSspUpdateTestsIfNeeded() {
+	// Do not skip SSP update tests in this strategy
+}
+
+type existingSspStrategy struct {
+	Name      string
+	Namespace string
+
+	ssp *sspv1alpha1.SSP
+}
+
+var _ TestSuiteStrategy = &existingSspStrategy{}
+
+func (s *existingSspStrategy) Init() {
+	existingSsp := &sspv1alpha1.SSP{}
+	err := apiClient.Get(ctx, client.ObjectKey{Name: s.Name, Namespace: s.Namespace}, existingSsp)
+	Expect(err).ToNot(HaveOccurred())
+
+	templatesNamespace := existingSsp.Spec.CommonTemplates.Namespace
+	Expect(apiClient.Get(ctx, client.ObjectKey{Name: templatesNamespace}, &v1.Namespace{}))
+
+	s.ssp = existingSsp
+
+	if s.sspModificationDisabled() {
+		return
+	}
+
+	// Try to modify the SSP and check if it is not reverted by another operator
+	defer s.RevertToOriginalSspCr()
+
+	newReplicasCount := existingSsp.Spec.TemplateValidator.Replicas + 1
+	updateSsp(func(foundSsp *sspv1alpha1.SSP) {
+		foundSsp.Spec.TemplateValidator.Replicas = newReplicasCount
+	})
+
+	Consistently(func() int32 {
+		return getSsp().Spec.TemplateValidator.Replicas
+	}, 20*time.Second, time.Second).Should(Equal(newReplicasCount),
+		"The SSP CR was modified outside of the test. "+
+			"If the CR is managed by a controller, consider disabling modification tests by setting "+
+			"SKIP_UPDATE_SSP_TESTS=true")
+}
+
+func (s *existingSspStrategy) Cleanup() {
+	if s.ssp != nil {
+		s.RevertToOriginalSspCr()
+	}
+}
+
+func (s *existingSspStrategy) GetName() string {
+	return s.Name
+}
+
+func (s *existingSspStrategy) GetNamespace() string {
+	return s.Namespace
+}
+
+func (s *existingSspStrategy) GetTemplatesNamespace() string {
+	if s.ssp == nil {
+		panic("Strategy is not initialized")
+	}
+	return s.ssp.Spec.CommonTemplates.Namespace
+}
+
+func (s *existingSspStrategy) GetValidatorReplicas() int {
+	if s.ssp == nil {
+		panic("Strategy is not initialized")
+	}
+	return int(s.ssp.Spec.TemplateValidator.Replicas)
+}
+
+func (s *existingSspStrategy) RevertToOriginalSspCr() {
+	createOrUpdateSsp(s.ssp)
+}
+
+func (s *existingSspStrategy) SkipSspUpdateTestsIfNeeded() {
+	if s.sspModificationDisabled() {
+		Skip("Tests that update SSP CR are disabled", 1)
+	}
+}
+
+func (s *existingSspStrategy) sspModificationDisabled() bool {
+	return getBoolEnv(envSkipUpdateSspTests)
+}
+
+var (
+	apiClient          client.Client
+	ctx                context.Context
+	strategy           TestSuiteStrategy
+	sspListerWatcher   cache.ListerWatcher
+	deploymentTimedOut bool
+)
+
+var _ = BeforeSuite(func() {
+	existingCrName := os.Getenv(envExistingCrName)
+	if existingCrName == "" {
+		strategy = &newSspStrategy{}
+	} else {
+		existingCrNamespace := os.Getenv(envExistingCrNamespace)
+		Expect(existingCrNamespace).ToNot(BeEmpty(), "Existing CR Namespace needs to be defined")
+		strategy = &existingSspStrategy{Name: existingCrName, Namespace: existingCrNamespace}
+	}
+
+	setupApiClient()
+	strategy.Init()
 
 	// Wait to finish deployment before running any tests
 	waitUntilDeployed()
 })
 
 var _ = AfterSuite(func() {
-	if shouldSkipCleanup() {
-		return
-	}
-
-	if ssp != nil {
-		err := apiClient.Delete(ctx, ssp)
-		expectSuccessOrNotFound(err)
-		waitForDeletion(client.ObjectKey{
-			Name:      ssp.Name,
-			Namespace: ssp.Namespace,
-		}, &sspv1alpha1.SSP{})
-	}
-
-	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}})
-	err2 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: commonTemplatesTestNS}})
-	expectSuccessOrNotFound(err1)
-	expectSuccessOrNotFound(err2)
-
-	waitForDeletion(client.ObjectKey{Name: testNamespace}, &v1.Namespace{})
-	waitForDeletion(client.ObjectKey{Name: commonTemplatesTestNS}, &v1.Namespace{})
+	strategy.Cleanup()
 })
 
 func expectSuccessOrNotFound(err error) {
@@ -135,11 +279,11 @@ func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
 	restClient, err := apiutil.RESTClientForGVK(sspGvk, cfg, serializer.NewCodecFactory(scheme.Scheme))
 	Expect(err).ToNot(HaveOccurred())
 
-	return cache.NewListWatchFromClient(restClient, "ssps", testNamespace, fields.Everything())
+	return cache.NewListWatchFromClient(restClient, "ssps", strategy.GetNamespace(), fields.Everything())
 }
 
 func getSsp() *sspv1alpha1.SSP {
-	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
+	key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
 	foundSsp := &sspv1alpha1.SSP{}
 	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
 	return foundSsp
@@ -166,16 +310,46 @@ func waitForDeletion(key client.ObjectKey, obj runtime.Object) {
 	}, timeout, time.Second).Should(BeTrue())
 }
 
-func shouldSkipCleanup() bool {
-	noCleanupEnv := os.Getenv("NO_CLEANUP_AFTER_TESTS")
-	if noCleanupEnv == "" {
+func getBoolEnv(envName string) bool {
+	envVal := os.Getenv(envName)
+	if envVal == "" {
 		return false
 	}
-	noCleanup, err := strconv.ParseBool(noCleanupEnv)
+	val, err := strconv.ParseBool(envVal)
 	if err != nil {
 		return false
 	}
-	return noCleanup
+	return val
+}
+
+func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
+	Eventually(func() error {
+		foundSsp := getSsp()
+		updateFunc(foundSsp)
+		return apiClient.Update(ctx, foundSsp)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+}
+
+func createOrUpdateSsp(ssp *sspv1alpha1.SSP) {
+	key := client.ObjectKey{
+		Name:      ssp.Name,
+		Namespace: ssp.Namespace,
+	}
+	Eventually(func() error {
+		foundSsp := &sspv1alpha1.SSP{}
+		err := apiClient.Get(ctx, key, foundSsp)
+		if err == nil {
+			if reflect.DeepEqual(foundSsp.Spec, ssp.Spec) {
+				return nil
+			}
+			foundSsp.Spec = ssp.Spec
+			return apiClient.Update(ctx, foundSsp)
+		}
+		if errors.IsNotFound(err) {
+			return apiClient.Create(ctx, ssp)
+		}
+		return err
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
 }
 
 func TestFunctional(t *testing.T) {

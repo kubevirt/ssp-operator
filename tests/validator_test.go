@@ -12,7 +12,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
@@ -24,36 +23,43 @@ import (
 
 var _ = Describe("Template validator", func() {
 	var (
-		clusterRoleRes = &testResource{
-			Name:     validator.ClusterRoleName,
-			resource: &rbac.ClusterRole{},
-		}
-		clusterRoleBindingRes = &testResource{
-			Name:     validator.ClusterRoleBindingName,
-			resource: &rbac.ClusterRoleBinding{},
-		}
-		webhookConfigRes = &testResource{
-			Name:     validator.WebhookName,
-			resource: &admission.ValidatingWebhookConfiguration{},
-		}
-		serviceAccountRes = &testResource{
-			Name:       validator.ServiceAccountName,
-			Namsespace: testNamespace,
-			resource:   &core.ServiceAccount{},
-		}
-		serviceRes = &testResource{
-			Name:       validator.ServiceName,
-			Namsespace: testNamespace,
-			resource:   &core.Service{},
-		}
-		deploymentRes = &testResource{
-			Name:       validator.DeploymentName,
-			Namsespace: testNamespace,
-			resource:   &apps.Deployment{},
-		}
+		clusterRoleRes        testResource
+		clusterRoleBindingRes testResource
+		webhookConfigRes      testResource
+		serviceAccountRes     testResource
+		serviceRes            testResource
+		deploymentRes         testResource
 	)
 
 	BeforeEach(func() {
+		clusterRoleRes = testResource{
+			Name:     validator.ClusterRoleName,
+			resource: &rbac.ClusterRole{},
+		}
+		clusterRoleBindingRes = testResource{
+			Name:     validator.ClusterRoleBindingName,
+			resource: &rbac.ClusterRoleBinding{},
+		}
+		webhookConfigRes = testResource{
+			Name:     validator.WebhookName,
+			resource: &admission.ValidatingWebhookConfiguration{},
+		}
+		serviceAccountRes = testResource{
+			Name:       validator.ServiceAccountName,
+			Namsespace: strategy.GetNamespace(),
+			resource:   &core.ServiceAccount{},
+		}
+		serviceRes = testResource{
+			Name:       validator.ServiceName,
+			Namsespace: strategy.GetNamespace(),
+			resource:   &core.Service{},
+		}
+		deploymentRes = testResource{
+			Name:       validator.DeploymentName,
+			Namsespace: strategy.GetNamespace(),
+			resource:   &apps.Deployment{},
+		}
+
 		waitUntilDeployed()
 	})
 
@@ -64,35 +70,35 @@ var _ = Describe("Template validator", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
 		},
-			table.Entry("[test_id:4907] cluster role", clusterRoleRes),
-			table.Entry("[test_id:4908] cluster role binding", clusterRoleBindingRes),
-			table.Entry("[test_id:4909] validating webhook configuration", webhookConfigRes),
+			table.Entry("[test_id:4907] cluster role", &clusterRoleRes),
+			table.Entry("[test_id:4908] cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:4909] validating webhook configuration", &webhookConfigRes),
 		)
 
 		table.DescribeTable("created namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("[test_id:4910] service account", serviceAccountRes),
-			table.Entry("[test_id:4911] service", serviceRes),
-			table.Entry("[test_id:4912] deployment", deploymentRes),
+			table.Entry("[test_id:4910] service account", &serviceAccountRes),
+			table.Entry("[test_id:4911] service", &serviceRes),
+			table.Entry("[test_id:4912] deployment", &deploymentRes),
 		)
 	})
 
 	Context("resource deletion", func() {
 		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:4914] cluster role", clusterRoleRes),
-			table.Entry("[test_id:4916] cluster role binding", clusterRoleBindingRes),
-			table.Entry("[test_id:4918] validating webhook configuration", webhookConfigRes),
-			table.Entry("[test_id:4920] service account", serviceAccountRes),
-			table.Entry("[test_id:4922] service", serviceRes),
-			table.Entry("[test_id:4924] deployment", deploymentRes),
+			table.Entry("[test_id:4914] cluster role", &clusterRoleRes),
+			table.Entry("[test_id:4916] cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:4918] validating webhook configuration", &webhookConfigRes),
+			table.Entry("[test_id:4920] service account", &serviceAccountRes),
+			table.Entry("[test_id:4922] service", &serviceRes),
+			table.Entry("[test_id:4924] deployment", &deploymentRes),
 		)
 	})
 
 	Context("resource change", func() {
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:4915] cluster role", clusterRoleRes,
+			table.Entry("[test_id:4915] cluster role", &clusterRoleRes,
 				func(role *rbac.ClusterRole) {
 					role.Rules[0].Verbs = []string{"watch"}
 				},
@@ -100,7 +106,7 @@ var _ = Describe("Template validator", func() {
 					return reflect.DeepEqual(old.Rules, new.Rules)
 				}),
 
-			table.Entry("[test_id:4917] cluster role binding", clusterRoleBindingRes,
+			table.Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes,
 				func(roleBinding *rbac.ClusterRoleBinding) {
 					roleBinding.Subjects = []rbac.Subject{}
 				},
@@ -109,7 +115,7 @@ var _ = Describe("Template validator", func() {
 						reflect.DeepEqual(old.Subjects, new.Subjects)
 				}),
 
-			table.Entry("[test_id:4919] validating webhook configuration", webhookConfigRes,
+			table.Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes,
 				func(webhook *admission.ValidatingWebhookConfiguration) {
 					webhook.Webhooks[0].Rules = []admission.RuleWithOperations{}
 				},
@@ -117,7 +123,7 @@ var _ = Describe("Template validator", func() {
 					return reflect.DeepEqual(old.Webhooks, new.Webhooks)
 				}),
 
-			table.Entry("[test_id:4923] service", serviceRes,
+			table.Entry("[test_id:4923] service", &serviceRes,
 				func(service *core.Service) {
 					service.Spec.Ports[0].Port = 44331
 					service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
@@ -126,7 +132,7 @@ var _ = Describe("Template validator", func() {
 					return reflect.DeepEqual(old.Spec, new.Spec)
 				}),
 
-			table.Entry("[test_id:4925] deployment", deploymentRes,
+			table.Entry("[test_id:4925] deployment", &deploymentRes,
 				func(deployment *apps.Deployment) {
 					deployment.Spec.Replicas = pointer.Int32Ptr(0)
 				},
@@ -140,9 +146,11 @@ var _ = Describe("Template validator", func() {
 		labels := map[string]string{"kubevirt.io": "virt-template-validator"}
 		Eventually(func() bool {
 			pods := core.PodList{}
-			err := apiClient.List(ctx, &pods, client.InNamespace(testNamespace), client.MatchingLabels(labels))
+			err := apiClient.List(ctx, &pods,
+				client.InNamespace(strategy.GetNamespace()),
+				client.MatchingLabels(labels))
 			Expect(err).ToNot(HaveOccurred())
-			if len(pods.Items) != templateValidatorReplicas {
+			if len(pods.Items) != strategy.GetValidatorReplicas() {
 				return false
 			}
 
@@ -152,7 +160,7 @@ var _ = Describe("Template validator", func() {
 					runningCount++
 				}
 			}
-			return runningCount == templateValidatorReplicas
+			return runningCount == strategy.GetValidatorReplicas()
 		}, timeout, time.Second).Should(BeTrue())
 	})
 
@@ -168,34 +176,16 @@ var _ = Describe("Template validator", func() {
 
 		deployment := &apps.Deployment{}
 		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
-		Expect(deployment.Status.ReadyReplicas).To(Equal(int32(templateValidatorReplicas)))
+		Expect(deployment.Status.ReadyReplicas).To(Equal(int32(strategy.GetValidatorReplicas())))
 	})
 
 	Context("with SSP resource modification", func() {
-		var originalSSP *sspv1alpha1.SSP
-
 		BeforeEach(func() {
-			originalSSP = ssp.DeepCopy()
+			strategy.SkipSspUpdateTestsIfNeeded()
 		})
 
 		AfterEach(func() {
-			key := client.ObjectKey{
-				Name:      originalSSP.Name,
-				Namespace: originalSSP.Namespace,
-			}
-			Eventually(func() error {
-				foundSsp := &sspv1alpha1.SSP{}
-				err := apiClient.Get(ctx, key, foundSsp)
-				if err == nil {
-					foundSsp.Spec = originalSSP.Spec
-					return apiClient.Update(ctx, foundSsp)
-				}
-				if errors.IsNotFound(err) {
-					return apiClient.Create(ctx, originalSSP)
-				}
-				return err
-			}, timeout, time.Second).ShouldNot(HaveOccurred())
-
+			strategy.RevertToOriginalSspCr()
 			waitUntilDeployed()
 		})
 
@@ -301,11 +291,3 @@ var _ = Describe("Template validator", func() {
 		})
 	})
 })
-
-func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
-	Eventually(func() error {
-		foundSsp := getSsp()
-		updateFunc(foundSsp)
-		return apiClient.Update(ctx, foundSsp)
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
-}
