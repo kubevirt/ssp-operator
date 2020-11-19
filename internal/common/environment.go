@@ -46,7 +46,7 @@ func GetNodeLabellerImages() NodeLabellerImages {
 	const kvmCpuNfdDefaultImage = "quay.io/kubevirt/cpu-nfd-plugin"
 
 	const libvirtDefaultVersion = "v0.21.0"
-	const libvirtDefaultImage = "kubevirt/virt-launcher"
+	const libvirtDefaultImage = "docker.io/kubevirt/virt-launcher"
 
 	return NodeLabellerImages{
 		NodeLabeller: envOrDefault(kubevirtNodeLabellerImage, kubevirtNodeLabellerDefaultImage+":"+kubevirtNodeLabellerDefaultVersion),

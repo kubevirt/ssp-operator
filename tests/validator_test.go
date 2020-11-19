@@ -142,11 +142,18 @@ var _ = Describe("Template validator", func() {
 			pods := core.PodList{}
 			err := apiClient.List(ctx, &pods, client.InNamespace(testNamespace), client.MatchingLabels(labels))
 			Expect(err).ToNot(HaveOccurred())
-			if len(pods.Items) != 1 {
+			if len(pods.Items) != templateValidatorReplicas {
 				return false
 			}
-			return pods.Items[0].Status.Phase == core.PodRunning
-		}, timeout, 1*time.Second).Should(BeTrue())
+
+			runningCount := 0
+			for _, pod := range pods.Items {
+				if pod.Status.Phase == core.PodRunning {
+					runningCount++
+				}
+			}
+			return runningCount == templateValidatorReplicas
+		}, timeout, time.Second).Should(BeTrue())
 	})
 
 	It("should set Deployed phase and conditions when validator pods are running", func() {

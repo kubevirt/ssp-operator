@@ -49,7 +49,7 @@ run-functest:
 #functest: generate fmt vet manifests build-functests run-functest
 
 functest: generate fmt vet manifests
-	go test -v -coverprofile cover.out ./tests/...
+	go test -v -coverprofile cover.out -timeout 0 ./tests/...
 
 # Build manager binary
 manager: generate fmt vet
