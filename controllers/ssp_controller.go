@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -48,6 +49,7 @@ import (
 )
 
 const finalizerName = "finalize.ssp.kubevirt.io"
+const defaultOperatorVersion = "devel"
 
 var sspOperands = []operands.Operand{
 	metrics.GetOperand(),
@@ -79,6 +81,10 @@ type SSPReconciler struct {
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtcommontemplatesbundles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtmetricsaggregations,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
 func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
@@ -127,6 +133,11 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	err = preUpdateStatus(sspRequest)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	statuses, err := reconcileOperands(sspRequest)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -146,6 +157,14 @@ func (r *SSPReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
 func (r *SSPReconciler) clearCache() {
 	r.LastSspSpec = ssp.SSPSpec{}
 	r.SubresourceCache = common.VersionCache{}
+}
+
+func getOperatorVersion() string {
+	opVer := os.Getenv("OPERATOR_VERSION")
+	if opVer != "" {
+		return defaultOperatorVersion
+	}
+	return opVer
 }
 
 func isBeingDeleted(object metav1.Object) bool {
@@ -197,51 +216,66 @@ func cleanup(request *common.Request) error {
 	return err
 }
 
-func pauseCRs(sspRequest *common.Request, kind string) error {
-	patch := []byte(`{"metadata":{"annotations":{"kubevirt.io/operator.paused": "true"}}}`)
-	crs := &unstructured.UnstructuredList{}
-	crs.SetKind(kind)
-	crs.SetAPIVersion("ssp.kubevirt.io/v1")
-	err := sspRequest.Client.List(sspRequest.Context, crs)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			sspRequest.Logger.Info(fmt.Sprintf("No %s CR found", kind))
-			return nil
-		} else {
+func pauseCRs(sspRequest *common.Request, kinds []string) error {
+	patch := []byte(`{
+  "metadata":{
+    "annotations":{"kubevirt.io/operator.paused": "true"}
+  }
+}`)
+	for _, kind := range kinds {
+		crs := &unstructured.UnstructuredList{}
+		crs.SetKind(kind)
+		crs.SetAPIVersion("ssp.kubevirt.io/v1")
+		err := sspRequest.Client.List(sspRequest.Context, crs)
+		if err != nil {
 			sspRequest.Logger.Error(err, fmt.Sprintf("Error listing %s CRs: %s", kind, err))
 			return err
 		}
-	}
-	for _, item := range crs.Items {
-		err = sspRequest.Client.Patch(sspRequest.Context, &item, client.RawPatch(types.MergePatchType, patch))
-		if err != nil {
-			// Patching failed, maybe the CR just got removed? Log an error but keep going.
-			sspRequest.Logger.Error(err, fmt.Sprintf("Error pausing %s from namespace %s: %s",
-				item.GetName(), item.GetNamespace(), err))
+		for _, item := range crs.Items {
+			err = sspRequest.Client.Patch(sspRequest.Context, &item, client.RawPatch(types.MergePatchType, patch))
+			if err != nil {
+				// Patching failed, maybe the CR just got removed? Log an error but keep going.
+				sspRequest.Logger.Error(err, fmt.Sprintf("Error pausing %s from namespace %s: %s",
+					item.GetName(), item.GetNamespace(), err))
+			}
 		}
 	}
 
 	return nil
 }
 
-func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, error) {
-	// Get the list of CRDs and check which legacy CRDs are present
+func listExistingCRDKinds(sspRequest *common.Request) []string {
+	// Get the list of all CRDs and build a list of the SSP ones
 	crds := &unstructured.UnstructuredList{}
 	crds.SetKind("CustomResourceDefinition")
 	crds.SetAPIVersion("apiextensions.k8s.io/v1")
 	err := sspRequest.Client.List(sspRequest.Context, crds)
+	foundKinds := make([]string, 0, len(kvsspCRDs))
 	if err == nil {
 		for _, item := range crds.Items {
 			name := item.GetName()
 			for crd, kind := range kvsspCRDs {
 				if crd == name {
-					pauseCRs(sspRequest, kind)
+					foundKinds = append(foundKinds, kind)
 					break
 				}
 			}
 		}
 	}
 
+	return foundKinds
+}
+
+func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, error) {
+	kinds := listExistingCRDKinds(sspRequest)
+
+	// Mark existing CRs as paused
+	err := pauseCRs(sspRequest, kinds)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reconcile all operands
 	allStatuses := make([]common.ResourceStatus, 0, len(sspOperands))
 	for _, operand := range sspOperands {
 		statuses, err := operand.Reconcile(sspRequest)
@@ -250,7 +284,17 @@ func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, err
 		}
 		allStatuses = append(allStatuses, statuses...)
 	}
+
 	return allStatuses, nil
+}
+
+func preUpdateStatus(request *common.Request) error {
+	sspStatus := &request.Instance.Status
+
+	sspStatus.OperatorVersion = getOperatorVersion()
+	sspStatus.TargetVersion = getOperatorVersion()
+
+	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
 func updateStatus(request *common.Request, statuses []common.ResourceStatus) error {
@@ -347,6 +391,7 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 
 	if len(notAvailable) == 0 && len(progressing) == 0 && len(degraded) == 0 {
 		sspStatus.Phase = lifecycleapi.PhaseDeployed
+		sspStatus.ObservedVersion = getOperatorVersion()
 	} else {
 		sspStatus.Phase = lifecycleapi.PhaseDeploying
 	}

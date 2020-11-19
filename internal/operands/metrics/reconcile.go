@@ -12,8 +12,6 @@ import (
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch;create;update;patch;delete
 
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtmetricsaggregations,verbs=get;list;watch;create;update;patch;delete
-
 type metrics struct{}
 
 func (m *metrics) AddWatchTypesToScheme(scheme *runtime.Scheme) error {
