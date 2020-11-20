@@ -9,13 +9,13 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/openshift/api v0.0.0-20200917102736-0a191b5b9bb0 // release-4.5
 	github.com/openshift/custom-resource-status v0.0.0-20200602122900-c002fd1547ca
-	github.com/operator-framework/operator-lib v0.1.0
+	github.com/operator-framework/operator-lib v0.2.0
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v8.0.0+incompatible
 	k8s.io/utils v0.0.0-20200821003339-5e75c0163111
-	kubevirt.io/controller-lifecycle-operator-sdk v0.1.0
-	sigs.k8s.io/controller-runtime v0.6.2
+	kubevirt.io/controller-lifecycle-operator-sdk v0.1.1
+	sigs.k8s.io/controller-runtime v0.6.3
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.18.6

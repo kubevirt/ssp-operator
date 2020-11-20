@@ -38,7 +38,7 @@ func (r *SSP) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1alpha1-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1alpha1,name=vssp.kb.io
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1alpha1-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1alpha1,name=vssp.kb.io,webhookVersions=v1beta1
 
 var _ webhook.Validator = &SSP{}
 
