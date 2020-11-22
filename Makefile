@@ -15,7 +15,9 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/oyahud/kubevirt-ssp-operator:latest
+IMG_REPOSITORY ?= quay.io/kubevirt/ssp-operator
+IMG_TAG ?= latest
+IMG ?= ${IMG_REPOSITORY}:${IMG_TAG}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -154,3 +156,10 @@ bundle: manifests
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+.PHONY: release
+release: container-build container-push bundle
+	mkdir -p _out
+	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml _out/
+	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml _out/
+	$(KUSTOMIZE) build config/default > _out/ssp-operator.yaml
