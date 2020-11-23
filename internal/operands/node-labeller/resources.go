@@ -11,16 +11,18 @@ import (
 
 // Resources from node-labeller
 const (
-	ServiceAccountName       = "kubevirt-node-labeller"
-	DaemonSetName            = "kubevirt-node-labeller"
+	kubevirtNodeLabeller = "kubevirt-node-labeller"
+
+	ServiceAccountName       = kubevirtNodeLabeller
+	DaemonSetName            = kubevirtNodeLabeller
 	ConfigMapName            = "kubevirt-cpu-plugin-configmap"
-	ClusterRoleName          = "kubevirt-node-labeller"
-	ClusterRoleBindingName   = "kubevirt-node-labeller"
+	ClusterRoleName          = kubevirtNodeLabeller
+	ClusterRoleBindingName   = kubevirtNodeLabeller
 	nfdVolumeName            = "nfd-source"
 	nfdVolumeMountPath       = "/etc/kubernetes/node-feature-discovery/source.d/"
 	configMapVolumeName      = "cpu-config"
 	configMapVolumeMountPath = "/config"
-	SecurityContextName      = "kubevirt-node-labeller"
+	SecurityContextName      = kubevirtNodeLabeller
 )
 
 var commonLabels = map[string]string{
@@ -255,7 +257,7 @@ func newDaemonSet(namespace string) *apps.DaemonSet {
 
 func newSecurityContextConstraint(namespace string) *secv1.SecurityContextConstraints {
 	var usersList []string
-	usersList = append(usersList, "system:serviceaccount:"+namespace+":"+SecurityContextName)
+	usersList = append(usersList, "system:serviceaccount:"+namespace+":"+ServiceAccountName)
 	return &secv1.SecurityContextConstraints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: SecurityContextName,

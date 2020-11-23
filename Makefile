@@ -3,7 +3,7 @@ VERSION ?= 0.0.1
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.0.0
+OPERATOR_SDK_VERSION ?= v1.1.0
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -140,11 +140,11 @@ endif
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: manifests
-	operator-sdk generate kustomize manifests -q
+bundle: operator-sdk manifests
+	./operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	operator-sdk bundle validate ./bundle
+	$(KUSTOMIZE) build config/manifests | ./operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	./operator-sdk bundle validate ./bundle
 
 # Build the bundle image.
 .PHONY: bundle-build

@@ -56,7 +56,6 @@ var sspOperands = []operands.Operand{
 	template_validator.GetOperand(),
 	common_templates.GetOperand(),
 	node_labeller.GetOperand(),
-	// TODO - add other operands here
 }
 
 // List of legacy CRDs and their corresponding kinds
