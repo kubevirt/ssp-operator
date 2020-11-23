@@ -5,8 +5,6 @@
 _out/*
 build/_output/*
 bin/*
+csv-generator
 bundle/*
-data/olm-catalog/*
-data/crd/*
-hack/csv-generator
 cover.out

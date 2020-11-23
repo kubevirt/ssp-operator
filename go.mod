@@ -3,6 +3,7 @@ module kubevirt.io/ssp-operator
 go 1.13
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/coreos/prometheus-operator v0.41.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
@@ -10,8 +11,8 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/openshift/api v0.0.0-20200917102736-0a191b5b9bb0 // release-4.5
 	github.com/openshift/custom-resource-status v0.0.0-20200602122900-c002fd1547ca
+	github.com/operator-framework/api v0.3.20
 	github.com/operator-framework/operator-lib v0.2.0
-	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190105193533-81104ffdc4fb
 	github.com/spf13/cobra v1.0.0
 	k8s.io/api v0.18.6
 	k8s.io/apiextensions-apiserver v0.18.6
@@ -22,7 +23,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.6.3
 )
 
-replace (
-	github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a
-	k8s.io/client-go => k8s.io/client-go v0.18.6
-)
+replace k8s.io/client-go => k8s.io/client-go v0.18.6
