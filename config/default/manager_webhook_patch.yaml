@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ssp-operator
+  name: operator
   namespace: kubevirt
 spec:
   template:
@@ -20,4 +20,4 @@ spec:
       - name: cert
         secret:
           defaultMode: 420
-          secretName: webhook-server-cert
+          secretName: ssp-webhook-server-cert

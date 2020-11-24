@@ -1,6 +1,25 @@
+# Value of this field is prepended to the
+# names of all resources, e.g. a deployment named
+# "wordpress" becomes "alices-wordpress".
+# Note that it should also match with the prefix (text before '-') of the namespace
+# field above.
+namePrefix: "ssp-"
+
 resources:
 - manifests.v1beta1.yaml
 - service.yaml
 
 configurations:
 - kustomizeconfig.yaml
+
+patches:
+- target:
+    kind: ValidatingWebhookConfiguration
+    name: validating-webhook-configuration
+  patch: |-
+    - op: replace
+      path: /webhooks/0/clientConfig/service/name
+      value: ssp-webhook-service
+    - op: replace
+      path: /webhooks/0/clientConfig/service/namespace
+      value: kubevirt

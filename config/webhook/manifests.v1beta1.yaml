@@ -10,7 +10,7 @@ webhooks:
     caBundle: Cg==
     service:
       name: webhook-service
-      namespace: kubevirt
+      namespace: system
       path: /validate-ssp-kubevirt-io-v1alpha1-ssp
   failurePolicy: Fail
   name: vssp.kb.io
@@ -24,3 +24,4 @@ webhooks:
     - UPDATE
     resources:
     - ssps
+  sideEffects: None

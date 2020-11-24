@@ -9,15 +9,15 @@ metadata:
           "kind": "SSP",
           "metadata": {
             "name": "ssp-sample",
-            "namespace": "test-kubevirt"
+            "namespace": "kubevirt"
           },
           "spec": {
-            "nodeLabeller": {
-              "placement": {}
+            "commonTemplates": {
+              "namespace": "kubevirt"
             },
+            "nodeLabeller": {},
             "templateValidator": {
-              "placement": {},
-              "replicas": 1
+              "replicas": 2
             }
           }
         }
@@ -26,7 +26,7 @@ metadata:
     categories: Openshift Optional
     containerImage: REPLACE_IMAGE:TAG
     description: Manages KubeVirt addons for Scheduling, Scale, Performance
-    operators.operatorframework.io/builder: operator-sdk-v1.0.0
+    operators.operatorframework.io/builder: operator-sdk-v1.0.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
   name: ssp-operator.v0.0.1
   namespace: kubevirt
@@ -265,46 +265,22 @@ spec:
           - patch
           - update
           - watch
-        - apiGroups:
-          - authentication.k8s.io
-          resources:
-          - tokenreviews
-          verbs:
-          - create
-        - apiGroups:
-          - authorization.k8s.io
-          resources:
-          - subjectaccessreviews
-          verbs:
-          - create
-        serviceAccountName: default
+        serviceAccountName: ssp-operator
       deployments:
-      - name: ssp-operator-update-controller-manager
+      - name: ssp-operator
         spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: controller-manager
+              control-plane: ssp-operator
           strategy: {}
           template:
             metadata:
               labels:
-                control-plane: controller-manager
+                control-plane: ssp-operator
             spec:
               containers:
               - args:
-                - --secure-listen-address=0.0.0.0:8443
-                - --upstream=http://127.0.0.1:8080/
-                - --logtostderr=true
-                - --v=10
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
-                name: kube-rbac-proxy
-                ports:
-                - containerPort: 8443
-                  name: https
-                resources: {}
-              - args:
-                - --metrics-addr=127.0.0.1:8080
                 - --enable-leader-election
                 command:
                 - /manager
@@ -315,7 +291,7 @@ spec:
                 - name: NODE_LABELLER_IMAGE
                 - name: CPU_PLUGIN_IMAGE
                 - name: OPERATOR_VERSION
-                image: quay.io/kubevirt/ssp-operator:latest
+                image: quay.io/oyahud/ssp-operator:latest
                 name: manager
                 ports:
                 - containerPort: 9443
@@ -326,12 +302,13 @@ spec:
                 - mountPath: /tmp/k8s-webhook-server/serving-certs
                   name: cert
                   readOnly: true
+              serviceAccountName: ssp-operator
               terminationGracePeriodSeconds: 10
               volumes:
               - name: cert
                 secret:
                   defaultMode: 420
-                  secretName: webhook-server-cert
+                  secretName: ssp-webhook-server-cert
       permissions:
       - rules:
         - apiGroups:
@@ -361,7 +338,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: default
+        serviceAccountName: ssp-operator
     strategy: deployment
   installModes:
   - supported: true
@@ -400,8 +377,10 @@ spec:
       operated-by: ssp-operator
   version: 0.0.1
   webhookdefinitions:
-  - admissionReviewVersions: null
-    deploymentName: ssp-operator-update-webhook
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    deploymentName: ssp-operator
     failurePolicy: Fail
     generateName: vssp.kb.io
     rules:
@@ -414,6 +393,6 @@ spec:
       - UPDATE
       resources:
       - ssps
-    sideEffects: null
+    sideEffects: None
     type: ValidatingAdmissionWebhook
     webhookPath: /validate-ssp-kubevirt-io-v1alpha1-ssp
