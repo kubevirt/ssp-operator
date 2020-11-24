@@ -36,7 +36,7 @@ all: manager
 
 # Run tests
 unittest: generate fmt vet manifests
-	go test -v -coverprofile cover.out ./api/... ./controllers/... ./internal/...
+	go test -v -coverprofile cover.out ./api/... ./controllers/... ./internal/... ./hack/...
 
 build-util-container:
 	./hack/build-in-container.sh
@@ -94,18 +94,12 @@ operator-sdk:
 	curl -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk-$(OPERATOR_SDK_VERSION)-x86_64-linux-gnu -o operator-sdk
 	chmod 0755 operator-sdk
 
-olm-catalog: manifests
-	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=REPLACE_IMAGE:TAG
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	mkdir -p data/crd
-	mkdir -p data/olm-catalog
-	./hack/update-csv.py bundle/manifests/ssp-operator.clusterserviceversion.yaml > data/olm-catalog/ssp-operator.clusterserviceversion.yaml
-	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	rm -r bundle.Dockerfile
-
 # Build the container image
-container-build: unittest olm-catalog
+container-build: unittest bundle
+	mkdir -p data/olm-catalog
+	mkdir -p data/crd
+	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
+	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
 	docker build . -t ${IMG}
 
 # Push the container image

@@ -31,6 +31,7 @@ spec:
           - name: VIRT_LAUNCHER_IMAGE
           - name: NODE_LABELLER_IMAGE
           - name: CPU_PLUGIN_IMAGE
+          - name: OPERATOR_VERSION
         image: controller:latest
         name: manager
       terminationGracePeriodSeconds: 10

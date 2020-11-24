@@ -15,11 +15,16 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY internal/ internal/
 
+copy hack/csv-generator.go csv-generator.go
+
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
 
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o csv-generator csv-generator.go
+RUN chmod +x csv-generator
+
 FROM registry.access.redhat.com/ubi8/ubi-minimal
-LABEL org.kubevirt.hco.csv-generator.v1="/usr/bin/csv-generator"
+LABEL org.kubevirt.hco.csv-generator.v1="/csv-generator"
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
@@ -27,5 +32,5 @@ COPY data/ data/
 USER 1000
 
 # Copy csv generator
-COPY hack/csv-generator.sh /usr/bin/csv-generator
+COPY --from=builder /workspace/csv-generator .
 ENTRYPOINT ["/manager"]

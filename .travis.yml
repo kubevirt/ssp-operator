@@ -12,7 +12,7 @@ jobs:
 
   - stage: Test csv-generator
     name: Test csv-generator
-    script: make container-build && ./tests/test-csv-generator.sh
+    script: make container-build && ./tests/e2e-test-csv-generator.sh
 
   - stage: Release
     name: Release to GitHub
