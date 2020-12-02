@@ -43,24 +43,40 @@ var _ = Describe("SSP Validation", func() {
 		v1.AddToScheme(scheme)
 
 		client = fake.NewFakeClientWithScheme(scheme, objects...)
+		setClientForWebhook(client)
 	})
 
 	Context("creating SSP CR", func() {
+		const (
+			templatesNamespace = "test-templates-ns"
+		)
+
+		BeforeEach(func() {
+			objects = append(objects, &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: templatesNamespace,
+				},
+			})
+		})
+
+		AfterEach(func() {
+			objects = make([]runtime.Object, 0)
+		})
+
 		Context("when one is already present", func() {
 			BeforeEach(func() {
 				// add an SSP CR to fake client
-				sspExisting := &SSP{
+				objects = append(objects, &SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-ssp",
 						Namespace: "test-ns",
 					},
-					Spec: SSPSpec{},
-				}
-				objects = append(objects, sspExisting)
-			})
-
-			AfterEach(func() {
-				objects = make([]runtime.Object, 0)
+					Spec: SSPSpec{
+						CommonTemplates: CommonTemplates{
+							Namespace: templatesNamespace,
+						},
+					},
+				})
 			})
 
 			It("should be rejected", func() {
@@ -69,13 +85,34 @@ var _ = Describe("SSP Validation", func() {
 						Name:      "test-ssp2",
 						Namespace: "test-ns2",
 					},
-					Spec: SSPSpec{},
+					Spec: SSPSpec{
+						CommonTemplates: CommonTemplates{
+							Namespace: templatesNamespace,
+						},
+					},
 				}
-				ssp.ForceCltValue(client)
 				err := ssp.ValidateCreate()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp"))
 			})
+		})
+
+		It("should fail if template namespace does not exist", func() {
+			const nonexistingNamespace = "nonexisting-namespace"
+			ssp := &SSP{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ssp",
+					Namespace: "test-ns",
+				},
+				Spec: SSPSpec{
+					CommonTemplates: CommonTemplates{
+						Namespace: nonexistingNamespace,
+					},
+				},
+			}
+			err := ssp.ValidateCreate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("creation failed, the configured namespace for common templates does not exist: " + nonexistingNamespace))
 		})
 	})
 

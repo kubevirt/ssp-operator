@@ -346,7 +346,14 @@ func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 			return apiClient.Update(ctx, foundSsp)
 		}
 		if errors.IsNotFound(err) {
-			return apiClient.Create(ctx, ssp)
+			newSsp := &sspv1beta1.SSP{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      ssp.Name,
+					Namespace: ssp.Namespace,
+				},
+				Spec: ssp.Spec,
+			}
+			return apiClient.Create(ctx, newSsp)
 		}
 		return err
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
