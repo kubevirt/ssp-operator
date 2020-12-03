@@ -2,6 +2,7 @@ package common_templates
 
 import (
 	"fmt"
+
 	templatev1 "github.com/openshift/api/template/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"

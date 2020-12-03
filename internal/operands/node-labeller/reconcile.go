@@ -2,6 +2,7 @@ package node_labeller
 
 import (
 	"fmt"
+
 	secv1 "github.com/openshift/api/security/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"

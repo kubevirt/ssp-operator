@@ -3,10 +3,10 @@ package metrics
 import (
 	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // Define RBAC rules needed by this operand:
