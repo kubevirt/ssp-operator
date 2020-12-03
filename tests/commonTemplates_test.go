@@ -15,34 +15,40 @@ import (
 
 var _ = Describe("Common templates", func() {
 	var (
-		viewRole = &testResource{
+		viewRole        testResource
+		viewRoleBinding testResource
+		editClusterRole testResource
+		goldenImageNS   testResource
+		testTemplate    testResource
+	)
+
+	BeforeEach(func() {
+		viewRole = testResource{
 			Name:       commonTemplates.ViewRoleName,
 			Namsespace: commonTemplates.GoldenImagesNSname,
 			resource:   &rbac.Role{},
 		}
-		viewRoleBinding = &testResource{
+		viewRoleBinding = testResource{
 			Name:       commonTemplates.ViewRoleName,
 			Namsespace: commonTemplates.GoldenImagesNSname,
 			resource:   &rbac.RoleBinding{},
 		}
-		editClusterRole = &testResource{
+		editClusterRole = testResource{
 			Name:       commonTemplates.EditClusterRoleName,
 			resource:   &rbac.ClusterRole{},
 			Namsespace: "",
 		}
-		goldenImageNS = &testResource{
+		goldenImageNS = testResource{
 			Name:       commonTemplates.GoldenImagesNSname,
 			resource:   &core.Namespace{},
 			Namsespace: "",
 		}
-		testTemplate = &testResource{
+		testTemplate = testResource{
 			Name:       "centos6-server-large-v0.11.3",
-			Namsespace: commonTemplatesTestNS,
+			Namsespace: strategy.GetTemplatesNamespace(),
 			resource:   &templatev1.Template{},
 		}
-	)
 
-	BeforeEach(func() {
 		waitUntilDeployed()
 	})
 
@@ -53,16 +59,16 @@ var _ = Describe("Common templates", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
 		},
-			table.Entry("[test_id:4584]edit role", editClusterRole),
-			table.Entry("[test_id:4494]golden images namespace", goldenImageNS),
+			table.Entry("[test_id:4584]edit role", &editClusterRole),
+			table.Entry("[test_id:4494]golden images namespace", &goldenImageNS),
 		)
 
 		table.DescribeTable("created namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("[test_id:4777]view role", viewRole),
-			table.Entry("[test_id:4772]view role binding", viewRoleBinding),
+			table.Entry("[test_id:4777]view role", &viewRole),
+			table.Entry("[test_id:4772]view role binding", &viewRoleBinding),
 		)
 
 		It("[test_id:5086]Create common-template in custom NS", func() {
@@ -73,7 +79,7 @@ var _ = Describe("Common templates", func() {
 
 	Context("resource change", func() {
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:5315]edit cluster role", editClusterRole,
+			table.Entry("[test_id:5315]edit cluster role", &editClusterRole,
 				func(role *rbac.ClusterRole) {
 					role.Rules[0].Verbs = []string{"watch"}
 				},
@@ -81,7 +87,7 @@ var _ = Describe("Common templates", func() {
 					return reflect.DeepEqual(old.Rules, new.Rules)
 				}),
 
-			table.Entry("[test_id:5316]view role", viewRole,
+			table.Entry("[test_id:5316]view role", &viewRole,
 				func(roleBinding *rbac.Role) {
 					roleBinding.Rules = []rbac.PolicyRule{}
 				},
@@ -89,14 +95,14 @@ var _ = Describe("Common templates", func() {
 					return reflect.DeepEqual(old.Rules, new.Rules)
 				}),
 
-			table.Entry("[test_id:5317]view role binding", viewRoleBinding,
+			table.Entry("[test_id:5317]view role binding", &viewRoleBinding,
 				func(roleBinding *rbac.RoleBinding) {
 					roleBinding.Subjects = []rbac.Subject{}
 				},
 				func(old *rbac.RoleBinding, new *rbac.RoleBinding) bool {
 					return reflect.DeepEqual(old.Subjects, new.Subjects)
 				}),
-			table.Entry("[test_id:5087]test template", testTemplate,
+			table.Entry("[test_id:5087]test template", &testTemplate,
 				func(t *templatev1.Template) {
 					t.Parameters = []templatev1.Parameter{}
 				},
@@ -109,11 +115,11 @@ var _ = Describe("Common templates", func() {
 
 	Context("resource deletion", func() {
 		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:4773]view role", viewRole),
-			table.Entry("[test_id:4842]view role binding", viewRoleBinding),
-			table.Entry("[test_id:5088]testTemplate in custom NS", testTemplate),
-			table.Entry("[test_id:4771]edit cluster role", editClusterRole),
-			table.Entry("[test_id:4770]golden image NS", goldenImageNS),
+			table.Entry("[test_id:4773]view role", &viewRole),
+			table.Entry("[test_id:4842]view role binding", &viewRoleBinding),
+			table.Entry("[test_id:5088]testTemplate in custom NS", &testTemplate),
+			table.Entry("[test_id:4771]edit cluster role", &editClusterRole),
+			table.Entry("[test_id:4770]golden image NS", &goldenImageNS),
 		)
 	})
 })

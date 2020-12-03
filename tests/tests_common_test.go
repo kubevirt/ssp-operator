@@ -86,7 +86,7 @@ func expectRestoreAfterUpdate(res *testResource, updateFunc interface{}, equalsF
 
 func hasOwnerAnnotations(annotations map[string]string) bool {
 	const typeName = "SSP.ssp.kubevirt.io"
-	namespacedName := ssp.Namespace + "/" + ssp.Name
+	namespacedName := strategy.GetNamespace() + "/" + strategy.GetName()
 
 	if annotations == nil {
 		return false

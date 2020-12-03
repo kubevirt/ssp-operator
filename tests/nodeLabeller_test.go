@@ -16,39 +16,46 @@ import (
 
 var _ = Describe("Node Labeller", func() {
 	var (
-		clusterRoleRes = &testResource{
+		clusterRoleRes               testResource
+		clusterRoleBindingRes        testResource
+		serviceAccountRes            testResource
+		securityContextConstraintRes testResource
+		configMapRes                 testResource
+		daemonSetRes                 testResource
+	)
+
+	BeforeEach(func() {
+		clusterRoleRes = testResource{
 			Name:       nodelabeller.ClusterRoleName,
 			resource:   &rbac.ClusterRole{},
 			Namsespace: "",
 		}
-		clusterRoleBindingRes = &testResource{
+		clusterRoleBindingRes = testResource{
 			Name:       nodelabeller.ClusterRoleBindingName,
 			resource:   &rbac.ClusterRoleBinding{},
 			Namsespace: "",
 		}
-		serviceAccountRes = &testResource{
+		serviceAccountRes = testResource{
 			Name:       nodelabeller.ServiceAccountName,
-			Namsespace: testNamespace,
+			Namsespace: strategy.GetNamespace(),
 			resource:   &core.ServiceAccount{},
 		}
-		securityContextConstraintRes = &testResource{
+		securityContextConstraintRes = testResource{
 			Name:       nodelabeller.SecurityContextName,
 			Namsespace: "",
 			resource:   &secv1.SecurityContextConstraints{},
 		}
-		configMapRes = &testResource{
+		configMapRes = testResource{
 			Name:       nodelabeller.ConfigMapName,
-			Namsespace: testNamespace,
+			Namsespace: strategy.GetNamespace(),
 			resource:   &core.ConfigMap{},
 		}
-		daemonSetRes = &testResource{
+		daemonSetRes = testResource{
 			Name:       nodelabeller.DaemonSetName,
-			Namsespace: testNamespace,
+			Namsespace: strategy.GetNamespace(),
 			resource:   &apps.DaemonSet{},
 		}
-	)
 
-	BeforeEach(func() {
 		waitUntilDeployed()
 	})
 
@@ -59,35 +66,35 @@ var _ = Describe("Node Labeller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
 		},
-			table.Entry("[test_id:5193] cluster role", clusterRoleRes),
-			table.Entry("[test_id:5196] cluster role binding", clusterRoleBindingRes),
-			table.Entry("[test_id:5202] security context constraint", securityContextConstraintRes),
+			table.Entry("[test_id:5193] cluster role", &clusterRoleRes),
+			table.Entry("[test_id:5196] cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:5202] security context constraint", &securityContextConstraintRes),
 		)
 
 		table.DescribeTable("created namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("[test_id:5205] service account", serviceAccountRes),
-			table.Entry("[test_id:5199] configMap", configMapRes),
-			table.Entry("[test_id:5190] daemonSet", daemonSetRes),
+			table.Entry("[test_id:5205] service account", &serviceAccountRes),
+			table.Entry("[test_id:5199] configMap", &configMapRes),
+			table.Entry("[test_id:5190] daemonSet", &daemonSetRes),
 		)
 	})
 
 	Context("resource deletion", func() {
 		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:5194] cluster role", clusterRoleRes),
-			table.Entry("[test_id:5198] cluster role binding", clusterRoleBindingRes),
-			table.Entry("[test_id:5203] security context constraint", securityContextConstraintRes),
-			table.Entry("[test_id:5206] service account", serviceAccountRes),
-			table.Entry("[test_id:5200] configMap", configMapRes),
-			table.Entry("[test_id:5191] daemonSet", daemonSetRes),
+			table.Entry("[test_id:5194] cluster role", &clusterRoleRes),
+			table.Entry("[test_id:5198] cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:5203] security context constraint", &securityContextConstraintRes),
+			table.Entry("[test_id:5206] service account", &serviceAccountRes),
+			table.Entry("[test_id:5200] configMap", &configMapRes),
+			table.Entry("[test_id:5191] daemonSet", &daemonSetRes),
 		)
 	})
 
 	Context("resource change", func() {
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:5195] cluster role", clusterRoleRes,
+			table.Entry("[test_id:5195] cluster role", &clusterRoleRes,
 				func(role *rbac.ClusterRole) {
 					role.Rules[0].Verbs = []string{"watch"}
 				},
@@ -95,7 +102,7 @@ var _ = Describe("Node Labeller", func() {
 					return reflect.DeepEqual(old.Rules, new.Rules)
 				}),
 
-			table.Entry("[test_id:5197] cluster role binding", clusterRoleBindingRes,
+			table.Entry("[test_id:5197] cluster role binding", &clusterRoleBindingRes,
 				func(roleBinding *rbac.ClusterRoleBinding) {
 					roleBinding.Subjects = []rbac.Subject{}
 				},
@@ -103,7 +110,7 @@ var _ = Describe("Node Labeller", func() {
 					return reflect.DeepEqual(old.Subjects, new.Subjects)
 				}),
 
-			table.Entry("[test_id:5204] security context constraint", securityContextConstraintRes,
+			table.Entry("[test_id:5204] security context constraint", &securityContextConstraintRes,
 				func(scc *secv1.SecurityContextConstraints) {
 					scc.Users = []string{"test-user"}
 				},
@@ -111,7 +118,7 @@ var _ = Describe("Node Labeller", func() {
 					return reflect.DeepEqual(old.Users, new.Users)
 				}),
 
-			table.Entry("[test_id:5201] Config Map", configMapRes,
+			table.Entry("[test_id:5201] Config Map", &configMapRes,
 				func(configMap *core.ConfigMap) {
 					configMap.Data = map[string]string{
 						"cpu-plugin-configmap.yaml": "change data",
@@ -121,7 +128,7 @@ var _ = Describe("Node Labeller", func() {
 					return reflect.DeepEqual(old.Data, new.Data)
 				}),
 
-			table.Entry("[test_id:5192] daemonSet", daemonSetRes,
+			table.Entry("[test_id:5192] daemonSet", &daemonSetRes,
 				func(daemonSet *apps.DaemonSet) {
 					daemonSet.Spec.Template.Spec.ServiceAccountName = "test-account"
 				},
