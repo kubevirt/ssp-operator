@@ -117,9 +117,9 @@ func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) 
 }
 
 func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) {
-	nodeLabellerSpec := &request.Instance.Spec.NodeLabeller
+	nodeLabellerSpec := request.Instance.Spec.NodeLabeller
 	daemonSet := newDaemonSet(request.Namespace)
-	addPlacementFields(daemonSet, &nodeLabellerSpec.Placement)
+	addPlacementFields(daemonSet, nodeLabellerSpec.Placement)
 	return common.CreateOrUpdateResourceWithStatus(request,
 		daemonSet,
 		func(newRes, foundRes controllerutil.Object) {
@@ -141,6 +141,10 @@ func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) 
 }
 
 func addPlacementFields(daemonset *apps.DaemonSet, nodePlacement *lifecycleapi.NodePlacement) {
+	if nodePlacement == nil {
+		return
+	}
+
 	podSpec := &daemonset.Spec.Template.Spec
 	podSpec.Affinity = nodePlacement.Affinity
 	podSpec.NodeSelector = nodePlacement.NodeSelector

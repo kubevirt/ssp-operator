@@ -25,6 +25,14 @@ const (
 	SecurityContextName      = kubevirtNodeLabeller
 )
 
+type nodeLabellerImages struct {
+	nodeLabeller string
+	sleeper      string
+	kvmInfoNFD   string
+	cpuNFD       string
+	virtLauncher string
+}
+
 var commonLabels = map[string]string{
 	"app": "kubevirt-node-labeller",
 }
@@ -45,6 +53,16 @@ minCPU: "Penryn"`
 
 var configMapData = map[string]string{
 	"cpu-plugin-configmap.yaml": cpuPluginConfigmap,
+}
+
+func getNodeLabellerImages() nodeLabellerImages {
+	return nodeLabellerImages{
+		nodeLabeller: common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, kubevirtNodeLabellerDefaultImage),
+		sleeper:      common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, kubevirtNodeLabellerDefaultImage),
+		kvmInfoNFD:   common.EnvOrDefault(common.KvmInfoNfdPluginImageKey, kvmInfoNfdDefaultImage),
+		cpuNFD:       common.EnvOrDefault(common.KubevirtCpuNfdPluginImageKey, kvmCpuNfdDefaultImage),
+		virtLauncher: common.EnvOrDefault(common.VirtLauncherImageKey, libvirtDefaultImage),
+	}
 }
 
 func newClusterRole() *rbac.ClusterRole {
@@ -101,7 +119,7 @@ func kubevirtNodeLabellerSleeperContainer() *core.Container {
 	// Build the kubevirtNodeLabellerSleeper Container
 	return &core.Container{
 		Name:    "kubevirt-node-labeller-sleeper",
-		Image:   common.GetNodeLabellerImages().Sleeper,
+		Image:   getNodeLabellerImages().sleeper,
 		Command: []string{"sleep"},
 		Args:    []string{"infinity"},
 	}
@@ -111,7 +129,7 @@ func initContainerKvmInfoNfdPlugin() *core.Container {
 	// Build the KvmInfoNfdPlugin Init Container
 	return &core.Container{
 		Name:            "kvm-info-nfd-plugin",
-		Image:           common.GetNodeLabellerImages().KVMInfoNFD,
+		Image:           getNodeLabellerImages().kvmInfoNFD,
 		Command:         []string{"/bin/sh", "-c"},
 		Args:            []string{"cp /usr/bin/kvm-caps-info-nfd-plugin /etc/kubernetes/node-feature-discovery/source.d/;"},
 		ImagePullPolicy: core.PullAlways,
@@ -126,10 +144,11 @@ func initContainerKvmInfoNfdPlugin() *core.Container {
 
 func initContainerKubevirtCpuNfdPlugin() *core.Container {
 	// Build the KubevirtCpuNfdPlugin Init Container
-	args := []string{"cp /plugin/dest/cpu-nfd-plugin /etc/kubernetes/node-feature-discovery/source.d/;", "cp /config/cpu-plugin-configmap.yaml /etc/kubernetes/node-feature-discovery/source.d/cpu-plugin-configmap.yaml;"}
+	args := []string{"cp /plugin/dest/cpu-nfd-plugin /etc/kubernetes/node-feature-discovery/source.d/;",
+		"cp /config/cpu-plugin-configmap.yaml /etc/kubernetes/node-feature-discovery/source.d/cpu-plugin-configmap.yaml;"}
 	return &core.Container{
 		Name:            "kubevirt-cpu-nfd-plugin",
-		Image:           common.GetNodeLabellerImages().CPUNFD,
+		Image:           getNodeLabellerImages().cpuNFD,
 		Command:         []string{"/bin/sh", "-c"},
 		Args:            args,
 		ImagePullPolicy: core.PullAlways,
@@ -152,7 +171,7 @@ func initContainerLibvirt() *core.Container {
 	var boolVal bool = true
 	return &core.Container{
 		Name:            "libvirt",
-		Image:           common.GetNodeLabellerImages().VirtLauncher,
+		Image:           getNodeLabellerImages().virtLauncher,
 		Command:         []string{"/bin/sh", "-c"},
 		Args:            args,
 		ImagePullPolicy: core.PullAlways,
@@ -174,7 +193,7 @@ func initContainerKubevirtNodeLabeller() *core.Container {
 	var boolVal bool = true
 	return &core.Container{
 		Name:    "kubevirt-node-labeller",
-		Image:   common.GetNodeLabellerImages().NodeLabeller,
+		Image:   getNodeLabellerImages().nodeLabeller,
 		Command: []string{"/bin/sh", "-c"},
 		Args:    args,
 		Env: []core.EnvVar{
