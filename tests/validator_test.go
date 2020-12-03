@@ -17,7 +17,7 @@ import (
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
@@ -220,7 +220,7 @@ var _ = Describe("Template validator", func() {
 
 			waitUntilDeployed()
 
-			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
+			updateSsp(func(foundSsp *sspv1beta1.SSP) {
 				placement := &foundSsp.Spec.TemplateValidator.Placement
 				placement.Affinity = affinity
 				placement.NodeSelector = nodeSelector
@@ -240,7 +240,7 @@ var _ = Describe("Template validator", func() {
 					reflect.DeepEqual(podSpec.Tolerations, tolerations)
 			}, timeout, 1*time.Second).Should(BeTrue())
 
-			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
+			updateSsp(func(foundSsp *sspv1beta1.SSP) {
 				placement := &foundSsp.Spec.TemplateValidator.Placement
 				placement.Affinity = nil
 				placement.NodeSelector = nil
@@ -269,14 +269,14 @@ var _ = Describe("Template validator", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer watch.Stop()
 
-			updateSsp(func(foundSsp *sspv1alpha1.SSP) {
+			updateSsp(func(foundSsp *sspv1beta1.SSP) {
 				foundSsp.Spec.TemplateValidator.Replicas = 2
 			})
 
 			err = WatchChangesUntil(watch, isStatusDeploying, timeout)
 			Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
 
-			err = WatchChangesUntil(watch, func(obj *sspv1alpha1.SSP) bool {
+			err = WatchChangesUntil(watch, func(obj *sspv1beta1.SSP) bool {
 				available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
 				progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
 

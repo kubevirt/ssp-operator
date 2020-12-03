@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
@@ -40,7 +40,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(sspv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(sspv1beta1.AddToScheme(scheme))
 	utilruntime.Must(controllers.InitScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -77,7 +77,7 @@ func main() {
 		os.Exit(1)
 	}
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = (&sspv1alpha1.SSP{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&sspv1beta1.SSP{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "SSP")
 			os.Exit(1)
 		}

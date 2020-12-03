@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	sspv1alpha1 "kubevirt.io/ssp-operator/api/v1alpha1"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 )
 
 const (
@@ -53,7 +53,7 @@ type TestSuiteStrategy interface {
 }
 
 type newSspStrategy struct {
-	ssp *sspv1alpha1.SSP
+	ssp *sspv1beta1.SSP
 }
 
 var _ TestSuiteStrategy = &newSspStrategy{}
@@ -69,19 +69,19 @@ func (s *newSspStrategy) Init() {
 		return apiClient.Create(ctx, namespaceObj)
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
 
-	newSsp := &sspv1alpha1.SSP{
+	newSsp := &sspv1beta1.SSP{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.GetName(),
 			Namespace: s.GetNamespace(),
 		},
-		Spec: sspv1alpha1.SSPSpec{
-			TemplateValidator: sspv1alpha1.TemplateValidator{
+		Spec: sspv1beta1.SSPSpec{
+			TemplateValidator: sspv1beta1.TemplateValidator{
 				Replicas: int32(s.GetValidatorReplicas()),
 			},
-			CommonTemplates: sspv1alpha1.CommonTemplates{
+			CommonTemplates: sspv1beta1.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),
 			},
-			NodeLabeller: sspv1alpha1.NodeLabeller{},
+			NodeLabeller: sspv1beta1.NodeLabeller{},
 		},
 	}
 
@@ -102,7 +102,7 @@ func (s *newSspStrategy) Cleanup() {
 		waitForDeletion(client.ObjectKey{
 			Name:      s.GetName(),
 			Namespace: s.GetNamespace(),
-		}, &sspv1alpha1.SSP{})
+		}, &sspv1beta1.SSP{})
 	}
 
 	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}})
@@ -145,13 +145,13 @@ type existingSspStrategy struct {
 	Name      string
 	Namespace string
 
-	ssp *sspv1alpha1.SSP
+	ssp *sspv1beta1.SSP
 }
 
 var _ TestSuiteStrategy = &existingSspStrategy{}
 
 func (s *existingSspStrategy) Init() {
-	existingSsp := &sspv1alpha1.SSP{}
+	existingSsp := &sspv1beta1.SSP{}
 	err := apiClient.Get(ctx, client.ObjectKey{Name: s.Name, Namespace: s.Namespace}, existingSsp)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -168,7 +168,7 @@ func (s *existingSspStrategy) Init() {
 	defer s.RevertToOriginalSspCr()
 
 	newReplicasCount := existingSsp.Spec.TemplateValidator.Replicas + 1
-	updateSsp(func(foundSsp *sspv1alpha1.SSP) {
+	updateSsp(func(foundSsp *sspv1beta1.SSP) {
 		foundSsp.Spec.TemplateValidator.Replicas = newReplicasCount
 	})
 
@@ -258,7 +258,7 @@ func expectSuccessOrNotFound(err error) {
 }
 
 func setupApiClient() {
-	Expect(sspv1alpha1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
+	Expect(sspv1beta1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
 	Expect(promv1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
 	Expect(templatev1.Install(scheme.Scheme)).ToNot(HaveOccurred())
 	Expect(secv1.Install(scheme.Scheme)).ToNot(HaveOccurred())
@@ -273,7 +273,7 @@ func setupApiClient() {
 }
 
 func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
-	sspGvk, err := apiutil.GVKForObject(&sspv1alpha1.SSP{}, scheme.Scheme)
+	sspGvk, err := apiutil.GVKForObject(&sspv1beta1.SSP{}, scheme.Scheme)
 	Expect(err).ToNot(HaveOccurred())
 
 	restClient, err := apiutil.RESTClientForGVK(sspGvk, cfg, serializer.NewCodecFactory(scheme.Scheme))
@@ -282,9 +282,9 @@ func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
 	return cache.NewListWatchFromClient(restClient, "ssps", strategy.GetNamespace(), fields.Everything())
 }
 
-func getSsp() *sspv1alpha1.SSP {
+func getSsp() *sspv1beta1.SSP {
 	key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
-	foundSsp := &sspv1alpha1.SSP{}
+	foundSsp := &sspv1beta1.SSP{}
 	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
 	return foundSsp
 }
@@ -322,7 +322,7 @@ func getBoolEnv(envName string) bool {
 	return val
 }
 
-func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
+func updateSsp(updateFunc func(foundSsp *sspv1beta1.SSP)) {
 	Eventually(func() error {
 		foundSsp := getSsp()
 		updateFunc(foundSsp)
@@ -330,13 +330,13 @@ func updateSsp(updateFunc func(foundSsp *sspv1alpha1.SSP)) {
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
 }
 
-func createOrUpdateSsp(ssp *sspv1alpha1.SSP) {
+func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 	key := client.ObjectKey{
 		Name:      ssp.Name,
 		Namespace: ssp.Namespace,
 	}
 	Eventually(func() error {
-		foundSsp := &sspv1alpha1.SSP{}
+		foundSsp := &sspv1beta1.SSP{}
 		err := apiClient.Get(ctx, key, foundSsp)
 		if err == nil {
 			if reflect.DeepEqual(foundSsp.Spec, ssp.Spec) {

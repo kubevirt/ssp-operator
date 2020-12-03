@@ -1,11 +1,11 @@
-apiVersion: operators.coreos.com/v1alpha1
+apiVersion: operators.coreos.com/v1beta1
 kind: ClusterServiceVersion
 metadata:
   annotations:
     alm-examples: |-
       [
         {
-          "apiVersion": "ssp.kubevirt.io/v1alpha1",
+          "apiVersion": "ssp.kubevirt.io/v1beta1",
           "kind": "SSP",
           "metadata": {
             "name": "ssp-sample",
@@ -38,7 +38,7 @@ spec:
       displayName: SSP
       kind: SSP
       name: ssps.ssp.kubevirt.io
-      version: v1alpha1
+      version: v1beta1
   description: KubeVirt Schedule, Scale and Performance Operator
   displayName: ssp-operator
   icon:
@@ -408,7 +408,7 @@ spec:
     - apiGroups:
       - ssp.kubevirt.io
       apiVersions:
-      - v1alpha1
+      - v1beta1
       operations:
       - CREATE
       - UPDATE
@@ -416,4 +416,4 @@ spec:
       - ssps
     sideEffects: null
     type: ValidatingAdmissionWebhook
-    webhookPath: /validate-ssp-kubevirt-io-v1alpha1-ssp
+    webhookPath: /validate-ssp-kubevirt-io-v1beta1-ssp
