@@ -1,4 +1,4 @@
-apiVersion: ssp.kubevirt.io/v1alpha1
+apiVersion: ssp.kubevirt.io/v1beta1
 kind: SSP
 metadata:
   name: ssp-sample

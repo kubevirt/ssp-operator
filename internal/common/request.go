@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	ssp "kubevirt.io/ssp-operator/api/v1alpha1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 )
 
 type Request struct {

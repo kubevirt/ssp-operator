@@ -28,7 +28,7 @@ make manager
 ```
 
 ### Changing API
-When the API definition in `api/v1alpha1` is changed,
+When the API definition in `api/v1beta1` is changed,
 the generated code and CRDs need to be regenerated:
 ```shell
 make generate

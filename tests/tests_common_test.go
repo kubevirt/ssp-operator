@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"kubevirt.io/ssp-operator/api/v1alpha1"
+	"kubevirt.io/ssp-operator/api/v1beta1"
 )
 
 type testResource struct {
@@ -96,7 +96,7 @@ func hasOwnerAnnotations(annotations map[string]string) bool {
 		annotations[handler.NamespacedNameAnnotation] == namespacedName
 }
 
-func isStatusDeploying(obj *v1alpha1.SSP) bool {
+func isStatusDeploying(obj *v1beta1.SSP) bool {
 	available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
 	progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
 	degraded := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionDegraded)
@@ -107,7 +107,7 @@ func isStatusDeploying(obj *v1alpha1.SSP) bool {
 		degraded.Status == core.ConditionTrue
 }
 
-func isStatusDeployed(obj *v1alpha1.SSP) bool {
+func isStatusDeployed(obj *v1beta1.SSP) bool {
 	available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
 	progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
 	degraded := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionDegraded)

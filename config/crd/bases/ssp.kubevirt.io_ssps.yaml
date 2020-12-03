@@ -16,7 +16,7 @@ spec:
     singular: ssp
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - name: v1beta1
     schema:
       openAPIV3Schema:
         description: SSP is the Schema for the ssps API
