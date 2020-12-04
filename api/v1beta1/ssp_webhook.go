@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,6 +47,7 @@ var _ webhook.Validator = &SSP{}
 func (r *SSP) ValidateCreate() error {
 	var ssps SSPList
 
+	// Check if no other SSP resources are present in the cluster
 	ssplog.Info("validate create", "name", r.Name)
 	err := clt.List(context.TODO(), &ssps, &client.ListOptions{})
 	if err != nil {
@@ -53,6 +55,14 @@ func (r *SSP) ValidateCreate() error {
 	}
 	if len(ssps.Items) > 0 {
 		return fmt.Errorf("creation failed, an SSP CR already exists in namespace %v: %v", ssps.Items[0].ObjectMeta.Namespace, ssps.Items[0].ObjectMeta.Name)
+	}
+
+	// Check if the common templates namespace exists
+	namespaceName := r.Spec.CommonTemplates.Namespace
+	var namespace v1.Namespace
+	err = clt.Get(context.TODO(), client.ObjectKey{Name: namespaceName}, &namespace)
+	if err != nil {
+		return fmt.Errorf("creation failed, the configured namespace for common templates does not exist: %v", namespaceName)
 	}
 
 	return nil
@@ -78,6 +88,6 @@ func (r *SSP) ValidateDelete() error {
 }
 
 // Forces the value of clt, to be used in unit tests
-func (r *SSP) ForceCltValue(c client.Client) {
+func setClientForWebhook(c client.Client) {
 	clt = c
 }
