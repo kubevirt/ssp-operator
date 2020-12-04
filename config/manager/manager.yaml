@@ -1,12 +1,14 @@
+kind: ServiceAccount
 apiVersion: v1
-kind: Namespace
 metadata:
-  name: kubevirt
+  name: operator
+  labels:
+    control-plane: ssp-operator
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ssp-operator
+  name: operator
   namespace: kubevirt
   labels:
     control-plane: ssp-operator
@@ -20,6 +22,7 @@ spec:
       labels:
         control-plane: ssp-operator
     spec:
+      serviceAccountName: ssp-operator
       containers:
       - command:
         - /manager
