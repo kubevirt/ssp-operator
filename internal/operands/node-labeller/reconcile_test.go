@@ -2,18 +2,16 @@ package node_labeller
 
 import (
 	"context"
-	secv1 "github.com/openshift/api/security/v1"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	secv1 "github.com/openshift/api/security/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -68,44 +66,29 @@ var _ = Describe("Node Labeller operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		expectResourceExists(newClusterRole(), request)
-		expectResourceExists(newServiceAccount(namespace), request)
-		expectResourceExists(newClusterRoleBinding(namespace), request)
-		expectResourceExists(newConfigMap(namespace), request)
-		expectResourceExists(newDaemonSet(namespace), request)
-		expectResourceExists(newSecurityContextConstraint(namespace), request)
+		ExpectResourceExists(newClusterRole(), request)
+		ExpectResourceExists(newServiceAccount(namespace), request)
+		ExpectResourceExists(newClusterRoleBinding(namespace), request)
+		ExpectResourceExists(newConfigMap(namespace), request)
+		ExpectResourceExists(newDaemonSet(namespace), request)
+		ExpectResourceExists(newSecurityContextConstraint(namespace), request)
 	})
 
 	It("should remove cluster resources on cleanup", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		expectResourceExists(newClusterRole(), request)
-		expectResourceExists(newClusterRoleBinding(namespace), request)
-		expectResourceExists(newSecurityContextConstraint(namespace), request)
+		ExpectResourceExists(newClusterRole(), request)
+		ExpectResourceExists(newClusterRoleBinding(namespace), request)
+		ExpectResourceExists(newSecurityContextConstraint(namespace), request)
 
 		Expect(operand.Cleanup(&request)).ToNot(HaveOccurred())
 
-		expectResourceNotExists(newClusterRole(), request)
-		expectResourceNotExists(newClusterRoleBinding(namespace), request)
-		expectResourceNotExists(newSecurityContextConstraint(namespace), request)
+		ExpectResourceNotExists(newClusterRole(), request)
+		ExpectResourceNotExists(newClusterRoleBinding(namespace), request)
+		ExpectResourceNotExists(newSecurityContextConstraint(namespace), request)
 	})
 })
-
-func expectResourceExists(resource controllerutil.Object, request common.Request) {
-	key, err := client.ObjectKeyFromObject(resource)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
-}
-
-func expectResourceNotExists(resource controllerutil.Object, request common.Request) {
-	key, err := client.ObjectKeyFromObject(resource)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = request.Client.Get(request.Context, key, resource)
-	Expect(err).To(HaveOccurred())
-	Expect(errors.IsNotFound(err)).To(BeTrue())
-}
 
 func TestNodeLabeller(t *testing.T) {
 	RegisterFailHandler(Fail)

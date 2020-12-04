@@ -2,17 +2,17 @@ package common_templates
 
 import (
 	"context"
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -74,7 +74,7 @@ var _ = Describe("Common-Templates operand", func() {
 	It("should create golden-images namespace", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		expectResourceExists(newGoldenImagesNS(GoldenImagesNSname), request)
+		ExpectResourceExists(newGoldenImagesNS(GoldenImagesNSname), request)
 	})
 	It("should create common-template resources", func() {
 		_, err := operand.Reconcile(&request)
@@ -82,29 +82,22 @@ var _ = Describe("Common-Templates operand", func() {
 		Expect(templatesBundle).ToNot(BeNil())
 		for _, template := range templatesBundle {
 			template.Namespace = namespace
-			expectResourceExists(&template, request)
+			ExpectResourceExists(&template, request)
 		}
 	})
 	It("should create view role", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		expectResourceExists(newViewRole(GoldenImagesNSname), request)
+		ExpectResourceExists(newViewRole(GoldenImagesNSname), request)
 	})
 	It("should create view role binding", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		expectResourceExists(newViewRoleBinding(GoldenImagesNSname), request)
+		ExpectResourceExists(newViewRoleBinding(GoldenImagesNSname), request)
 	})
 	It("should create view role binding", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		expectResourceExists(newEditRole(), request)
+		ExpectResourceExists(newEditRole(), request)
 	})
 })
-
-//TODO: Move this to common test-util for all the unit tests
-func expectResourceExists(resource controllerutil.Object, request common.Request) {
-	key, err := client.ObjectKeyFromObject(resource)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
-}

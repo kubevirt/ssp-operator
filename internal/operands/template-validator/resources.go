@@ -22,7 +22,7 @@ const (
 	virtTemplateValidator  = "virt-template-validator"
 	ClusterRoleName        = "template:view"
 	ClusterRoleBindingName = "template-validator"
-	WebhookName            = "virt-template-validator"
+	WebhookName            = virtTemplateValidator
 	ServiceAccountName     = "template-validator"
 	ServiceName            = virtTemplateValidator
 	DeploymentName         = virtTemplateValidator

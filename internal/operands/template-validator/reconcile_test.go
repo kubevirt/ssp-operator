@@ -9,13 +9,12 @@ import (
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -76,12 +75,12 @@ var _ = Describe("Template validator operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		expectResourceExists(newClusterRole(namespace), request)
-		expectResourceExists(newServiceAccount(namespace), request)
-		expectResourceExists(newClusterRoleBinding(namespace), request)
-		expectResourceExists(newService(namespace), request)
-		expectResourceExists(newDeployment(namespace, replicas, "test-img"), request)
-		expectResourceExists(newValidatingWebhook(namespace), request)
+		ExpectResourceExists(newClusterRole(namespace), request)
+		ExpectResourceExists(newServiceAccount(namespace), request)
+		ExpectResourceExists(newClusterRoleBinding(namespace), request)
+		ExpectResourceExists(newService(namespace), request)
+		ExpectResourceExists(newDeployment(namespace, replicas, "test-img"), request)
+		ExpectResourceExists(newValidatingWebhook(namespace), request)
 	})
 
 	It("should not update webhook CA bundle", func() {
@@ -130,15 +129,15 @@ var _ = Describe("Template validator operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		expectResourceExists(newClusterRole(namespace), request)
-		expectResourceExists(newClusterRoleBinding(namespace), request)
-		expectResourceExists(newValidatingWebhook(namespace), request)
+		ExpectResourceExists(newClusterRole(namespace), request)
+		ExpectResourceExists(newClusterRoleBinding(namespace), request)
+		ExpectResourceExists(newValidatingWebhook(namespace), request)
 
 		Expect(operand.Cleanup(&request)).ToNot(HaveOccurred())
 
-		expectResourceNotExists(newClusterRole(namespace), request)
-		expectResourceNotExists(newClusterRoleBinding(namespace), request)
-		expectResourceNotExists(newValidatingWebhook(namespace), request)
+		ExpectResourceNotExists(newClusterRole(namespace), request)
+		ExpectResourceNotExists(newClusterRoleBinding(namespace), request)
+		ExpectResourceNotExists(newValidatingWebhook(namespace), request)
 	})
 
 	It("should report status", func() {
@@ -189,21 +188,6 @@ var _ = Describe("Template validator operand", func() {
 		}
 	})
 })
-
-func expectResourceExists(resource controllerutil.Object, request common.Request) {
-	key, err := client.ObjectKeyFromObject(resource)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
-}
-
-func expectResourceNotExists(resource controllerutil.Object, request common.Request) {
-	key, err := client.ObjectKeyFromObject(resource)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = request.Client.Get(request.Context, key, resource)
-	Expect(err).To(HaveOccurred())
-	Expect(errors.IsNotFound(err)).To(BeTrue())
-}
 
 func TestValidator(t *testing.T) {
 	RegisterFailHandler(Fail)
