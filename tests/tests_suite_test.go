@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -76,12 +77,11 @@ func (s *newSspStrategy) Init() {
 		},
 		Spec: sspv1beta1.SSPSpec{
 			TemplateValidator: sspv1beta1.TemplateValidator{
-				Replicas: int32(s.GetValidatorReplicas()),
+				Replicas: pointer.Int32Ptr(int32(s.GetValidatorReplicas())),
 			},
 			CommonTemplates: sspv1beta1.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),
 			},
-			NodeLabeller: sspv1beta1.NodeLabeller{},
 		},
 	}
 
@@ -129,7 +129,7 @@ func (s *newSspStrategy) GetTemplatesNamespace() string {
 }
 
 func (s *newSspStrategy) GetValidatorReplicas() int {
-	const templateValidatorReplicas = 1
+	const templateValidatorReplicas = 2
 	return templateValidatorReplicas
 }
 
@@ -167,13 +167,13 @@ func (s *existingSspStrategy) Init() {
 	// Try to modify the SSP and check if it is not reverted by another operator
 	defer s.RevertToOriginalSspCr()
 
-	newReplicasCount := existingSsp.Spec.TemplateValidator.Replicas + 1
+	newReplicasCount := *existingSsp.Spec.TemplateValidator.Replicas + 1
 	updateSsp(func(foundSsp *sspv1beta1.SSP) {
-		foundSsp.Spec.TemplateValidator.Replicas = newReplicasCount
+		foundSsp.Spec.TemplateValidator.Replicas = &newReplicasCount
 	})
 
 	Consistently(func() int32 {
-		return getSsp().Spec.TemplateValidator.Replicas
+		return *getSsp().Spec.TemplateValidator.Replicas
 	}, 20*time.Second, time.Second).Should(Equal(newReplicasCount),
 		"The SSP CR was modified outside of the test. "+
 			"If the CR is managed by a controller, consider disabling modification tests by setting "+
@@ -205,7 +205,7 @@ func (s *existingSspStrategy) GetValidatorReplicas() int {
 	if s.ssp == nil {
 		panic("Strategy is not initialized")
 	}
-	return int(s.ssp.Spec.TemplateValidator.Replicas)
+	return int(*s.ssp.Spec.TemplateValidator.Replicas)
 }
 
 func (s *existingSspStrategy) RevertToOriginalSspCr() {

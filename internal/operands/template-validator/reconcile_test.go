@@ -12,6 +12,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/pointer"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -26,9 +27,9 @@ var log = logf.Log.WithName("validator_operand")
 
 var _ = Describe("Template validator operand", func() {
 	const (
-		namespace = "kubevirt"
-		name      = "test-ssp"
-		replicas  = 2
+		namespace       = "kubevirt"
+		name            = "test-ssp"
+		replicas  int32 = 2
 	)
 
 	var (
@@ -62,7 +63,7 @@ var _ = Describe("Template validator operand", func() {
 				},
 				Spec: ssp.SSPSpec{
 					TemplateValidator: ssp.TemplateValidator{
-						Replicas: replicas,
+						Replicas: pointer.Int32Ptr(replicas),
 					},
 				},
 			},
@@ -151,6 +152,16 @@ var _ = Describe("Template validator operand", func() {
 			Expect(status.Degraded).ToNot(BeNil())
 		}
 
+		// Set status for deployment
+		key, _ := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
+		updateDeployment(key, &request, func(deployment *apps.Deployment) {
+			deployment.Status.Replicas = replicas
+			deployment.Status.ReadyReplicas = 0
+			deployment.Status.AvailableReplicas = 0
+			deployment.Status.UpdatedReplicas = 0
+			deployment.Status.UnavailableReplicas = replicas
+		})
+
 		statuses, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -167,15 +178,13 @@ var _ = Describe("Template validator operand", func() {
 			}
 		}
 
-		key, err := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
-		deployment := &apps.Deployment{}
-		Expect(request.Client.Get(request.Context, key, deployment)).ToNot(HaveOccurred())
-
-		deployment.Status.Replicas = replicas
-		deployment.Status.ReadyReplicas = replicas
-		deployment.Status.AvailableReplicas = replicas
-		deployment.Status.UpdatedReplicas = replicas
-		Expect(request.Client.Update(request.Context, deployment)).ToNot(HaveOccurred())
+		updateDeployment(key, &request, func(deployment *apps.Deployment) {
+			deployment.Status.Replicas = replicas
+			deployment.Status.ReadyReplicas = replicas
+			deployment.Status.AvailableReplicas = replicas
+			deployment.Status.UpdatedReplicas = replicas
+			deployment.Status.UnavailableReplicas = 0
+		})
 
 		statuses, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -188,6 +197,13 @@ var _ = Describe("Template validator operand", func() {
 		}
 	})
 })
+
+func updateDeployment(key client.ObjectKey, request *common.Request, updateFunc func(deployment *apps.Deployment)) {
+	deployment := &apps.Deployment{}
+	Expect(request.Client.Get(request.Context, key, deployment)).ToNot(HaveOccurred())
+	updateFunc(deployment)
+	Expect(request.Client.Update(request.Context, deployment)).ToNot(HaveOccurred())
+}
 
 func TestValidator(t *testing.T) {
 	RegisterFailHandler(Fail)

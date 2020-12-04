@@ -29,6 +29,8 @@ var _ = Describe("Template validator", func() {
 		serviceAccountRes     testResource
 		serviceRes            testResource
 		deploymentRes         testResource
+
+		replicas int32 = 2
 	)
 
 	BeforeEach(func() {
@@ -150,9 +152,6 @@ var _ = Describe("Template validator", func() {
 				client.InNamespace(strategy.GetNamespace()),
 				client.MatchingLabels(labels))
 			Expect(err).ToNot(HaveOccurred())
-			if len(pods.Items) != strategy.GetValidatorReplicas() {
-				return false
-			}
 
 			runningCount := 0
 			for _, pod := range pods.Items {
@@ -221,10 +220,11 @@ var _ = Describe("Template validator", func() {
 			waitUntilDeployed()
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				placement := &foundSsp.Spec.TemplateValidator.Placement
-				placement.Affinity = affinity
-				placement.NodeSelector = nodeSelector
-				placement.Tolerations = tolerations
+				foundSsp.Spec.TemplateValidator.Placement = &lifecycleapi.NodePlacement{
+					Affinity:     affinity,
+					NodeSelector: nodeSelector,
+					Tolerations:  tolerations,
+				}
 			})
 
 			waitUntilDeployed()
@@ -241,7 +241,7 @@ var _ = Describe("Template validator", func() {
 			}, timeout, 1*time.Second).Should(BeTrue())
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				placement := &foundSsp.Spec.TemplateValidator.Placement
+				placement := foundSsp.Spec.TemplateValidator.Placement
 				placement.Affinity = nil
 				placement.NodeSelector = nil
 				placement.Tolerations = nil
@@ -270,7 +270,7 @@ var _ = Describe("Template validator", func() {
 			defer watch.Stop()
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator.Replicas = 2
+				foundSsp.Spec.TemplateValidator.Replicas = pointer.Int32Ptr(replicas)
 			})
 
 			err = WatchChangesUntil(watch, isStatusDeploying, timeout)

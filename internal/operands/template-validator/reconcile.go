@@ -119,10 +119,10 @@ func reconcileService(request *common.Request) (common.ResourceStatus, error) {
 }
 
 func reconcileDeployment(request *common.Request) (common.ResourceStatus, error) {
-	validatorSpec := &request.Instance.Spec.TemplateValidator
-	image := common.GetTemplateValidatorImage()
-	deployment := newDeployment(request.Namespace, validatorSpec.Replicas, image)
-	addPlacementFields(deployment, &validatorSpec.Placement)
+	validatorSpec := request.Instance.Spec.TemplateValidator
+	image := getTemplateValidatorImage()
+	deployment := newDeployment(request.Namespace, *validatorSpec.Replicas, image)
+	addPlacementFields(deployment, validatorSpec.Placement)
 	return common.CreateOrUpdateResourceWithStatus(request,
 		deployment,
 		func(newRes, foundRes controllerutil.Object) {
@@ -131,14 +131,14 @@ func reconcileDeployment(request *common.Request) (common.ResourceStatus, error)
 		func(res controllerutil.Object) common.ResourceStatus {
 			dep := res.(*apps.Deployment)
 			status := common.ResourceStatus{}
-			if validatorSpec.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
-				msg := fmt.Sprintf("No validator pods are running. Expected: %d", validatorSpec.Replicas)
+			if dep.Status.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
+				msg := fmt.Sprintf("No validator pods are running. Expected: %d", dep.Status.Replicas)
 				status.NotAvailable = &msg
 			}
-			if dep.Status.AvailableReplicas != validatorSpec.Replicas {
+			if dep.Status.UnavailableReplicas != 0 {
 				msg := fmt.Sprintf(
 					"Not all template validator pods are running. Expected: %d, running: %d",
-					validatorSpec.Replicas,
+					dep.Status.Replicas,
 					dep.Status.AvailableReplicas,
 				)
 				status.Progressing = &msg
@@ -149,6 +149,10 @@ func reconcileDeployment(request *common.Request) (common.ResourceStatus, error)
 }
 
 func addPlacementFields(deployment *apps.Deployment, nodePlacement *lifecycleapi.NodePlacement) {
+	if nodePlacement == nil {
+		return
+	}
+
 	podSpec := &deployment.Spec.Template.Spec
 	podSpec.Affinity = nodePlacement.Affinity
 	podSpec.NodeSelector = nodePlacement.NodeSelector

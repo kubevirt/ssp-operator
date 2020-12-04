@@ -9,6 +9,8 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 // Resources from kubevirt-template-validator version v0.7.0
@@ -30,6 +32,10 @@ const (
 
 var commonLabels = map[string]string{
 	kubevirtIo: virtTemplateValidator,
+}
+
+func getTemplateValidatorImage() string {
+	return common.EnvOrDefault(common.TemplateValidatorImageKey, defaultTemplateValidatorImage)
 }
 
 func newClusterRole(namespace string) *rbac.ClusterRole {
