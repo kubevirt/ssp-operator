@@ -9,15 +9,14 @@ metadata:
           "kind": "SSP",
           "metadata": {
             "name": "ssp-sample",
-            "namespace": "test-kubevirt"
+            "namespace": "kubevirt"
           },
           "spec": {
-            "nodeLabeller": {
-              "placement": {}
+            "commonTemplates": {
+              "namespace": "kubevirt"
             },
             "templateValidator": {
-              "placement": {},
-              "replicas": 1
+              "replicas": 2
             }
           }
         }
@@ -319,19 +318,7 @@ spec:
           - patch
           - update
           - watch
-        - apiGroups:
-          - authentication.k8s.io
-          resources:
-          - tokenreviews
-          verbs:
-          - create
-        - apiGroups:
-          - authorization.k8s.io
-          resources:
-          - subjectaccessreviews
-          verbs:
-          - create
-        serviceAccountName: default
+        serviceAccountName: ssp-operator
       deployments:
       - name: ssp-operator
         spec:
@@ -368,12 +355,13 @@ spec:
                 - mountPath: /tmp/k8s-webhook-server/serving-certs
                   name: cert
                   readOnly: true
+              serviceAccountName: ssp-operator
               terminationGracePeriodSeconds: 10
               volumes:
               - name: cert
                 secret:
                   defaultMode: 420
-                  secretName: webhook-server-cert
+                  secretName: ssp-webhook-server-cert
       permissions:
       - rules:
         - apiGroups:
@@ -403,7 +391,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: default
+        serviceAccountName: ssp-operator
     strategy: deployment
   installModes:
   - supported: true

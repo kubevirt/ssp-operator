@@ -6,3 +6,5 @@ metadata:
 spec:
   commonTemplates:
     namespace: kubevirt
+  templateValidator:
+    replicas: 2

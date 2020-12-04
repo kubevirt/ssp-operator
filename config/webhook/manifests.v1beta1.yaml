@@ -24,3 +24,4 @@ webhooks:
     - UPDATE
     resources:
     - ssps
+  sideEffects: None
