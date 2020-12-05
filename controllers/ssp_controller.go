@@ -34,9 +34,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
@@ -408,10 +411,34 @@ func prefixResourceTypeAndName(message string, resource controllerutil.Object) s
 func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.SubresourceCache = common.VersionCache{}
 
-	builder := ctrl.NewControllerManagedBy(mgr).For(&ssp.SSP{})
+	builder := ctrl.NewControllerManagedBy(mgr)
+	watchSspResource(builder)
 	watchClusterResources(builder)
 	watchNamespacedResources(builder)
 	return builder.Complete(r)
+}
+
+func watchSspResource(bldr *ctrl.Builder) {
+	// Predicate is used to only reconcile on these changes to the SSP resource:
+	// - any change in spec - checked with generation
+	// - deletion timestamp - to trigger cleanup when SSP CR is being deleted
+	// - labels or annotations - to detect if reconciliation should be paused or unpaused
+	// - finalizers - to trigger reconciliation after initialization
+	//
+	// Importantly, the reconciliation is not triggered on status change.
+	// Otherwise it would cause a reconciliation loop.
+	pred := predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
+		oldMeta := event.MetaOld
+		newMeta := event.MetaNew
+		return newMeta.GetGeneration() != oldMeta.GetGeneration() ||
+			!newMeta.GetDeletionTimestamp().Equal(oldMeta.GetDeletionTimestamp()) ||
+			!reflect.DeepEqual(newMeta.GetLabels(), oldMeta.GetLabels()) ||
+			!reflect.DeepEqual(newMeta.GetAnnotations(), oldMeta.GetAnnotations()) ||
+			!reflect.DeepEqual(newMeta.GetFinalizers(), oldMeta.GetFinalizers())
+
+	}}
+
+	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
 func watchNamespacedResources(builder *ctrl.Builder) {
