@@ -2,17 +2,21 @@ package common_templates
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+	"sync"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	"path/filepath"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sync"
 )
 
 var (
@@ -61,6 +65,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceS
 		reconcileViewRole,
 		reconcileViewRoleBinding,
 		reconcileEditRole,
+		updateOldTemplates,
 	}
 	funcs = append(funcs, reconcileTemplatesFuncs(request)...)
 	return common.CollectResourceStatus(request, funcs...)
@@ -122,6 +127,57 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 			foundRole := foundRes.(*rbac.ClusterRole)
 			foundRole.Rules = newRole.Rules
 		})
+}
+func updateOldTemplates(request *common.Request) (common.ResourceStatus, error) {
+	baseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+	if err != nil {
+		request.Logger.Error(err, fmt.Sprintf("Error during preparing of type label requirement, %v", err))
+		panic(err)
+	}
+	var versionRequirement *labels.Requirement
+	versionRequirement, err = labels.NewRequirement("template.kubevirt.io/version", selection.NotEquals, []string{Version})
+	if err != nil {
+		request.Logger.Error(err, fmt.Sprintf("Error during preparing of version label requirement, %v", err))
+		panic(err)
+	}
+
+	labelsSelector := labels.NewSelector().Add(*baseRequirement, *versionRequirement)
+
+	opts := client.ListOptions{
+		LabelSelector: labelsSelector,
+	}
+
+	var oldTemplates templatev1.TemplateList
+	err = request.Client.List(request.Context, &oldTemplates, &opts)
+	if err != nil {
+		request.Logger.Error(err, fmt.Sprintf("Error during listing templates, %v", err))
+		return common.ResourceStatus{}, err
+	}
+
+	updatedTemplates := make([]templatev1.Template, 0)
+	for _, template := range oldTemplates.Items {
+		updated := false
+		for key := range template.Labels {
+			if strings.HasPrefix(key, "os.template.kubevirt.io/") || strings.HasPrefix(key, "flavor.template.kubevirt.io/") || strings.HasPrefix(key, "workload.template.kubevirt.io/") {
+				updated = true
+				delete(template.Labels, key)
+			}
+		}
+		if updated {
+			updatedTemplates = append(updatedTemplates, template)
+		}
+	}
+	oldTemplates.Items = updatedTemplates
+
+	for _, template := range oldTemplates.Items {
+		err = request.Client.Update(request.Context, &template)
+		if err != nil {
+			request.Logger.Error(err, fmt.Sprintf("Error during updating of templates, %v", err))
+			return common.ResourceStatus{}, err
+		}
+	}
+
+	return common.ResourceStatus{}, nil
 }
 
 func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {

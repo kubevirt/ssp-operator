@@ -2,11 +2,13 @@ package common_templates
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	templatev1 "github.com/openshift/api/template/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
@@ -23,16 +25,17 @@ var (
 	operand = GetOperand()
 )
 
+const (
+	namespace = "kubevirt"
+	name      = "test-ssp"
+)
+
 func TestTemplates(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Common Templates Suite")
 }
 
 var _ = Describe("Common-Templates operand", func() {
-	const (
-		namespace = "kubevirt"
-		name      = "test-ssp"
-	)
 
 	var request common.Request
 
@@ -53,11 +56,11 @@ var _ = Describe("Common-Templates operand", func() {
 			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
-				TypeMeta: meta.TypeMeta{
+				TypeMeta: metav1.TypeMeta{
 					Kind:       "SSP",
 					APIVersion: ssp.GroupVersion.String(),
 				},
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
@@ -100,4 +103,62 @@ var _ = Describe("Common-Templates operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 		ExpectResourceExists(newEditRole(), request)
 	})
+
+	It("should remove labels only from old templates", func() {
+		oldVersion := "v0.0.1"
+		err := request.Client.Create(request.Context, getTestTemplate(oldVersion, "1", namespace))
+		Expect(err).ToNot(HaveOccurred())
+		err = request.Client.Create(request.Context, getTestTemplate(oldVersion, "2", "test-namespace"))
+		Expect(err).ToNot(HaveOccurred())
+		err = request.Client.Create(request.Context, getTestTemplate(Version, "3", namespace))
+		Expect(err).ToNot(HaveOccurred())
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		var oldTemplates templatev1.TemplateList
+		request.Client.List(request.Context, &oldTemplates)
+		for _, template := range oldTemplates.Items {
+			isTestTemplate := false
+			if _, ok := template.Labels["test"]; ok {
+				isTestTemplate = true
+			}
+			if value, ok := template.Labels["template.kubevirt.io/version"]; ok && value == oldVersion && isTestTemplate {
+				Expect(template.Labels["os.template.kubevirt.io/some-os"]).To(Equal(""), "os.template.kubevirt.io should be empty")
+				Expect(template.Labels["flavor.template.kubevirt.io/test"]).To(Equal(""), "flavor.template.kubevirt.io should be empty")
+				Expect(template.Labels["workload.template.kubevirt.io/server"]).To(Equal(""), "workload.template.kubevirt.io should be empty")
+				Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
+				Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(oldVersion), "template.kubevirt.io/version should equal "+oldVersion)
+			}
+
+			if value, ok := template.Labels["template.kubevirt.io/version"]; ok && value == Version && isTestTemplate {
+				fmt.Printf("%#v\n", template)
+				Expect(template.Labels["os.template.kubevirt.io/some-os"]).To(Equal("true"), "os.template.kubevirt.io should not be empty")
+				Expect(template.Labels["flavor.template.kubevirt.io/test"]).To(Equal("true"), "flavor.template.kubevirt.io should not be empty")
+				Expect(template.Labels["workload.template.kubevirt.io/server"]).To(Equal("true"), "workload.template.kubevirt.io should not be empty")
+				Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
+				Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(Version), "template.kubevirt.io/version should equal "+Version)
+			}
+		}
+	})
 })
+
+func getTestTemplate(version, indexStr string, namespace string) *templatev1.Template {
+	return &templatev1.Template{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Template",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-template" + indexStr,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"os.template.kubevirt.io/some-os":      "true",
+				"flavor.template.kubevirt.io/test":     "true",
+				"template.kubevirt.io/type":            "base",
+				"template.kubevirt.io/version":         version,
+				"workload.template.kubevirt.io/server": "true",
+			},
+		},
+	}
+}

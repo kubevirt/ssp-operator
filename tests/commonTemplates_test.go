@@ -9,6 +9,10 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
@@ -20,6 +24,7 @@ var _ = Describe("Common templates", func() {
 		editClusterRole testResource
 		goldenImageNS   testResource
 		testTemplate    testResource
+		oldVersion      = "v0.0.1"
 	)
 
 	BeforeEach(func() {
@@ -122,4 +127,66 @@ var _ = Describe("Common templates", func() {
 			table.Entry("[test_id:4770]golden image NS", &goldenImageNS),
 		)
 	})
+
+	FContext("update old templates", func() {
+		It("should remove labels from old templates", func() {
+			baseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+			Expect(err).To(BeNil())
+
+			var versionRequirement *labels.Requirement
+			versionRequirement, err = labels.NewRequirement("template.kubevirt.io/version", selection.NotEquals, []string{commonTemplates.Version})
+			Expect(err).To(BeNil())
+
+			labelsSelector := labels.NewSelector().Add(*baseRequirement, *versionRequirement)
+
+			opts := client.ListOptions{
+				LabelSelector: labelsSelector,
+			}
+
+			var oldTemplates templatev1.TemplateList
+
+			err = apiClient.List(ctx, &oldTemplates, &opts)
+			Expect(err).To(BeNil())
+
+			for _, template := range oldTemplates.Items {
+				if value, ok := template.Labels["template.kubevirt.io/version"]; ok && value == oldVersion {
+					Expect(template.Labels["os.template.kubevirt.io/some-os"]).To(Equal(""), "os.template.kubevirt.io should be empty")
+					Expect(template.Labels["flavor.template.kubevirt.io/test"]).To(Equal(""), "flavor.template.kubevirt.io should be empty")
+					Expect(template.Labels["workload.template.kubevirt.io/server"]).To(Equal(""), "workload.template.kubevirt.io should be empty")
+					Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
+					Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(oldVersion), "template.kubevirt.io/version should equal "+oldVersion)
+
+				}
+				if value, ok := template.Labels["template.kubevirt.io/version"]; ok && value == commonTemplates.Version {
+					Expect(template.Labels["os.template.kubevirt.io/some-os"]).To(Equal("true"), "os.template.kubevirt.io should not be empty")
+					Expect(template.Labels["flavor.template.kubevirt.io/test"]).To(Equal("true"), "flavor.template.kubevirt.io should not be empty")
+					Expect(template.Labels["workload.template.kubevirt.io/server"]).To(Equal("true"), "workload.template.kubevirt.io should not be empty")
+					Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
+					Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(commonTemplates.Version), "template.kubevirt.io/version should equal "+commonTemplates.Version)
+				}
+
+			}
+		})
+
+	})
 })
+
+func getTestTemplate(indexStr, namespace, version string) *templatev1.Template {
+	return &templatev1.Template{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Template",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-template-" + indexStr,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"os.template.kubevirt.io/some-os":      "true",
+				"flavor.template.kubevirt.io/test":     "true",
+				"template.kubevirt.io/type":            "base",
+				"workload.template.kubevirt.io/server": "true",
+				"template.kubevirt.io/version":         version,
+			},
+		},
+	}
+}

@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
 const (
@@ -88,6 +89,19 @@ func (s *newSspStrategy) Init() {
 	Eventually(func() error {
 		return apiClient.Create(ctx, newSsp)
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+	Eventually(func() error {
+		return apiClient.Create(ctx, getTestTemplate("3", strategy.GetTemplatesNamespace(), commonTemplates.Version))
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+	Eventually(func() error {
+		return apiClient.Create(ctx, getTestTemplate("1", strategy.GetTemplatesNamespace(), "v0.0.1"))
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+	Eventually(func() error {
+		return apiClient.Create(ctx, getTestTemplate("2", strategy.GetTemplatesNamespace(), "v0.0.1"))
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+
 	s.ssp = newSsp
 }
 
@@ -171,6 +185,18 @@ func (s *existingSspStrategy) Init() {
 	updateSsp(func(foundSsp *sspv1beta1.SSP) {
 		foundSsp.Spec.TemplateValidator.Replicas = &newReplicasCount
 	})
+
+	Eventually(func() error {
+		return apiClient.Create(ctx, getTestTemplate("1", strategy.GetTemplatesNamespace(), "v0.0.1"))
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+	Eventually(func() error {
+		return apiClient.Create(ctx, getTestTemplate("2", strategy.GetTemplatesNamespace(), "v0.0.1"))
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+
+	Eventually(func() error {
+		return apiClient.Create(ctx, getTestTemplate("3", strategy.GetTemplatesNamespace(), commonTemplates.Version))
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
 
 	Consistently(func() int32 {
 		return *getSsp().Spec.TemplateValidator.Replicas
