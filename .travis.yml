@@ -6,10 +6,6 @@ services:
   - docker
 jobs:
   include:
-  - stage: Unit tests
-    name: Unit tests
-    script: make unittest
-
   - stage: Test csv-generator
     name: Test csv-generator
     script: make container-build && ./tests/e2e-test-csv-generator.sh
