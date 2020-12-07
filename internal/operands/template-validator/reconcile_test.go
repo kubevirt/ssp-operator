@@ -67,8 +67,8 @@ var _ = Describe("Template validator operand", func() {
 					},
 				},
 			},
-			Logger:               log,
-			ResourceVersionCache: common.VersionCache{},
+			Logger:       log,
+			VersionCache: common.VersionCache{},
 		}
 	})
 
@@ -145,13 +145,6 @@ var _ = Describe("Template validator operand", func() {
 		statuses, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		// All resources should be progressing
-		for _, status := range statuses {
-			Expect(status.NotAvailable).ToNot(BeNil())
-			Expect(status.Progressing).ToNot(BeNil())
-			Expect(status.Degraded).ToNot(BeNil())
-		}
-
 		// Set status for deployment
 		key, _ := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
 		updateDeployment(key, &request, func(deployment *apps.Deployment) {
@@ -203,6 +196,7 @@ func updateDeployment(key client.ObjectKey, request *common.Request, updateFunc 
 	Expect(request.Client.Get(request.Context, key, deployment)).ToNot(HaveOccurred())
 	updateFunc(deployment)
 	Expect(request.Client.Update(request.Context, deployment)).ToNot(HaveOccurred())
+	Expect(request.Client.Status().Update(request.Context, deployment)).ToNot(HaveOccurred())
 }
 
 func TestValidator(t *testing.T) {

@@ -90,10 +90,8 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 
 func reconcileGoldenImagesNS(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request, newGoldenImagesNS(GoldenImagesNSname),
-		func(newRes, foundRes controllerutil.Object) {
-			newNS := newRes.(*core.Namespace)
-			foundNS := foundRes.(*core.Namespace)
-			foundNS.Spec = newNS.Spec
+		func(_, _ controllerutil.Object) {
+			// Namespace spec only contains finalizers, which can be modified
 		})
 }
 func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {

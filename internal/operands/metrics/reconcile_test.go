@@ -57,8 +57,8 @@ var _ = Describe("Metrics operand", func() {
 					Namespace: namespace,
 				},
 			},
-			Logger:               log,
-			ResourceVersionCache: common.VersionCache{},
+			Logger:       log,
+			VersionCache: common.VersionCache{},
 		}
 
 		_, err := operand.Reconcile(&request)

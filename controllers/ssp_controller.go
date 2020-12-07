@@ -110,13 +110,13 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	r.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
-		Request:              req,
-		Client:               r,
-		Scheme:               r.Scheme,
-		Context:              ctx,
-		Instance:             instance,
-		Logger:               reqLogger,
-		ResourceVersionCache: r.SubresourceCache,
+		Request:      req,
+		Client:       r,
+		Scheme:       r.Scheme,
+		Context:      ctx,
+		Instance:     instance,
+		Logger:       reqLogger,
+		VersionCache: r.SubresourceCache,
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -142,7 +142,7 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	statuses, err := reconcileOperands(sspRequest)
 	if err != nil {
-		return ctrl.Result{}, err
+		return handleError(sspRequest, err)
 	}
 
 	err = updateStatus(sspRequest, statuses)
@@ -291,10 +291,39 @@ func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, err
 }
 
 func preUpdateStatus(request *common.Request) error {
-	sspStatus := &request.Instance.Status
+	operatorVersion := getOperatorVersion()
 
-	sspStatus.OperatorVersion = getOperatorVersion()
-	sspStatus.TargetVersion = getOperatorVersion()
+	sspStatus := &request.Instance.Status
+	sspStatus.Phase = lifecycleapi.PhaseDeploying
+	sspStatus.OperatorVersion = operatorVersion
+	sspStatus.TargetVersion = operatorVersion
+
+	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionAvailable, v1.ConditionFalse) {
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionAvailable,
+			Status:  v1.ConditionFalse,
+			Reason:  "available",
+			Message: "Reconciling SSP resources",
+		})
+	}
+
+	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionProgressing, v1.ConditionTrue) {
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionProgressing,
+			Status:  v1.ConditionTrue,
+			Reason:  "progressing",
+			Message: "Reconciling SSP resources",
+		})
+	}
+
+	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionDegraded, v1.ConditionTrue) {
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionDegraded,
+			Status:  v1.ConditionTrue,
+			Reason:  "degraded",
+			Message: "Reconciling SSP resources",
+		})
+	}
 
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
@@ -406,6 +435,47 @@ func prefixResourceTypeAndName(message string, resource controllerutil.Object) s
 		resource.GetNamespace(),
 		resource.GetName(),
 		message)
+}
+
+func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
+	if errParam == nil {
+		return ctrl.Result{}, nil
+	}
+
+	if errors.IsConflict(errParam) {
+		// Conflict happens if multiple components modify the same resource.
+		// Ignore the error and restart reconciliation.
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Default error handling, if error is not known
+	errorMsg := fmt.Sprintf("Error: %v", errParam)
+	sspStatus := &request.Instance.Status
+	sspStatus.Phase = lifecycleapi.PhaseDeploying
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionAvailable,
+		Status:  v1.ConditionFalse,
+		Reason:  "available",
+		Message: errorMsg,
+	})
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionProgressing,
+		Status:  v1.ConditionTrue,
+		Reason:  "progressing",
+		Message: errorMsg,
+	})
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionDegraded,
+		Status:  v1.ConditionTrue,
+		Reason:  "degraded",
+		Message: errorMsg,
+	})
+	err := request.Client.Status().Update(request.Context, request.Instance)
+	if err != nil {
+		request.Logger.Error(err, "Error updating SSP status.")
+	}
+
+	return ctrl.Result{}, errParam
 }
 
 func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {

@@ -37,7 +37,8 @@ const (
 	envSkipUpdateSspTests    = "SKIP_UPDATE_SSP_TESTS"
 	envSkipCleanupAfterTests = "SKIP_CLEANUP_AFTER_TESTS"
 
-	timeout = 10 * time.Minute
+	shortTimeout = 1 * time.Minute
+	timeout      = 10 * time.Minute
 )
 
 type TestSuiteStrategy interface {

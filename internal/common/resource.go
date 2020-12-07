@@ -66,26 +66,29 @@ func createOrUpdate(request *Request, resource controllerutil.Object, isClusterR
 	found.SetName(resource.GetName())
 	found.SetNamespace(resource.GetNamespace())
 	res, err := controllerutil.CreateOrUpdate(request.Context, request.Client, found, func() error {
-		if request.ResourceVersionCache.Contains(found) {
-			return nil
-		}
-
 		// We expect users will not add any other owner references,
 		// if that is not correct, this code needs to be changed.
 		found.SetOwnerReferences(resource.GetOwnerReferences())
 
 		updateLabels(resource, found)
 		updateAnnotations(resource, found)
-		updateResource(resource, found)
+		if !request.VersionCache.Contains(found) {
+			// The generation was updated by other cluster components,
+			// operator needs to update the resource
+			updateResource(resource, found)
+		}
 		return nil
 	})
 	if err != nil {
 		return ResourceStatus{}, err
 	}
 
-	request.ResourceVersionCache.Add(found)
+	request.VersionCache.Add(found)
 	logOperation(res, found, request.Logger)
-	return operationStatus(res, found, statusFunc), nil
+
+	status := statusFunc(found)
+	status.Resource = resource
+	return status, nil
 }
 
 func setOwner(request *Request, resource controllerutil.Object, isClusterRes bool) error {
@@ -134,30 +137,5 @@ func logOperation(result controllerutil.OperationResult, resource controllerutil
 		logger.Info(fmt.Sprintf("Updated %s resource: %s",
 			resource.GetObjectKind().GroupVersionKind().Kind,
 			resource.GetName()))
-	}
-}
-
-func operationStatus(result controllerutil.OperationResult, resource controllerutil.Object, statusFunc ResourceStatusFunc) ResourceStatus {
-	switch result {
-	case controllerutil.OperationResultCreated:
-		msg := "Creating resource."
-		return ResourceStatus{
-			Resource:     resource,
-			Progressing:  &msg,
-			NotAvailable: &msg,
-			Degraded:     &msg,
-		}
-	case controllerutil.OperationResultUpdated:
-		msg := "Updating resource."
-		return ResourceStatus{
-			Resource:     resource,
-			Progressing:  &msg,
-			NotAvailable: &msg,
-			Degraded:     &msg,
-		}
-	default:
-		status := statusFunc(resource)
-		status.Resource = resource
-		return status
 	}
 }
