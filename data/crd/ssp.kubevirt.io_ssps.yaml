@@ -795,17 +795,14 @@ spec:
                         type: array
                     type: object
                   replicas:
+                    default: 2
                     description: Replicas is the number of replicas of the template validator pod
                     format: int32
                     minimum: 0
                     type: integer
-                required:
-                - replicas
                 type: object
             required:
             - commonTemplates
-            - nodeLabeller
-            - templateValidator
             type: object
           status:
             description: SSPStatus defines the observed state of SSP
