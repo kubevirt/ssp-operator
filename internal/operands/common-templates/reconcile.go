@@ -3,6 +3,9 @@ package common_templates
 import (
 	"fmt"
 
+	"path/filepath"
+	"sync"
+
 	templatev1 "github.com/openshift/api/template/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -10,9 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sync"
 )
 
 var (
@@ -125,8 +126,8 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
 	loadTemplates := func() {
 		var err error
-		filename := filepath.Join(bundleDir, "common-templates-"+Version+".yaml")
-		templatesBundle, err = readTemplates(filename)
+		filename := filepath.Join(BundleDir, "common-templates-"+Version+".yaml")
+		templatesBundle, err = ReadTemplates(filename)
 		if err != nil {
 			request.Logger.Error(err, fmt.Sprintf("Error reading from template bundle, %v", err))
 			panic(err)

@@ -14,13 +14,14 @@ import (
 
 const (
 	GoldenImagesNSname  = "kubevirt-os-images"
-	bundleDir           = "data/common-templates-bundle/"
+	BundleDir           = "data/common-templates-bundle/"
 	ViewRoleName        = "os-images.kubevirt.io:view"
 	EditClusterRoleName = "os-images.kubevirt.io:edit"
 	Version             = "v0.13.0-rc.0"
 )
 
-func readTemplates(filename string) ([]templatev1.Template, error) {
+// ReadTemplates from the combined yaml file and return the list of its templates
+func ReadTemplates(filename string) ([]templatev1.Template, error) {
 	var bundle []templatev1.Template
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
