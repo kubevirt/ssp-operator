@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -109,6 +110,58 @@ var _ = Describe("Common templates", func() {
 			for os, defaultCount := range osDefaultCounts {
 				fmt.Fprintf(GinkgoWriter, "checking osDefaultCount for %s\n", os)
 				Expect(defaultCount).To(BeNumerically("==", 1))
+			}
+		})
+
+		It("[test_id:5545]did not create duplicate templates", func() {
+			liveTemplates := &templatev1.TemplateList{}
+			// TODO: the template path is relative pointing to the /data directory right now.
+			expectedTemplates, err := commonTemplates.ReadTemplates(filepath.Join("../"+commonTemplates.BundleDir, "common-templates-"+commonTemplates.Version+".yaml"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(expectedTemplates).NotTo(HaveLen(0))
+
+			for _, template := range expectedTemplates {
+				Expect(template.ObjectMeta).NotTo(BeNil())
+				Expect(template.ObjectMeta.Labels).NotTo(BeNil())
+
+				var (
+					oss       []string
+					workloads []string
+					flavors   []string
+				)
+
+				for labelKey := range template.ObjectMeta.Labels {
+					if strings.HasPrefix(labelKey, "os.template.kubevirt.io/") {
+						oss = append(oss, labelKey)
+						continue
+					}
+					if strings.HasPrefix(labelKey, "workload.template.kubevirt.io/") {
+						workloads = append(workloads, labelKey)
+						continue
+					}
+					if strings.HasPrefix(labelKey, "flavor.template.kubevirt.io/") {
+						flavors = append(flavors, labelKey)
+						continue
+					}
+				}
+
+				for _, os := range oss {
+					for _, workload := range workloads {
+						for _, flavor := range flavors {
+							err = apiClient.List(ctx, liveTemplates,
+								client.InNamespace(strategy.GetTemplatesNamespace()),
+								client.MatchingLabels{
+									"template.kubevirt.io/version": commonTemplates.Version,
+								},
+								client.HasLabels{
+									os, workload, flavor,
+								},
+							)
+							Expect(err).ToNot(HaveOccurred())
+							Expect(liveTemplates.Items).To(HaveLen(1))
+						}
+					}
+				}
 			}
 		})
 	})
