@@ -43,7 +43,7 @@ func expectRecreateAfterDelete(res *testResource) {
 
 	Expect(apiClient.Delete(ctx, resource)).ToNot(HaveOccurred())
 
-	err = WatchChangesUntil(watch, isStatusDeploying, timeout)
+	err = WatchChangesUntil(watch, isStatusDeploying, shortTimeout)
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
 
 	err = WatchChangesUntil(watch, isStatusDeployed, timeout)
@@ -69,7 +69,7 @@ func expectRestoreAfterUpdate(res *testResource, updateFunc interface{}, equalsF
 	reflect.ValueOf(updateFunc).Call([]reflect.Value{reflect.ValueOf(changed)})
 	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
 
-	err = WatchChangesUntil(watch, isStatusDeploying, timeout)
+	err = WatchChangesUntil(watch, isStatusDeploying, shortTimeout)
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
 
 	err = WatchChangesUntil(watch, isStatusDeployed, timeout)

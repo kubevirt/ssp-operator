@@ -13,10 +13,10 @@ import (
 
 type Request struct {
 	reconcile.Request
-	Client               client.Client
-	Scheme               *runtime.Scheme
-	Context              context.Context
-	Instance             *ssp.SSP
-	Logger               logr.Logger
-	ResourceVersionCache VersionCache
+	Client       client.Client
+	Scheme       *runtime.Scheme
+	Context      context.Context
+	Instance     *ssp.SSP
+	Logger       logr.Logger
+	VersionCache VersionCache
 }

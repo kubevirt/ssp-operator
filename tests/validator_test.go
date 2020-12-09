@@ -175,7 +175,7 @@ var _ = Describe("Template validator", func() {
 
 		deployment := &apps.Deployment{}
 		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
-		Expect(deployment.Status.ReadyReplicas).To(Equal(int32(strategy.GetValidatorReplicas())))
+		Expect(deployment.Status.AvailableReplicas).To(Equal(int32(strategy.GetValidatorReplicas())))
 	})
 
 	Context("with SSP resource modification", func() {

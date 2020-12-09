@@ -131,14 +131,14 @@ func reconcileDeployment(request *common.Request) (common.ResourceStatus, error)
 		func(res controllerutil.Object) common.ResourceStatus {
 			dep := res.(*apps.Deployment)
 			status := common.ResourceStatus{}
-			if dep.Status.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
+			if *validatorSpec.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
 				msg := fmt.Sprintf("No validator pods are running. Expected: %d", dep.Status.Replicas)
 				status.NotAvailable = &msg
 			}
-			if dep.Status.UnavailableReplicas != 0 {
+			if dep.Status.AvailableReplicas != *validatorSpec.Replicas {
 				msg := fmt.Sprintf(
 					"Not all template validator pods are running. Expected: %d, running: %d",
-					dep.Status.Replicas,
+					*validatorSpec.Replicas,
 					dep.Status.AvailableReplicas,
 				)
 				status.Progressing = &msg

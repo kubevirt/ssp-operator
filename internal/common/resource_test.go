@@ -58,8 +58,8 @@ var _ = Describe("Create or update resource", func() {
 					Namespace: namespace,
 				},
 			},
-			Logger:               log,
-			ResourceVersionCache: VersionCache{},
+			Logger:       log,
+			VersionCache: VersionCache{},
 		}
 	})
 
@@ -119,11 +119,25 @@ var _ = Describe("Create or update resource", func() {
 	It("should not update resource with cached version", func() {
 		resource := newTestResource(namespace)
 		resource.Spec.Ports[0].Name = "changed-name"
-		resource.Annotations["test-annotation"] = "test-changed"
-		resource.Labels["test-label"] = "new-change"
 		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
 
-		request.ResourceVersionCache.Add(resource)
+		request.VersionCache.Add(resource)
+
+		_, err := createOrUpdateTestResource(&request)
+		Expect(err).ToNot(HaveOccurred())
+		expectEqualResourceExists(resource, &request)
+	})
+
+	It("should not update resource with cached generation", func() {
+		resource := newTestResource(namespace)
+		resource.Generation = 1
+		resource.Spec.Ports[0].Name = "changed-name"
+		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+		request.VersionCache.Add(resource)
+
+		resource.Spec.Ports[0].Name = "changed-name-2"
+		Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
 
 		_, err := createOrUpdateTestResource(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -133,11 +147,9 @@ var _ = Describe("Create or update resource", func() {
 	It("should update resource with different version in cache", func() {
 		resource := newTestResource(namespace)
 		resource.Spec.Ports[0].Name = "changed-name"
-		resource.Annotations["test-annotation"] = "test-changed"
-		resource.Labels["test-label"] = "new-change"
 		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
 
-		request.ResourceVersionCache.Add(resource)
+		request.VersionCache.Add(resource)
 
 		resource.Spec.Ports[0].Name = "changed-name-2"
 		Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
@@ -145,22 +157,6 @@ var _ = Describe("Create or update resource", func() {
 		_, err := createOrUpdateTestResource(&request)
 		Expect(err).ToNot(HaveOccurred())
 		expectEqualResourceExists(newTestResource(namespace), &request)
-	})
-
-	It("should return status on change", func() {
-		// Create resource returns non-empty status
-		status, err := createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(status.NotAvailable).ToNot(BeNil())
-		Expect(status.Progressing).ToNot(BeNil())
-		Expect(status.Degraded).ToNot(BeNil())
-
-		// When resource is created, the status is empty
-		status, err = createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(status.NotAvailable).To(BeNil())
-		Expect(status.Progressing).To(BeNil())
-		Expect(status.Degraded).To(BeNil())
 	})
 })
 
@@ -209,10 +205,11 @@ func expectEqualResourceExists(resource controllerutil.Object, request *Request)
 	found := newEmptyResource(resource)
 	Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
 
+	resource.SetGeneration(found.GetGeneration())
 	resource.SetResourceVersion(found.GetResourceVersion())
 	resource.SetOwnerReferences(found.GetOwnerReferences())
 
-	Expect(found).To(Equal(resource))
+	ExpectWithOffset(1, found).To(Equal(resource))
 }
 
 func TestCommon(t *testing.T) {

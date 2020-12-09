@@ -34,9 +34,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
@@ -107,13 +110,13 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	r.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
-		Request:              req,
-		Client:               r,
-		Scheme:               r.Scheme,
-		Context:              ctx,
-		Instance:             instance,
-		Logger:               reqLogger,
-		ResourceVersionCache: r.SubresourceCache,
+		Request:      req,
+		Client:       r,
+		Scheme:       r.Scheme,
+		Context:      ctx,
+		Instance:     instance,
+		Logger:       reqLogger,
+		VersionCache: r.SubresourceCache,
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -139,7 +142,7 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	statuses, err := reconcileOperands(sspRequest)
 	if err != nil {
-		return ctrl.Result{}, err
+		return handleError(sspRequest, err)
 	}
 
 	err = updateStatus(sspRequest, statuses)
@@ -288,10 +291,39 @@ func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, err
 }
 
 func preUpdateStatus(request *common.Request) error {
-	sspStatus := &request.Instance.Status
+	operatorVersion := getOperatorVersion()
 
-	sspStatus.OperatorVersion = getOperatorVersion()
-	sspStatus.TargetVersion = getOperatorVersion()
+	sspStatus := &request.Instance.Status
+	sspStatus.Phase = lifecycleapi.PhaseDeploying
+	sspStatus.OperatorVersion = operatorVersion
+	sspStatus.TargetVersion = operatorVersion
+
+	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionAvailable, v1.ConditionFalse) {
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionAvailable,
+			Status:  v1.ConditionFalse,
+			Reason:  "available",
+			Message: "Reconciling SSP resources",
+		})
+	}
+
+	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionProgressing, v1.ConditionTrue) {
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionProgressing,
+			Status:  v1.ConditionTrue,
+			Reason:  "progressing",
+			Message: "Reconciling SSP resources",
+		})
+	}
+
+	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionDegraded, v1.ConditionTrue) {
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionDegraded,
+			Status:  v1.ConditionTrue,
+			Reason:  "degraded",
+			Message: "Reconciling SSP resources",
+		})
+	}
 
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
@@ -405,13 +437,78 @@ func prefixResourceTypeAndName(message string, resource controllerutil.Object) s
 		message)
 }
 
+func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
+	if errParam == nil {
+		return ctrl.Result{}, nil
+	}
+
+	if errors.IsConflict(errParam) {
+		// Conflict happens if multiple components modify the same resource.
+		// Ignore the error and restart reconciliation.
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Default error handling, if error is not known
+	errorMsg := fmt.Sprintf("Error: %v", errParam)
+	sspStatus := &request.Instance.Status
+	sspStatus.Phase = lifecycleapi.PhaseDeploying
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionAvailable,
+		Status:  v1.ConditionFalse,
+		Reason:  "available",
+		Message: errorMsg,
+	})
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionProgressing,
+		Status:  v1.ConditionTrue,
+		Reason:  "progressing",
+		Message: errorMsg,
+	})
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionDegraded,
+		Status:  v1.ConditionTrue,
+		Reason:  "degraded",
+		Message: errorMsg,
+	})
+	err := request.Client.Status().Update(request.Context, request.Instance)
+	if err != nil {
+		request.Logger.Error(err, "Error updating SSP status.")
+	}
+
+	return ctrl.Result{}, errParam
+}
+
 func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.SubresourceCache = common.VersionCache{}
 
-	builder := ctrl.NewControllerManagedBy(mgr).For(&ssp.SSP{})
+	builder := ctrl.NewControllerManagedBy(mgr)
+	watchSspResource(builder)
 	watchClusterResources(builder)
 	watchNamespacedResources(builder)
 	return builder.Complete(r)
+}
+
+func watchSspResource(bldr *ctrl.Builder) {
+	// Predicate is used to only reconcile on these changes to the SSP resource:
+	// - any change in spec - checked with generation
+	// - deletion timestamp - to trigger cleanup when SSP CR is being deleted
+	// - labels or annotations - to detect if reconciliation should be paused or unpaused
+	// - finalizers - to trigger reconciliation after initialization
+	//
+	// Importantly, the reconciliation is not triggered on status change.
+	// Otherwise it would cause a reconciliation loop.
+	pred := predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
+		oldMeta := event.MetaOld
+		newMeta := event.MetaNew
+		return newMeta.GetGeneration() != oldMeta.GetGeneration() ||
+			!newMeta.GetDeletionTimestamp().Equal(oldMeta.GetDeletionTimestamp()) ||
+			!reflect.DeepEqual(newMeta.GetLabels(), oldMeta.GetLabels()) ||
+			!reflect.DeepEqual(newMeta.GetAnnotations(), oldMeta.GetAnnotations()) ||
+			!reflect.DeepEqual(newMeta.GetFinalizers(), oldMeta.GetFinalizers())
+
+	}}
+
+	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
 func watchNamespacedResources(builder *ctrl.Builder) {
