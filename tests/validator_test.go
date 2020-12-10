@@ -36,30 +36,62 @@ var _ = Describe("Template validator", func() {
 	BeforeEach(func() {
 		clusterRoleRes = testResource{
 			Name:     validator.ClusterRoleName,
-			resource: &rbac.ClusterRole{},
+			Resource: &rbac.ClusterRole{},
+			UpdateFunc: func(role *rbac.ClusterRole) {
+				role.Rules[0].Verbs = []string{"watch"}
+			},
+			EqualsFunc: func(old *rbac.ClusterRole, new *rbac.ClusterRole) bool {
+				return reflect.DeepEqual(old.Rules, new.Rules)
+			},
 		}
 		clusterRoleBindingRes = testResource{
 			Name:     validator.ClusterRoleBindingName,
-			resource: &rbac.ClusterRoleBinding{},
+			Resource: &rbac.ClusterRoleBinding{},
+			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
+				roleBinding.Subjects = []rbac.Subject{}
+			},
+			EqualsFunc: func(old *rbac.ClusterRoleBinding, new *rbac.ClusterRoleBinding) bool {
+				return reflect.DeepEqual(old.RoleRef, new.RoleRef) &&
+					reflect.DeepEqual(old.Subjects, new.Subjects)
+			},
 		}
 		webhookConfigRes = testResource{
 			Name:     validator.WebhookName,
-			resource: &admission.ValidatingWebhookConfiguration{},
+			Resource: &admission.ValidatingWebhookConfiguration{},
+			UpdateFunc: func(webhook *admission.ValidatingWebhookConfiguration) {
+				webhook.Webhooks[0].Rules = []admission.RuleWithOperations{}
+			},
+			EqualsFunc: func(old *admission.ValidatingWebhookConfiguration, new *admission.ValidatingWebhookConfiguration) bool {
+				return reflect.DeepEqual(old.Webhooks, new.Webhooks)
+			},
 		}
 		serviceAccountRes = testResource{
-			Name:       validator.ServiceAccountName,
-			Namsespace: strategy.GetNamespace(),
-			resource:   &core.ServiceAccount{},
+			Name:      validator.ServiceAccountName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.ServiceAccount{},
 		}
 		serviceRes = testResource{
-			Name:       validator.ServiceName,
-			Namsespace: strategy.GetNamespace(),
-			resource:   &core.Service{},
+			Name:      validator.ServiceName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.Service{},
+			UpdateFunc: func(service *core.Service) {
+				service.Spec.Ports[0].Port = 44331
+				service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
+			},
+			EqualsFunc: func(old *core.Service, new *core.Service) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
 		}
 		deploymentRes = testResource{
-			Name:       validator.DeploymentName,
-			Namsespace: strategy.GetNamespace(),
-			resource:   &apps.Deployment{},
+			Name:      validator.DeploymentName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &apps.Deployment{},
+			UpdateFunc: func(deployment *apps.Deployment) {
+				deployment.Spec.Replicas = pointer.Int32Ptr(0)
+			},
+			EqualsFunc: func(old *apps.Deployment, new *apps.Deployment) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
 		}
 
 		waitUntilDeployed()
@@ -100,47 +132,11 @@ var _ = Describe("Template validator", func() {
 
 	Context("resource change", func() {
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:4915] cluster role", &clusterRoleRes,
-				func(role *rbac.ClusterRole) {
-					role.Rules[0].Verbs = []string{"watch"}
-				},
-				func(old *rbac.ClusterRole, new *rbac.ClusterRole) bool {
-					return reflect.DeepEqual(old.Rules, new.Rules)
-				}),
-
-			table.Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes,
-				func(roleBinding *rbac.ClusterRoleBinding) {
-					roleBinding.Subjects = []rbac.Subject{}
-				},
-				func(old *rbac.ClusterRoleBinding, new *rbac.ClusterRoleBinding) bool {
-					return reflect.DeepEqual(old.RoleRef, new.RoleRef) &&
-						reflect.DeepEqual(old.Subjects, new.Subjects)
-				}),
-
-			table.Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes,
-				func(webhook *admission.ValidatingWebhookConfiguration) {
-					webhook.Webhooks[0].Rules = []admission.RuleWithOperations{}
-				},
-				func(old *admission.ValidatingWebhookConfiguration, new *admission.ValidatingWebhookConfiguration) bool {
-					return reflect.DeepEqual(old.Webhooks, new.Webhooks)
-				}),
-
-			table.Entry("[test_id:4923] service", &serviceRes,
-				func(service *core.Service) {
-					service.Spec.Ports[0].Port = 44331
-					service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
-				},
-				func(old *core.Service, new *core.Service) bool {
-					return reflect.DeepEqual(old.Spec, new.Spec)
-				}),
-
-			table.Entry("[test_id:4925] deployment", &deploymentRes,
-				func(deployment *apps.Deployment) {
-					deployment.Spec.Replicas = pointer.Int32Ptr(0)
-				},
-				func(old *apps.Deployment, new *apps.Deployment) bool {
-					return reflect.DeepEqual(old.Spec, new.Spec)
-				}),
+			table.Entry("[test_id:4915] cluster role", &clusterRoleRes),
+			table.Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes),
+			table.Entry("[test_id:4923] service", &serviceRes),
+			table.Entry("[test_id:4925] deployment", &deploymentRes),
 		)
 	})
 

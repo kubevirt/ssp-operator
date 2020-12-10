@@ -15,9 +15,16 @@ var _ = Describe("Metrics", func() {
 
 	BeforeEach(func() {
 		prometheusRuleRes = testResource{
-			Name:       metrics.PrometheusRuleName,
-			Namsespace: strategy.GetNamespace(),
-			resource:   &promv1.PrometheusRule{},
+			Name:      metrics.PrometheusRuleName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &promv1.PrometheusRule{},
+			UpdateFunc: func(rule *promv1.PrometheusRule) {
+				rule.Spec.Groups[0].Name = "changed-name"
+				rule.Spec.Groups[0].Rules = []promv1.Rule{}
+			},
+			EqualsFunc: func(old, new *promv1.PrometheusRule) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
 		}
 
 		waitUntilDeployed()
@@ -32,13 +39,6 @@ var _ = Describe("Metrics", func() {
 	})
 
 	It("[test_id:4666] should restore modified prometheus rule", func() {
-		expectRestoreAfterUpdate(&prometheusRuleRes,
-			func(rule *promv1.PrometheusRule) {
-				rule.Spec.Groups[0].Name = "changed-name"
-				rule.Spec.Groups[0].Rules = []promv1.Rule{}
-			},
-			func(old, new *promv1.PrometheusRule) bool {
-				return reflect.DeepEqual(old.Spec, new.Spec)
-			})
+		expectRestoreAfterUpdate(&prometheusRuleRes)
 	})
 })

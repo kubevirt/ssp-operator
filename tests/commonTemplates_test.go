@@ -29,29 +29,53 @@ var _ = Describe("Common templates", func() {
 
 	BeforeEach(func() {
 		viewRole = testResource{
-			Name:       commonTemplates.ViewRoleName,
-			Namsespace: commonTemplates.GoldenImagesNSname,
-			resource:   &rbac.Role{},
+			Name:      commonTemplates.ViewRoleName,
+			Namespace: commonTemplates.GoldenImagesNSname,
+			Resource:  &rbac.Role{},
+			UpdateFunc: func(role *rbac.Role) {
+				role.Rules = []rbac.PolicyRule{}
+			},
+			EqualsFunc: func(old *rbac.Role, new *rbac.Role) bool {
+				return reflect.DeepEqual(old.Rules, new.Rules)
+			},
 		}
 		viewRoleBinding = testResource{
-			Name:       commonTemplates.ViewRoleName,
-			Namsespace: commonTemplates.GoldenImagesNSname,
-			resource:   &rbac.RoleBinding{},
+			Name:      commonTemplates.ViewRoleName,
+			Namespace: commonTemplates.GoldenImagesNSname,
+			Resource:  &rbac.RoleBinding{},
+			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
+				roleBinding.Subjects = []rbac.Subject{}
+			},
+			EqualsFunc: func(old *rbac.RoleBinding, new *rbac.RoleBinding) bool {
+				return reflect.DeepEqual(old.Subjects, new.Subjects)
+			},
 		}
 		editClusterRole = testResource{
-			Name:       commonTemplates.EditClusterRoleName,
-			resource:   &rbac.ClusterRole{},
-			Namsespace: "",
+			Name:      commonTemplates.EditClusterRoleName,
+			Resource:  &rbac.ClusterRole{},
+			Namespace: "",
+			UpdateFunc: func(role *rbac.ClusterRole) {
+				role.Rules[0].Verbs = []string{"watch"}
+			},
+			EqualsFunc: func(old *rbac.ClusterRole, new *rbac.ClusterRole) bool {
+				return reflect.DeepEqual(old.Rules, new.Rules)
+			},
 		}
 		goldenImageNS = testResource{
-			Name:       commonTemplates.GoldenImagesNSname,
-			resource:   &core.Namespace{},
-			Namsespace: "",
+			Name:      commonTemplates.GoldenImagesNSname,
+			Resource:  &core.Namespace{},
+			Namespace: "",
 		}
 		testTemplate = testResource{
-			Name:       "centos6-server-large",
-			Namsespace: strategy.GetTemplatesNamespace(),
-			resource:   &templatev1.Template{},
+			Name:      "centos6-server-large",
+			Namespace: strategy.GetTemplatesNamespace(),
+			Resource:  &templatev1.Template{},
+			UpdateFunc: func(t *templatev1.Template) {
+				t.Parameters = []templatev1.Parameter{}
+			},
+			EqualsFunc: func(old *templatev1.Template, new *templatev1.Template) bool {
+				return reflect.DeepEqual(old.Parameters, new.Parameters)
+			},
 		}
 
 		waitUntilDeployed()
@@ -74,12 +98,8 @@ var _ = Describe("Common templates", func() {
 		},
 			table.Entry("[test_id:4777]view role", &viewRole),
 			table.Entry("[test_id:4772]view role binding", &viewRoleBinding),
+			table.Entry("[test_id:5086]common-template in custom NS", &testTemplate),
 		)
-
-		It("[test_id:5086]Create common-template in custom NS", func() {
-			err := apiClient.Get(ctx, testTemplate.GetKey(), testTemplate.NewResource())
-			Expect(err).ToNot(HaveOccurred())
-		})
 
 		It("[test_id:5352]creates only one default variant per OS", func() {
 			liveTemplates := &templatev1.TemplateList{}
@@ -171,37 +191,10 @@ var _ = Describe("Common templates", func() {
 
 	Context("resource change", func() {
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:5315]edit cluster role", &editClusterRole,
-				func(role *rbac.ClusterRole) {
-					role.Rules[0].Verbs = []string{"watch"}
-				},
-				func(old *rbac.ClusterRole, new *rbac.ClusterRole) bool {
-					return reflect.DeepEqual(old.Rules, new.Rules)
-				}),
-
-			table.Entry("[test_id:5316]view role", &viewRole,
-				func(roleBinding *rbac.Role) {
-					roleBinding.Rules = []rbac.PolicyRule{}
-				},
-				func(old *rbac.Role, new *rbac.Role) bool {
-					return reflect.DeepEqual(old.Rules, new.Rules)
-				}),
-
-			table.Entry("[test_id:5317]view role binding", &viewRoleBinding,
-				func(roleBinding *rbac.RoleBinding) {
-					roleBinding.Subjects = []rbac.Subject{}
-				},
-				func(old *rbac.RoleBinding, new *rbac.RoleBinding) bool {
-					return reflect.DeepEqual(old.Subjects, new.Subjects)
-				}),
-			table.Entry("[test_id:5087]test template", &testTemplate,
-				func(t *templatev1.Template) {
-					t.Parameters = []templatev1.Parameter{}
-				},
-				func(old *templatev1.Template, new *templatev1.Template) bool {
-					return reflect.DeepEqual(old.Parameters, new.Parameters)
-				},
-			),
+			table.Entry("[test_id:5315]edit cluster role", &editClusterRole),
+			table.Entry("[test_id:5316]view role", &viewRole),
+			table.Entry("[test_id:5317]view role binding", &viewRoleBinding),
+			table.Entry("[test_id:5087]test template", &testTemplate),
 		)
 	})
 
