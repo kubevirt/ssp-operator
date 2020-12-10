@@ -114,11 +114,19 @@ var _ = Describe("Common templates", func() {
 		})
 
 		It("[test_id:5545]did not create duplicate templates", func() {
-			liveTemplates := &templatev1.TemplateList{}
 			// TODO: the template path is relative pointing to the /data directory right now.
 			expectedTemplates, err := commonTemplates.ReadTemplates(filepath.Join("../"+commonTemplates.BundleDir, "common-templates-"+commonTemplates.Version+".yaml"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(expectedTemplates).NotTo(HaveLen(0))
+
+			liveTemplates := &templatev1.TemplateList{}
+			err = apiClient.List(ctx, liveTemplates,
+				client.InNamespace(strategy.GetTemplatesNamespace()),
+				client.MatchingLabels{
+					"template.kubevirt.io/version": commonTemplates.Version,
+				},
+			)
+			Expect(err).ToNot(HaveOccurred())
 
 			for _, template := range expectedTemplates {
 				Expect(template.ObjectMeta).NotTo(BeNil())
@@ -148,17 +156,16 @@ var _ = Describe("Common templates", func() {
 				for _, os := range oss {
 					for _, workload := range workloads {
 						for _, flavor := range flavors {
-							err = apiClient.List(ctx, liveTemplates,
-								client.InNamespace(strategy.GetTemplatesNamespace()),
-								client.MatchingLabels{
-									"template.kubevirt.io/version": commonTemplates.Version,
-								},
-								client.HasLabels{
-									os, workload, flavor,
-								},
-							)
-							Expect(err).ToNot(HaveOccurred())
-							Expect(liveTemplates.Items).To(HaveLen(1))
+							matchingLiveTemplates := 0
+							for _, liveTemplate := range liveTemplates.Items {
+								_, osMatch := liveTemplate.Labels[os]
+								_, workloadMatch := liveTemplate.Labels[workload]
+								_, flavorMatch := liveTemplate.Labels[flavor]
+								if osMatch && workloadMatch && flavorMatch {
+									matchingLiveTemplates++
+								}
+							}
+							Expect(matchingLiveTemplates).To(BeNumerically("==", 1))
 						}
 					}
 				}
