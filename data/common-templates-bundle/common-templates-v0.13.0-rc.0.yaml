@@ -1,0 +1,2043 @@
+# Version v0.13.0-rc.0
+---
+# Source: dist/templates/centos6-server-large.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos6-server-large
+  annotations:
+    openshift.io/display-name: "CentOS 6.0+ VM"
+    description: >-
+      Template for CentOS 6 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos6.0: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.1: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.10: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.2: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.3: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.4: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.5: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.6: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.7: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.8: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.9: CentOS 6.0 or higher
+  labels:
+    os.template.kubevirt.io/centos6.0: "true"
+    os.template.kubevirt.io/centos6.1: "true"
+    os.template.kubevirt.io/centos6.10: "true"
+    os.template.kubevirt.io/centos6.2: "true"
+    os.template.kubevirt.io/centos6.3: "true"
+    os.template.kubevirt.io/centos6.4: "true"
+    os.template.kubevirt.io/centos6.5: "true"
+    os.template.kubevirt.io/centos6.6: "true"
+    os.template.kubevirt.io/centos6.7: "true"
+    os.template.kubevirt.io/centos6.8: "true"
+    os.template.kubevirt.io/centos6.9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos6-server-large
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos6"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "large"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 536870912
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: sata
+              name: ${NAME}
+            - disk:
+                bus: sata
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos6-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos6'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos6-server-medium.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos6-server-medium
+  annotations:
+    openshift.io/display-name: "CentOS 6.0+ VM"
+    description: >-
+      Template for CentOS 6 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos6.0: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.1: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.10: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.2: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.3: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.4: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.5: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.6: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.7: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.8: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.9: CentOS 6.0 or higher
+  labels:
+    os.template.kubevirt.io/centos6.0: "true"
+    os.template.kubevirt.io/centos6.1: "true"
+    os.template.kubevirt.io/centos6.10: "true"
+    os.template.kubevirt.io/centos6.2: "true"
+    os.template.kubevirt.io/centos6.3: "true"
+    os.template.kubevirt.io/centos6.4: "true"
+    os.template.kubevirt.io/centos6.5: "true"
+    os.template.kubevirt.io/centos6.6: "true"
+    os.template.kubevirt.io/centos6.7: "true"
+    os.template.kubevirt.io/centos6.8: "true"
+    os.template.kubevirt.io/centos6.9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos6-server-medium
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos6"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "medium"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 536870912
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 4Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: sata
+              name: ${NAME}
+            - disk:
+                bus: sata
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos6-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos6'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos6-server-small.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos6-server-small
+  annotations:
+    openshift.io/display-name: "CentOS 6.0+ VM"
+    description: >-
+      Template for CentOS 6 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos6.0: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.1: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.10: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.2: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.3: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.4: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.5: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.6: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.7: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.8: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.9: CentOS 6.0 or higher
+  labels:
+    os.template.kubevirt.io/centos6.0: "true"
+    os.template.kubevirt.io/centos6.1: "true"
+    os.template.kubevirt.io/centos6.10: "true"
+    os.template.kubevirt.io/centos6.2: "true"
+    os.template.kubevirt.io/centos6.3: "true"
+    os.template.kubevirt.io/centos6.4: "true"
+    os.template.kubevirt.io/centos6.5: "true"
+    os.template.kubevirt.io/centos6.6: "true"
+    os.template.kubevirt.io/centos6.7: "true"
+    os.template.kubevirt.io/centos6.8: "true"
+    os.template.kubevirt.io/centos6.9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+    template.kubevirt.io/default-os-variant: "true"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos6-server-small
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos6"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "small"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 536870912
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 2Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: sata
+              name: ${NAME}
+            - disk:
+                bus: sata
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos6-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos6'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos6-server-tiny.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos6-server-tiny
+  annotations:
+    openshift.io/display-name: "CentOS 6.0+ VM"
+    description: >-
+      Template for CentOS 6 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos6.0: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.1: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.10: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.2: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.3: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.4: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.5: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.6: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.7: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.8: CentOS 6.0 or higher
+    name.os.template.kubevirt.io/centos6.9: CentOS 6.0 or higher
+  labels:
+    os.template.kubevirt.io/centos6.0: "true"
+    os.template.kubevirt.io/centos6.1: "true"
+    os.template.kubevirt.io/centos6.10: "true"
+    os.template.kubevirt.io/centos6.2: "true"
+    os.template.kubevirt.io/centos6.3: "true"
+    os.template.kubevirt.io/centos6.4: "true"
+    os.template.kubevirt.io/centos6.5: "true"
+    os.template.kubevirt.io/centos6.6: "true"
+    os.template.kubevirt.io/centos6.7: "true"
+    os.template.kubevirt.io/centos6.8: "true"
+    os.template.kubevirt.io/centos6.9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos6-server-tiny
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos6"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "tiny"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 536870912
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 1Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: sata
+              name: ${NAME}
+            - disk:
+                bus: sata
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos6-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos6'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-desktop-large.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-desktop-large
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-desktop-large
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "desktop"
+      vm.kubevirt.io/flavor: "large"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-desktop-medium.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-desktop-medium
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-desktop-medium
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "desktop"
+      vm.kubevirt.io/flavor: "medium"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 4Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-desktop-small.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-desktop-small
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-desktop-small
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "desktop"
+      vm.kubevirt.io/flavor: "small"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 2Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-desktop-tiny.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-desktop-tiny
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-desktop-tiny
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "desktop"
+      vm.kubevirt.io/flavor: "tiny"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 1Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-server-large.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-server-large
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-server-large
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "large"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-server-medium.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-server-medium
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-server-medium
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "medium"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 4Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-server-small.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-server-small
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+    template.kubevirt.io/default-os-variant: "true"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-server-small
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "small"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 2Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos7-server-tiny.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos7-server-tiny
+  annotations:
+    openshift.io/display-name: "CentOS 7.0+ VM"
+    description: >-
+      Template for CentOS 7 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos7.0: CentOS 7 or higher
+  labels:
+    os.template.kubevirt.io/centos7.0: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos7-server-tiny
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos7"
+      vm.kubevirt.io/workload: "server"
+      vm.kubevirt.io/flavor: "tiny"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 1Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos7-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos7'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos8-desktop-large.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos8-desktop-large
+  annotations:
+    openshift.io/display-name: "CentOS 8.0+ VM"
+    description: >-
+      Template for CentOS 8 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos8: CentOS 8 or higher
+  labels:
+    os.template.kubevirt.io/centos8: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos8-desktop-large
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos8"
+      vm.kubevirt.io/workload: "desktop"
+      vm.kubevirt.io/flavor: "large"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos8-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos8'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos8-desktop-medium.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos8-desktop-medium
+  annotations:
+    openshift.io/display-name: "CentOS 8.0+ VM"
+    description: >-
+      Template for CentOS 8 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos8: CentOS 8 or higher
+  labels:
+    os.template.kubevirt.io/centos8: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos8-desktop-medium
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos8"
+      vm.kubevirt.io/workload: "desktop"
+      vm.kubevirt.io/flavor: "medium"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
+            namespace: ${SRC_PVC_NAMESPACE}
+    running: false
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          resources:
+            requests:
+              memory: 4Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: ${NAME}
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: ${NAME}
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos8-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: SRC_PVC_NAME
+  description: Name of the PVC to clone
+  value: 'centos8'
+- name: SRC_PVC_NAMESPACE
+  description: Namespace of the source PVC
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos8-desktop-small.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos8-desktop-small
+  annotations:
+    openshift.io/display-name: "CentOS 8.0+ VM"
+    description: >-
+      Template for CentOS 8 VM or newer.
+      A PVC with the CentOS disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centos"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos8: CentOS 8 or higher
+  labels:
+    os.template.kubevirt.io/centos8: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.13.0-rc.0"
+objects:
+- apiVersion: kubevirt.io/v1alpha3
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos8-desktop-small
+      vm.kubevirt.io/template.version: "v0.13.0-rc.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/os: "centos8"
+      vm.kubevirt.io/workload: "desktop"
+      vm.kubevirt.io/flavor: "small"
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 30Gi
+        source:
+          pvc:
+            name: ${SRC_PVC_NAME}
