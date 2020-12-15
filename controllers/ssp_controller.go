@@ -163,7 +163,7 @@ func (r *SSPReconciler) clearCache() {
 
 func getOperatorVersion() string {
 	opVer := os.Getenv("OPERATOR_VERSION")
-	if opVer != "" {
+	if opVer == "" {
 		return defaultOperatorVersion
 	}
 	return opVer
