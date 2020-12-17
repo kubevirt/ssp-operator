@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -114,13 +113,8 @@ var _ = Describe("Common templates", func() {
 		})
 
 		It("[test_id:5545]did not create duplicate templates", func() {
-			// TODO: the template path is relative pointing to the /data directory right now.
-			expectedTemplates, err := commonTemplates.ReadTemplates(filepath.Join("../"+commonTemplates.BundleDir, "common-templates-"+commonTemplates.Version+".yaml"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(expectedTemplates).NotTo(HaveLen(0))
-
 			liveTemplates := &templatev1.TemplateList{}
-			err = apiClient.List(ctx, liveTemplates,
+			err := apiClient.List(ctx, liveTemplates,
 				client.InNamespace(strategy.GetTemplatesNamespace()),
 				client.MatchingLabels{
 					"template.kubevirt.io/version": commonTemplates.Version,
@@ -128,7 +122,7 @@ var _ = Describe("Common templates", func() {
 			)
 			Expect(err).ToNot(HaveOccurred())
 
-			for _, template := range expectedTemplates {
+			for _, template := range liveTemplates.Items {
 				Expect(template.ObjectMeta).NotTo(BeNil())
 				Expect(template.ObjectMeta.Labels).NotTo(BeNil())
 
