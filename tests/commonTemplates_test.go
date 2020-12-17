@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
@@ -9,6 +11,7 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
@@ -74,6 +77,39 @@ var _ = Describe("Common templates", func() {
 		It("[test_id:5086]Create common-template in custom NS", func() {
 			err := apiClient.Get(ctx, testTemplate.GetKey(), testTemplate.NewResource())
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("[test_id:5352]creates only one default variant per OS", func() {
+			liveTemplates := &templatev1.TemplateList{}
+			err := apiClient.List(ctx, liveTemplates,
+				client.InNamespace(strategy.GetTemplatesNamespace()),
+				client.MatchingLabels{
+					"template.kubevirt.io/version": commonTemplates.Version,
+				},
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			osDefaultCounts := make(map[string]int)
+			for _, liveTemplate := range liveTemplates.Items {
+				_, isDefaultOSVariant := liveTemplate.Labels["template.kubevirt.io/default-os-variant"]
+
+				for labelKey := range liveTemplate.Labels {
+					if strings.HasPrefix(labelKey, "os.template.kubevirt.io/") {
+						if isDefaultOSVariant {
+							osDefaultCounts[labelKey]++
+							continue
+						}
+						if _, knownOSVariant := osDefaultCounts[labelKey]; !knownOSVariant {
+							osDefaultCounts[labelKey] = 0
+						}
+					}
+				}
+			}
+
+			for os, defaultCount := range osDefaultCounts {
+				fmt.Fprintf(GinkgoWriter, "checking osDefaultCount for %s\n", os)
+				Expect(defaultCount).To(BeNumerically("==", 1))
+			}
 		})
 	})
 
