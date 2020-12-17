@@ -2,8 +2,10 @@ package tests
 
 import (
 	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -19,7 +21,10 @@ var _ = Describe("Validation webhook", func() {
 		It("[test_id:5242] should fail to create a second SSP CR", func() {
 			foundSsp := getSsp()
 			ssp2 := foundSsp.DeepCopy()
-			ssp2.Name = "test-ssp2"
+			ssp2.ObjectMeta = v1.ObjectMeta{
+				Name:      "test-ssp2",
+				Namespace: foundSsp.GetNamespace(),
+			}
 
 			err := apiClient.Create(ctx, ssp2)
 			if err == nil {
@@ -48,6 +53,10 @@ var _ = Describe("Validation webhook", func() {
 				Expect(apiClient.Delete(ctx, foundSsp)).ToNot(HaveOccurred())
 				waitForDeletion(client.ObjectKey{Name: foundSsp.GetName(), Namespace: foundSsp.GetNamespace()}, &ssp.SSP{})
 
+				foundSsp.ObjectMeta = v1.ObjectMeta{
+					Name:      foundSsp.GetName(),
+					Namespace: foundSsp.GetNamespace(),
+				}
 				foundSsp.Spec.CommonTemplates.Namespace = "nonexisting-templates-namespace"
 
 				err := apiClient.Create(ctx, foundSsp)
