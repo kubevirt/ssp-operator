@@ -42,7 +42,7 @@ var _ = Describe("Upgrade", func() {
 	})
 
 	Context("from kubevirt-ssp-operator", func() {
-		It("should have added a paused annotation to existing CRs", func() {
+		It("[test_id:5566] should have added a paused annotation to existing CRs", func() {
 			By("listing legacy CRDs")
 			kinds := listExistingCRDKinds()
 
