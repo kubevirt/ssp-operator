@@ -138,13 +138,26 @@ else
 KUSTOMIZE=$(shell which kustomize)
 endif
 
+.PHONY: yq
+yq:
+	test -f yq || wget https://github.com/mikefarah/yq/releases/download/3.4.1/yq_linux_amd64 -O yq
+	chmod +x yq
+
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: operator-sdk manifests
+bundle: operator-sdk manifests yq
 	./operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | ./operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	./yq w -i bundle/manifests/ssp-operator.clusterserviceversion.yaml spec.webhookdefinitions[0].containerPort 9443
+	./yq d -i bundle/manifests/ssp-operator.clusterserviceversion.yaml spec.install.spec.deployments[0].spec.template.spec.volumes
+	./yq d -i bundle/manifests/ssp-operator.clusterserviceversion.yaml spec.install.spec.deployments[0].spec.template.spec.containers[0].volumeMounts
 	./operator-sdk bundle validate ./bundle
+	rm -rf _out
+	mkdir -p _out
+	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml _out/olm-crds.yaml
+	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml _out/olm-ssp-operator.clusterserviceversion.yaml
+	$(KUSTOMIZE) build config/default > _out/ssp-operator.yaml
 
 # Build the bundle image.
 .PHONY: bundle-build
@@ -153,7 +166,3 @@ bundle-build:
 
 .PHONY: release
 release: container-build container-push bundle
-	mkdir -p _out
-	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml _out/
-	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml _out/
-	$(KUSTOMIZE) build config/default > _out/ssp-operator.yaml

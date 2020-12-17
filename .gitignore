@@ -2,6 +2,7 @@
 .history
 .idea
 /operator-sdk
+/yq
 _out/*
 build/_output/*
 bin/*
