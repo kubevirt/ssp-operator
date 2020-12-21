@@ -111,6 +111,60 @@ var _ = Describe("Common templates", func() {
 				Expect(defaultCount).To(BeNumerically("==", 1))
 			}
 		})
+
+		It("[test_id:5545]did not create duplicate templates", func() {
+			liveTemplates := &templatev1.TemplateList{}
+			err := apiClient.List(ctx, liveTemplates,
+				client.InNamespace(strategy.GetTemplatesNamespace()),
+				client.MatchingLabels{
+					"template.kubevirt.io/version": commonTemplates.Version,
+				},
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, template := range liveTemplates.Items {
+				Expect(template.ObjectMeta).NotTo(BeNil())
+				Expect(template.ObjectMeta.Labels).NotTo(BeNil())
+
+				var (
+					oss       []string
+					workloads []string
+					flavors   []string
+				)
+
+				for labelKey := range template.ObjectMeta.Labels {
+					if strings.HasPrefix(labelKey, "os.template.kubevirt.io/") {
+						oss = append(oss, labelKey)
+						continue
+					}
+					if strings.HasPrefix(labelKey, "workload.template.kubevirt.io/") {
+						workloads = append(workloads, labelKey)
+						continue
+					}
+					if strings.HasPrefix(labelKey, "flavor.template.kubevirt.io/") {
+						flavors = append(flavors, labelKey)
+						continue
+					}
+				}
+
+				for _, os := range oss {
+					for _, workload := range workloads {
+						for _, flavor := range flavors {
+							matchingLiveTemplates := 0
+							for _, liveTemplate := range liveTemplates.Items {
+								_, osMatch := liveTemplate.Labels[os]
+								_, workloadMatch := liveTemplate.Labels[workload]
+								_, flavorMatch := liveTemplate.Labels[flavor]
+								if osMatch && workloadMatch && flavorMatch {
+									matchingLiveTemplates++
+								}
+							}
+							Expect(matchingLiveTemplates).To(BeNumerically("==", 1))
+						}
+					}
+				}
+			}
+		})
 	})
 
 	Context("resource change", func() {
