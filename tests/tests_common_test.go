@@ -6,13 +6,16 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo"
-
 	. "github.com/onsi/gomega"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	"github.com/operator-framework/operator-lib/handler"
 	authv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/rand"
+	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -234,4 +237,94 @@ func expectUserCannot(sars *authv1.SubjectAccessReviewSpec) {
 			sars.User, sars.Groups, sars.ResourceAttributes.Verb, sars.ResourceAttributes.Resource,
 			sars.ResourceAttributes.Subresource, sars.ResourceAttributes.Name, sars.ResourceAttributes.Group,
 			sars.ResourceAttributes.Version, sars.ResourceAttributes.Namespace))
+}
+
+func GetPodLogs(name, namespace string) (string, error) {
+	RawLogs, err := coreClient.CoreV1().Pods(namespace).
+		GetLogs(name, &core.PodLogOptions{}).DoRaw(ctx)
+	return string(RawLogs), err
+}
+
+func GetRunningPodsByLabel(label, labelType, namespace string) (*core.PodList, error) {
+	pods := &core.PodList{}
+	err := apiClient.List(ctx, pods,
+		client.InNamespace(namespace),
+		client.MatchingLabels{labelType: label},
+		client.MatchingFields{"status.phase": string(core.PodRunning)})
+	if err != nil {
+		return nil, err
+	}
+	if len(pods.Items) == 0 {
+		return nil, fmt.Errorf("failed to find pod with the label %s", label)
+	}
+	return pods, nil
+}
+
+func GetCertFromSecret(secretName, namespace string) (string, error) {
+	secret := core.Secret{}
+	err := apiClient.Get(ctx, client.ObjectKey{Name: secretName, Namespace: namespace}, &secret)
+	if err != nil {
+		return "", err
+	}
+	if rawBundle, ok := secret.Data["tls.crt"]; ok {
+		return string(rawBundle), nil
+	}
+	return "", nil
+}
+
+func NewRandomVMIWithBridgeInterface(namespace string) *kubevirtv1.VirtualMachineInstance {
+	vmi := kubevirtv1.NewMinimalVMIWithNS(namespace, fmt.Sprintf("testvmi-%v", rand.String(10)))
+	vmi.Spec.Domain.Resources.Requests = core.ResourceList{
+		core.ResourceMemory: resource.MustParse("64M"),
+	}
+	t := int64(0)
+	vmi.Spec.TerminationGracePeriodSeconds = &t
+	vmi.Spec.Domain.Devices = kubevirtv1.Devices{
+		Interfaces: []kubevirtv1.Interface{
+			{
+				Name: "default",
+				InterfaceBindingMethod: kubevirtv1.InterfaceBindingMethod{
+					Bridge: &kubevirtv1.InterfaceBridge{},
+				},
+			},
+		},
+	}
+	vmi.Spec.Networks = []kubevirtv1.Network{*kubevirtv1.DefaultPodNetwork()}
+	return vmi
+}
+
+func NewVirtualMachine(vmi *kubevirtv1.VirtualMachineInstance) *kubevirtv1.VirtualMachine {
+	running := false
+	name := vmi.Name
+	namespace := vmi.Namespace
+	vm := &kubevirtv1.VirtualMachine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: kubevirtv1.VirtualMachineSpec{
+			Running: &running,
+			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:    map[string]string{"kubevirt.io/vm": name},
+					Name:      name + "makeitinteresting", // this name should have no effect
+					Namespace: namespace,
+				},
+				Spec: vmi.Spec,
+			},
+		},
+	}
+	vm.SetGroupVersionKind(schema.GroupVersionKind{Group: kubevirtv1.GroupVersion.Group, Kind: "VirtualMachine", Version: kubevirtv1.GroupVersion.Version})
+	return vm
+}
+
+func addDomainResourcesToVMI(vmi *kubevirtv1.VirtualMachineInstance, cpuCores uint32, machineType string, memory string) *kubevirtv1.VirtualMachineInstance {
+	vmi.Spec.Domain.CPU = &kubevirtv1.CPU{
+		Cores: cpuCores,
+	}
+	vmi.Spec.Domain.Machine.Type = machineType
+	vmi.Spec.Domain.Resources.Requests = core.ResourceList{
+		core.ResourceMemory: resource.MustParse(memory),
+	}
+	return vmi
 }
