@@ -10,9 +10,12 @@ import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -63,7 +66,15 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceS
 		reconcileViewRoleBinding,
 		reconcileEditRole,
 	}
+
+	oldTemplateFuncs, err := reconcileOlderTemplates(request)
+	if err != nil {
+		return nil, err
+	}
+
+	funcs = append(funcs, oldTemplateFuncs...)
 	funcs = append(funcs, reconcileTemplatesFuncs(request)...)
+
 	return common.CollectResourceStatus(request, funcs...)
 }
 
@@ -121,6 +132,51 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 			foundRole := foundRes.(*rbac.ClusterRole)
 			foundRole.Rules = newRole.Rules
 		})
+}
+
+func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
+	// Append functions to take ownership of previously deployed templates during an upgrade
+	existingTemplates := &templatev1.TemplateList{}
+	templatesSelector := func() labels.Selector {
+		tplSelector := labels.NewSelector()
+		tplBaseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+		if err != nil {
+			panic("Failed creating label selector for 'template.kubevirt.io/type=base")
+		}
+
+		// Only fetching older templates  to prevent duplication of API calls
+		tplVersionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.NotEquals, []string{Version})
+		if err != nil {
+			panic("Failed creating label selector for 'template.kubevirt.io/version")
+		}
+
+		tplSelector = tplSelector.Add(*tplBaseRequirement, *tplVersionRequirement)
+
+		return tplSelector
+	}()
+
+	err := request.Client.List(request.Context, existingTemplates, &client.ListOptions{
+		LabelSelector: templatesSelector,
+		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,
+	})
+
+	// There might not be any templates (in case of a fresh deployment), so a NotFound error is accepted
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+
+	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates.Items))
+	for i := range existingTemplates.Items {
+		template := &existingTemplates.Items[i]
+		funcs = append(funcs, func(*common.Request) (common.ResourceStatus, error) {
+			// An empty update func is sufficient because the generic reconcile
+			// logic would add owner annotations and remove ownerReferences
+			return common.CreateOrUpdateClusterResource(request, template,
+				func(newRes, foundRes controllerutil.Object) {})
+		})
+	}
+
+	return funcs, nil
 }
 
 func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {

@@ -360,6 +360,24 @@ func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
 }
 
+func triggerReconciliation() {
+	updateSsp(func(foundSsp *sspv1beta1.SSP) {
+		if foundSsp.GetAnnotations() == nil {
+			foundSsp.SetAnnotations(map[string]string{})
+		}
+
+		foundSsp.GetAnnotations()["forceReconciliation"] = ""
+	})
+
+	updateSsp(func(foundSsp *sspv1beta1.SSP) {
+		if foundSsp.GetAnnotations() == nil {
+			foundSsp.SetAnnotations(map[string]string{})
+		}
+
+		delete(foundSsp.GetAnnotations(), "forceReconciliation")
+	})
+}
+
 func TestFunctional(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Functional test suite")

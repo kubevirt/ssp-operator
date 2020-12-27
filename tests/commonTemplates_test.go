@@ -11,8 +11,10 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
@@ -211,5 +213,85 @@ var _ = Describe("Common templates", func() {
 			table.Entry("[test_id:4771]edit cluster role", &editClusterRole),
 			table.Entry("[test_id:4770]golden image NS", &goldenImageNS),
 		)
+	})
+
+	Context("older templates update", func() {
+		var (
+			ssp           *sspv1beta1.SSP
+			ownerTemplate *templatev1.Template
+		)
+
+		BeforeEach(func() {
+			ssp = getSsp()
+
+			// Create a dummy template to act as an owner for the test template
+			// we can't use the SSP CR as an owner for these tests because the tempaltes
+			// might be deployed in a different namespace than the CR, and will be immediately
+			// removed by the GC, the choice to use a template as an owner object was arbitrary
+			ownerTemplate = func() *templatev1.Template {
+				tpl := &templatev1.Template{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "owner-template",
+						Namespace: ssp.Spec.CommonTemplates.Namespace,
+					},
+				}
+				Expect(apiClient.Create(ctx, tpl)).ToNot(HaveOccurred(), "failed to create dummy owner for an old template")
+				key, err := client.ObjectKeyFromObject(tpl)
+				Expect(err).ToNot(HaveOccurred(), "failed to read template object key")
+				Expect(apiClient.Get(ctx, key, tpl)).ToNot(HaveOccurred())
+
+				return tpl
+			}()
+		})
+
+		AfterEach(func() {
+			Expect(apiClient.Delete(ctx, ownerTemplate)).ToNot(HaveOccurred(), "deletion of dummy owner template failed")
+		})
+
+		It("should replace ownerReference with owner annotations for older templates", func() {
+			oldTpl := func() *templatev1.Template {
+				tpl := &templatev1.Template{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "test-old-template",
+						Namespace: ssp.Spec.CommonTemplates.Namespace,
+						Labels: map[string]string{
+							"template.kubevirt.io/version": "not-latest",
+							"template.kubevirt.io/type":    "base",
+						},
+						OwnerReferences: []v1.OwnerReference{{
+							APIVersion: "template.openshift.io/v1",
+							Kind:       "Template",
+							Name:       ownerTemplate.Name,
+							UID:        ownerTemplate.UID,
+						}},
+					},
+				}
+				Expect(apiClient.Create(ctx, tpl)).ToNot(HaveOccurred(), "creation of dummy old template failed")
+
+				return tpl
+			}()
+
+			triggerReconciliation()
+
+			// Template should eventually be updated by the operator
+			Eventually(func() bool {
+				updatedTpl := &templatev1.Template{}
+				key, err := client.ObjectKeyFromObject(oldTpl)
+				Expect(err).ToNot(HaveOccurred(), "failed to read template object key")
+				err = apiClient.Get(ctx, key, updatedTpl)
+				if err != nil {
+					return false
+				}
+
+				if len(updatedTpl.GetOwnerReferences()) == 0 && hasOwnerAnnotations(updatedTpl.GetAnnotations()) {
+					return true
+				}
+
+				return false
+			}, shortTimeout).Should(BeTrue(), "ownerReference was not replaced by owner annotations on the old template")
+
+			// Cleanup
+			Expect(apiClient.Delete(ctx, oldTpl)).ToNot(HaveOccurred(), "deletion of dummy old template failed")
+		})
 	})
 })
