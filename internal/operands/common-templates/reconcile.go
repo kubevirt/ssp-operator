@@ -42,6 +42,10 @@ func GetOperand() operands.Operand {
 	return &commonTemplates{}
 }
 
+func (c *commonTemplates) Name() string {
+	return "CommonTemplates"
+}
+
 func (c *commonTemplates) AddWatchTypesToScheme(s *runtime.Scheme) error {
 	return templatev1.Install(s)
 }

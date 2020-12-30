@@ -80,6 +80,7 @@ func createOrUpdate(request *Request, resource controllerutil.Object, isClusterR
 		return nil
 	})
 	if err != nil {
+		request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
 		return ResourceStatus{}, err
 	}
 

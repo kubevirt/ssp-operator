@@ -29,6 +29,10 @@ import (
 
 type nodeLabeller struct{}
 
+func (nl *nodeLabeller) Name() string {
+	return "NodeLabeller"
+}
+
 func (nl *nodeLabeller) AddWatchTypesToScheme(s *runtime.Scheme) error {
 	return secv1.Install(s)
 }
