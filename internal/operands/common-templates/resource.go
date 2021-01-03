@@ -68,6 +68,11 @@ func newViewRole(namespace string) *rbac.Role {
 				Resources: []string{"datavolumes/source"},
 				Verbs:     []string{"create"},
 			},
+			{
+				APIGroups: []string{""},
+				Resources: []string{"namespaces"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
 		},
 	}
 }

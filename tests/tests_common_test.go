@@ -197,3 +197,10 @@ func isStatusDeployed(obj *v1beta1.SSP) bool {
 		progressing.Status == core.ConditionFalse &&
 		degraded.Status == core.ConditionFalse
 }
+
+func getResourceKey(obj controllerutil.Object) client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+	}
+}
