@@ -2,6 +2,8 @@ package tests
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"reflect"
 	"strings"
 
@@ -227,8 +229,8 @@ var _ = Describe("Common templates", func() {
 
 	Context("older templates update", func() {
 		var (
-			ssp           *sspv1beta1.SSP
-			ownerTemplate *templatev1.Template
+			ssp                   *sspv1beta1.SSP
+			ownerTemplate, oldTpl *templatev1.Template
 		)
 
 		BeforeEach(func() {
@@ -252,21 +254,18 @@ var _ = Describe("Common templates", func() {
 
 				return tpl
 			}()
-		})
 
-		AfterEach(func() {
-			Expect(apiClient.Delete(ctx, ownerTemplate)).ToNot(HaveOccurred(), "deletion of dummy owner template failed")
-		})
-
-		It("should replace ownerReference with owner annotations for older templates", func() {
-			oldTpl := func() *templatev1.Template {
+			oldTpl = func() *templatev1.Template {
 				tpl := &templatev1.Template{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "test-old-template",
 						Namespace: ssp.Spec.CommonTemplates.Namespace,
 						Labels: map[string]string{
-							"template.kubevirt.io/version": "not-latest",
-							"template.kubevirt.io/type":    "base",
+							"template.kubevirt.io/version":         "not-latest",
+							"template.kubevirt.io/type":            "base",
+							"os.template.kubevirt.io/some-os":      "true",
+							"flavor.template.kubevirt.io/test":     "true",
+							"workload.template.kubevirt.io/server": "true",
 						},
 						OwnerReferences: []v1.OwnerReference{{
 							APIVersion: "template.openshift.io/v1",
@@ -280,6 +279,14 @@ var _ = Describe("Common templates", func() {
 
 				return tpl
 			}()
+		})
+
+		AfterEach(func() {
+			Expect(apiClient.Delete(ctx, oldTpl)).ToNot(HaveOccurred(), "deletion of dummy old template failed")
+			Expect(apiClient.Delete(ctx, ownerTemplate)).ToNot(HaveOccurred(), "deletion of dummy owner template failed")
+		})
+
+		It("should replace ownerReference with owner annotations for older templates", func() {
 
 			triggerReconciliation()
 
@@ -299,9 +306,61 @@ var _ = Describe("Common templates", func() {
 
 				return false
 			}, shortTimeout).Should(BeTrue(), "ownerReference was not replaced by owner annotations on the old template")
+		})
+		It("should remove labels from old templates", func() {
+			triggerReconciliation()
+			// Template should eventually be updated by the operator
+			Eventually(func() bool {
+				updatedTpl := &templatev1.Template{}
+				key, err := client.ObjectKeyFromObject(oldTpl)
+				Expect(err).ToNot(HaveOccurred(), "failed to read template object key")
+				err = apiClient.Get(ctx, key, updatedTpl)
+				if err != nil {
+					return false
+				}
+				if updatedTpl.Labels["os.template.kubevirt.io/some-os"] == "" && updatedTpl.Labels["flavor.template.kubevirt.io/test"] == "" && updatedTpl.Labels["workload.template.kubevirt.io/server"] == "" && updatedTpl.Labels["template.kubevirt.io/type"] == "base" && updatedTpl.Labels["template.kubevirt.io/version"] == "not-latest" {
+					return true
+				}
+				return false
+			}, shortTimeout).Should(BeTrue(), "labels were not removed from older templates")
+		})
+		It("should continue to have labels on latest templates", func() {
+			triggerReconciliation()
+			baseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+			Expect(err).To(BeNil())
+			versionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.Equals, []string{commonTemplates.Version})
+			Expect(err).To(BeNil())
+			labelsSelector := labels.NewSelector().Add(*baseRequirement, *versionRequirement)
+			opts := client.ListOptions{
+				LabelSelector: labelsSelector,
+				Namespace:     strategy.GetTemplatesNamespace(),
+			}
+			Consistently(func() bool {
+				var latestTemplates templatev1.TemplateList
+				err = apiClient.List(ctx, &latestTemplates, &opts)
+				Expect(err).To(BeNil())
 
-			// Cleanup
-			Expect(apiClient.Delete(ctx, oldTpl)).ToNot(HaveOccurred(), "deletion of dummy old template failed")
+				for _, template := range latestTemplates.Items {
+					for _, label := range template.Labels {
+						if strings.HasPrefix(label, "os.template.kubevirt.io/") {
+							return template.Labels[label] == "true"
+						}
+						if strings.HasPrefix(label, "flavor.template.kubevirt.io/") {
+							return template.Labels[label] == "true"
+						}
+						if strings.HasPrefix(label, "workload.template.kubevirt.io/") {
+							return template.Labels[label] == "true"
+						}
+					}
+					if template.Labels["template.kubevirt.io/type"] == "base" {
+						return true
+					}
+					if template.Labels["template.kubevirt.io/version"] == commonTemplates.Version {
+						return true
+					}
+				}
+				return false
+			}).Should(BeTrue())
 		})
 	})
 })
