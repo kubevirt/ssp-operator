@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	templatev1 "github.com/openshift/api/template/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -14,8 +15,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	libhandler "github.com/operator-framework/operator-lib/handler"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -67,7 +70,8 @@ var _ = Describe("Common-Templates operand", func() {
 					},
 				},
 			},
-			Logger: log,
+			Logger:       log,
+			VersionCache: common.VersionCache{},
 		}
 	})
 
@@ -99,5 +103,71 @@ var _ = Describe("Common-Templates operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 		ExpectResourceExists(newEditRole(), request)
+	})
+
+	Context("old templates", func() {
+		var (
+			parentTpl *templatev1.Template
+		)
+
+		BeforeEach(func() {
+			// Create a dummy template to act as an owner for the test template
+			// we can't use the SSP CR as an owner for these tests because the tempaltes
+			// might be deployed in a different namespace than the CR, and will be immediately
+			// removed by the GC, the choice to use a template as an owner object was arbitrary
+			parentTpl = &templatev1.Template{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "parent-test-template",
+					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
+				},
+			}
+			Expect(request.Client.Create(request.Context, parentTpl)).ToNot(HaveOccurred(), "creation of parent template failed")
+			key, err := client.ObjectKeyFromObject(parentTpl)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(request.Client.Get(request.Context, key, parentTpl)).ToNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			Expect(request.Client.Delete(request.Context, parentTpl)).ToNot(HaveOccurred(), "deletion of parent tempalte failed")
+		})
+
+		It("should replace ownerReferences with owner annotations for older templates", func() {
+			oldTpl := &templatev1.Template{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "test-tpl",
+					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
+					Labels: map[string]string{
+						"template.kubevirt.io/version": "not-latest",
+						"template.kubevirt.io/type":    "base",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []meta.OwnerReference{{
+						APIVersion: parentTpl.APIVersion,
+						Kind:       parentTpl.Kind,
+						UID:        parentTpl.UID,
+						Name:       parentTpl.Name,
+					}},
+				},
+			}
+
+			err := request.Client.Create(request.Context, oldTpl)
+			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
+
+			Expect(oldTpl.GetOwnerReferences()).ToNot(BeNil(), "template should have owner reference before reconciliation")
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
+
+			key, err := client.ObjectKeyFromObject(oldTpl)
+			Expect(err).ToNot(HaveOccurred(), "getting template object key failed")
+
+			updatedTpl := &templatev1.Template{}
+			err = request.Client.Get(request.Context, key, updatedTpl)
+			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
+
+			Expect(len(updatedTpl.GetOwnerReferences())).To(Equal(0), "ownerReferences exist for an older template")
+			Expect(updatedTpl.GetAnnotations()[libhandler.NamespacedNameAnnotation]).ToNot(Equal(""), "owner name annotation is empty for an older template")
+			Expect(updatedTpl.GetAnnotations()[libhandler.TypeAnnotation]).ToNot(Equal(""), "owner type annotation is empty for an older template")
+		})
 	})
 })
