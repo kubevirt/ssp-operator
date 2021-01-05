@@ -5,11 +5,8 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 
 	libhandler "github.com/operator-framework/operator-lib/handler"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -96,38 +93,8 @@ func createOrUpdate(request *Request, resource controllerutil.Object, isClusterR
 
 func setOwner(request *Request, resource controllerutil.Object, isClusterRes bool) error {
 	if isClusterRes {
-		err := libhandler.SetOwnerAnnotations(request.Instance, resource)
-		if err != nil {
-			return err
-		}
-
-		// Removing ownerReferences for objects prior to creation
 		resource.SetOwnerReferences(nil)
-
-		// Removing ownerReferences for existing objects
-		existingRes := newEmptyResource(resource)
-		key, err := client.ObjectKeyFromObject(resource)
-		if err != nil {
-			return err
-		}
-
-		err = request.Client.Get(request.Context, key, existingRes)
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		} else if err == nil {
-			if len(existingRes.GetOwnerReferences()) > 0 {
-				request.Logger.Info(fmt.Sprintf("Patching %s to remove ownerReferences", key))
-				patch := client.RawPatch(types.JSONPatchType,
-					[]byte(`[{"op": "replace", "path": "/metadata/ownerReferences", "value": []}, {"op": "remove", "path": "/metadata/ownerReferences"}]`))
-				err = request.Client.Patch(request.Context, existingRes, patch)
-
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
+		return libhandler.SetOwnerAnnotations(request.Instance, resource)
 	} else {
 		delete(resource.GetAnnotations(), libhandler.NamespacedNameAnnotation)
 		delete(resource.GetAnnotations(), libhandler.TypeAnnotation)
