@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"github.com/onsi/ginkgo"
 	"reflect"
+	"time"
 
 	. "github.com/onsi/gomega"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
@@ -14,27 +16,42 @@ import (
 	"kubevirt.io/ssp-operator/api/v1beta1"
 )
 
+const pauseDuration = 10 * time.Second
+
 type testResource struct {
-	Name       string
-	Namsespace string
-	resource   controllerutil.Object
+	Name      string
+	Namespace string
+	Resource  controllerutil.Object
+
+	UpdateFunc interface{}
+	EqualsFunc interface{}
 }
 
 func (r *testResource) NewResource() controllerutil.Object {
-	return r.resource.DeepCopyObject().(controllerutil.Object)
+	return r.Resource.DeepCopyObject().(controllerutil.Object)
 }
 
 func (r *testResource) GetKey() client.ObjectKey {
 	return client.ObjectKey{
 		Name:      r.Name,
-		Namespace: r.Namsespace,
+		Namespace: r.Namespace,
 	}
+}
+
+func (r *testResource) Update(obj controllerutil.Object) {
+	reflect.ValueOf(r.UpdateFunc).Call([]reflect.Value{reflect.ValueOf(obj)})
+}
+
+func (r *testResource) Equals(a, b controllerutil.Object) bool {
+	result := reflect.ValueOf(r.EqualsFunc).
+		Call([]reflect.Value{reflect.ValueOf(a), reflect.ValueOf(b)})
+	return result[0].Bool()
 }
 
 func expectRecreateAfterDelete(res *testResource) {
 	resource := res.NewResource()
 	resource.SetName(res.Name)
-	resource.SetNamespace(res.Namsespace)
+	resource.SetNamespace(res.Namespace)
 
 	// Watch status of the SSP resource
 	watch, err := StartWatch(sspListerWatcher)
@@ -50,23 +67,26 @@ func expectRecreateAfterDelete(res *testResource) {
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 
 	err = apiClient.Get(ctx, client.ObjectKey{
-		Name: res.Name, Namespace: res.Namsespace,
+		Name: res.Name, Namespace: res.Namespace,
 	}, resource)
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func expectRestoreAfterUpdate(res *testResource, updateFunc interface{}, equalsFunc interface{}) {
-	key := res.GetKey()
+func expectRestoreAfterUpdate(res *testResource) {
+	if res.UpdateFunc == nil || res.EqualsFunc == nil {
+		ginkgo.Fail("Update or Equals functions are not defined.")
+	}
+
 	original := res.NewResource()
-	Expect(apiClient.Get(ctx, key, original)).ToNot(HaveOccurred())
+	Expect(apiClient.Get(ctx, res.GetKey(), original)).ToNot(HaveOccurred())
 
 	// Watch status of the SSP resource
 	watch, err := StartWatch(sspListerWatcher)
 	Expect(err).ToNot(HaveOccurred())
 	defer watch.Stop()
 
-	changed := original.DeepCopyObject()
-	reflect.ValueOf(updateFunc).Call([]reflect.Value{reflect.ValueOf(changed)})
+	changed := original.DeepCopyObject().(controllerutil.Object)
+	res.Update(changed)
 	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
 
 	err = WatchChangesUntil(watch, isStatusDeploying, shortTimeout)
@@ -75,13 +95,44 @@ func expectRestoreAfterUpdate(res *testResource, updateFunc interface{}, equalsF
 	err = WatchChangesUntil(watch, isStatusDeployed, timeout)
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 
-	newRes := res.NewResource()
-	Expect(apiClient.Get(ctx, key, newRes)).ToNot(HaveOccurred())
-	result := reflect.ValueOf(equalsFunc).Call([]reflect.Value{
-		reflect.ValueOf(original),
-		reflect.ValueOf(newRes),
-	})
-	Expect(result[0].Interface().(bool)).To(BeTrue())
+	found := res.NewResource()
+	Expect(apiClient.Get(ctx, res.GetKey(), found)).ToNot(HaveOccurred())
+	Expect(res.Equals(original, found)).To(BeTrue())
+}
+
+func expectRestoreAfterUpdateWithPause(res *testResource) {
+	if res.UpdateFunc == nil || res.EqualsFunc == nil {
+		ginkgo.Fail("Update or Equals functions are not defined.")
+	}
+
+	original := res.NewResource()
+	Expect(apiClient.Get(ctx, res.GetKey(), original)).ToNot(HaveOccurred())
+
+	pauseSsp()
+
+	changed := original.DeepCopyObject().(controllerutil.Object)
+	res.Update(changed)
+	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
+
+	Consistently(func() (bool, error) {
+		found := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), found)
+		if err != nil {
+			return false, err
+		}
+		return res.Equals(changed, found), nil
+	}, pauseDuration, time.Second).Should(BeTrue())
+
+	unpauseSsp()
+
+	Eventually(func() (bool, error) {
+		found := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), found)
+		if err != nil {
+			return false, err
+		}
+		return res.Equals(original, found), nil
+	}, timeout, time.Second).Should(BeTrue())
 }
 
 func hasOwnerAnnotations(annotations map[string]string) bool {
@@ -94,6 +145,35 @@ func hasOwnerAnnotations(annotations map[string]string) bool {
 
 	return annotations[handler.TypeAnnotation] == typeName &&
 		annotations[handler.NamespacedNameAnnotation] == namespacedName
+}
+
+func updateSsp(updateFunc func(foundSsp *v1beta1.SSP)) {
+	Eventually(func() error {
+		foundSsp := getSsp()
+		updateFunc(foundSsp)
+		return apiClient.Update(ctx, foundSsp)
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
+}
+
+func pauseSsp() {
+	updateSsp(func(foundSsp *v1beta1.SSP) {
+		if foundSsp.Annotations == nil {
+			foundSsp.Annotations = map[string]string{}
+		}
+		foundSsp.Annotations[v1beta1.OperatorPausedAnnotation] = "true"
+	})
+	Eventually(func() bool {
+		return getSsp().Status.Paused
+	}, shortTimeout, time.Second).Should(BeTrue())
+}
+
+func unpauseSsp() {
+	updateSsp(func(foundSsp *v1beta1.SSP) {
+		delete(foundSsp.Annotations, v1beta1.OperatorPausedAnnotation)
+	})
+	Eventually(func() bool {
+		return getSsp().Status.Paused
+	}, shortTimeout, time.Second).Should(BeFalse())
 }
 
 func isStatusDeploying(obj *v1beta1.SSP) bool {

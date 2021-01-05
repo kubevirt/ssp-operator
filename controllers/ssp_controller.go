@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
@@ -135,6 +136,16 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
+	if isPaused(instance) {
+		if instance.Status.Paused {
+			return ctrl.Result{}, nil
+		}
+		reqLogger.Info(fmt.Sprintf("Pausing SSP operator on resource: %v/%v", instance.Namespace, instance.Name))
+		instance.Status.Paused = true
+		err := r.Status().Update(ctx, instance)
+		return ctrl.Result{}, err
+	}
+
 	err = preUpdateStatus(sspRequest)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -167,6 +178,21 @@ func getOperatorVersion() string {
 		return defaultOperatorVersion
 	}
 	return opVer
+}
+
+func isPaused(object metav1.Object) bool {
+	if object.GetAnnotations() == nil {
+		return false
+	}
+	pausedStr, ok := object.GetAnnotations()[ssp.OperatorPausedAnnotation]
+	if !ok {
+		return false
+	}
+	paused, err := strconv.ParseBool(pausedStr)
+	if err != nil {
+		return false
+	}
+	return paused
 }
 
 func isBeingDeleted(object metav1.Object) bool {
@@ -297,6 +323,12 @@ func preUpdateStatus(request *common.Request) error {
 	sspStatus.Phase = lifecycleapi.PhaseDeploying
 	sspStatus.OperatorVersion = operatorVersion
 	sspStatus.TargetVersion = operatorVersion
+
+	if sspStatus.Paused {
+		request.Logger.Info(fmt.Sprintf("Unpausing SSP operator on resource: %v/%v",
+			request.Instance.Namespace, request.Instance.Name))
+	}
+	sspStatus.Paused = false
 
 	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionAvailable, v1.ConditionFalse) {
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{

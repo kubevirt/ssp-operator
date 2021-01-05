@@ -26,34 +26,66 @@ var _ = Describe("Node Labeller", func() {
 
 	BeforeEach(func() {
 		clusterRoleRes = testResource{
-			Name:       nodelabeller.ClusterRoleName,
-			resource:   &rbac.ClusterRole{},
-			Namsespace: "",
+			Name:      nodelabeller.ClusterRoleName,
+			Resource:  &rbac.ClusterRole{},
+			Namespace: "",
+			UpdateFunc: func(role *rbac.ClusterRole) {
+				role.Rules[0].Verbs = []string{"watch"}
+			},
+			EqualsFunc: func(old *rbac.ClusterRole, new *rbac.ClusterRole) bool {
+				return reflect.DeepEqual(old.Rules, new.Rules)
+			},
 		}
 		clusterRoleBindingRes = testResource{
-			Name:       nodelabeller.ClusterRoleBindingName,
-			resource:   &rbac.ClusterRoleBinding{},
-			Namsespace: "",
+			Name:      nodelabeller.ClusterRoleBindingName,
+			Resource:  &rbac.ClusterRoleBinding{},
+			Namespace: "",
+			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
+				roleBinding.Subjects = nil
+			},
+			EqualsFunc: func(old *rbac.ClusterRoleBinding, new *rbac.ClusterRoleBinding) bool {
+				return reflect.DeepEqual(old.Subjects, new.Subjects)
+			},
 		}
 		serviceAccountRes = testResource{
-			Name:       nodelabeller.ServiceAccountName,
-			Namsespace: strategy.GetNamespace(),
-			resource:   &core.ServiceAccount{},
+			Name:      nodelabeller.ServiceAccountName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.ServiceAccount{},
 		}
 		securityContextConstraintRes = testResource{
-			Name:       nodelabeller.SecurityContextName,
-			Namsespace: "",
-			resource:   &secv1.SecurityContextConstraints{},
+			Name:      nodelabeller.SecurityContextName,
+			Namespace: "",
+			Resource:  &secv1.SecurityContextConstraints{},
+			UpdateFunc: func(scc *secv1.SecurityContextConstraints) {
+				scc.Users = []string{"test-user"}
+			},
+			EqualsFunc: func(old *secv1.SecurityContextConstraints, new *secv1.SecurityContextConstraints) bool {
+				return reflect.DeepEqual(old.Users, new.Users)
+			},
 		}
 		configMapRes = testResource{
-			Name:       nodelabeller.ConfigMapName,
-			Namsespace: strategy.GetNamespace(),
-			resource:   &core.ConfigMap{},
+			Name:      nodelabeller.ConfigMapName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.ConfigMap{},
+			UpdateFunc: func(configMap *core.ConfigMap) {
+				configMap.Data = map[string]string{
+					"cpu-plugin-configmap.yaml": "change data",
+				}
+			},
+			EqualsFunc: func(old *core.ConfigMap, new *core.ConfigMap) bool {
+				return reflect.DeepEqual(old.Data, new.Data)
+			},
 		}
 		daemonSetRes = testResource{
-			Name:       nodelabeller.DaemonSetName,
-			Namsespace: strategy.GetNamespace(),
-			resource:   &apps.DaemonSet{},
+			Name:      nodelabeller.DaemonSetName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &apps.DaemonSet{},
+			UpdateFunc: func(daemonSet *apps.DaemonSet) {
+				daemonSet.Spec.Template.Spec.ServiceAccountName = "test-account"
+			},
+			EqualsFunc: func(old *apps.DaemonSet, new *apps.DaemonSet) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
 		}
 
 		waitUntilDeployed()
@@ -94,48 +126,30 @@ var _ = Describe("Node Labeller", func() {
 
 	Context("resource change", func() {
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:5195] cluster role", &clusterRoleRes,
-				func(role *rbac.ClusterRole) {
-					role.Rules[0].Verbs = []string{"watch"}
-				},
-				func(old *rbac.ClusterRole, new *rbac.ClusterRole) bool {
-					return reflect.DeepEqual(old.Rules, new.Rules)
-				}),
-
-			table.Entry("[test_id:5197] cluster role binding", &clusterRoleBindingRes,
-				func(roleBinding *rbac.ClusterRoleBinding) {
-					roleBinding.Subjects = []rbac.Subject{}
-				},
-				func(old *rbac.ClusterRoleBinding, new *rbac.ClusterRoleBinding) bool {
-					return reflect.DeepEqual(old.Subjects, new.Subjects)
-				}),
-
-			table.Entry("[test_id:5204] security context constraint", &securityContextConstraintRes,
-				func(scc *secv1.SecurityContextConstraints) {
-					scc.Users = []string{"test-user"}
-				},
-				func(old *secv1.SecurityContextConstraints, new *secv1.SecurityContextConstraints) bool {
-					return reflect.DeepEqual(old.Users, new.Users)
-				}),
-
-			table.Entry("[test_id:5201] Config Map", &configMapRes,
-				func(configMap *core.ConfigMap) {
-					configMap.Data = map[string]string{
-						"cpu-plugin-configmap.yaml": "change data",
-					}
-				},
-				func(old *core.ConfigMap, new *core.ConfigMap) bool {
-					return reflect.DeepEqual(old.Data, new.Data)
-				}),
-
-			table.Entry("[test_id:5192] daemonSet", &daemonSetRes,
-				func(daemonSet *apps.DaemonSet) {
-					daemonSet.Spec.Template.Spec.ServiceAccountName = "test-account"
-				},
-				func(old *apps.DaemonSet, new *apps.DaemonSet) bool {
-					return reflect.DeepEqual(old.Spec, new.Spec)
-				}),
+			table.Entry("[test_id:5195] cluster role", &clusterRoleRes),
+			table.Entry("[test_id:5197] cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:5204] security context constraint", &securityContextConstraintRes),
+			table.Entry("[test_id:5201] Config Map", &configMapRes),
+			table.Entry("[test_id:5192] daemonSet", &daemonSetRes),
 		)
+
+		Context("with pause", func() {
+			BeforeEach(func() {
+				strategy.SkipSspUpdateTestsIfNeeded()
+			})
+
+			JustAfterEach(func() {
+				unpauseSsp()
+			})
+
+			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				table.Entry("[test_id:5399] cluster role", &clusterRoleRes),
+				table.Entry("[test_id:5402] cluster role binding", &clusterRoleBindingRes),
+				table.Entry("[test_id:5404] security context constraint", &securityContextConstraintRes),
+				table.Entry("[test_id:5408] configMap", &configMapRes),
+				table.Entry("[test_id:5410] daemonSet", &daemonSetRes),
+			)
+		})
 	})
 
 	It("all pods should be ready when deployed", func() {
