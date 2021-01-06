@@ -76,7 +76,7 @@ var _ = Describe("Template validator operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectResourceExists(newClusterRole(namespace), request)
+		ExpectResourceExists(newClusterRole(), request)
 		ExpectResourceExists(newServiceAccount(namespace), request)
 		ExpectResourceExists(newClusterRoleBinding(namespace), request)
 		ExpectResourceExists(newService(namespace), request)
@@ -130,13 +130,13 @@ var _ = Describe("Template validator operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectResourceExists(newClusterRole(namespace), request)
+		ExpectResourceExists(newClusterRole(), request)
 		ExpectResourceExists(newClusterRoleBinding(namespace), request)
 		ExpectResourceExists(newValidatingWebhook(namespace), request)
 
 		Expect(operand.Cleanup(&request)).ToNot(HaveOccurred())
 
-		ExpectResourceNotExists(newClusterRole(namespace), request)
+		ExpectResourceNotExists(newClusterRole(), request)
 		ExpectResourceNotExists(newClusterRoleBinding(namespace), request)
 		ExpectResourceNotExists(newValidatingWebhook(namespace), request)
 	})

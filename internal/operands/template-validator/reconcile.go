@@ -60,7 +60,7 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Resourc
 
 func (t *templateValidator) Cleanup(request *common.Request) error {
 	for _, obj := range []controllerutil.Object{
-		newClusterRole(request.Namespace),
+		newClusterRole(),
 		newClusterRoleBinding(request.Namespace),
 		newValidatingWebhook(request.Namespace),
 	} {
@@ -81,7 +81,7 @@ func GetOperand() operands.Operand {
 
 func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
-		newClusterRole(request.Namespace),
+		newClusterRole(),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
 		})
@@ -175,9 +175,9 @@ func reconcileValidatingWebhook(request *common.Request) (common.ResourceStatus,
 }
 
 func copyFoundCaBundles(newWebhooks []admission.ValidatingWebhook, foundWebhooks []admission.ValidatingWebhook) {
-	for i, _ := range newWebhooks {
+	for i := range newWebhooks {
 		newWebhook := &newWebhooks[i]
-		for j, _ := range foundWebhooks {
+		for j := range foundWebhooks {
 			foundWebhook := &foundWebhooks[j]
 			if newWebhook.Name == foundWebhook.Name {
 				newWebhook.ClientConfig.CABundle = foundWebhook.ClientConfig.CABundle
