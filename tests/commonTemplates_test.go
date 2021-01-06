@@ -339,27 +339,28 @@ var _ = Describe("Common templates", func() {
 				var latestTemplates templatev1.TemplateList
 				err = apiClient.List(ctx, &latestTemplates, &opts)
 				Expect(err).To(BeNil())
+				Expect(len(latestTemplates.Items)).To(BeNumerically(">", 0))
 
 				for _, template := range latestTemplates.Items {
 					for _, label := range template.Labels {
-						if strings.HasPrefix(label, "os.template.kubevirt.io/") {
-							return template.Labels[label] == "true"
+						if strings.HasPrefix(label, "os.template.kubevirt.io/") && template.Labels[label] != "true" {
+							return false
 						}
-						if strings.HasPrefix(label, "flavor.template.kubevirt.io/") {
-							return template.Labels[label] == "true"
+						if strings.HasPrefix(label, "flavor.template.kubevirt.io/") && template.Labels[label] != "true" {
+							return false
 						}
-						if strings.HasPrefix(label, "workload.template.kubevirt.io/") {
-							return template.Labels[label] == "true"
+						if strings.HasPrefix(label, "workload.template.kubevirt.io/") && template.Labels[label] != "true"{
+							return false
 						}
 					}
-					if template.Labels["template.kubevirt.io/type"] == "base" {
-						return true
+					if template.Labels["template.kubevirt.io/type"] != "base" {
+						return false
 					}
-					if template.Labels["template.kubevirt.io/version"] == commonTemplates.Version {
-						return true
+					if template.Labels["template.kubevirt.io/version"] != commonTemplates.Version {
+						return false
 					}
 				}
-				return false
+				return true
 			}).Should(BeTrue())
 		})
 	})
