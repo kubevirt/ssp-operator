@@ -137,25 +137,22 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 
 func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
 	// Append functions to take ownership of previously deployed templates during an upgrade
-	existingTemplates := &templatev1.TemplateList{}
 	templatesSelector := func() labels.Selector {
-		tplSelector := labels.NewSelector()
-		tplBaseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+		baseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
 		if err != nil {
 			panic("Failed creating label selector for 'template.kubevirt.io/type=base")
 		}
 
 		// Only fetching older templates  to prevent duplication of API calls
-		tplVersionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.NotEquals, []string{Version})
+		versionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.NotEquals, []string{Version})
 		if err != nil {
 			panic("Failed creating label selector for 'template.kubevirt.io/version")
 		}
 
-		tplSelector = tplSelector.Add(*tplBaseRequirement, *tplVersionRequirement)
-
-		return tplSelector
+		return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
 	}()
 
+	existingTemplates := &templatev1.TemplateList{}
 	err := request.Client.List(request.Context, existingTemplates, &client.ListOptions{
 		LabelSelector: templatesSelector,
 		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,

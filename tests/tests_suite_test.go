@@ -362,10 +362,6 @@ func triggerReconciliation() {
 	})
 
 	updateSsp(func(foundSsp *sspv1beta1.SSP) {
-		if foundSsp.GetAnnotations() == nil {
-			foundSsp.SetAnnotations(map[string]string{})
-		}
-
 		delete(foundSsp.GetAnnotations(), "forceReconciliation")
 	})
 
