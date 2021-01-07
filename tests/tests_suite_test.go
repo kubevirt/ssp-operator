@@ -141,6 +141,7 @@ func (s *newSspStrategy) GetValidatorReplicas() int {
 }
 
 func (s *newSspStrategy) RevertToOriginalSspCr() {
+	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
 }
 
@@ -216,6 +217,7 @@ func (s *existingSspStrategy) GetValidatorReplicas() int {
 }
 
 func (s *existingSspStrategy) RevertToOriginalSspCr() {
+	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
 }
 
@@ -320,7 +322,9 @@ func waitUntilDeployed() {
 	// it will panic and the deploymentTimedOut will be left true
 	deploymentTimedOut = true
 	EventuallyWithOffset(1, func() bool {
-		return getSsp().Status.Phase == lifecycleapi.PhaseDeployed
+		ssp := getSsp()
+		return ssp.Status.ObservedGeneration == ssp.Generation &&
+			ssp.Status.Phase == lifecycleapi.PhaseDeployed
 	}, timeout, time.Second).Should(BeTrue())
 	deploymentTimedOut = false
 }
@@ -356,6 +360,24 @@ func getIntEnv(envName string) (int, bool) {
 		}
 		return int(val), true
 	}
+}
+
+func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {
+	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
+	Eventually(func() error {
+		foundSsp := &sspv1beta1.SSP{}
+		err := apiClient.Get(ctx, key, foundSsp)
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if foundSsp.DeletionTimestamp != nil {
+			return fmt.Errorf("waiting for SSP CR deletion")
+		}
+		return nil
+	}, timeout, time.Second).ShouldNot(HaveOccurred())
 }
 
 func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
