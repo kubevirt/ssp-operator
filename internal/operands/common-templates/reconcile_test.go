@@ -2,12 +2,15 @@ package common_templates
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	templatev1 "github.com/openshift/api/template/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
@@ -26,16 +29,17 @@ var (
 	operand = GetOperand()
 )
 
+const (
+	namespace = "kubevirt"
+	name      = "test-ssp"
+)
+
 func TestTemplates(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Common Templates Suite")
 }
 
 var _ = Describe("Common-Templates operand", func() {
-	const (
-		namespace = "kubevirt"
-		name      = "test-ssp"
-	)
 
 	var request common.Request
 
@@ -56,11 +60,11 @@ var _ = Describe("Common-Templates operand", func() {
 			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
-				TypeMeta: meta.TypeMeta{
+				TypeMeta: metav1.TypeMeta{
 					Kind:       "SSP",
 					APIVersion: ssp.GroupVersion.String(),
 				},
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
@@ -107,7 +111,7 @@ var _ = Describe("Common-Templates operand", func() {
 
 	Context("old templates", func() {
 		var (
-			parentTpl *templatev1.Template
+			parentTpl, oldTpl *templatev1.Template
 		)
 
 		BeforeEach(func() {
@@ -116,7 +120,7 @@ var _ = Describe("Common-Templates operand", func() {
 			// might be deployed in a different namespace than the CR, and will be immediately
 			// removed by the GC, the choice to use a template as an owner object was arbitrary
 			parentTpl = &templatev1.Template{
-				ObjectMeta: meta.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "parent-test-template",
 					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
 				},
@@ -125,23 +129,20 @@ var _ = Describe("Common-Templates operand", func() {
 			key, err := client.ObjectKeyFromObject(parentTpl)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(request.Client.Get(request.Context, key, parentTpl)).ToNot(HaveOccurred())
-		})
 
-		AfterEach(func() {
-			Expect(request.Client.Delete(request.Context, parentTpl)).ToNot(HaveOccurred(), "deletion of parent tempalte failed")
-		})
-
-		It("should replace ownerReferences with owner annotations for older templates", func() {
-			oldTpl := &templatev1.Template{
-				ObjectMeta: meta.ObjectMeta{
+			oldTpl = &templatev1.Template{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-tpl",
 					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
 					Labels: map[string]string{
-						"template.kubevirt.io/version": "not-latest",
-						"template.kubevirt.io/type":    "base",
+						"template.kubevirt.io/version":         "not-latest",
+						"template.kubevirt.io/type":            "base",
+						"os.template.kubevirt.io/some-os":      "true",
+						"flavor.template.kubevirt.io/test":     "true",
+						"workload.template.kubevirt.io/server": "true",
 					},
 					Annotations: map[string]string{},
-					OwnerReferences: []meta.OwnerReference{{
+					OwnerReferences: []metav1.OwnerReference{{
 						APIVersion: parentTpl.APIVersion,
 						Kind:       parentTpl.Kind,
 						UID:        parentTpl.UID,
@@ -150,12 +151,20 @@ var _ = Describe("Common-Templates operand", func() {
 				},
 			}
 
-			err := request.Client.Create(request.Context, oldTpl)
+			err = request.Client.Create(request.Context, oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
+		})
+
+		AfterEach(func() {
+			Expect(request.Client.Delete(request.Context, oldTpl)).ToNot(HaveOccurred(), "deletion of parent tempalte failed")
+			Expect(request.Client.Delete(request.Context, parentTpl)).ToNot(HaveOccurred(), "deletion of parent tempalte failed")
+		})
+
+		It("should replace ownerReferences with owner annotations for older templates", func() {
 
 			Expect(oldTpl.GetOwnerReferences()).ToNot(BeNil(), "template should have owner reference before reconciliation")
 
-			_, err = operand.Reconcile(&request)
+			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
 
 			key, err := client.ObjectKeyFromObject(oldTpl)
@@ -168,6 +177,51 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(len(updatedTpl.GetOwnerReferences())).To(Equal(0), "ownerReferences exist for an older template")
 			Expect(updatedTpl.GetAnnotations()[libhandler.NamespacedNameAnnotation]).ToNot(Equal(""), "owner name annotation is empty for an older template")
 			Expect(updatedTpl.GetAnnotations()[libhandler.TypeAnnotation]).ToNot(Equal(""), "owner type annotation is empty for an older template")
+		})
+		It("should remove labels from old templates", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
+
+			key, err := client.ObjectKeyFromObject(oldTpl)
+			Expect(err).ToNot(HaveOccurred(), "getting template object key failed")
+
+			updatedTpl := &templatev1.Template{}
+			err = request.Client.Get(request.Context, key, updatedTpl)
+			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
+
+			Expect(updatedTpl.Labels["os.template.kubevirt.io/some-os"]).To(Equal(""), "os.template.kubevirt.io should be empty")
+			Expect(updatedTpl.Labels["flavor.template.kubevirt.io/test"]).To(Equal(""), "flavor.template.kubevirt.io should be empty")
+			Expect(updatedTpl.Labels["workload.template.kubevirt.io/server"]).To(Equal(""), "workload.template.kubevirt.io should be empty")
+			Expect(updatedTpl.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
+			Expect(updatedTpl.Labels["template.kubevirt.io/version"]).To(Equal("not-latest"), "template.kubevirt.io/version should equal not-latest")
+		})
+		It("should not remove labels from latest templates", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
+
+			var latestTemplates templatev1.TemplateList
+			versionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.Equals, []string{Version})
+			Expect(err).ToNot(HaveOccurred())
+			labelsSelector := labels.NewSelector().Add(*versionRequirement)
+			opts := client.ListOptions{
+				LabelSelector: labelsSelector,
+			}
+			Expect(request.Client.List(request.Context, &latestTemplates, &opts)).ToNot(HaveOccurred())
+			for _, template := range latestTemplates.Items {
+				for _, label := range template.Labels {
+					if strings.HasPrefix(label, "os.template.kubevirt.io/") {
+						Expect(template.Labels[label]).To(Equal("true"), "os.template.kubevirt.io should not be empty")
+					}
+					if strings.HasPrefix(label, "flavor.template.kubevirt.io/") {
+						Expect(template.Labels[label]).To(Equal("true"), "flavor.template.kubevirt.io should not be empty")
+					}
+					if strings.HasPrefix(label, "workload.template.kubevirt.io/") {
+						Expect(template.Labels[label]).To(Equal("true"), "workload.template.kubevirt.io should not be empty")
+					}
+					Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
+					Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(Version), "template.kubevirt.io/version should equal "+Version)
+				}
+			}
 		})
 	})
 })

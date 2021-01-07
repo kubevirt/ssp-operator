@@ -2,6 +2,7 @@ package common_templates
 
 import (
 	"fmt"
+	"strings"
 
 	"path/filepath"
 	"sync"
@@ -169,10 +170,15 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 	for i := range existingTemplates.Items {
 		template := &existingTemplates.Items[i]
 		funcs = append(funcs, func(*common.Request) (common.ResourceStatus, error) {
-			// An empty update func is sufficient because the generic reconcile
-			// logic would add owner annotations and remove ownerReferences
 			return common.CreateOrUpdateClusterResource(request, template,
-				func(newRes, foundRes controllerutil.Object) {})
+				func(_, foundRes controllerutil.Object) {
+					foundTemplate := foundRes.(*templatev1.Template)
+					for key := range foundTemplate.Labels {
+						if strings.HasPrefix(key, "os.template.kubevirt.io/") || strings.HasPrefix(key, "flavor.template.kubevirt.io/") || strings.HasPrefix(key, "workload.template.kubevirt.io/") {
+							delete(foundTemplate.Labels, key)
+						}
+					}
+				})
 		})
 	}
 
