@@ -335,33 +335,24 @@ var _ = Describe("Common templates", func() {
 				LabelSelector: labelsSelector,
 				Namespace:     strategy.GetTemplatesNamespace(),
 			}
-			Consistently(func() bool {
-				var latestTemplates templatev1.TemplateList
-				err = apiClient.List(ctx, &latestTemplates, &opts)
-				Expect(err).To(BeNil())
-				Expect(len(latestTemplates.Items)).To(BeNumerically(">", 0))
 
-				for _, template := range latestTemplates.Items {
-					for _, label := range template.Labels {
-						if strings.HasPrefix(label, "os.template.kubevirt.io/") && template.Labels[label] != "true" {
-							return false
-						}
-						if strings.HasPrefix(label, "flavor.template.kubevirt.io/") && template.Labels[label] != "true" {
-							return false
-						}
-						if strings.HasPrefix(label, "workload.template.kubevirt.io/") && template.Labels[label] != "true"{
-							return false
-						}
-					}
-					if template.Labels["template.kubevirt.io/type"] != "base" {
-						return false
-					}
-					if template.Labels["template.kubevirt.io/version"] != commonTemplates.Version {
-						return false
+			var latestTemplates templatev1.TemplateList
+			err = apiClient.List(ctx, &latestTemplates, &opts)
+			Expect(err).To(BeNil())
+			Expect(len(latestTemplates.Items)).To(BeNumerically(">", 0))
+
+			for _, template := range latestTemplates.Items {
+				for label, value := range template.Labels {
+					if strings.HasPrefix(label, "os.template.kubevirt.io/") ||
+						strings.HasPrefix(label, "flavor.template.kubevirt.io/") ||
+						strings.HasPrefix(label, "workload.template.kubevirt.io/") {
+						Expect(value).To(Equal("true"))
 					}
 				}
-				return true
-			}).Should(BeTrue())
+				Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"))
+				Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(commonTemplates.Version))
+
+			}
 		})
 	})
 })
