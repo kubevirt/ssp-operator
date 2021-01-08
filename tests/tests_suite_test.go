@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -230,6 +231,7 @@ func (s *existingSspStrategy) sspModificationDisabled() bool {
 
 var (
 	apiClient          client.Client
+	coreClient         *kubernetes.Clientset
 	ctx                context.Context
 	strategy           TestSuiteStrategy
 	sspListerWatcher   cache.ListerWatcher
@@ -284,6 +286,8 @@ func setupApiClient() {
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
 	apiClient, err = client.New(cfg, client.Options{})
+	Expect(err).ToNot(HaveOccurred())
+	coreClient, err = kubernetes.NewForConfig(cfg)
 	Expect(err).ToNot(HaveOccurred())
 
 	ctx = context.Background()

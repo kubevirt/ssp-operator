@@ -12,8 +12,10 @@ import (
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	templatev1 "github.com/openshift/api/template/v1"
+	authv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -330,6 +332,81 @@ var _ = Describe("Common templates", func() {
 				Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(commonTemplates.Version))
 
 			}
+		})
+	})
+
+	Context("rbac", func() {
+		Context("os-images", func() {
+			var (
+				regularSA *core.ServiceAccount
+			)
+
+			BeforeEach(func() {
+				regularSA = &core.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "regular-sa",
+						Namespace: strategy.GetNamespace(),
+					},
+				}
+
+				Expect(apiClient.Create(ctx, regularSA)).ToNot(HaveOccurred(), "creation of regular service account failed")
+				Expect(apiClient.Get(ctx, getResourceKey(regularSA), regularSA)).ToNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				Expect(apiClient.Delete(ctx, regularSA)).NotTo(HaveOccurred())
+			})
+
+			It("regular service account should be able to 'get' os-images namespace", func() {
+				sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
+					Spec: authv1.SubjectAccessReviewSpec{
+						User:   fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), regularSA.GetName()),
+						Groups: []string{"system:serviceaccounts"},
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Verb:      "get",
+							Version:   "v1",
+							Resource:  "namespaces",
+						},
+					},
+				}, metav1.CreateOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sar.Status.Allowed).To(BeTrue(), "regular service account cannot 'get' the os images namespace")
+			})
+
+			It("regular service account should be able to 'list' os-images namespace", func() {
+				sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
+					Spec: authv1.SubjectAccessReviewSpec{
+						User:   fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), regularSA.GetName()),
+						Groups: []string{"system:serviceaccounts"},
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Verb:      "list",
+							Version:   "v1",
+							Resource:  "namespaces",
+						},
+					},
+				}, metav1.CreateOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sar.Status.Allowed).To(BeTrue(), "regular service account cannot 'list' the os images namespace")
+			})
+
+			It("regular service account should be able to 'watch' os-images namespace", func() {
+				sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
+					Spec: authv1.SubjectAccessReviewSpec{
+						User:   fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), regularSA.GetName()),
+						Groups: []string{"system:serviceaccounts"},
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Verb:      "watch",
+							Version:   "v1",
+							Resource:  "namespaces",
+						},
+					},
+				}, metav1.CreateOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sar.Status.Allowed).To(BeTrue(), "regular service account cannot 'watch' the os images namespace")
+			})
 		})
 	})
 })
