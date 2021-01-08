@@ -344,7 +344,7 @@ spec:
                       - name: NODE_LABELLER_IMAGE
                       - name: CPU_PLUGIN_IMAGE
                       - name: OPERATOR_VERSION
-                    image: quay.io/oyahud/ssp-operator:latest
+                    image: quay.io/kubevirt/ssp-operator:latest
                     name: manager
                     ports:
                       - containerPort: 9443

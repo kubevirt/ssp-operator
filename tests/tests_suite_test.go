@@ -362,12 +362,13 @@ func triggerReconciliation() {
 	})
 
 	updateSsp(func(foundSsp *sspv1beta1.SSP) {
-		if foundSsp.GetAnnotations() == nil {
-			foundSsp.SetAnnotations(map[string]string{})
-		}
-
 		delete(foundSsp.GetAnnotations(), "forceReconciliation")
 	})
+
+	// Wait a second to give time for operator to notice the change
+	time.Sleep(time.Second)
+
+	waitUntilDeployed()
 }
 
 func TestFunctional(t *testing.T) {
