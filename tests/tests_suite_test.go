@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -36,7 +37,11 @@ const (
 	envExistingCrNamespace   = "TEST_EXISTING_CR_NAMESPACE"
 	envSkipUpdateSspTests    = "SKIP_UPDATE_SSP_TESTS"
 	envSkipCleanupAfterTests = "SKIP_CLEANUP_AFTER_TESTS"
+	envTimeout               = "TIMEOUT_MINUTES"
+	envShortTimeout          = "SHORT_TIMEOUT_MINUTES"
+)
 
+var (
 	shortTimeout = 1 * time.Minute
 	timeout      = 10 * time.Minute
 )
@@ -241,6 +246,18 @@ var _ = BeforeSuite(func() {
 		strategy = &existingSspStrategy{Name: existingCrName, Namespace: existingCrNamespace}
 	}
 
+	envTimeout, set := getIntEnv(envTimeout)
+	if set {
+		timeout = time.Duration(envTimeout) * time.Minute
+		fmt.Println(fmt.Sprintf("timeout set to %d minutes", envTimeout))
+	}
+
+	envShortTimeout, set := getIntEnv(envShortTimeout)
+	if set {
+		shortTimeout = time.Duration(envShortTimeout) * time.Minute
+		fmt.Println(fmt.Sprintf("short timeout set to %d minutes", envShortTimeout))
+	}
+
 	setupApiClient()
 	strategy.Init()
 
@@ -321,6 +338,20 @@ func getBoolEnv(envName string) bool {
 		return false
 	}
 	return val
+}
+
+// getIntEnv returns (0, false) if an env var is not set or (X, true) if it is set
+func getIntEnv(envName string) (int, bool) {
+	envVal := os.Getenv(envName)
+	if envVal == "" {
+		return 0, false
+	} else {
+		val, err := strconv.ParseInt(envVal, 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		return int(val), true
+	}
 }
 
 func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
