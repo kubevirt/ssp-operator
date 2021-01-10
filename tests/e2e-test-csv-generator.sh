@@ -46,7 +46,7 @@ if [ $(echo $olm_output | grep 'group: ssp.kubevirt.io'| wc -l) -eq 0 ]; then
 fi
 
 #test the case without --dump-crds flag
-olm_output=$(docker run --rm --entrypoint=/usr/bin/csv-generator quay.io/oyahud/kubevirt-ssp-operator:latest \
+olm_output=$(docker run --rm --entrypoint=/usr/bin/csv-generator quay.io/kubevirt/ssp-operator:latest \
 --csv-version=test --namespace=namespace-test  --validator-image=validator-test \
 --kvm-info-image=kvm-test --virt-launcher-image=virt-launcher-test --node-labeller-image=node-labeller-test \
 --cpu-plugin-image=cpu-plugin-test --operator-image=operator-test) 
