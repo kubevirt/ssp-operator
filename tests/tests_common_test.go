@@ -209,24 +209,14 @@ func getResourceKey(obj controllerutil.Object) client.ObjectKey {
 	}
 }
 
-func expectUserCan(user string, groups []string, verb, resNamespace, resGroup, resVersion, resKind, resName, resSubresource string) {
+func expectUserCan(sars *authv1.SubjectAccessReviewSpec) {
 	sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
-		Spec: authv1.SubjectAccessReviewSpec{
-			User:   user,
-			Groups: groups,
-			ResourceAttributes: &authv1.ResourceAttributes{
-				Namespace:   resNamespace,
-				Verb:        verb,
-				Group:       resGroup,
-				Version:     resVersion,
-				Resource:    resKind,
-				Subresource: resSubresource,
-				Name:        resName,
-			},
-		},
+		Spec: *sars,
 	}, metav1.CreateOptions{})
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	ExpectWithOffset(1, sar.Status.Allowed).To(BeTrue(),
 		fmt.Sprintf("user [%s] with groups %v cannot [%s] resource: [%s], subresource: [%s], name: [%s] in group [%s/%s] in namespace [%s]",
-			user, groups, verb, resKind, resSubresource, resName, resGroup, resVersion, resNamespace))
+			sars.User, sars.Groups, sars.ResourceAttributes.Verb, sars.ResourceAttributes.Resource,
+			sars.ResourceAttributes.Subresource, sars.ResourceAttributes.Name, sars.ResourceAttributes.Group,
+			sars.ResourceAttributes.Version, sars.ResourceAttributes.Namespace))
 }
