@@ -65,6 +65,11 @@ func newViewRole(namespace string) *rbac.Role {
 			},
 			{
 				APIGroups: []string{"cdi.kubevirt.io"},
+				Resources: []string{"datavolumes"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{"cdi.kubevirt.io"},
 				Resources: []string{"datavolumes/source"},
 				Verbs:     []string{"create"},
 			},
