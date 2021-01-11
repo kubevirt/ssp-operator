@@ -1,14 +1,18 @@
 package tests
 
 import (
-	"github.com/onsi/ginkgo"
+	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/onsi/ginkgo"
 
 	. "github.com/onsi/gomega"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	"github.com/operator-framework/operator-lib/handler"
+	authv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -203,4 +207,26 @@ func getResourceKey(obj controllerutil.Object) client.ObjectKey {
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),
 	}
+}
+
+func expectUserCan(user string, groups []string, verb, resNamespace, resGroup, resVersion, resKind, resName, resSubresource string) {
+	sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
+		Spec: authv1.SubjectAccessReviewSpec{
+			User:   user,
+			Groups: groups,
+			ResourceAttributes: &authv1.ResourceAttributes{
+				Namespace:   resNamespace,
+				Verb:        verb,
+				Group:       resGroup,
+				Version:     resVersion,
+				Resource:    resKind,
+				Subresource: resSubresource,
+				Name:        resName,
+			},
+		},
+	}, metav1.CreateOptions{})
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	ExpectWithOffset(1, sar.Status.Allowed).To(BeTrue(),
+		fmt.Sprintf("user [%s] with groups %v cannot [%s] resource: [%s], subresource: [%s], name: [%s] in group [%s/%s] in namespace [%s]",
+			user, groups, verb, resKind, resSubresource, resName, resGroup, resVersion, resNamespace))
 }
