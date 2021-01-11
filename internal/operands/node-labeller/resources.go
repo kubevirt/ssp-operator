@@ -144,8 +144,7 @@ func initContainerKvmInfoNfdPlugin() *core.Container {
 
 func initContainerKubevirtCpuNfdPlugin() *core.Container {
 	// Build the KubevirtCpuNfdPlugin Init Container
-	args := []string{"cp /plugin/dest/cpu-nfd-plugin /etc/kubernetes/node-feature-discovery/source.d/;",
-		"cp /config/cpu-plugin-configmap.yaml /etc/kubernetes/node-feature-discovery/source.d/cpu-plugin-configmap.yaml;"}
+	args := []string{"cp /plugin/dest/cpu-nfd-plugin /etc/kubernetes/node-feature-discovery/source.d/;cp /config/cpu-plugin-configmap.yaml /etc/kubernetes/node-feature-discovery/source.d/cpu-plugin-configmap.yaml;"}
 	return &core.Container{
 		Name:            "kubevirt-cpu-nfd-plugin",
 		Image:           getNodeLabellerImages().cpuNFD,
