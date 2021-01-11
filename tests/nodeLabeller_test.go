@@ -1,17 +1,21 @@
 package tests
 
 import (
-	"reflect"
-
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	secv1 "github.com/openshift/api/security/v1"
+	yaml "gopkg.in/yaml.v2"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-
+	cpunfd "kubevirt.io/cpu-nfd-plugin/pkg/config"
 	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
+	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 )
 
 var _ = Describe("Node Labeller", func() {
@@ -156,5 +160,39 @@ var _ = Describe("Node Labeller", func() {
 		daemonSet := &apps.DaemonSet{}
 		Expect(apiClient.Get(ctx, daemonSetRes.GetKey(), daemonSet)).ToNot(HaveOccurred())
 		Expect(daemonSet.Status.NumberReady).To(Equal(daemonSet.Status.DesiredNumberScheduled))
+	})
+
+	Context("cpu-nfd-plugin", func() {
+		It("should not set deprecated cpu labels on nodes", func() {
+			cpuConfigCM := &v1.ConfigMap{}
+			Expect(apiClient.Get(ctx, client.ObjectKey{
+				Namespace: strategy.GetNamespace(),
+				Name:      nodelabeller.ConfigMapName,
+			}, cpuConfigCM)).ToNot(HaveOccurred())
+
+			data := cpuConfigCM.Data["cpu-plugin-configmap.yaml"]
+			cpuConfig := &cpunfd.Config{}
+			Expect(yaml.Unmarshal([]byte(data), cpuConfig)).ToNot(HaveOccurred())
+
+			nodes := &v1.NodeList{}
+			Expect(apiClient.List(ctx, nodes)).ToNot(HaveOccurred(), "failed to list nodes")
+			Expect(len(nodes.Items)).To(BeNumerically(">", 0), "no nodes found")
+
+			labels := map[string]string{}
+			for _, node := range nodes.Items {
+				for label, val := range node.GetLabels() {
+					labels[label] = val
+				}
+			}
+
+			for label := range labels {
+				if strings.HasPrefix(label, "feature.node.kubernetes.io/cpu-model") {
+					for _, deprecatedLabel := range cpuConfig.ObsoleteCPUs {
+						Expect(label).ToNot(ContainSubstring(deprecatedLabel),
+							fmt.Sprintf("deprecated cpu %s exists as label %s", deprecatedLabel, label))
+					}
+				}
+			}
+		})
 	})
 })
