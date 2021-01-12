@@ -360,67 +360,78 @@ var _ = Describe("Common templates", func() {
 				Expect(apiClient.Delete(ctx, regularSA)).NotTo(HaveOccurred())
 			})
 
-			It("regular service account should be able to 'get' os-images namespace", func() {
-				sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
-					Spec: authv1.SubjectAccessReviewSpec{
-						User:   fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), regularSA.GetName()),
-						Groups: []string{"system:serviceaccounts"},
+			table.DescribeTable("regular service account namespace RBAC", expectUserCan,
+				table.Entry("should be able to 'get' namespaces",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
-							Namespace: commonTemplates.GoldenImagesNSname,
 							Verb:      "get",
+							Namespace: commonTemplates.GoldenImagesNSname,
 							Version:   "v1",
 							Resource:  "namespaces",
 						},
-					},
-				}, metav1.CreateOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(sar.Status.Allowed).To(BeTrue(), "regular service account cannot 'get' the os images namespace")
-			})
-
-			It("regular service account should be able to 'list' os-images namespace", func() {
-				sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
-					Spec: authv1.SubjectAccessReviewSpec{
-						User:   fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), regularSA.GetName()),
-						Groups: []string{"system:serviceaccounts"},
+					}),
+				table.Entry("should be able to 'list' namespaces",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
-							Namespace: commonTemplates.GoldenImagesNSname,
 							Verb:      "list",
-							Version:   "v1",
-							Resource:  "namespaces",
-						},
-					},
-				}, metav1.CreateOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(sar.Status.Allowed).To(BeTrue(), "regular service account cannot 'list' the os images namespace")
-			})
-
-			It("regular service account should be able to 'watch' os-images namespace", func() {
-				sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
-					Spec: authv1.SubjectAccessReviewSpec{
-						User:   fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), regularSA.GetName()),
-						Groups: []string{"system:serviceaccounts"},
-						ResourceAttributes: &authv1.ResourceAttributes{
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Verb:      "watch",
 							Version:   "v1",
 							Resource:  "namespaces",
 						},
-					},
-				}, metav1.CreateOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(sar.Status.Allowed).To(BeTrue(), "regular service account cannot 'watch' the os images namespace")
-			})
+					}),
+				table.Entry("should be able to 'watch' namespaces",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "list",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Version:   "v1",
+							Resource:  "namespaces",
+						},
+					}))
 
-			table.DescribeTable("regular service account DV RBAC",
-				func(user *string, groups []string, verb, resNamespace, resGroup, resVersion, resKind, resName, resSubresource string) {
-					expectUserCan(*user, groups, verb, resNamespace, resGroup, resVersion, resKind, resName, resSubresource)
-				},
+			table.DescribeTable("regular service account DV RBAC", expectUserCan,
 				table.Entry("should be able to 'get' datavolumes",
-					&regularSAFullName, sasGroup, "get", commonTemplates.GoldenImagesNSname, "cdi.kubevirt.io", "v1beta1", "datavolumes", "", ""),
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "get",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Group:     "cdi.kubevirt.io",
+							Version:   "v1beta1",
+							Resource:  "datavolumes",
+						},
+					}),
 				table.Entry("should be able to 'list' datavolumes",
-					&regularSAFullName, sasGroup, "list", commonTemplates.GoldenImagesNSname, "cdi.kubevirt.io", "v1beta1", "datavolumes", "", ""),
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "list",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Group:     "cdi.kubevirt.io",
+							Version:   "v1beta1",
+							Resource:  "datavolumes",
+						},
+					}),
 				table.Entry("should be able to 'watch' datavolumes",
-					&regularSAFullName, sasGroup, "watch", commonTemplates.GoldenImagesNSname, "cdi.kubevirt.io", "v1beta1", "datavolumes", "", ""))
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "watch",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Group:     "cdi.kubevirt.io",
+							Version:   "v1beta1",
+							Resource:  "datavolumes",
+						},
+					}))
 		})
 	})
 })
