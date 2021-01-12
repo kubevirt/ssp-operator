@@ -338,7 +338,9 @@ var _ = Describe("Common templates", func() {
 	Context("rbac", func() {
 		Context("os-images", func() {
 			var (
-				regularSA *core.ServiceAccount
+				regularSA         *core.ServiceAccount
+				regularSAFullName string
+				sasGroup          = []string{"system:serviceaccounts"}
 			)
 
 			BeforeEach(func() {
@@ -348,6 +350,7 @@ var _ = Describe("Common templates", func() {
 						Namespace: strategy.GetNamespace(),
 					},
 				}
+				regularSAFullName = fmt.Sprintf("serviceaccount:%s:%s", regularSA.GetNamespace(), regularSA.GetName())
 
 				Expect(apiClient.Create(ctx, regularSA)).ToNot(HaveOccurred(), "creation of regular service account failed")
 				Expect(apiClient.Get(ctx, getResourceKey(regularSA), regularSA)).ToNot(HaveOccurred())
@@ -407,6 +410,17 @@ var _ = Describe("Common templates", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sar.Status.Allowed).To(BeTrue(), "regular service account cannot 'watch' the os images namespace")
 			})
+
+			table.DescribeTable("regular service account DV RBAC",
+				func(user *string, groups []string, verb, resNamespace, resGroup, resVersion, resKind, resName, resSubresource string) {
+					expectUserCan(*user, groups, verb, resNamespace, resGroup, resVersion, resKind, resName, resSubresource)
+				},
+				table.Entry("should be able to 'get' datavolumes",
+					&regularSAFullName, sasGroup, "get", commonTemplates.GoldenImagesNSname, "cdi.kubevirt.io", "v1beta1", "datavolumes", "", ""),
+				table.Entry("should be able to 'list' datavolumes",
+					&regularSAFullName, sasGroup, "list", commonTemplates.GoldenImagesNSname, "cdi.kubevirt.io", "v1beta1", "datavolumes", "", ""),
+				table.Entry("should be able to 'watch' datavolumes",
+					&regularSAFullName, sasGroup, "watch", commonTemplates.GoldenImagesNSname, "cdi.kubevirt.io", "v1beta1", "datavolumes", "", ""))
 		})
 	})
 })
