@@ -19,8 +19,17 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"kubevirt.io/ssp-operator/internal/common"
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
+
+var commonTemplateExpectedLabels = map[string]string{
+	common.AppKubernetesNameLabel:      "common-templates",
+	common.AppKubernetesManagedByLabel: "ssp-operator",
+	common.AppKubernetesPartOfLabel:    "test",
+	common.AppKubernetesVersionLabel:   "v0.0.0-test",
+	common.AppKubernetesComponentLabel: common.AppComponentTemplating.String(),
+}
 
 var _ = Describe("Common templates", func() {
 	var (
@@ -33,9 +42,10 @@ var _ = Describe("Common templates", func() {
 
 	BeforeEach(func() {
 		viewRole = testResource{
-			Name:      commonTemplates.ViewRoleName,
-			Namespace: commonTemplates.GoldenImagesNSname,
-			Resource:  &rbac.Role{},
+			Name:           commonTemplates.ViewRoleName,
+			Namespace:      commonTemplates.GoldenImagesNSname,
+			Resource:       &rbac.Role{},
+			ExpectedLabels: commonTemplateExpectedLabels,
 			UpdateFunc: func(role *rbac.Role) {
 				role.Rules = []rbac.PolicyRule{}
 			},
@@ -44,9 +54,10 @@ var _ = Describe("Common templates", func() {
 			},
 		}
 		viewRoleBinding = testResource{
-			Name:      commonTemplates.ViewRoleName,
-			Namespace: commonTemplates.GoldenImagesNSname,
-			Resource:  &rbac.RoleBinding{},
+			Name:           commonTemplates.ViewRoleName,
+			Namespace:      commonTemplates.GoldenImagesNSname,
+			Resource:       &rbac.RoleBinding{},
+			ExpectedLabels: commonTemplateExpectedLabels,
 			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
 				roleBinding.Subjects = nil
 			},
@@ -55,9 +66,10 @@ var _ = Describe("Common templates", func() {
 			},
 		}
 		editClusterRole = testResource{
-			Name:      commonTemplates.EditClusterRoleName,
-			Resource:  &rbac.ClusterRole{},
-			Namespace: "",
+			Name:           commonTemplates.EditClusterRoleName,
+			Resource:       &rbac.ClusterRole{},
+			ExpectedLabels: commonTemplateExpectedLabels,
+			Namespace:      "",
 			UpdateFunc: func(role *rbac.ClusterRole) {
 				role.Rules[0].Verbs = []string{"watch"}
 			},
@@ -66,14 +78,16 @@ var _ = Describe("Common templates", func() {
 			},
 		}
 		goldenImageNS = testResource{
-			Name:      commonTemplates.GoldenImagesNSname,
-			Resource:  &core.Namespace{},
-			Namespace: "",
+			Name:           commonTemplates.GoldenImagesNSname,
+			Resource:       &core.Namespace{},
+			ExpectedLabels: commonTemplateExpectedLabels,
+			Namespace:      "",
 		}
 		testTemplate = testResource{
-			Name:      "rhel8-desktop-tiny",
-			Namespace: strategy.GetTemplatesNamespace(),
-			Resource:  &templatev1.Template{},
+			Name:           "rhel8-desktop-tiny",
+			Namespace:      strategy.GetTemplatesNamespace(),
+			Resource:       &templatev1.Template{},
+			ExpectedLabels: commonTemplateExpectedLabels,
 			UpdateFunc: func(t *templatev1.Template) {
 				t.Parameters = nil
 			},
@@ -191,6 +205,14 @@ var _ = Describe("Common templates", func() {
 				}
 			}
 		})
+
+		table.DescribeTable("should set app labels", expectAppLabels,
+			table.Entry("edit role", &editClusterRole),
+			table.Entry("golden images namespace", &goldenImageNS),
+			table.Entry("view role", &viewRole),
+			table.Entry("view role binding", &viewRoleBinding),
+			table.Entry("common-template in custom NS", &testTemplate),
+		)
 	})
 
 	Context("resource change", func() {
@@ -217,6 +239,14 @@ var _ = Describe("Common templates", func() {
 				table.Entry("[test_id:5393]edit cluster role", &editClusterRole),
 			)
 		})
+
+		table.DescribeTable("should restore app labels", expectAppLabelsRestoreAfterUpdate,
+			table.Entry("edit role", &editClusterRole),
+			table.Entry("golden images namespace", &goldenImageNS),
+			table.Entry("view role", &viewRole),
+			table.Entry("view role binding", &viewRoleBinding),
+			table.Entry("common-template in custom NS", &testTemplate),
+		)
 	})
 
 	Context("resource deletion", func() {
