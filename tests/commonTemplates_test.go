@@ -71,7 +71,7 @@ var _ = Describe("Common templates", func() {
 			Namespace: "",
 		}
 		testTemplate = testResource{
-			Name:      "centos6-server-large",
+			Name:      "rhel8-desktop-tiny",
 			Namespace: strategy.GetTemplatesNamespace(),
 			Resource:  &templatev1.Template{},
 			UpdateFunc: func(t *templatev1.Template) {
