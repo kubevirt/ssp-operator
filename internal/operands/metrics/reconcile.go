@@ -46,9 +46,14 @@ func GetOperand() operands.Operand {
 	return &metrics{}
 }
 
+const (
+	operandName      = "metrics"
+	operandComponent = common.AppComponentMonitoring
+)
+
 func reconcilePrometheusRule(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
-		newPrometheusRule(request.Namespace),
+		common.AddAppLabels(request, operandName, operandComponent, newPrometheusRule(request.Namespace)),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
 		})

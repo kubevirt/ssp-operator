@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 )
 
@@ -53,6 +54,28 @@ var _ = Describe("Metrics", func() {
 
 		It("[test_id:5397] should recreate modified prometheus rule after pause", func() {
 			expectRestoreAfterUpdateWithPause(&prometheusRuleRes)
+		})
+	})
+
+	Context("app labels", func() {
+		expectedLabels := map[string]string{
+			common.AppKubernetesNameLabel:      "metrics",
+			common.AppKubernetesManagedByLabel: "ssp-operator",
+			common.AppKubernetesPartOfLabel:    "test",
+			common.AppKubernetesVersionLabel:   "v0.0.0-test",
+			common.AppKubernetesComponentLabel: common.AppComponentMonitoring.String(),
+		}
+
+		It("adds app labels from SSP CR", func() {
+			resource := &promv1.PrometheusRule{}
+			key := prometheusRuleRes.GetKey()
+			testExpectedLabels(resource, key, expectedLabels)
+		})
+
+		It("restores modified app labels", func() {
+			resource := &promv1.PrometheusRule{}
+			key := prometheusRuleRes.GetKey()
+			testExpectedLabelsRestoreAfterUpdate(resource, key, expectedLabels)
 		})
 	})
 })
