@@ -91,6 +91,7 @@ type SSPReconciler struct {
 
 func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
+	reqLogger.V(1).Info("Starting reconciliation...")
 
 	ctx := context.Background()
 
@@ -146,18 +147,28 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
+	sspRequest.Logger.V(1).Info("Updating CR status prior to operand reconciliation...")
 	err = preUpdateStatus(sspRequest)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	sspRequest.Logger.V(1).Info("CR status updated")
 
+	sspRequest.Logger.V(1).Info("Reconciling operands...")
 	statuses, err := reconcileOperands(sspRequest)
 	if err != nil {
 		return handleError(sspRequest, err)
 	}
+	sspRequest.Logger.V(1).Info("Operands reconciled")
 
+	sspRequest.Logger.V(1).Info("Updating CR status post reconciliation...")
 	err = updateStatus(sspRequest, statuses)
-	return ctrl.Result{}, err
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	sspRequest.Logger.V(1).Info("CR status updated")
+
+	return ctrl.Result{}, nil
 }
 
 func (r *SSPReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
@@ -306,8 +317,10 @@ func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, err
 	// Reconcile all operands
 	allStatuses := make([]common.ResourceStatus, 0, len(sspOperands))
 	for _, operand := range sspOperands {
+		sspRequest.Logger.V(1).Info(fmt.Sprintf("Reconciling operand: %s", operand.Name()))
 		statuses, err := operand.Reconcile(sspRequest)
 		if err != nil {
+			sspRequest.Logger.V(1).Info(fmt.Sprintf("Operand reconciliation failed: %s", err.Error()))
 			return nil, err
 		}
 		allStatuses = append(allStatuses, statuses...)
@@ -458,6 +471,7 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 	} else {
 		sspStatus.Phase = lifecycleapi.PhaseDeploying
 	}
+
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
 

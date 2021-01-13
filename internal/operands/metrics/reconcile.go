@@ -14,6 +14,10 @@ import (
 
 type metrics struct{}
 
+func (m *metrics) Name() string {
+	return "Metrics"
+}
+
 func (m *metrics) AddWatchTypesToScheme(scheme *runtime.Scheme) error {
 	return promv1.AddToScheme(scheme)
 }
