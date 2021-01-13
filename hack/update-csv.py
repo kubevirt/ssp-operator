@@ -4,25 +4,39 @@ import logging
 import sys
 import yaml
 
-_VERSIONED_NAME = 'ssp-operator.vPLACEHOLDER_CSV_VERSION'
-_SPEC = {
-    'version': 'vPLACEHOLDER_CSV_VERSION'
-}
-
-def process(path):
+def process(path, version, image):
     with open(path, 'rt') as fh:
-        manifest = yaml.safe_load(fh)
+        csv = yaml.safe_load(fh)
 
-    manifest['spec'].update(_SPEC)
-    manifest['metadata']['name'] = _VERSIONED_NAME
+    # Update CSV fields
+    csv['metadata']['annotations']['containerImage'] = image
+    csv['metadata']['name'] = 'ssp-operator.'+version
+    csv['spec']['version'] = version[1:]
 
-    yaml.safe_dump(manifest, sys.stdout)
+    deploymentPodSpec = csv['spec']['install']['spec']['deployments'][0]['spec']['template']['spec']
+    opVerEnv = [env for env in deploymentPodSpec['containers'][0]['env'] if env['name'] == 'OPERATOR_VERSION'][0]
+    opVerEnv['value'] = version
+
+    webhookPort = [port for port in deploymentPodSpec['containers'][0]['ports'] if port['name'] == 'webhook-server'][0]
+
+    for webhook in csv['spec']['webhookdefinitions']:
+        webhook['containerPort'] = webhookPort['containerPort']
+
+    deploymentPodSpec.pop('volumes')
+    deploymentPodSpec['containers'][0].pop('volumeMounts')
+
+    yaml.safe_dump(csv, sys.stdout)
 
 
 if __name__ == '__main__':
-    for arg in sys.argv[1:]:
-        try:
-            process(arg)
-        except Exception as ex:
-            logging.error('error processing %r: %s', arg, ex)
-            # keep going!
+    args = sys.argv[1:]
+
+    csvfile = args[0]
+    version = args[1]
+    image   = args[2]
+
+    try:
+        process(csvfile, version, image)
+    except Exception as ex:
+        logging.error('error processing %r: %s', args, ex)
+
