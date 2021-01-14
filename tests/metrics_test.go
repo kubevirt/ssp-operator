@@ -19,6 +19,13 @@ var _ = Describe("Metrics", func() {
 			Name:      metrics.PrometheusRuleName,
 			Namespace: strategy.GetNamespace(),
 			Resource:  &promv1.PrometheusRule{},
+			ExpectedLabels: map[string]string{
+				common.AppKubernetesNameLabel:      "metrics",
+				common.AppKubernetesManagedByLabel: "ssp-operator",
+				common.AppKubernetesPartOfLabel:    "test",
+				common.AppKubernetesVersionLabel:   "v0.0.0-test",
+				common.AppKubernetesComponentLabel: common.AppComponentMonitoring.String(),
+			},
 			UpdateFunc: func(rule *promv1.PrometheusRule) {
 				rule.Spec.Groups[0].Name = "changed-name"
 				rule.Spec.Groups[0].Rules = []promv1.Rule{}
@@ -58,24 +65,12 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("app labels", func() {
-		expectedLabels := map[string]string{
-			common.AppKubernetesNameLabel:      "metrics",
-			common.AppKubernetesManagedByLabel: "ssp-operator",
-			common.AppKubernetesPartOfLabel:    "test",
-			common.AppKubernetesVersionLabel:   "v0.0.0-test",
-			common.AppKubernetesComponentLabel: common.AppComponentMonitoring.String(),
-		}
-
 		It("adds app labels from SSP CR", func() {
-			resource := &promv1.PrometheusRule{}
-			key := prometheusRuleRes.GetKey()
-			testExpectedLabels(resource, key, expectedLabels)
+			expectAppLabels(&prometheusRuleRes)
 		})
 
 		It("restores modified app labels", func() {
-			resource := &promv1.PrometheusRule{}
-			key := prometheusRuleRes.GetKey()
-			testExpectedLabelsRestoreAfterUpdate(resource, key, expectedLabels)
+			expectAppLabelsRestoreAfterUpdate(&prometheusRuleRes)
 		})
 	})
 })
