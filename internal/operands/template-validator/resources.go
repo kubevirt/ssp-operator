@@ -38,7 +38,7 @@ func getTemplateValidatorImage() string {
 	return common.EnvOrDefault(common.TemplateValidatorImageKey, defaultTemplateValidatorImage)
 }
 
-func newClusterRole(namespace string) *rbac.ClusterRole {
+func newClusterRole() *rbac.ClusterRole {
 	return &rbac.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ClusterRoleName,

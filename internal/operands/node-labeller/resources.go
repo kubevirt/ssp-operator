@@ -167,7 +167,7 @@ func initContainerKubevirtCpuNfdPlugin() *core.Container {
 func initContainerLibvirt() *core.Container {
 	// Build the Virt Launcher Init Container
 	args := []string{"if [ ! -e /dev/kvm ] && [ $(grep '\\<kvm\\>' /proc/misc | wc -l) -eq 0 ]; then echo 'exiting due to missing kvm device'; exit 0; fi; if [ ! -e /dev/kvm ]; then mknod /dev/kvm c 10 $(grep '\\<kvm\\>' /proc/misc | cut -f 1 -d' '); fi; libvirtd -d; chmod o+rw /dev/kvm; virsh domcapabilities --machine q35 --arch x86_64 --virttype kvm > /etc/kubernetes/node-feature-discovery/source.d/virsh_domcapabilities.xml; cp -r /usr/share/libvirt/cpu_map /etc/kubernetes/node-feature-discovery/source.d/"}
-	var boolVal bool = true
+	var boolVal = true
 	return &core.Container{
 		Name:            "libvirt",
 		Image:           getNodeLabellerImages().virtLauncher,
@@ -189,7 +189,7 @@ func initContainerLibvirt() *core.Container {
 func initContainerKubevirtNodeLabeller() *core.Container {
 	// Build the KubevirtNodeLabeller Init Container
 	args := []string{"if [ ! -e /dev/kvm ] && [ $(grep '\\<kvm\\>' /proc/misc | wc -l) -eq 0 ]; then echo 'exiting due to missing kvm device'; exit 0; fi; if [ ! -e /dev/kvm ]; then mknod /dev/kvm c 10 $(grep '\\<kvm\\>' /proc/misc | cut -f 1 -d' '); fi; ./usr/sbin/node-labeller"}
-	var boolVal bool = true
+	var boolVal = true
 	return &core.Container{
 		Name:    "kubevirt-node-labeller",
 		Image:   getNodeLabellerImages().nodeLabeller,
