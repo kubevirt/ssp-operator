@@ -16,6 +16,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+func expectedLabelsFor(name string, component common.AppComponent) map[string]string {
+	return map[string]string{
+		common.AppKubernetesNameLabel:      name,
+		common.AppKubernetesManagedByLabel: "ssp-operator",
+		common.AppKubernetesPartOfLabel:    strategy.GetPartOfLabel(),
+		common.AppKubernetesVersionLabel:   strategy.GetVersionLabel(),
+		common.AppKubernetesComponentLabel: component.String(),
+	}
+}
+
 func expectAppLabels(res *testResource) {
 	testExpectedLabels(res.NewResource(), res.GetKey(), res.ExpectedLabels)
 }

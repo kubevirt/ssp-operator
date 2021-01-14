@@ -22,14 +22,6 @@ import (
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
-var templateValidatorExpectedLabels = map[string]string{
-	common.AppKubernetesNameLabel:      "template-validator",
-	common.AppKubernetesManagedByLabel: "ssp-operator",
-	common.AppKubernetesPartOfLabel:    "test",
-	common.AppKubernetesVersionLabel:   "v0.0.0-test",
-	common.AppKubernetesComponentLabel: common.AppComponentTemplating.String(),
-}
-
 var _ = Describe("Template validator", func() {
 	var (
 		clusterRoleRes        testResource
@@ -46,7 +38,7 @@ var _ = Describe("Template validator", func() {
 		clusterRoleRes = testResource{
 			Name:           validator.ClusterRoleName,
 			Resource:       &rbac.ClusterRole{},
-			ExpectedLabels: templateValidatorExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 			UpdateFunc: func(role *rbac.ClusterRole) {
 				role.Rules[0].Verbs = []string{"watch"}
 			},
@@ -57,7 +49,7 @@ var _ = Describe("Template validator", func() {
 		clusterRoleBindingRes = testResource{
 			Name:           validator.ClusterRoleBindingName,
 			Resource:       &rbac.ClusterRoleBinding{},
-			ExpectedLabels: templateValidatorExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
 				roleBinding.Subjects = nil
 			},
@@ -69,7 +61,7 @@ var _ = Describe("Template validator", func() {
 		webhookConfigRes = testResource{
 			Name:           validator.WebhookName,
 			Resource:       &admission.ValidatingWebhookConfiguration{},
-			ExpectedLabels: templateValidatorExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 			UpdateFunc: func(webhook *admission.ValidatingWebhookConfiguration) {
 				webhook.Webhooks[0].Rules = nil
 			},
@@ -81,13 +73,13 @@ var _ = Describe("Template validator", func() {
 			Name:           validator.ServiceAccountName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.ServiceAccount{},
-			ExpectedLabels: templateValidatorExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 		}
 		serviceRes = testResource{
 			Name:           validator.ServiceName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.Service{},
-			ExpectedLabels: templateValidatorExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 44331
 				service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
@@ -100,7 +92,7 @@ var _ = Describe("Template validator", func() {
 			Name:           validator.DeploymentName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &apps.Deployment{},
-			ExpectedLabels: templateValidatorExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 			UpdateFunc: func(deployment *apps.Deployment) {
 				deployment.Spec.Replicas = pointer.Int32Ptr(0)
 			},

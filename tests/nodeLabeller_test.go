@@ -20,14 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var nodeLabelerExpectedLabels = map[string]string{
-	common.AppKubernetesNameLabel:      "node-labeler",
-	common.AppKubernetesManagedByLabel: "ssp-operator",
-	common.AppKubernetesPartOfLabel:    "test",
-	common.AppKubernetesVersionLabel:   "v0.0.0-test",
-	common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
-}
-
 var _ = Describe("Node Labeller", func() {
 	var (
 		clusterRoleRes               testResource
@@ -43,7 +35,7 @@ var _ = Describe("Node Labeller", func() {
 			Name:           nodelabeller.ClusterRoleName,
 			Resource:       &rbac.ClusterRole{},
 			Namespace:      "",
-			ExpectedLabels: nodeLabelerExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("node-labeler", common.AppComponentSchedule),
 			UpdateFunc: func(role *rbac.ClusterRole) {
 				role.Rules[0].Verbs = []string{"watch"}
 			},
@@ -55,7 +47,7 @@ var _ = Describe("Node Labeller", func() {
 			Name:           nodelabeller.ClusterRoleBindingName,
 			Resource:       &rbac.ClusterRoleBinding{},
 			Namespace:      "",
-			ExpectedLabels: nodeLabelerExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("node-labeler", common.AppComponentSchedule),
 			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
 				roleBinding.Subjects = nil
 			},
@@ -67,13 +59,13 @@ var _ = Describe("Node Labeller", func() {
 			Name:           nodelabeller.ServiceAccountName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.ServiceAccount{},
-			ExpectedLabels: nodeLabelerExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("node-labeler", common.AppComponentSchedule),
 		}
 		securityContextConstraintRes = testResource{
 			Name:           nodelabeller.SecurityContextName,
 			Namespace:      "",
 			Resource:       &secv1.SecurityContextConstraints{},
-			ExpectedLabels: nodeLabelerExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("node-labeler", common.AppComponentSchedule),
 			UpdateFunc: func(scc *secv1.SecurityContextConstraints) {
 				scc.Users = []string{"test-user"}
 			},
@@ -85,7 +77,7 @@ var _ = Describe("Node Labeller", func() {
 			Name:           nodelabeller.ConfigMapName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.ConfigMap{},
-			ExpectedLabels: nodeLabelerExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("node-labeler", common.AppComponentSchedule),
 			UpdateFunc: func(configMap *core.ConfigMap) {
 				configMap.Data = map[string]string{
 					"cpu-plugin-configmap.yaml": "change data",
@@ -99,7 +91,7 @@ var _ = Describe("Node Labeller", func() {
 			Name:           nodelabeller.DaemonSetName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &apps.DaemonSet{},
-			ExpectedLabels: nodeLabelerExpectedLabels,
+			ExpectedLabels: expectedLabelsFor("node-labeler", common.AppComponentSchedule),
 			UpdateFunc: func(daemonSet *apps.DaemonSet) {
 				daemonSet.Spec.Template.Spec.ServiceAccountName = "test-account"
 			},

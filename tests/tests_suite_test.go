@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
@@ -57,6 +58,9 @@ type TestSuiteStrategy interface {
 	GetNamespace() string
 	GetTemplatesNamespace() string
 	GetValidatorReplicas() int
+
+	GetVersionLabel() string
+	GetPartOfLabel() string
 
 	RevertToOriginalSspCr()
 	SkipSspUpdateTestsIfNeeded()
@@ -83,6 +87,13 @@ func (s *newSspStrategy) Init() {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.GetName(),
 			Namespace: s.GetNamespace(),
+			Labels: map[string]string{
+				common.AppKubernetesNameLabel:      "ssp-cr",
+				common.AppKubernetesManagedByLabel: "ssp-test-strategy",
+				common.AppKubernetesPartOfLabel:    "hyperconverged-cluster",
+				common.AppKubernetesVersionLabel:   "v0.0.0-test",
+				common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
+			},
 		},
 		Spec: sspv1beta1.SSPSpec{
 			TemplateValidator: sspv1beta1.TemplateValidator{
@@ -142,6 +153,19 @@ func (s *newSspStrategy) GetValidatorReplicas() int {
 	return templateValidatorReplicas
 }
 
+func (s *newSspStrategy) GetVersionLabel() string {
+	if s.ssp.Labels == nil {
+		return ""
+	}
+	return s.ssp.Labels[common.AppKubernetesVersionLabel]
+}
+func (s *newSspStrategy) GetPartOfLabel() string {
+	if s.ssp.Labels == nil {
+		return ""
+	}
+	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
+}
+
 func (s *newSspStrategy) RevertToOriginalSspCr() {
 	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
@@ -173,6 +197,22 @@ func (s *existingSspStrategy) Init() {
 	if s.sspModificationDisabled() {
 		return
 	}
+
+	appLabels := map[string]string{
+		common.AppKubernetesNameLabel:      "ssp-cr",
+		common.AppKubernetesManagedByLabel: "ssp-test-strategy",
+		common.AppKubernetesPartOfLabel:    "hyperconverged-cluster",
+		common.AppKubernetesVersionLabel:   "v0.0.0-test",
+		common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
+	}
+	patch := buildLabelsPatchAdding(appLabels)
+	err = apiClient.Patch(ctx, existingSsp, patch)
+	Expect(err).NotTo(HaveOccurred(), "app labels could not be added to SSP CR")
+	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesNameLabel, "ssp-cr"))
+	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesManagedByLabel, "ssp-test-strategy"))
+	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesPartOfLabel, "hyperconverged-cluster"))
+	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, "v0.0.0-test"))
+	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesComponentLabel, common.AppComponentSchedule.String()))
 
 	// Try to modify the SSP and check if it is not reverted by another operator
 	defer s.RevertToOriginalSspCr()
@@ -216,6 +256,19 @@ func (s *existingSspStrategy) GetValidatorReplicas() int {
 		panic("Strategy is not initialized")
 	}
 	return int(*s.ssp.Spec.TemplateValidator.Replicas)
+}
+
+func (s *existingSspStrategy) GetVersionLabel() string {
+	if s.ssp.Labels == nil {
+		return ""
+	}
+	return s.ssp.Labels[common.AppKubernetesVersionLabel]
+}
+func (s *existingSspStrategy) GetPartOfLabel() string {
+	if s.ssp.Labels == nil {
+		return ""
+	}
+	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
 }
 
 func (s *existingSspStrategy) RevertToOriginalSspCr() {

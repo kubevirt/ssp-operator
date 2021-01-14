@@ -16,16 +16,10 @@ var _ = Describe("Metrics", func() {
 
 	BeforeEach(func() {
 		prometheusRuleRes = testResource{
-			Name:      metrics.PrometheusRuleName,
-			Namespace: strategy.GetNamespace(),
-			Resource:  &promv1.PrometheusRule{},
-			ExpectedLabels: map[string]string{
-				common.AppKubernetesNameLabel:      "metrics",
-				common.AppKubernetesManagedByLabel: "ssp-operator",
-				common.AppKubernetesPartOfLabel:    "test",
-				common.AppKubernetesVersionLabel:   "v0.0.0-test",
-				common.AppKubernetesComponentLabel: common.AppComponentMonitoring.String(),
-			},
+			Name:           metrics.PrometheusRuleName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &promv1.PrometheusRule{},
+			ExpectedLabels: expectedLabelsFor("metrics", common.AppComponentMonitoring),
 			UpdateFunc: func(rule *promv1.PrometheusRule) {
 				rule.Spec.Groups[0].Name = "changed-name"
 				rule.Spec.Groups[0].Rules = []promv1.Rule{}
