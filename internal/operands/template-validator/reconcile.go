@@ -28,7 +28,7 @@ import (
 type templateValidator struct{}
 
 func (t *templateValidator) Name() string {
-	return operatorName
+	return operandName
 }
 
 func (t *templateValidator) AddWatchTypesToScheme(*runtime.Scheme) error {

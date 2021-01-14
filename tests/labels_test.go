@@ -17,8 +17,7 @@ import (
 )
 
 func expectAppLabels(res *testResource) {
-	resource := res.NewResource()
-	testExpectedLabels(resource, res.GetKey(), res.ExpectedLabels)
+	testExpectedLabels(res.NewResource(), res.GetKey(), res.ExpectedLabels)
 }
 
 func expectAppLabelsRestoreAfterUpdate(res *testResource) {
