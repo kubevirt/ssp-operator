@@ -15,7 +15,7 @@ import (
 type metrics struct{}
 
 func (m *metrics) Name() string {
-	return "Metrics"
+	return operandName
 }
 
 func (m *metrics) AddWatchTypesToScheme(scheme *runtime.Scheme) error {

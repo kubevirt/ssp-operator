@@ -30,7 +30,7 @@ import (
 type nodeLabeller struct{}
 
 func (nl *nodeLabeller) Name() string {
-	return "NodeLabeller"
+	return operandName
 }
 
 func (nl *nodeLabeller) AddWatchTypesToScheme(s *runtime.Scheme) error {
