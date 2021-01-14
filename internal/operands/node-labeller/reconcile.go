@@ -92,7 +92,7 @@ const (
 
 func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request, operandName, operandComponent, newClusterRole()),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, newClusterRole()),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
 		})
@@ -100,13 +100,13 @@ func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error
 
 func reconcileServiceAccount(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
-		common.AddAppLabels(request, operandName, operandComponent, newServiceAccount(request.Namespace)),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, newServiceAccount(request.Namespace)),
 		func(_, _ controllerutil.Object) {})
 }
 
 func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request, operandName, operandComponent, newClusterRoleBinding(request.Namespace)),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, newClusterRoleBinding(request.Namespace)),
 		func(newRes, foundRes controllerutil.Object) {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
@@ -117,7 +117,7 @@ func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus
 
 func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
-		common.AddAppLabels(request, operandName, operandComponent, newConfigMap(request.Namespace)),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, newConfigMap(request.Namespace)),
 		func(newRes, foundRes controllerutil.Object) {
 			newConfigMap := newRes.(*v1.ConfigMap)
 			foundConfigMap := foundRes.(*v1.ConfigMap)
@@ -130,7 +130,7 @@ func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) 
 	daemonSet := newDaemonSet(request.Namespace)
 	addPlacementFields(daemonSet, nodeLabellerSpec.Placement)
 	return common.CreateOrUpdateResourceWithStatus(request,
-		common.AddAppLabels(request, operandName, operandComponent, daemonSet),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, daemonSet),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*apps.DaemonSet).Spec = newRes.(*apps.DaemonSet).Spec
 		},
@@ -162,7 +162,7 @@ func addPlacementFields(daemonset *apps.DaemonSet, nodePlacement *lifecycleapi.N
 
 func reconcileSecurityContextConstraint(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request, operandName, operandComponent, newSecurityContextConstraint(request.Namespace)),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, newSecurityContextConstraint(request.Namespace)),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*secv1.SecurityContextConstraints).AllowPrivilegedContainer = newRes.(*secv1.SecurityContextConstraints).AllowPrivilegedContainer
 			foundRes.(*secv1.SecurityContextConstraints).RunAsUser = newRes.(*secv1.SecurityContextConstraints).RunAsUser

@@ -53,7 +53,7 @@ const (
 
 func reconcilePrometheusRule(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResource(request,
-		common.AddAppLabels(request, operandName, operandComponent, newPrometheusRule(request.Namespace)),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, newPrometheusRule(request.Namespace)),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
 		})

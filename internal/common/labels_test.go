@@ -35,7 +35,7 @@ var _ = Describe("AddAppLabels", func() {
 
 	When("SSP CR has app labels", func() {
 		It("adds app labels from request", func() {
-			obj := AddAppLabels(&request, "test", AppComponent("testing"), &v1.ConfigMap{})
+			obj := AddAppLabels(request.Instance, "test", AppComponent("testing"), &v1.ConfigMap{})
 
 			labels := obj.GetLabels()
 			Expect(labels[AppKubernetesPartOfLabel]).To(Equal("tests"))
@@ -45,7 +45,7 @@ var _ = Describe("AddAppLabels", func() {
 	When("SSP CR does not have app labels", func() {
 		It("does not add app labels on nil", func() {
 			request.Instance.Labels = nil
-			obj := AddAppLabels(&request, "test", AppComponent("testing"), &v1.ConfigMap{})
+			obj := AddAppLabels(request.Instance, "test", AppComponent("testing"), &v1.ConfigMap{})
 
 			labels := obj.GetLabels()
 			Expect(labels[AppKubernetesPartOfLabel]).To(Equal(""))
@@ -53,7 +53,7 @@ var _ = Describe("AddAppLabels", func() {
 		})
 		It("does not add app labels empty map", func() {
 			request.Instance.Labels = map[string]string{}
-			obj := AddAppLabels(&request, "test", AppComponent("testing"), &v1.ConfigMap{})
+			obj := AddAppLabels(request.Instance, "test", AppComponent("testing"), &v1.ConfigMap{})
 
 			labels := obj.GetLabels()
 			Expect(labels[AppKubernetesPartOfLabel]).To(Equal(""))
@@ -62,7 +62,7 @@ var _ = Describe("AddAppLabels", func() {
 	})
 
 	It("adds dynamic app labels", func() {
-		obj := AddAppLabels(&request, "test", AppComponent("testing"), &v1.ConfigMap{})
+		obj := AddAppLabels(request.Instance, "test", AppComponent("testing"), &v1.ConfigMap{})
 
 		labels := obj.GetLabels()
 		Expect(labels[AppKubernetesComponentLabel]).To(Equal("testing"))
@@ -70,7 +70,7 @@ var _ = Describe("AddAppLabels", func() {
 	})
 
 	It("adds managed-by label", func() {
-		obj := AddAppLabels(&request, "test", AppComponent("testing"), &v1.ConfigMap{})
+		obj := AddAppLabels(request.Instance, "test", AppComponent("testing"), &v1.ConfigMap{})
 
 		labels := obj.GetLabels()
 		Expect(labels[AppKubernetesManagedByLabel]).To(Equal("ssp-operator"))
