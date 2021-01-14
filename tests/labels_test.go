@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -47,7 +46,7 @@ func testExpectedLabelsRestoreAfterUpdate(resource controllerutil.Object, key cl
 		operations = append(operations, labelPatchOperationFor("replace", label, "wrong"))
 	}
 	patch := encodePatch(operations)
-	err := apiClient.Patch(context.TODO(), resource, patch)
+	err := apiClient.Patch(ctx, resource, patch)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(labelsMatch(expectedLabels, resource)).To(BeFalse())
 }
@@ -66,7 +65,7 @@ func patchAppLabelsIntoSSP(expectedLabels map[string]string) {
 	}
 
 	patch := buildLabelsPatchAdding(newLabels)
-	err := apiClient.Patch(context.TODO(), ssp, patch)
+	err := apiClient.Patch(ctx, ssp, patch)
 	Expect(err).NotTo(HaveOccurred(), "app labels could not be added to SSP CR")
 }
 
@@ -104,7 +103,7 @@ func encodePatch(operations []jsonpatch.Operation) client.Patch {
 
 func waitForLabelMatch(resource controllerutil.Object, key client.ObjectKey, expectedLabels map[string]string) {
 	Eventually(func() bool {
-		err := apiClient.Get(context.TODO(), key, resource)
+		err := apiClient.Get(ctx, key, resource)
 		if err != nil {
 			fmt.Fprintln(GinkgoWriter, err)
 			return false
