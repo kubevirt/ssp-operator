@@ -25,5 +25,3 @@ require (
 	kubevirt.io/cpu-nfd-plugin v0.1.1
 	sigs.k8s.io/controller-runtime v0.6.3
 )
-
-replace kubevirt.io/cpu-nfd-plugin => github.com/kubevirt/cpu-nfd-plugin v0.1.1
