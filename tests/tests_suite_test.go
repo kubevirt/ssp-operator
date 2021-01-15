@@ -154,15 +154,9 @@ func (s *newSspStrategy) GetValidatorReplicas() int {
 }
 
 func (s *newSspStrategy) GetVersionLabel() string {
-	if s.ssp.Labels == nil {
-		return ""
-	}
 	return s.ssp.Labels[common.AppKubernetesVersionLabel]
 }
 func (s *newSspStrategy) GetPartOfLabel() string {
-	if s.ssp.Labels == nil {
-		return ""
-	}
 	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
 }
 
@@ -259,15 +253,9 @@ func (s *existingSspStrategy) GetValidatorReplicas() int {
 }
 
 func (s *existingSspStrategy) GetVersionLabel() string {
-	if s.ssp.Labels == nil {
-		return ""
-	}
 	return s.ssp.Labels[common.AppKubernetesVersionLabel]
 }
 func (s *existingSspStrategy) GetPartOfLabel() string {
-	if s.ssp.Labels == nil {
-		return ""
-	}
 	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
 }
 
