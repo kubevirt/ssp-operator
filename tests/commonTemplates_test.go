@@ -33,11 +33,12 @@ var _ = Describe("Common templates", func() {
 	)
 
 	BeforeEach(func() {
+		expectedLabels := expectedLabelsFor("common-templates", common.AppComponentTemplating)
 		viewRole = testResource{
 			Name:           commonTemplates.ViewRoleName,
 			Namespace:      commonTemplates.GoldenImagesNSname,
 			Resource:       &rbac.Role{},
-			ExpectedLabels: expectedLabelsFor("common-templates", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(role *rbac.Role) {
 				role.Rules = []rbac.PolicyRule{}
 			},
@@ -49,7 +50,7 @@ var _ = Describe("Common templates", func() {
 			Name:           commonTemplates.ViewRoleName,
 			Namespace:      commonTemplates.GoldenImagesNSname,
 			Resource:       &rbac.RoleBinding{},
-			ExpectedLabels: expectedLabelsFor("common-templates", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
 				roleBinding.Subjects = nil
 			},
@@ -60,7 +61,7 @@ var _ = Describe("Common templates", func() {
 		editClusterRole = testResource{
 			Name:           commonTemplates.EditClusterRoleName,
 			Resource:       &rbac.ClusterRole{},
-			ExpectedLabels: expectedLabelsFor("common-templates", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			Namespace:      "",
 			UpdateFunc: func(role *rbac.ClusterRole) {
 				role.Rules[0].Verbs = []string{"watch"}
@@ -72,14 +73,14 @@ var _ = Describe("Common templates", func() {
 		goldenImageNS = testResource{
 			Name:           commonTemplates.GoldenImagesNSname,
 			Resource:       &core.Namespace{},
-			ExpectedLabels: expectedLabelsFor("common-templates", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			Namespace:      "",
 		}
 		testTemplate = testResource{
 			Name:           "rhel8-desktop-tiny",
 			Namespace:      strategy.GetTemplatesNamespace(),
 			Resource:       &templatev1.Template{},
-			ExpectedLabels: expectedLabelsFor("common-templates", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(t *templatev1.Template) {
 				t.Parameters = nil
 			},

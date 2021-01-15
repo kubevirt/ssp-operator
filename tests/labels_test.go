@@ -30,25 +30,23 @@ func expectAppLabels(res *testResource) {
 }
 
 func expectAppLabelsRestoreAfterUpdate(res *testResource) {
-	testExpectedLabelsRestoreAfterUpdate(res.NewResource(), res.GetKey(), res.ExpectedLabels)
-}
+	resource := res.NewResource()
+	key := res.GetKey()
+	testExpectedLabels(resource, key, res.ExpectedLabels)
 
-func testExpectedLabels(resource controllerutil.Object, key client.ObjectKey, expectedLabels map[string]string) {
-	patchAppLabelsIntoSSP(expectedLabels)
-	waitForLabelMatch(resource, key, expectedLabels)
-}
-
-func testExpectedLabelsRestoreAfterUpdate(resource controllerutil.Object, key client.ObjectKey, expectedLabels map[string]string) {
-	testExpectedLabels(resource, key, expectedLabels)
-
-	operations := newLabelOperations(expectedLabels)
-	for label := range expectedLabels {
+	operations := newLabelOperations(res.ExpectedLabels)
+	for label := range res.ExpectedLabels {
 		operations = append(operations, labelPatchOperationFor("replace", label, "wrong"))
 	}
 	patch := encodePatch(operations)
 	err := apiClient.Patch(ctx, resource, patch)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(labelsMatch(expectedLabels, resource)).To(BeFalse())
+	waitForLabelMatch(resource, key, res.ExpectedLabels)
+}
+
+func testExpectedLabels(resource controllerutil.Object, key client.ObjectKey, expectedLabels map[string]string) {
+	patchAppLabelsIntoSSP(expectedLabels)
+	waitForLabelMatch(resource, key, expectedLabels)
 }
 
 func patchAppLabelsIntoSSP(expectedLabels map[string]string) {

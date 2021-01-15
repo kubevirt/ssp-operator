@@ -192,22 +192,6 @@ func (s *existingSspStrategy) Init() {
 		return
 	}
 
-	appLabels := map[string]string{
-		common.AppKubernetesNameLabel:      "ssp-cr",
-		common.AppKubernetesManagedByLabel: "ssp-test-strategy",
-		common.AppKubernetesPartOfLabel:    "hyperconverged-cluster",
-		common.AppKubernetesVersionLabel:   "v0.0.0-test",
-		common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
-	}
-	patch := buildLabelsPatchAdding(appLabels)
-	err = apiClient.Patch(ctx, existingSsp, patch)
-	Expect(err).NotTo(HaveOccurred(), "app labels could not be added to SSP CR")
-	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesNameLabel, "ssp-cr"))
-	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesManagedByLabel, "ssp-test-strategy"))
-	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesPartOfLabel, "hyperconverged-cluster"))
-	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, "v0.0.0-test"))
-	Expect(s.ssp.Labels).To(HaveKeyWithValue(common.AppKubernetesComponentLabel, common.AppComponentSchedule.String()))
-
 	// Try to modify the SSP and check if it is not reverted by another operator
 	defer s.RevertToOriginalSspCr()
 
