@@ -38,17 +38,21 @@ all: manager
 unittest: generate fmt vet manifests
 	go test -v -coverprofile cover.out ./api/... ./controllers/... ./internal/... ./hack/...
 
-build-util-container:
-	./hack/build-in-container.sh
+# TODO - build tests inside a container
+#build-util-container:
+#	./hack/build-in-container.sh
 
-build-functests:
-	./hack/in-container.sh ./hack/build-functests.sh
+#build-functests:
+#	./hack/in-container.sh ./hack/build-functests.sh
 
-run-functest:
-	./hack/run-functest.sh
+#run-functest:
+#	./hack/run-functest.sh
 
 # TODO - skipping build container for functests until OCP CI is ready
 #functest: generate fmt vet manifests build-functests run-functest
+
+build-functests:
+	go test -c ./tests
 
 functest: generate fmt vet manifests
 	go test -v -coverprofile cover.out -timeout 0 ./tests/...
@@ -165,4 +169,5 @@ bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: release
-release: container-build container-push bundle
+release: container-build container-push bundle build-functests
+	cp ./tests.test _out/tests.test
