@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 
@@ -184,11 +183,7 @@ func (r *SSPReconciler) clearCache() {
 }
 
 func getOperatorVersion() string {
-	opVer := os.Getenv("OPERATOR_VERSION")
-	if opVer == "" {
-		return defaultOperatorVersion
-	}
-	return opVer
+	return common.EnvOrDefault(common.OperatorVersionKey, defaultOperatorVersion)
 }
 
 func isPaused(object metav1.Object) bool {

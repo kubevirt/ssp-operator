@@ -6,12 +6,13 @@ import (
 	"github.com/blang/semver"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/operator-framework/api/pkg/lib/version"
 	csvv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 var log = logf.Log.WithName("csv_generator")
@@ -26,7 +27,14 @@ var _ = Describe("csv generator", func() {
 		nodeLabellerImage: "test",
 		virtLauncher:      "test",
 	}
-	envValues := []v1.EnvVar{{Name: "KVM_IMAGE"}, {Name: "VALIDATOR_IMAGE"}, {Name: "VIRT_LAUNCHER_IMAGE"}, {Name: "OPERATOR_VERSION"}, {Name: "NODE_LABELLER_IMAGE"}, {Name: "CPU_PLUGIN_IMAGE"}}
+	envValues := []v1.EnvVar{
+		{Name: common.KvmInfoNfdPluginImageKey},
+		{Name: common.TemplateValidatorImageKey},
+		{Name: common.VirtLauncherImageKey},
+		{Name: common.OperatorVersionKey},
+		{Name: common.KubevirtNodeLabellerImageKey},
+		{Name: common.KubevirtCpuNfdPluginImageKey},
+	}
 
 	csv := csvv1.ClusterServiceVersion{
 		Spec: csvv1.ClusterServiceVersionSpec{
@@ -67,22 +75,22 @@ var _ = Describe("csv generator", func() {
 				Expect(container.Image).To(Equal(flags.operatorImage))
 
 				for _, envVariable := range container.Env {
-					if envVariable.Name == "KVM_IMAGE" {
+					if envVariable.Name == common.KvmInfoNfdPluginImageKey {
 						Expect(envVariable.Value).To(Equal(flags.kvmInfoImage))
 					}
-					if envVariable.Name == "VALIDATOR_IMAGE" {
+					if envVariable.Name == common.TemplateValidatorImageKey {
 						Expect(envVariable.Value).To(Equal(flags.validatorImage))
 					}
-					if envVariable.Name == "VIRT_LAUNCHER_IMAGE" {
+					if envVariable.Name == common.VirtLauncherImageKey {
 						Expect(envVariable.Value).To(Equal(flags.virtLauncher))
 					}
-					if envVariable.Name == "NODE_LABELLER_IMAGE" {
+					if envVariable.Name == common.KubevirtNodeLabellerImageKey {
 						Expect(envVariable.Value).To(Equal(flags.nodeLabellerImage))
 					}
-					if envVariable.Name == "CPU_PLUGIN_IMAGE" {
+					if envVariable.Name == common.KubevirtCpuNfdPluginImageKey {
 						Expect(envVariable.Value).To(Equal(flags.cpuPlugin))
 					}
-					if envVariable.Name == "OPERATOR_VERSION" {
+					if envVariable.Name == common.OperatorVersionKey {
 						Expect(envVariable.Value).To(Equal(flags.operatorVersion))
 					}
 				}
