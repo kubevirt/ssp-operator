@@ -5,6 +5,8 @@ import (
 )
 
 const (
+	OperatorVersionKey = "OPERATOR_VERSION"
+
 	TemplateValidatorImageKey    = "VALIDATOR_IMAGE"
 	KubevirtNodeLabellerImageKey = "NODE_LABELLER_IMAGE"
 	KvmInfoNfdPluginImageKey     = "KVM_INFO_IMAGE"
