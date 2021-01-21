@@ -143,6 +143,7 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		reqLogger.Info(fmt.Sprintf("Pausing SSP operator on resource: %v/%v", instance.Namespace, instance.Name))
 		instance.Status.Paused = true
+		instance.Status.ObservedGeneration = instance.Generation
 		err := r.Status().Update(ctx, instance)
 		return ctrl.Result{}, err
 	}
@@ -222,12 +223,14 @@ func initialize(request *common.Request) error {
 	}
 
 	request.Instance.Status.Phase = lifecycleapi.PhaseDeploying
+	request.Instance.Status.ObservedGeneration = request.Instance.Generation
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
 func cleanup(request *common.Request) error {
 	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
 		request.Instance.Status.Phase = lifecycleapi.PhaseDeleting
+		request.Instance.Status.ObservedGeneration = request.Instance.Generation
 		err := request.Client.Status().Update(request.Context, request.Instance)
 		if err != nil {
 			return err
@@ -246,6 +249,7 @@ func cleanup(request *common.Request) error {
 	}
 
 	request.Instance.Status.Phase = lifecycleapi.PhaseDeleted
+	request.Instance.Status.ObservedGeneration = request.Instance.Generation
 	err := request.Client.Status().Update(request.Context, request.Instance)
 	if errors.IsConflict(err) || errors.IsNotFound(err) {
 		// These errors are ignored. They can happen if the CR was removed
@@ -334,6 +338,7 @@ func preUpdateStatus(request *common.Request) error {
 
 	sspStatus := &request.Instance.Status
 	sspStatus.Phase = lifecycleapi.PhaseDeploying
+	sspStatus.ObservedGeneration = request.Instance.Generation
 	sspStatus.OperatorVersion = operatorVersion
 	sspStatus.TargetVersion = operatorVersion
 
@@ -465,6 +470,7 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 		})
 	}
 
+	sspStatus.ObservedGeneration = request.Instance.Generation
 	if len(notAvailable) == 0 && len(progressing) == 0 && len(degraded) == 0 {
 		sspStatus.Phase = lifecycleapi.PhaseDeployed
 		sspStatus.ObservedVersion = getOperatorVersion()
