@@ -29,12 +29,13 @@ import (
 	gyaml "github.com/ghodss/yaml"
 	"github.com/operator-framework/api/pkg/lib/version"
 	csvv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 type generatorFlags struct {
@@ -155,22 +156,22 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 			updatedVariables := make([]v1.EnvVar, 0)
 			for _, envVariable := range container.Env {
 
-				if envVariable.Name == "KVM_IMAGE" {
+				if envVariable.Name == common.KvmInfoNfdPluginImageKey {
 					envVariable.Value = flags.kvmInfoImage
 				}
-				if envVariable.Name == "VALIDATOR_IMAGE" {
+				if envVariable.Name == common.TemplateValidatorImageKey {
 					envVariable.Value = flags.validatorImage
 				}
-				if envVariable.Name == "VIRT_LAUNCHER_IMAGE" {
+				if envVariable.Name == common.VirtLauncherImageKey {
 					envVariable.Value = flags.virtLauncher
 				}
-				if envVariable.Name == "NODE_LABELLER_IMAGE" {
+				if envVariable.Name == common.KubevirtNodeLabellerImageKey {
 					envVariable.Value = flags.nodeLabellerImage
 				}
-				if envVariable.Name == "CPU_PLUGIN_IMAGE" {
+				if envVariable.Name == common.KubevirtCpuNfdPluginImageKey {
 					envVariable.Value = flags.cpuPlugin
 				}
-				if envVariable.Name == "OPERATOR_VERSION" {
+				if envVariable.Name == common.OperatorVersionKey {
 					envVariable.Value = flags.operatorVersion
 				}
 				updatedVariables = append(updatedVariables, envVariable)

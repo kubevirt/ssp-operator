@@ -29,7 +29,7 @@ spec:
         args:
         - --enable-leader-election
         env:
-          - name: KVM_IMAGE
+          - name: KVM_INFO_IMAGE
           - name: VALIDATOR_IMAGE
           - name: VIRT_LAUNCHER_IMAGE
           - name: NODE_LABELLER_IMAGE
