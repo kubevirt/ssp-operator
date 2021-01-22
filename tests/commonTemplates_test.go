@@ -16,7 +16,6 @@ import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -263,7 +262,7 @@ var _ = Describe("Common templates", func() {
 			// might be deployed in a different namespace than the CR, and will be immediately
 			// removed by the GC, the choice to use a template as an owner object was arbitrary
 			ownerTemplate = &templatev1.Template{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "owner-template",
 					Namespace: strategy.GetTemplatesNamespace(),
 				},
@@ -271,7 +270,7 @@ var _ = Describe("Common templates", func() {
 			Expect(apiClient.Create(ctx, ownerTemplate)).ToNot(HaveOccurred(), "failed to create dummy owner for an old template")
 
 			oldTemplate = &templatev1.Template{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-old-template",
 					Namespace: strategy.GetTemplatesNamespace(),
 					Labels: map[string]string{
@@ -281,7 +280,7 @@ var _ = Describe("Common templates", func() {
 						"flavor.template.kubevirt.io/test":     "true",
 						"workload.template.kubevirt.io/server": "true",
 					},
-					OwnerReferences: []v1.OwnerReference{{
+					OwnerReferences: []metav1.OwnerReference{{
 						APIVersion: "template.openshift.io/v1",
 						Kind:       "Template",
 						Name:       ownerTemplate.Name,

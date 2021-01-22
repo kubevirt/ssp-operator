@@ -26,13 +26,13 @@ func expectedLabelsFor(name string, component common.AppComponent) map[string]st
 }
 
 func expectAppLabels(res *testResource) {
-	testExpectedLabels(res.NewResource(), res.GetKey(), res.ExpectedLabels)
+	waitForLabelMatch(res.NewResource(), res.GetKey(), res.ExpectedLabels)
 }
 
 func expectAppLabelsRestoreAfterUpdate(res *testResource) {
 	resource := res.NewResource()
 	key := res.GetKey()
-	testExpectedLabels(resource, key, res.ExpectedLabels)
+	waitForLabelMatch(resource, key, res.ExpectedLabels)
 
 	operations := newLabelOperations(res.ExpectedLabels)
 	for label := range res.ExpectedLabels {
@@ -42,43 +42,6 @@ func expectAppLabelsRestoreAfterUpdate(res *testResource) {
 	err := apiClient.Patch(ctx, resource, patch)
 	Expect(err).NotTo(HaveOccurred())
 	waitForLabelMatch(resource, key, res.ExpectedLabels)
-}
-
-func testExpectedLabels(resource controllerutil.Object, key client.ObjectKey, expectedLabels map[string]string) {
-	patchAppLabelsIntoSSP(expectedLabels)
-	waitForLabelMatch(resource, key, expectedLabels)
-}
-
-func patchAppLabelsIntoSSP(expectedLabels map[string]string) {
-	ssp := getSsp()
-	Expect(ssp).NotTo(BeNil())
-
-	if ssp.Labels != nil && labelsMatch(expectedLabels, ssp) {
-		return
-	}
-
-	newLabels := map[string]string{
-		common.AppKubernetesPartOfLabel:  expectedLabels[common.AppKubernetesPartOfLabel],
-		common.AppKubernetesVersionLabel: expectedLabels[common.AppKubernetesVersionLabel],
-	}
-
-	patch := buildLabelsPatchAdding(newLabels)
-	err := apiClient.Patch(ctx, ssp, patch)
-	Expect(err).NotTo(HaveOccurred(), "app labels could not be added to SSP CR")
-}
-
-func buildLabelsPatchAdding(labels map[string]string) client.Patch {
-	return buildLabelsPatch("add", labels)
-}
-
-func buildLabelsPatch(operation string, labels map[string]string) client.Patch {
-	operations := newLabelOperations(labels)
-
-	for label, value := range labels {
-		operations = append(operations, labelPatchOperationFor(operation, label, value))
-	}
-
-	return encodePatch(operations)
 }
 
 func newLabelOperations(labels map[string]string) []jsonpatch.Operation {

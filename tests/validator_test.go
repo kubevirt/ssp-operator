@@ -35,10 +35,11 @@ var _ = Describe("Template validator", func() {
 	)
 
 	BeforeEach(func() {
+		expectedLabels := expectedLabelsFor("template-validator", common.AppComponentTemplating)
 		clusterRoleRes = testResource{
 			Name:           validator.ClusterRoleName,
 			Resource:       &rbac.ClusterRole{},
-			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(role *rbac.ClusterRole) {
 				role.Rules[0].Verbs = []string{"watch"}
 			},
@@ -49,7 +50,7 @@ var _ = Describe("Template validator", func() {
 		clusterRoleBindingRes = testResource{
 			Name:           validator.ClusterRoleBindingName,
 			Resource:       &rbac.ClusterRoleBinding{},
-			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
 				roleBinding.Subjects = nil
 			},
@@ -61,7 +62,7 @@ var _ = Describe("Template validator", func() {
 		webhookConfigRes = testResource{
 			Name:           validator.WebhookName,
 			Resource:       &admission.ValidatingWebhookConfiguration{},
-			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(webhook *admission.ValidatingWebhookConfiguration) {
 				webhook.Webhooks[0].Rules = nil
 			},
@@ -73,13 +74,13 @@ var _ = Describe("Template validator", func() {
 			Name:           validator.ServiceAccountName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.ServiceAccount{},
-			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 		}
 		serviceRes = testResource{
 			Name:           validator.ServiceName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.Service{},
-			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 44331
 				service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
@@ -92,7 +93,7 @@ var _ = Describe("Template validator", func() {
 			Name:           validator.DeploymentName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &apps.Deployment{},
-			ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(deployment *apps.Deployment) {
 				deployment.Spec.Replicas = pointer.Int32Ptr(0)
 			},

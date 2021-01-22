@@ -420,13 +420,17 @@ func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 				return nil
 			}
 			foundSsp.Spec = ssp.Spec
+			foundSsp.Annotations = ssp.Annotations
+			foundSsp.Labels = ssp.Labels
 			return apiClient.Update(ctx, foundSsp)
 		}
 		if errors.IsNotFound(err) {
 			newSsp := &sspv1beta1.SSP{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ssp.Name,
-					Namespace: ssp.Namespace,
+					Name:        ssp.Name,
+					Namespace:   ssp.Namespace,
+					Annotations: ssp.Annotations,
+					Labels:      ssp.Labels,
 				},
 				Spec: ssp.Spec,
 			}
