@@ -1,0 +1,12 @@
+# This custom resource is used by upgrade tests
+
+apiVersion: ssp.kubevirt.io/v1beta1
+kind: SSP
+metadata:
+  name: %%_SSP_NAME_%%
+  namespace: %%_SSP_NAMESPACE_%%
+spec:
+  commonTemplates:
+    namespace: %%_COMMON_TEMPLATES_NAMESPACE_%%
+  templateValidator:
+    replicas: 2
