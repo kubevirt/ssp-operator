@@ -28,6 +28,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
@@ -64,8 +65,10 @@ func init() {
 
 func main() {
 	var metricsAddr string
+	var readyProbeAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&readyProbeAddr, "ready-probe-addr", ":9440", "The address the readiness probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -80,11 +83,12 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "734f7229.kubevirt.io",
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		HealthProbeBindAddress: readyProbeAddr,
+		Port:                   9443,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "734f7229.kubevirt.io",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -105,6 +109,12 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	err = mgr.AddReadyzCheck("ready", healthz.Ping)
+	if err != nil {
+		setupLog.Error(err, "unable to register readiness check")
+		os.Exit(1)
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
