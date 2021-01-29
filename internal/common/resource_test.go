@@ -98,12 +98,13 @@ var _ = Describe("Create or update resource", func() {
 	})
 
 	It("should set owner annotations", func() {
-		_, err := CreateOrUpdateClusterResource(&request,
-			newTestResource(""),
-			func(expected, found controllerutil.Object) {
+		_, err := CreateOrUpdate(&request).
+			ClusterResource(newTestResource("")).
+			UpdateFunc(func(expected, found controllerutil.Object) {
 				found.(*v1.Service).Spec = expected.(*v1.Service).Spec
-			},
-		)
+			}).
+			Reconcile()
+
 		Expect(err).ToNot(HaveOccurred())
 
 		key, err := client.ObjectKeyFromObject(newTestResource(""))
@@ -161,12 +162,12 @@ var _ = Describe("Create or update resource", func() {
 })
 
 func createOrUpdateTestResource(request *Request) (ResourceStatus, error) {
-	return CreateOrUpdateResource(request,
-		newTestResource(namespace),
-		func(expected, found controllerutil.Object) {
+	return CreateOrUpdate(request).
+		NamespacedResource(newTestResource(namespace)).
+		UpdateFunc(func(expected, found controllerutil.Object) {
 			found.(*v1.Service).Spec = expected.(*v1.Service).Spec
-		},
-	)
+		}).
+		Reconcile()
 }
 
 func newTestResource(namespace string) *v1.Service {

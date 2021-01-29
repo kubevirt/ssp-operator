@@ -111,41 +111,47 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 }
 
 func reconcileGoldenImagesNS(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newGoldenImagesNS(GoldenImagesNSname)),
-		func(_, _ controllerutil.Object) {
-			// Namespace spec only contains finalizers, which can be modified
-		})
+	return common.CreateOrUpdate(request).
+		ClusterResource(newGoldenImagesNS(GoldenImagesNSname)).
+		WithAppLabels(operandName, operandComponent).
+		Reconcile()
 }
+
 func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newViewRole(GoldenImagesNSname)),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newViewRole(GoldenImagesNSname)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			foundRole := foundRes.(*rbac.Role)
 			newRole := newRes.(*rbac.Role)
 			foundRole.Rules = newRole.Rules
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileViewRoleBinding(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newViewRoleBinding(GoldenImagesNSname)),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newViewRoleBinding(GoldenImagesNSname)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			newBinding := newRes.(*rbac.RoleBinding)
 			foundBinding := foundRes.(*rbac.RoleBinding)
 			foundBinding.Subjects = newBinding.Subjects
 			foundBinding.RoleRef = newBinding.RoleRef
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newEditRole()),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newEditRole()).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			newRole := newRes.(*rbac.ClusterRole)
 			foundRole := foundRes.(*rbac.ClusterRole)
 			foundRole.Rules = newRole.Rules
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
@@ -180,16 +186,20 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 	for i := range existingTemplates.Items {
 		template := &existingTemplates.Items[i]
 		funcs = append(funcs, func(*common.Request) (common.ResourceStatus, error) {
-			return common.CreateOrUpdateClusterResource(request,
-				common.AddAppLabels(request.Instance, operandName, operandComponent, template),
-				func(_, foundRes controllerutil.Object) {
+			return common.CreateOrUpdate(request).
+				ClusterResource(template).
+				WithAppLabels(operandName, operandComponent).
+				UpdateFunc(func(_, foundRes controllerutil.Object) {
 					foundTemplate := foundRes.(*templatev1.Template)
 					for key := range foundTemplate.Labels {
-						if strings.HasPrefix(key, "os.template.kubevirt.io/") || strings.HasPrefix(key, "flavor.template.kubevirt.io/") || strings.HasPrefix(key, "workload.template.kubevirt.io/") {
+						if strings.HasPrefix(key, "os.template.kubevirt.io/") ||
+							strings.HasPrefix(key, "flavor.template.kubevirt.io/") ||
+							strings.HasPrefix(key, "workload.template.kubevirt.io/") {
 							delete(foundTemplate.Labels, key)
 						}
 					}
-				})
+				}).
+				Reconcile()
 		})
 	}
 
@@ -218,14 +228,16 @@ func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
 		template := &templatesBundle[i]
 		template.ObjectMeta.Namespace = namespace
 		funcs = append(funcs, func(request *common.Request) (common.ResourceStatus, error) {
-			return common.CreateOrUpdateClusterResource(request,
-				common.AddAppLabels(request.Instance, operandName, operandComponent, template),
-				func(newRes, foundRes controllerutil.Object) {
+			return common.CreateOrUpdate(request).
+				ClusterResource(template).
+				WithAppLabels(operandName, operandComponent).
+				UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 					newTemplate := newRes.(*templatev1.Template)
 					foundTemplate := foundRes.(*templatev1.Template)
 					foundTemplate.Objects = newTemplate.Objects
 					foundTemplate.Parameters = newTemplate.Parameters
-				})
+				}).
+				Reconcile()
 		})
 	}
 	return funcs
