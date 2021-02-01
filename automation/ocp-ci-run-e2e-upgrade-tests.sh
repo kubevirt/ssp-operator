@@ -13,6 +13,11 @@ oc apply -n $NAMESPACE -f "https://github.com/kubevirt/ssp-operator/releases/dow
 # Wait for deployment to be available, otherwise the validating webhook would reject the SSP CR.
 oc wait --for=condition=Available --timeout=600s -n ${NAMESPACE} deployments/ssp-operator
 
+# TODO - Temporarily adding sleep to wait for the webhook to be available.
+#        The master version has a readiness probe, but this test deploys the latest released version,
+#        which does not have the probe. Remove sleep after release of next version.
+sleep 10
+
 SSP_NAME="ssp-test"
 SSP_NAMESPACE="ssp-operator-functests"
 SSP_TEMPLATES_NAMESPACE="ssp-operator-functests-templates"
