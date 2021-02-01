@@ -11,6 +11,7 @@ import (
 
 	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	. "github.com/onsi/ginkgo"
+	ginkgo_reporters "github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -407,6 +409,16 @@ func triggerReconciliation() {
 }
 
 func TestFunctional(t *testing.T) {
+	reporters := []Reporter{}
+
+	if qe_reporters.JunitOutput != "" {
+		reporters = append(reporters, ginkgo_reporters.NewJUnitReporter(qe_reporters.JunitOutput))
+	}
+
+	if qe_reporters.Polarion.Run {
+		reporters = append(reporters, &qe_reporters.Polarion)
+	}
+
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Functional test suite")
+	RunSpecsWithDefaultAndCustomReporters(t, "Functional test suite", reporters)
 }
