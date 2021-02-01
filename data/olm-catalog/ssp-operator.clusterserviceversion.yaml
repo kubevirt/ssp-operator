@@ -335,6 +335,8 @@ spec:
                 containers:
                   - args:
                       - --enable-leader-election
+                      - --ready-probe-addr
+                      - :9440
                     command:
                       - /manager
                     env:
@@ -350,6 +352,11 @@ spec:
                       - containerPort: 9443
                         name: webhook-server
                         protocol: TCP
+                    readinessProbe:
+                      httpGet:
+                        path: /readyz
+                        port: 9440
+                      initialDelaySeconds: 5
                     resources: {}
                 serviceAccountName: ssp-operator
                 terminationGracePeriodSeconds: 10
