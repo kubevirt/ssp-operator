@@ -513,6 +513,10 @@ kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api
 kubevirt.io/cpu-nfd-plugin/pkg/config
 kubevirt.io/cpu-nfd-plugin/pkg/file
 kubevirt.io/cpu-nfd-plugin/pkg/util
+# kubevirt.io/qe-tools v0.1.7
+## explicit
+kubevirt.io/qe-tools/pkg/ginkgo-reporters
+kubevirt.io/qe-tools/pkg/polarion-xml
 # sigs.k8s.io/controller-runtime v0.6.3
 ## explicit
 sigs.k8s.io/controller-runtime

@@ -23,5 +23,6 @@ require (
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 	kubevirt.io/controller-lifecycle-operator-sdk v0.1.3-0.20210112105647-bbf16167410b
 	kubevirt.io/cpu-nfd-plugin v0.1.1
+	kubevirt.io/qe-tools v0.1.7
 	sigs.k8s.io/controller-runtime v0.6.3
 )
