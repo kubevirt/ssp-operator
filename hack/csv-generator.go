@@ -113,6 +113,10 @@ func runGenerator() error {
 		return err
 	}
 
+	if f.removeCerts {
+		removeCerts(f, &csv)
+	}
+
 	err = marshallObject(csv, os.Stdout)
 	if err != nil {
 		return err
@@ -185,28 +189,8 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 			}
 			updatedContainer.Env = updatedVariables
 			templateSpec.Containers[i] = updatedContainer
-			if flags.removeCerts {
-				updatedVolumeMounts := templateSpec.Containers[i].VolumeMounts
-				for j, volumeMount := range templateSpec.Containers[i].VolumeMounts {
-					if volumeMount.Name == "cert" {
-						updatedVolumeMounts = append(templateSpec.Containers[i].VolumeMounts[:j], templateSpec.Containers[i].VolumeMounts[j+1:]...)
-						break
-					}
-				}
-				templateSpec.Containers[i].VolumeMounts = updatedVolumeMounts
-			}
 			break
 		}
-	}
-
-	if flags.removeCerts {
-		updatedVolumes := templateSpec.Volumes
-		for i, volume := range templateSpec.Volumes {
-			if volume.Name == "cert" {
-				updatedVolumes = append(templateSpec.Volumes[:i], templateSpec.Volumes[i+1:]...)
-			}
-		}
-		templateSpec.Volumes = updatedVolumes
 	}
 
 	if flags.webhookPort > 0 {
@@ -214,6 +198,33 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 	}
 
 	return nil
+}
+
+func removeCerts(flags generatorFlags, csv *csvv1.ClusterServiceVersion) {
+	// Remove the certs mount from the manager container
+	templateSpec := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec
+	for i, container := range templateSpec.Containers {
+		if container.Name == "manager" {
+			updatedVolumeMounts := templateSpec.Containers[i].VolumeMounts
+			for j, volumeMount := range templateSpec.Containers[i].VolumeMounts {
+				if volumeMount.Name == "cert" {
+					updatedVolumeMounts = append(templateSpec.Containers[i].VolumeMounts[:j], templateSpec.Containers[i].VolumeMounts[j+1:]...)
+					break
+				}
+			}
+			templateSpec.Containers[i].VolumeMounts = updatedVolumeMounts
+			break
+		}
+	}
+
+	// Remove the cert volume definition
+	updatedVolumes := templateSpec.Volumes
+	for i, volume := range templateSpec.Volumes {
+		if volume.Name == "cert" {
+			updatedVolumes = append(templateSpec.Volumes[:i], templateSpec.Volumes[i+1:]...)
+		}
+	}
+	templateSpec.Volumes = updatedVolumes
 }
 
 func marshallObject(obj interface{}, writer io.Writer) error {
