@@ -71,13 +71,14 @@ github.com/nxadm/tail/ratelimiter
 github.com/nxadm/tail/util
 github.com/nxadm/tail/watch
 github.com/nxadm/tail/winfile
-# github.com/onsi/ginkgo v1.12.1
+# github.com/onsi/ginkgo v1.14.0
 github.com/onsi/ginkgo
 github.com/onsi/ginkgo/config
 github.com/onsi/ginkgo/extensions/table
 github.com/onsi/ginkgo/internal/codelocation
 github.com/onsi/ginkgo/internal/containernode
 github.com/onsi/ginkgo/internal/failer
+github.com/onsi/ginkgo/internal/global
 github.com/onsi/ginkgo/internal/leafnodes
 github.com/onsi/ginkgo/internal/remote
 github.com/onsi/ginkgo/internal/spec
@@ -492,6 +493,9 @@ kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api
 kubevirt.io/cpu-nfd-plugin/pkg/config
 kubevirt.io/cpu-nfd-plugin/pkg/file
 kubevirt.io/cpu-nfd-plugin/pkg/util
+# kubevirt.io/qe-tools v0.1.7
+kubevirt.io/qe-tools/pkg/ginkgo-reporters
+kubevirt.io/qe-tools/pkg/polarion-xml
 # sigs.k8s.io/controller-runtime v0.6.3
 sigs.k8s.io/controller-runtime
 sigs.k8s.io/controller-runtime/pkg/builder

@@ -7,7 +7,7 @@ require (
 	github.com/coreos/prometheus-operator v0.41.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
-	github.com/onsi/ginkgo v1.12.1
+	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/openshift/api v0.0.0-20200917102736-0a191b5b9bb0 // release-4.5
 	github.com/openshift/custom-resource-status v0.0.0-20200602122900-c002fd1547ca
@@ -22,6 +22,7 @@ require (
 	k8s.io/utils v0.0.0-20200821003339-5e75c0163111
 	kubevirt.io/controller-lifecycle-operator-sdk v0.1.1
 	kubevirt.io/cpu-nfd-plugin v0.1.1
+	kubevirt.io/qe-tools v0.1.7
 	sigs.k8s.io/controller-runtime v0.6.3
 )
 
