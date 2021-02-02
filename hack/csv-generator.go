@@ -166,23 +166,18 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 			updatedContainer.Image = flags.operatorImage
 			updatedVariables := make([]v1.EnvVar, 0)
 			for _, envVariable := range container.Env {
-
-				if envVariable.Name == common.KvmInfoNfdPluginImageKey {
+				switch envVariable.Name {
+				case common.KvmInfoNfdPluginImageKey:
 					envVariable.Value = flags.kvmInfoImage
-				}
-				if envVariable.Name == common.TemplateValidatorImageKey {
+				case common.TemplateValidatorImageKey:
 					envVariable.Value = flags.validatorImage
-				}
-				if envVariable.Name == common.VirtLauncherImageKey {
+				case common.VirtLauncherImageKey:
 					envVariable.Value = flags.virtLauncher
-				}
-				if envVariable.Name == common.KubevirtNodeLabellerImageKey {
+				case common.KubevirtNodeLabellerImageKey:
 					envVariable.Value = flags.nodeLabellerImage
-				}
-				if envVariable.Name == common.KubevirtCpuNfdPluginImageKey {
+				case common.KubevirtCpuNfdPluginImageKey:
 					envVariable.Value = flags.cpuPlugin
-				}
-				if envVariable.Name == common.OperatorVersionKey {
+				case common.OperatorVersionKey:
 					envVariable.Value = flags.operatorVersion
 				}
 				updatedVariables = append(updatedVariables, envVariable)
