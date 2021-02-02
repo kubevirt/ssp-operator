@@ -39,7 +39,10 @@ import (
 )
 
 type generatorFlags struct {
+	file              string
 	dumpCRDs          bool
+	removeCerts       bool
+	webhookPort       int32
 	csvVersion        string
 	namespace         string
 	operatorVersion   string
@@ -72,6 +75,7 @@ func main() {
 }
 
 func init() {
+	rootCmd.Flags().StringVar(&f.file, "file", "data/olm-catalog/ssp-operator.clusterserviceversion.yaml", "Location of the CSV yaml to modify")
 	rootCmd.Flags().StringVar(&f.csvVersion, "csv-version", "", "Version of csv manifest (required)")
 	rootCmd.Flags().StringVar(&f.namespace, "namespace", "", "Namespace in which ssp operator will be deployed (required)")
 	rootCmd.Flags().StringVar(&f.operatorImage, "operator-image", "", "Link to operator image (required)")
@@ -81,6 +85,8 @@ func init() {
 	rootCmd.Flags().StringVar(&f.kvmInfoImage, "kvm-info-image", "", "Link to kvm-info-nfd-plugin image")
 	rootCmd.Flags().StringVar(&f.virtLauncher, "virt-launcher-image", "", "Link to virt-launcher image")
 	rootCmd.Flags().StringVar(&f.cpuPlugin, "cpu-plugin-image", "", "Link to cpu-nfd-plugin image")
+	rootCmd.Flags().Int32Var(&f.webhookPort, "webhook-port", 0, "Container port for the admission webhook")
+	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
 	rootCmd.Flags().BoolVar(&f.dumpCRDs, "dump-crds", false, "Dump crds to stdout")
 
 	rootCmd.MarkFlagRequired("csv-version")
@@ -90,7 +96,7 @@ func init() {
 }
 
 func runGenerator() error {
-	csvFile, err := ioutil.ReadFile("data/olm-catalog/ssp-operator.clusterserviceversion.yaml")
+	csvFile, err := ioutil.ReadFile(f.file)
 	if err != nil {
 		return err
 	}
@@ -105,6 +111,10 @@ func runGenerator() error {
 	err = replaceVariables(f, &csv)
 	if err != nil {
 		return err
+	}
+
+	if f.removeCerts {
+		removeCerts(f, &csv)
 	}
 
 	err = marshallObject(csv, os.Stdout)
@@ -149,7 +159,8 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 		Version: *v,
 	}
 
-	for i, container := range csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers {
+	templateSpec := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec
+	for i, container := range templateSpec.Containers {
 		updatedContainer := container
 		if container.Name == "manager" {
 			updatedContainer.Image = flags.operatorImage
@@ -177,11 +188,43 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 				updatedVariables = append(updatedVariables, envVariable)
 			}
 			updatedContainer.Env = updatedVariables
-			csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers[i] = updatedContainer
+			templateSpec.Containers[i] = updatedContainer
 			break
 		}
 	}
+
+	if flags.webhookPort > 0 {
+		csv.Spec.WebhookDefinitions[0].ContainerPort = flags.webhookPort
+	}
+
 	return nil
+}
+
+func removeCerts(flags generatorFlags, csv *csvv1.ClusterServiceVersion) {
+	// Remove the certs mount from the manager container
+	templateSpec := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec
+	for i, container := range templateSpec.Containers {
+		if container.Name == "manager" {
+			updatedVolumeMounts := templateSpec.Containers[i].VolumeMounts
+			for j, volumeMount := range templateSpec.Containers[i].VolumeMounts {
+				if volumeMount.Name == "cert" {
+					updatedVolumeMounts = append(templateSpec.Containers[i].VolumeMounts[:j], templateSpec.Containers[i].VolumeMounts[j+1:]...)
+					break
+				}
+			}
+			templateSpec.Containers[i].VolumeMounts = updatedVolumeMounts
+			break
+		}
+	}
+
+	// Remove the cert volume definition
+	updatedVolumes := templateSpec.Volumes
+	for i, volume := range templateSpec.Volumes {
+		if volume.Name == "cert" {
+			updatedVolumes = append(templateSpec.Volumes[:i], templateSpec.Volumes[i+1:]...)
+		}
+	}
+	templateSpec.Volumes = updatedVolumes
 }
 
 func marshallObject(obj interface{}, writer io.Writer) error {

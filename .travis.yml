@@ -15,7 +15,7 @@ jobs:
     if: tag IS present
     script: |
       docker login -u="${QUAY_BOT}" -p="${QUAY_PASSWORD}" quay.io
-      make release IMG_TAG="${TRAVIS_TAG}"
+      make release IMG_TAG="${TRAVIS_TAG}" VERSION="`echo ${TRAVIS_TAG} | sed 's/^v//'`"
     deploy:
       provider: releases
       name: $TRAVIS_TAG
