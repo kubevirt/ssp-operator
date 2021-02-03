@@ -8,8 +8,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -129,8 +131,16 @@ func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) 
 	nodeLabellerSpec := request.Instance.Spec.NodeLabeller
 	daemonSet := newDaemonSet(request.Namespace)
 	addPlacementFields(daemonSet, nodeLabellerSpec.Placement)
+	status, err := createOrUpdateDaemonSet(request, daemonSet)
+	if errors.IsInvalid(err) {
+		return recreateDaemonSet(request, daemonSet)
+	}
+	return status, err
+}
+
+func createOrUpdateDaemonSet(request *common.Request, resource controllerutil.Object) (common.ResourceStatus, error) {
 	return common.CreateOrUpdateResourceWithStatus(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, daemonSet),
+		common.AddAppLabels(request.Instance, operandName, operandComponent, resource),
 		func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*apps.DaemonSet).Spec = newRes.(*apps.DaemonSet).Spec
 		},
@@ -147,6 +157,13 @@ func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) 
 			}
 			return status
 		})
+}
+
+func recreateDaemonSet(request *common.Request, resource controllerutil.Object) (common.ResourceStatus, error) {
+	if err := request.Client.Delete(request.Context, resource, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil {
+		return common.ResourceStatus{}, err
+	}
+	return createOrUpdateDaemonSet(request, resource)
 }
 
 func addPlacementFields(daemonset *apps.DaemonSet, nodePlacement *lifecycleapi.NodePlacement) {

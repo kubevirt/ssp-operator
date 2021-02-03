@@ -416,7 +416,10 @@ func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 		foundSsp := &sspv1beta1.SSP{}
 		err := apiClient.Get(ctx, key, foundSsp)
 		if err == nil {
-			if reflect.DeepEqual(foundSsp.Spec, ssp.Spec) {
+			isEqual := reflect.DeepEqual(foundSsp.Spec, ssp.Spec) &&
+				reflect.DeepEqual(foundSsp.ObjectMeta.Annotations, ssp.ObjectMeta.Annotations) &&
+				reflect.DeepEqual(foundSsp.ObjectMeta.Labels, ssp.ObjectMeta.Labels)
+			if isEqual {
 				return nil
 			}
 			foundSsp.Spec = ssp.Spec
