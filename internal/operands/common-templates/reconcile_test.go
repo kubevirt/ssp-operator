@@ -59,7 +59,6 @@ var _ = Describe("Common-Templates operand", func() {
 				},
 			},
 			Client:  client,
-			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
 				TypeMeta: metav1.TypeMeta{
@@ -128,8 +127,7 @@ var _ = Describe("Common-Templates operand", func() {
 				},
 			}
 			Expect(request.Client.Create(request.Context, parentTpl)).ToNot(HaveOccurred(), "creation of parent template failed")
-			key, err := client.ObjectKeyFromObject(parentTpl)
-			Expect(err).ToNot(HaveOccurred())
+			key := client.ObjectKeyFromObject(parentTpl)
 			Expect(request.Client.Get(request.Context, key, parentTpl)).ToNot(HaveOccurred())
 
 			oldTpl = &templatev1.Template{
@@ -153,7 +151,7 @@ var _ = Describe("Common-Templates operand", func() {
 				},
 			}
 
-			err = request.Client.Create(request.Context, oldTpl)
+			err := request.Client.Create(request.Context, oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
 		})
 
@@ -169,9 +167,7 @@ var _ = Describe("Common-Templates operand", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
 
-			key, err := client.ObjectKeyFromObject(oldTpl)
-			Expect(err).ToNot(HaveOccurred(), "getting template object key failed")
-
+			key := client.ObjectKeyFromObject(oldTpl)
 			updatedTpl := &templatev1.Template{}
 			err = request.Client.Get(request.Context, key, updatedTpl)
 			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
@@ -184,9 +180,7 @@ var _ = Describe("Common-Templates operand", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
 
-			key, err := client.ObjectKeyFromObject(oldTpl)
-			Expect(err).ToNot(HaveOccurred(), "getting template object key failed")
-
+			key := client.ObjectKeyFromObject(oldTpl)
 			updatedTpl := &templatev1.Template{}
 			err = request.Client.Get(request.Context, key, updatedTpl)
 			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")

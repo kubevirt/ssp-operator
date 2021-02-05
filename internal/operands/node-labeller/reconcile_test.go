@@ -46,7 +46,6 @@ var _ = Describe("Node Labeller operand", func() {
 				},
 			},
 			Client:  client,
-			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
 				TypeMeta: meta.TypeMeta{

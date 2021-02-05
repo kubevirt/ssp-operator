@@ -3,7 +3,7 @@ VERSION ?= 0.1.3
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.2.0
+OPERATOR_SDK_VERSION ?= v1.3.2
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -99,7 +99,7 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 operator-sdk:
-	curl -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk-$(OPERATOR_SDK_VERSION)-x86_64-linux-gnu -o operator-sdk
+	curl -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_linux_amd64 -o operator-sdk
 	chmod 0755 operator-sdk
 
 # Build the container image

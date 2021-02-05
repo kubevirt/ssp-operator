@@ -17,7 +17,6 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
@@ -38,6 +37,8 @@ var (
 
 type commonTemplates struct{}
 
+var _ operands.Operand = &commonTemplates{}
+
 func GetOperand() operands.Operand {
 	return &commonTemplates{}
 }
@@ -55,8 +56,8 @@ func (c *commonTemplates) AddWatchTypesToScheme(s *runtime.Scheme) error {
 	return templatev1.Install(s)
 }
 
-func (c *commonTemplates) WatchClusterTypes() []runtime.Object {
-	return []runtime.Object{
+func (c *commonTemplates) WatchClusterTypes() []client.Object {
+	return []client.Object{
 		&rbac.ClusterRole{},
 		&rbac.Role{},
 		&rbac.RoleBinding{},
@@ -65,7 +66,7 @@ func (c *commonTemplates) WatchClusterTypes() []runtime.Object {
 	}
 }
 
-func (c *commonTemplates) WatchTypes() []runtime.Object {
+func (c *commonTemplates) WatchTypes() []client.Object {
 	return nil
 }
 
@@ -89,7 +90,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceS
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) error {
-	objects := []controllerutil.Object{
+	objects := []client.Object{
 		newGoldenImagesNS(GoldenImagesNSname),
 		newViewRole(GoldenImagesNSname),
 		newViewRoleBinding(GoldenImagesNSname),
@@ -121,7 +122,7 @@ func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newViewRole(GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRole := foundRes.(*rbac.Role)
 			newRole := newRes.(*rbac.Role)
 			foundRole.Rules = newRole.Rules
@@ -133,7 +134,7 @@ func reconcileViewRoleBinding(request *common.Request) (common.ResourceStatus, e
 	return common.CreateOrUpdate(request).
 		ClusterResource(newViewRoleBinding(GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			newBinding := newRes.(*rbac.RoleBinding)
 			foundBinding := foundRes.(*rbac.RoleBinding)
 			foundBinding.Subjects = newBinding.Subjects
@@ -146,7 +147,7 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newEditRole()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			newRole := newRes.(*rbac.ClusterRole)
 			foundRole := foundRes.(*rbac.ClusterRole)
 			foundRole.Rules = newRole.Rules
@@ -189,7 +190,7 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(_, foundRes controllerutil.Object) {
+				UpdateFunc(func(_, foundRes client.Object) {
 					foundTemplate := foundRes.(*templatev1.Template)
 					for key := range foundTemplate.Labels {
 						if strings.HasPrefix(key, TemplateOsLabelPrefix) ||
@@ -231,7 +232,7 @@ func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+				UpdateFunc(func(newRes, foundRes client.Object) {
 					newTemplate := newRes.(*templatev1.Template)
 					foundTemplate := foundRes.(*templatev1.Template)
 					foundTemplate.Objects = newTemplate.Objects

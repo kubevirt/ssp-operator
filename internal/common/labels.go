@@ -2,7 +2,7 @@ package common
 
 import (
 	"kubevirt.io/ssp-operator/api/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 // Name will translate into the AppKubernetesNameLabel
 // Component will translate into the AppKubernetesComponentLabel
 // Instance wide labels will be taken from the request if available
-func AddAppLabels(requestInstance *v1beta1.SSP, name string, component AppComponent, obj controllerutil.Object) controllerutil.Object {
+func AddAppLabels(requestInstance *v1beta1.SSP, name string, component AppComponent, obj client.Object) client.Object {
 	labels := getOrCreateLabels(obj)
 	addInstanceLabels(requestInstance, labels)
 
@@ -40,7 +40,7 @@ func AddAppLabels(requestInstance *v1beta1.SSP, name string, component AppCompon
 	return obj
 }
 
-func getOrCreateLabels(obj controllerutil.Object) map[string]string {
+func getOrCreateLabels(obj client.Object) map[string]string {
 	labels := obj.GetLabels()
 	if labels == nil {
 		labels = map[string]string{}

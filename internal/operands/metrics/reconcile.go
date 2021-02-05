@@ -3,7 +3,7 @@ package metrics
 import (
 	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -22,11 +22,11 @@ func (m *metrics) AddWatchTypesToScheme(scheme *runtime.Scheme) error {
 	return promv1.AddToScheme(scheme)
 }
 
-func (m *metrics) WatchTypes() []runtime.Object {
-	return []runtime.Object{&promv1.PrometheusRule{}}
+func (m *metrics) WatchTypes() []client.Object {
+	return []client.Object{&promv1.PrometheusRule{}}
 }
 
-func (m *metrics) WatchClusterTypes() []runtime.Object {
+func (m *metrics) WatchClusterTypes() []client.Object {
 	return nil
 }
 
@@ -55,7 +55,7 @@ func reconcilePrometheusRule(request *common.Request) (common.ResourceStatus, er
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newPrometheusRule(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
 		}).
 		Reconcile()

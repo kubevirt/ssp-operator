@@ -50,7 +50,6 @@ var _ = Describe("Template validator operand", func() {
 				},
 			},
 			Client:  client,
-			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
 				TypeMeta: meta.TypeMeta{
@@ -88,8 +87,7 @@ var _ = Describe("Template validator operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		key, err := client.ObjectKeyFromObject(newValidatingWebhook(namespace))
-		Expect(err).ToNot(HaveOccurred())
+		key := client.ObjectKeyFromObject(newValidatingWebhook(namespace))
 		webhook := &admission.ValidatingWebhookConfiguration{}
 		Expect(request.Client.Get(request.Context, key, webhook)).ToNot(HaveOccurred())
 
@@ -109,8 +107,7 @@ var _ = Describe("Template validator operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		key, err := client.ObjectKeyFromObject(newService(namespace))
-		Expect(err).ToNot(HaveOccurred())
+		key := client.ObjectKeyFromObject(newService(namespace))
 		service := &core.Service{}
 		Expect(request.Client.Get(request.Context, key, service)).ToNot(HaveOccurred())
 
@@ -146,7 +143,7 @@ var _ = Describe("Template validator operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Set status for deployment
-		key, _ := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
+		key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
 		updateDeployment(key, &request, func(deployment *apps.Deployment) {
 			deployment.Status.Replicas = replicas
 			deployment.Status.ReadyReplicas = 0

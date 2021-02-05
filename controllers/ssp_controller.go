@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
@@ -72,12 +73,13 @@ var kvsspCRDs = map[string]string{
 // SSPReconciler reconciles a SSP object
 type SSPReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log logr.Logger
 
 	LastSspSpec      ssp.SSPSpec
 	SubresourceCache common.VersionCache
 }
+
+var _ reconcile.Reconciler = &SSPReconciler{}
 
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=get;update;patch
@@ -88,11 +90,9 @@ type SSPReconciler struct {
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
-func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
 	reqLogger.V(1).Info("Starting reconciliation...")
-
-	ctx := context.Background()
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
@@ -113,7 +113,6 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	sspRequest := &common.Request{
 		Request:      req,
 		Client:       r,
-		Scheme:       r.Scheme,
 		Context:      ctx,
 		Instance:     instance,
 		Logger:       reqLogger,
@@ -478,7 +477,7 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
-func prefixResourceTypeAndName(message string, resource controllerutil.Object) string {
+func prefixResourceTypeAndName(message string, resource client.Object) string {
 	return fmt.Sprintf("%s %s/%s: %s",
 		resource.GetObjectKind().GroupVersionKind().Kind,
 		resource.GetNamespace(),
@@ -547,13 +546,13 @@ func watchSspResource(bldr *ctrl.Builder) {
 	// Importantly, the reconciliation is not triggered on status change.
 	// Otherwise it would cause a reconciliation loop.
 	pred := predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
-		oldMeta := event.MetaOld
-		newMeta := event.MetaNew
-		return newMeta.GetGeneration() != oldMeta.GetGeneration() ||
-			!newMeta.GetDeletionTimestamp().Equal(oldMeta.GetDeletionTimestamp()) ||
-			!reflect.DeepEqual(newMeta.GetLabels(), oldMeta.GetLabels()) ||
-			!reflect.DeepEqual(newMeta.GetAnnotations(), oldMeta.GetAnnotations()) ||
-			!reflect.DeepEqual(newMeta.GetFinalizers(), oldMeta.GetFinalizers())
+		oldObj := event.ObjectOld
+		newObj := event.ObjectNew
+		return newObj.GetGeneration() != oldObj.GetGeneration() ||
+			!newObj.GetDeletionTimestamp().Equal(oldObj.GetDeletionTimestamp()) ||
+			!reflect.DeepEqual(newObj.GetLabels(), oldObj.GetLabels()) ||
+			!reflect.DeepEqual(newObj.GetAnnotations(), oldObj.GetAnnotations()) ||
+			!reflect.DeepEqual(newObj.GetFinalizers(), oldObj.GetFinalizers())
 
 	}}
 
@@ -582,7 +581,7 @@ func watchClusterResources(builder *ctrl.Builder) {
 	)
 }
 
-func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesFunc func(operands.Operand) []runtime.Object) {
+func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesFunc func(operands.Operand) []client.Object) {
 	watchedTypes := make(map[reflect.Type]struct{})
 	for _, operand := range sspOperands {
 		for _, t := range watchTypesFunc(operand) {

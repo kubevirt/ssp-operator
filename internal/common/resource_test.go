@@ -14,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -46,7 +45,6 @@ var _ = Describe("Create or update resource", func() {
 				},
 			},
 			Client:  client,
-			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
 				TypeMeta: metav1.TypeMeta{
@@ -85,8 +83,7 @@ var _ = Describe("Create or update resource", func() {
 		_, err := createOrUpdateTestResource(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		key, err := client.ObjectKeyFromObject(newTestResource(namespace))
-		Expect(err).ToNot(HaveOccurred())
+		key := client.ObjectKeyFromObject(newTestResource(namespace))
 
 		found := &v1.Service{}
 		Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
@@ -100,16 +97,14 @@ var _ = Describe("Create or update resource", func() {
 	It("should set owner annotations", func() {
 		_, err := CreateOrUpdate(&request).
 			ClusterResource(newTestResource("")).
-			UpdateFunc(func(expected, found controllerutil.Object) {
+			UpdateFunc(func(expected, found client.Object) {
 				found.(*v1.Service).Spec = expected.(*v1.Service).Spec
 			}).
 			Reconcile()
 
 		Expect(err).ToNot(HaveOccurred())
 
-		key, err := client.ObjectKeyFromObject(newTestResource(""))
-		Expect(err).ToNot(HaveOccurred())
-
+		key := client.ObjectKeyFromObject(newTestResource(""))
 		found := &v1.Service{}
 		Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
 
@@ -164,7 +159,7 @@ var _ = Describe("Create or update resource", func() {
 func createOrUpdateTestResource(request *Request) (ResourceStatus, error) {
 	return CreateOrUpdate(request).
 		NamespacedResource(newTestResource(namespace)).
-		UpdateFunc(func(expected, found controllerutil.Object) {
+		UpdateFunc(func(expected, found client.Object) {
 			found.(*v1.Service).Spec = expected.(*v1.Service).Spec
 		}).
 		Reconcile()
@@ -199,10 +194,8 @@ func newTestResource(namespace string) *v1.Service {
 	}
 }
 
-func expectEqualResourceExists(resource controllerutil.Object, request *Request) {
-	key, err := client.ObjectKeyFromObject(resource)
-	Expect(err).ToNot(HaveOccurred())
-
+func expectEqualResourceExists(resource client.Object, request *Request) {
+	key := client.ObjectKeyFromObject(resource)
 	found := newEmptyResource(resource)
 	Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
 
