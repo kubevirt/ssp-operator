@@ -52,8 +52,11 @@ import (
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
-const finalizerName = "finalize.ssp.kubevirt.io"
-const defaultOperatorVersion = "devel"
+const (
+	finalizerName          = "ssp.kubevirt.io/finalizer"
+	oldFinalizerName       = "finalize.ssp.kubevirt.io"
+	defaultOperatorVersion = "devel"
+)
 
 var sspOperands = []operands.Operand{
 	metrics.GetOperand(),
@@ -123,6 +126,11 @@ func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		err := initialize(sspRequest)
 		// No need to requeue here, because
 		// the update will trigger reconciliation again
+		return ctrl.Result{}, err
+	}
+
+	if updated, err := updateSsp(sspRequest); updated || (err != nil) {
+		// SSP was updated, and the update will trigger reconciliation again.
 		return ctrl.Result{}, err
 	}
 
@@ -211,6 +219,28 @@ func isInitialized(ssp *ssp.SSP) bool {
 
 func initialize(request *common.Request) error {
 	controllerutil.AddFinalizer(request.Instance, finalizerName)
+	return updateSspResource(request)
+}
+
+func updateSsp(request *common.Request) (bool, error) {
+	updated := false
+
+	// Update old finalizer to new one
+	if controllerutil.ContainsFinalizer(request.Instance, oldFinalizerName) {
+		controllerutil.RemoveFinalizer(request.Instance, oldFinalizerName)
+		controllerutil.AddFinalizer(request.Instance, finalizerName)
+		updated = true
+	}
+
+	if !updated {
+		return false, nil
+	}
+
+	err := updateSspResource(request)
+	return err == nil, err
+}
+
+func updateSspResource(request *common.Request) error {
 	err := request.Client.Update(request.Context, request.Instance)
 	if err != nil {
 		return err
@@ -222,7 +252,9 @@ func initialize(request *common.Request) error {
 }
 
 func cleanup(request *common.Request) error {
-	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
+	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) ||
+		controllerutil.ContainsFinalizer(request.Instance, oldFinalizerName) {
+
 		request.Instance.Status.Phase = lifecycleapi.PhaseDeleting
 		request.Instance.Status.ObservedGeneration = request.Instance.Generation
 		err := request.Client.Status().Update(request.Context, request.Instance)
@@ -236,6 +268,7 @@ func cleanup(request *common.Request) error {
 			}
 		}
 		controllerutil.RemoveFinalizer(request.Instance, finalizerName)
+		controllerutil.RemoveFinalizer(request.Instance, oldFinalizerName)
 		err = request.Client.Update(request.Context, request.Instance)
 		if err != nil {
 			return err

@@ -3,7 +3,7 @@ VERSION ?= 0.1.3
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.3.2
+OPERATOR_SDK_VERSION ?= v1.4.2
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -108,7 +108,7 @@ container-build: unittest bundle
 	mkdir -p data/crd
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	docker build . -t ${IMG}
+	docker build -t ${IMG} .
 
 # Push the container image
 container-push:

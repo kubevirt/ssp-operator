@@ -54,7 +54,8 @@ var _ = Describe("SSP Validation", func() {
 		BeforeEach(func() {
 			objects = append(objects, &v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: templatesNamespace,
+					Name:            templatesNamespace,
+					ResourceVersion: "1",
 				},
 			})
 		})
@@ -68,8 +69,9 @@ var _ = Describe("SSP Validation", func() {
 				// add an SSP CR to fake client
 				objects = append(objects, &SSP{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-ssp",
-						Namespace: "test-ns",
+						Name:            "test-ssp",
+						Namespace:       "test-ns",
+						ResourceVersion: "1",
 					},
 					Spec: SSPSpec{
 						CommonTemplates: CommonTemplates{
