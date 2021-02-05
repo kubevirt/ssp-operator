@@ -350,7 +350,7 @@ var _ = Describe("Common templates", func() {
 						Namespace: strategy.GetNamespace(),
 					},
 				}
-				regularSAFullName = fmt.Sprintf("serviceaccount:%s:%s", regularSA.GetNamespace(), regularSA.GetName())
+				regularSAFullName = fmt.Sprintf("system:serviceaccount:%s:%s", regularSA.GetNamespace(), regularSA.GetName())
 
 				Expect(apiClient.Create(ctx, regularSA)).ToNot(HaveOccurred(), "creation of regular service account failed")
 				Expect(apiClient.Get(ctx, getResourceKey(regularSA), regularSA)).ToNot(HaveOccurred())
@@ -431,7 +431,202 @@ var _ = Describe("Common templates", func() {
 							Version:   "v1beta1",
 							Resource:  "datavolumes",
 						},
+					}),
+				table.Entry("[test_id:5005]: ServiceAccounts with only view role can create dv/source",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:        "create",
+							Namespace:   commonTemplates.GoldenImagesNSname,
+							Group:       "cdi.kubevirt.io",
+							Version:     "v1beta1",
+							Resource:    "datavolumes",
+							Subresource: "source",
+						},
+					}),
+			)
+
+			table.DescribeTable("regular service account DV RBAC", expectUserCannot,
+				table.Entry("[test_id:4873]: ServiceAccounts with only view role cannot delete DVs",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "delete",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Group:     "cdi.kubevirt.io",
+							Version:   "v1beta1",
+							Resource:  "datavolumes",
+						},
+					}),
+				table.Entry("[test_id:4874]: ServiceAccounts with only view role cannot create DVs",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "create",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Group:     "cdi.kubevirt.io",
+							Version:   "v1beta1",
+							Resource:  "datavolumes",
+						},
+					}),
+			)
+			table.DescribeTable("regular service account PVC RBAC", expectUserCan,
+				table.Entry("[test_id:4775]: ServiceAccounts with view role can view PVCs",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "get",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Version:   "v1",
+							Resource:  "persistentvolumeclaims",
+						},
 					}))
+			table.DescribeTable("regular service account RBAC", expectUserCannot,
+				table.Entry("[test_id:4776]: ServiceAccounts with only view role cannot create PVCs",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "create",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Version:   "v1",
+							Resource:  "persistentvolumeclaims",
+						},
+					}),
+				table.Entry("[test_id:4846]: ServiceAccounts with only view role cannot delete PVCs",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "delete",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Version:   "v1",
+							Resource:  "persistentvolumeclaims",
+						},
+					}),
+				table.Entry("[test_id:4879]: ServiceAccounts with only view role cannot create any other resources other than the ones listed in the View role",
+					&authv1.SubjectAccessReviewSpec{
+						User:   regularSAFullName,
+						Groups: sasGroup,
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "create",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Version:   "v1",
+							Resource:  "pods",
+						},
+					}),
+			)
+			Context("With Edit permission", func() {
+				var (
+					privilegedSA         *core.ServiceAccount
+					privilegedSAName     = "privileged-sa"
+					privilegedSAFullName string
+				)
+				BeforeEach(func() {
+					privilegedSA = &core.ServiceAccount{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      privilegedSAName,
+							Namespace: strategy.GetNamespace(),
+						},
+					}
+					Expect(apiClient.Create(ctx, privilegedSA)).ToNot(HaveOccurred(), "creation of regular service account failed")
+					Expect(apiClient.Get(ctx, getResourceKey(privilegedSA), privilegedSA)).ToNot(HaveOccurred())
+					privilegedSAFullName = fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), privilegedSAName)
+
+					editObj := &rbac.RoleBinding{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-edit",
+							Namespace: commonTemplates.GoldenImagesNSname,
+						},
+						Subjects: []rbac.Subject{
+							{
+								Kind:      "ServiceAccount",
+								Name:      privilegedSAName,
+								Namespace: strategy.GetNamespace(),
+							},
+						},
+						RoleRef: rbac.RoleRef{
+							Kind:     "ClusterRole",
+							Name:     commonTemplates.EditClusterRoleName,
+							APIGroup: "rbac.authorization.k8s.io",
+						},
+					}
+					Expect(apiClient.Create(ctx, editObj)).ToNot(HaveOccurred(), "Failed to create RoleBinding")
+				})
+				AfterEach(func() {
+					editObj := &rbac.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "test-edit", Namespace: commonTemplates.GoldenImagesNSname}}
+					Expect(apiClient.Delete(ctx, editObj)).ToNot(HaveOccurred())
+					Expect(apiClient.Delete(ctx, privilegedSA)).NotTo(HaveOccurred())
+				})
+				table.DescribeTable("should verify resource permissions", func(sars *authv1.SubjectAccessReviewSpec) {
+					// Because privilegedSAFullName is filled after test Tree generation
+					sars.User = privilegedSAFullName
+					expectUserCan(sars)
+				},
+					table.Entry("[test_id:4774]: ServiceAcounts with edit role can create PVCs",
+						&authv1.SubjectAccessReviewSpec{
+							ResourceAttributes: &authv1.ResourceAttributes{
+								Verb:      "create",
+								Namespace: commonTemplates.GoldenImagesNSname,
+								Version:   "v1",
+								Resource:  "persistentvolumeclaims",
+							},
+						}),
+					table.Entry("[test_id:4845]: ServiceAcounts with edit role can delete PVCs",
+						&authv1.SubjectAccessReviewSpec{
+							ResourceAttributes: &authv1.ResourceAttributes{
+								Verb:      "delete",
+								Namespace: commonTemplates.GoldenImagesNSname,
+								Version:   "v1",
+								Resource:  "persistentvolumeclaims",
+							},
+						}),
+					table.Entry("[test_id:4877]: ServiceAccounts with edit role can view DVs",
+						&authv1.SubjectAccessReviewSpec{
+							ResourceAttributes: &authv1.ResourceAttributes{
+								Verb:      "get",
+								Namespace: commonTemplates.GoldenImagesNSname,
+								Group:     "cdi.kubevirt.io",
+								Version:   "v1beta1",
+								Resource:  "datavolumes",
+							},
+						}),
+					table.Entry("[test_id:4872]: ServiceAccounts with edit role can create DVs",
+						&authv1.SubjectAccessReviewSpec{
+							ResourceAttributes: &authv1.ResourceAttributes{
+								Verb:      "create",
+								Namespace: commonTemplates.GoldenImagesNSname,
+								Group:     "cdi.kubevirt.io",
+								Version:   "v1beta1",
+								Resource:  "datavolumes",
+							},
+						}),
+					table.Entry("[test_id:4876]: ServiceAccounts with edit role can delete DVs",
+						&authv1.SubjectAccessReviewSpec{
+							ResourceAttributes: &authv1.ResourceAttributes{
+								Verb:      "delete",
+								Namespace: commonTemplates.GoldenImagesNSname,
+								Group:     "cdi.kubevirt.io",
+								Version:   "v1beta1",
+								Resource:  "datavolumes",
+							},
+						}),
+					table.Entry("[test_id:4876]: ServiceAccounts with edit role can delete DVs",
+						&authv1.SubjectAccessReviewSpec{
+							ResourceAttributes: &authv1.ResourceAttributes{
+								Verb:      "delete",
+								Namespace: commonTemplates.GoldenImagesNSname,
+								Group:     "cdi.kubevirt.io",
+								Version:   "v1beta1",
+								Resource:  "datavolumes",
+							},
+						}),
+				)
+			})
 		})
 	})
 })
