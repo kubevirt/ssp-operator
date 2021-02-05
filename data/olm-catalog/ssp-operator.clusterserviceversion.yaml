@@ -26,9 +26,9 @@ metadata:
     categories: Openshift Optional
     containerImage: REPLACE_IMAGE:TAG
     description: Manages KubeVirt addons for Scheduling, Scale, Performance
-    operators.operatorframework.io/builder: operator-sdk-v1.1.0
+    operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
-  name: ssp-operator.v0.0.1
+  name: ssp-operator.v0.1.3
   namespace: kubevirt
 spec:
   apiservicedefinitions: {}
@@ -347,7 +347,7 @@ spec:
                 - name: NODE_LABELLER_IMAGE
                 - name: CPU_PLUGIN_IMAGE
                 - name: OPERATOR_VERSION
-                  value: 0.0.1
+                  value: 0.1.3
                 image: quay.io/kubevirt/ssp-operator:latest
                 name: manager
                 ports:
@@ -433,11 +433,12 @@ spec:
     name: cpu-nfd-plugin
   - image: quay.io/kubevirt/virt-launcher@sha256:970a078f150d14b053b69db66a9fc035182e5e7010d65b524a28f70498c158f3
     name: virt-launcher
+  replaces: ssp-operator.v0.0.1
   selector:
     matchLabels:
       alm-owner-kubevirt: ssp-operator
       operated-by: ssp-operator
-  version: 0.0.1
+  version: 0.1.3
   webhookdefinitions:
   - admissionReviewVersions:
     - v1beta1
@@ -456,5 +457,6 @@ spec:
       resources:
       - ssps
     sideEffects: None
+    targetPort: 9443
     type: ValidatingAdmissionWebhook
     webhookPath: /validate-ssp-kubevirt-io-v1beta1-ssp

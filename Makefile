@@ -1,9 +1,9 @@
 # Current Operator version
-VERSION ?= 0.0.1
+VERSION ?= 0.1.3
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.1.0
+OPERATOR_SDK_VERSION ?= v1.2.0
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
