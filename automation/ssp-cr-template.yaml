@@ -5,6 +5,9 @@ kind: SSP
 metadata:
   name: %%_SSP_NAME_%%
   namespace: %%_SSP_NAMESPACE_%%
+  labels:
+    app.kubernetes.io/part-of: "kubevirt-test"
+    app.kubernetes.io/version: "v0.0.0"
 spec:
   commonTemplates:
     namespace: %%_COMMON_TEMPLATES_NAMESPACE_%%

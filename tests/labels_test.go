@@ -63,29 +63,56 @@ func encodePatch(operations []jsonpatch.Operation) client.Patch {
 }
 
 func waitForLabelMatch(resource controllerutil.Object, key client.ObjectKey, expectedLabels map[string]string) {
+	var lastResult badLabels
 	Eventually(func() bool {
 		err := apiClient.Get(ctx, key, resource)
 		if err != nil {
 			fmt.Fprintln(GinkgoWriter, err)
 			return false
 		}
-		return labelsMatch(expectedLabels, resource)
-	}, shortTimeout).Should(BeTrue(), "app labels were not added")
+		badLabels := labelsMatch(expectedLabels, resource)
+		if len(badLabels) > 0 {
+			lastResult = badLabels
+			return false
+		}
+		return true
+	}, shortTimeout).Should(BeTrue(), func() string {
+		return lastResult.String()
+	})
 }
 
-func labelsMatch(expectedLabels map[string]string, obj controllerutil.Object) bool {
+func labelsMatch(expectedLabels map[string]string, obj controllerutil.Object) badLabels {
 	labels := obj.GetLabels()
 	if labels == nil {
-		return false
+		labels = make(map[string]string)
 	}
 
+	badLabels := make(badLabels, len(expectedLabels))
 	for label, value := range expectedLabels {
 		foundValue, foundLabel := labels[label]
 		if !foundLabel || foundValue != value {
-			fmt.Fprintf(GinkgoWriter, "expected label %s=%s, got: %s\n", label, value, foundValue)
-			return false
+			badLabels[label] = badLabel{expected: value, got: foundValue, missing: !foundLabel}
 		}
 	}
 
-	return true
+	return badLabels
+}
+
+type badLabel struct {
+	expected, got string
+	missing       bool
+}
+type badLabels map[string]badLabel
+
+func (labels badLabels) String() string {
+	str := strings.Builder{}
+	str.WriteString("labels not matching expectations:\n")
+	for label, badLabel := range labels {
+		if badLabel.missing {
+			str.WriteString(fmt.Sprintf("%s: missing\n", label))
+			continue
+		}
+		str.WriteString(fmt.Sprintf("%s: expected: '%s', got: '%s'\n", label, badLabel.expected, badLabel.got))
+	}
+	return str.String()
 }
