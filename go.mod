@@ -15,6 +15,7 @@ require (
 	github.com/operator-framework/api v0.3.25
 	github.com/operator-framework/operator-lib v0.2.0
 	github.com/spf13/cobra v1.0.0
+	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.19.3
 	k8s.io/apiextensions-apiserver v0.19.3

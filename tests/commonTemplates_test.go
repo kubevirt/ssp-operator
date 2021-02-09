@@ -16,9 +16,9 @@ import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"kubevirt.io/ssp-operator/internal/common"
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
@@ -32,10 +32,12 @@ var _ = Describe("Common templates", func() {
 	)
 
 	BeforeEach(func() {
+		expectedLabels := expectedLabelsFor("common-templates", common.AppComponentTemplating)
 		viewRole = testResource{
-			Name:      commonTemplates.ViewRoleName,
-			Namespace: commonTemplates.GoldenImagesNSname,
-			Resource:  &rbac.Role{},
+			Name:           commonTemplates.ViewRoleName,
+			Namespace:      commonTemplates.GoldenImagesNSname,
+			Resource:       &rbac.Role{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(role *rbac.Role) {
 				role.Rules = []rbac.PolicyRule{}
 			},
@@ -44,9 +46,10 @@ var _ = Describe("Common templates", func() {
 			},
 		}
 		viewRoleBinding = testResource{
-			Name:      commonTemplates.ViewRoleName,
-			Namespace: commonTemplates.GoldenImagesNSname,
-			Resource:  &rbac.RoleBinding{},
+			Name:           commonTemplates.ViewRoleName,
+			Namespace:      commonTemplates.GoldenImagesNSname,
+			Resource:       &rbac.RoleBinding{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
 				roleBinding.Subjects = nil
 			},
@@ -55,9 +58,10 @@ var _ = Describe("Common templates", func() {
 			},
 		}
 		editClusterRole = testResource{
-			Name:      commonTemplates.EditClusterRoleName,
-			Resource:  &rbac.ClusterRole{},
-			Namespace: "",
+			Name:           commonTemplates.EditClusterRoleName,
+			Resource:       &rbac.ClusterRole{},
+			ExpectedLabels: expectedLabels,
+			Namespace:      "",
 			UpdateFunc: func(role *rbac.ClusterRole) {
 				role.Rules[0].Verbs = []string{"watch"}
 			},
@@ -66,14 +70,16 @@ var _ = Describe("Common templates", func() {
 			},
 		}
 		goldenImageNS = testResource{
-			Name:      commonTemplates.GoldenImagesNSname,
-			Resource:  &core.Namespace{},
-			Namespace: "",
+			Name:           commonTemplates.GoldenImagesNSname,
+			Resource:       &core.Namespace{},
+			ExpectedLabels: expectedLabels,
+			Namespace:      "",
 		}
 		testTemplate = testResource{
-			Name:      "rhel8-desktop-tiny",
-			Namespace: strategy.GetTemplatesNamespace(),
-			Resource:  &templatev1.Template{},
+			Name:           "rhel8-desktop-tiny",
+			Namespace:      strategy.GetTemplatesNamespace(),
+			Resource:       &templatev1.Template{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(t *templatev1.Template) {
 				t.Parameters = nil
 			},
@@ -191,6 +197,14 @@ var _ = Describe("Common templates", func() {
 				}
 			}
 		})
+
+		table.DescribeTable("should set app labels", expectAppLabels,
+			table.Entry("edit role", &editClusterRole),
+			table.Entry("golden images namespace", &goldenImageNS),
+			table.Entry("view role", &viewRole),
+			table.Entry("view role binding", &viewRoleBinding),
+			table.Entry("common-template in custom NS", &testTemplate),
+		)
 	})
 
 	Context("resource change", func() {
@@ -217,6 +231,14 @@ var _ = Describe("Common templates", func() {
 				table.Entry("[test_id:5393]edit cluster role", &editClusterRole),
 			)
 		})
+
+		table.DescribeTable("should restore app labels", expectAppLabelsRestoreAfterUpdate,
+			table.Entry("edit role", &editClusterRole),
+			table.Entry("golden images namespace", &goldenImageNS),
+			table.Entry("view role", &viewRole),
+			table.Entry("view role binding", &viewRoleBinding),
+			table.Entry("common-template in custom NS", &testTemplate),
+		)
 	})
 
 	Context("resource deletion", func() {
@@ -240,7 +262,7 @@ var _ = Describe("Common templates", func() {
 			// might be deployed in a different namespace than the CR, and will be immediately
 			// removed by the GC, the choice to use a template as an owner object was arbitrary
 			ownerTemplate = &templatev1.Template{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "owner-template",
 					Namespace: strategy.GetTemplatesNamespace(),
 				},
@@ -248,7 +270,7 @@ var _ = Describe("Common templates", func() {
 			Expect(apiClient.Create(ctx, ownerTemplate)).ToNot(HaveOccurred(), "failed to create dummy owner for an old template")
 
 			oldTemplate = &templatev1.Template{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-old-template",
 					Namespace: strategy.GetTemplatesNamespace(),
 					Labels: map[string]string{
@@ -258,7 +280,7 @@ var _ = Describe("Common templates", func() {
 						"flavor.template.kubevirt.io/test":     "true",
 						"workload.template.kubevirt.io/server": "true",
 					},
-					OwnerReferences: []v1.OwnerReference{{
+					OwnerReferences: []metav1.OwnerReference{{
 						APIVersion: "template.openshift.io/v1",
 						Kind:       "Template",
 						Name:       ownerTemplate.Name,

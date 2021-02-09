@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 )
 
@@ -15,9 +16,10 @@ var _ = Describe("Metrics", func() {
 
 	BeforeEach(func() {
 		prometheusRuleRes = testResource{
-			Name:      metrics.PrometheusRuleName,
-			Namespace: strategy.GetNamespace(),
-			Resource:  &promv1.PrometheusRule{},
+			Name:           metrics.PrometheusRuleName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &promv1.PrometheusRule{},
+			ExpectedLabels: expectedLabelsFor("metrics", common.AppComponentMonitoring),
 			UpdateFunc: func(rule *promv1.PrometheusRule) {
 				rule.Spec.Groups[0].Name = "changed-name"
 				rule.Spec.Groups[0].Rules = []promv1.Rule{}
@@ -53,6 +55,16 @@ var _ = Describe("Metrics", func() {
 
 		It("[test_id:5397] should recreate modified prometheus rule after pause", func() {
 			expectRestoreAfterUpdateWithPause(&prometheusRuleRes)
+		})
+	})
+
+	Context("app labels", func() {
+		It("adds app labels from SSP CR", func() {
+			expectAppLabels(&prometheusRuleRes)
+		})
+
+		It("restores modified app labels", func() {
+			expectAppLabelsRestoreAfterUpdate(&prometheusRuleRes)
 		})
 	})
 })

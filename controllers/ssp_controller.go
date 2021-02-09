@@ -289,14 +289,16 @@ func listExistingCRDKinds(sspRequest *common.Request) []string {
 	crds.SetAPIVersion("apiextensions.k8s.io/v1")
 	err := sspRequest.Client.List(sspRequest.Context, crds)
 	foundKinds := make([]string, 0, len(kvsspCRDs))
-	if err == nil {
-		for _, item := range crds.Items {
-			name := item.GetName()
-			for crd, kind := range kvsspCRDs {
-				if crd == name {
-					foundKinds = append(foundKinds, kind)
-					break
-				}
+	if err != nil {
+		return nil
+	}
+
+	for _, item := range crds.Items {
+		name := item.GetName()
+		for crd, kind := range kvsspCRDs {
+			if crd == name {
+				foundKinds = append(foundKinds, kind)
+				break
 			}
 		}
 	}

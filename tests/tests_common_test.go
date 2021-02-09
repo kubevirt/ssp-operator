@@ -27,6 +27,8 @@ type testResource struct {
 	Namespace string
 	Resource  controllerutil.Object
 
+	ExpectedLabels map[string]string
+
 	UpdateFunc interface{}
 	EqualsFunc interface{}
 }

@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
@@ -34,9 +35,11 @@ var _ = Describe("Template validator", func() {
 	)
 
 	BeforeEach(func() {
+		expectedLabels := expectedLabelsFor("template-validator", common.AppComponentTemplating)
 		clusterRoleRes = testResource{
-			Name:     validator.ClusterRoleName,
-			Resource: &rbac.ClusterRole{},
+			Name:           validator.ClusterRoleName,
+			Resource:       &rbac.ClusterRole{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(role *rbac.ClusterRole) {
 				role.Rules[0].Verbs = []string{"watch"}
 			},
@@ -45,8 +48,9 @@ var _ = Describe("Template validator", func() {
 			},
 		}
 		clusterRoleBindingRes = testResource{
-			Name:     validator.ClusterRoleBindingName,
-			Resource: &rbac.ClusterRoleBinding{},
+			Name:           validator.ClusterRoleBindingName,
+			Resource:       &rbac.ClusterRoleBinding{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(roleBinding *rbac.ClusterRoleBinding) {
 				roleBinding.Subjects = nil
 			},
@@ -56,8 +60,9 @@ var _ = Describe("Template validator", func() {
 			},
 		}
 		webhookConfigRes = testResource{
-			Name:     validator.WebhookName,
-			Resource: &admission.ValidatingWebhookConfiguration{},
+			Name:           validator.WebhookName,
+			Resource:       &admission.ValidatingWebhookConfiguration{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(webhook *admission.ValidatingWebhookConfiguration) {
 				webhook.Webhooks[0].Rules = nil
 			},
@@ -66,14 +71,16 @@ var _ = Describe("Template validator", func() {
 			},
 		}
 		serviceAccountRes = testResource{
-			Name:      validator.ServiceAccountName,
-			Namespace: strategy.GetNamespace(),
-			Resource:  &core.ServiceAccount{},
+			Name:           validator.ServiceAccountName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &core.ServiceAccount{},
+			ExpectedLabels: expectedLabels,
 		}
 		serviceRes = testResource{
-			Name:      validator.ServiceName,
-			Namespace: strategy.GetNamespace(),
-			Resource:  &core.Service{},
+			Name:           validator.ServiceName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &core.Service{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 44331
 				service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
@@ -83,9 +90,10 @@ var _ = Describe("Template validator", func() {
 			},
 		}
 		deploymentRes = testResource{
-			Name:      validator.DeploymentName,
-			Namespace: strategy.GetNamespace(),
-			Resource:  &apps.Deployment{},
+			Name:           validator.DeploymentName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &apps.Deployment{},
+			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(deployment *apps.Deployment) {
 				deployment.Spec.Replicas = pointer.Int32Ptr(0)
 			},
@@ -116,6 +124,15 @@ var _ = Describe("Template validator", func() {
 			table.Entry("[test_id:4910] service account", &serviceAccountRes),
 			table.Entry("[test_id:4911] service", &serviceRes),
 			table.Entry("[test_id:4912] deployment", &deploymentRes),
+		)
+
+		table.DescribeTable("should set app labels", expectAppLabels,
+			table.Entry("cluster role", &clusterRoleRes),
+			table.Entry("cluster role binding", &clusterRoleBindingRes),
+			table.Entry("validating webhook configuration", &webhookConfigRes),
+			table.Entry("service account", &serviceAccountRes),
+			table.Entry("service", &serviceRes),
+			table.Entry("deployment", &deploymentRes),
 		)
 	})
 
@@ -156,6 +173,14 @@ var _ = Describe("Template validator", func() {
 				table.Entry("[test_id:5539] deployment", &deploymentRes),
 			)
 		})
+
+		table.DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
+			table.Entry("cluster role", &clusterRoleRes),
+			table.Entry("cluster role binding", &clusterRoleBindingRes),
+			table.Entry("validating webhook configuration", &webhookConfigRes),
+			table.Entry("service", &serviceRes),
+			table.Entry("deployment", &deploymentRes),
+		)
 	})
 
 	It("[test_id:4913] should successfully start template-validator pod", func() {

@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
@@ -57,6 +58,9 @@ type TestSuiteStrategy interface {
 	GetNamespace() string
 	GetTemplatesNamespace() string
 	GetValidatorReplicas() int
+
+	GetVersionLabel() string
+	GetPartOfLabel() string
 
 	RevertToOriginalSspCr()
 	SkipSspUpdateTestsIfNeeded()
@@ -83,6 +87,13 @@ func (s *newSspStrategy) Init() {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.GetName(),
 			Namespace: s.GetNamespace(),
+			Labels: map[string]string{
+				common.AppKubernetesNameLabel:      "ssp-cr",
+				common.AppKubernetesManagedByLabel: "ssp-test-strategy",
+				common.AppKubernetesPartOfLabel:    "hyperconverged-cluster",
+				common.AppKubernetesVersionLabel:   "v0.0.0-test",
+				common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
+			},
 		},
 		Spec: sspv1beta1.SSPSpec{
 			TemplateValidator: sspv1beta1.TemplateValidator{
@@ -140,6 +151,13 @@ func (s *newSspStrategy) GetTemplatesNamespace() string {
 func (s *newSspStrategy) GetValidatorReplicas() int {
 	const templateValidatorReplicas = 2
 	return templateValidatorReplicas
+}
+
+func (s *newSspStrategy) GetVersionLabel() string {
+	return s.ssp.Labels[common.AppKubernetesVersionLabel]
+}
+func (s *newSspStrategy) GetPartOfLabel() string {
+	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
 }
 
 func (s *newSspStrategy) RevertToOriginalSspCr() {
@@ -216,6 +234,13 @@ func (s *existingSspStrategy) GetValidatorReplicas() int {
 		panic("Strategy is not initialized")
 	}
 	return int(*s.ssp.Spec.TemplateValidator.Replicas)
+}
+
+func (s *existingSspStrategy) GetVersionLabel() string {
+	return s.ssp.Labels[common.AppKubernetesVersionLabel]
+}
+func (s *existingSspStrategy) GetPartOfLabel() string {
+	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
 }
 
 func (s *existingSspStrategy) RevertToOriginalSspCr() {
@@ -391,17 +416,24 @@ func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 		foundSsp := &sspv1beta1.SSP{}
 		err := apiClient.Get(ctx, key, foundSsp)
 		if err == nil {
-			if reflect.DeepEqual(foundSsp.Spec, ssp.Spec) {
+			isEqual := reflect.DeepEqual(foundSsp.Spec, ssp.Spec) &&
+				reflect.DeepEqual(foundSsp.ObjectMeta.Annotations, ssp.ObjectMeta.Annotations) &&
+				reflect.DeepEqual(foundSsp.ObjectMeta.Labels, ssp.ObjectMeta.Labels)
+			if isEqual {
 				return nil
 			}
 			foundSsp.Spec = ssp.Spec
+			foundSsp.Annotations = ssp.Annotations
+			foundSsp.Labels = ssp.Labels
 			return apiClient.Update(ctx, foundSsp)
 		}
 		if errors.IsNotFound(err) {
 			newSsp := &sspv1beta1.SSP{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      ssp.Name,
-					Namespace: ssp.Namespace,
+					Name:        ssp.Name,
+					Namespace:   ssp.Namespace,
+					Annotations: ssp.Annotations,
+					Labels:      ssp.Labels,
 				},
 				Spec: ssp.Spec,
 			}
