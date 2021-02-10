@@ -1,0 +1,59 @@
+on:
+  release:
+    types: [published]
+
+name: Upload Release Asset
+
+jobs:
+  build:
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get release
+        id: get_release
+        uses: bruceadams/get-release@v1.2.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+
+      - name: Publish operator image and generate release assets
+        run: |
+          docker login -u="${{ secrets.QUAY_BOT }}" -p="${{ secrets.QUAY_PASSWORD }}" quay.io
+          export IMG_TAG="${{ steps.get_release.outputs.tag_name }}"
+          export VERSION="`echo ${{ steps.get_release.outputs.tag_name }} | sed 's/^v//'`"
+          make release
+
+      - name: Upload CRD Asset
+        id: upload-crd-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./_out/olm-crds.yaml
+          asset_name: olm-crds.yaml
+          asset_content_type: text/plain
+
+      - name: Upload CSV Asset
+        id: upload-csv-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./_out/olm-ssp-operator.clusterserviceversion.yaml
+          asset_name: olm-ssp-operator.clusterserviceversion.yaml
+          asset_content_type: text/plain
+
+      - name: Upload Operator Asset
+        id: upload-operator-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./_out/ssp-operator.yaml
+          asset_name: ssp-operator.yaml
+          asset_content_type: text/plain
