@@ -17,7 +17,7 @@ const (
 	BundleDir           = "data/common-templates-bundle/"
 	ViewRoleName        = "os-images.kubevirt.io:view"
 	EditClusterRoleName = "os-images.kubevirt.io:edit"
-	Version             = "v0.13.1"
+	Version             = "v0.0.28"
 )
 
 // ReadTemplates from the combined yaml file and return the list of its templates
