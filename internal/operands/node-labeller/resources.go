@@ -57,11 +57,11 @@ var configMapData = map[string]string{
 
 func getNodeLabellerImages() nodeLabellerImages {
 	return nodeLabellerImages{
-		nodeLabeller: common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, kubevirtNodeLabellerDefaultImage),
-		sleeper:      common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, kubevirtNodeLabellerDefaultImage),
-		kvmInfoNFD:   common.EnvOrDefault(common.KvmInfoNfdPluginImageKey, kvmInfoNfdDefaultImage),
-		cpuNFD:       common.EnvOrDefault(common.KubevirtCpuNfdPluginImageKey, kvmCpuNfdDefaultImage),
-		virtLauncher: common.EnvOrDefault(common.VirtLauncherImageKey, libvirtDefaultImage),
+		nodeLabeller: common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, KubevirtNodeLabellerDefaultImage),
+		sleeper:      common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, KubevirtNodeLabellerDefaultImage),
+		kvmInfoNFD:   common.EnvOrDefault(common.KvmInfoNfdPluginImageKey, KvmInfoNfdDefaultImage),
+		cpuNFD:       common.EnvOrDefault(common.KubevirtCpuNfdPluginImageKey, KvmCpuNfdDefaultImage),
+		virtLauncher: common.EnvOrDefault(common.VirtLauncherImageKey, LibvirtDefaultImage),
 	}
 }
 

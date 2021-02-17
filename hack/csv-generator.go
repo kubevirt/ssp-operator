@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands/node-labeller"
 )
 
 type generatorFlags struct {
@@ -117,7 +118,12 @@ func runGenerator() error {
 		removeCerts(f, &csv)
 	}
 
-	err = marshallObject(csv, os.Stdout)
+	relatedImages, err := buildRelatedImages(f)
+	if err != nil {
+		return err
+	}
+
+	err = marshallObject(csv, relatedImages, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -140,13 +146,75 @@ func runGenerator() error {
 				return err
 			}
 
-			err = marshallObject(crd, os.Stdout)
+			err = marshallObject(crd, relatedImages, os.Stdout)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func buildRelatedImage(imageDesc string, imageName string) (map[string]interface{}, error) {
+	ri := make(map[string]interface{})
+	ri["name"] = imageName
+	ri["image"] = imageDesc
+
+	return ri, nil
+}
+
+func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
+	var relatedImages []interface{} = make([]interface{}, 0)
+
+	if flags.validatorImage != "" {
+		relatedImage, err := buildRelatedImage(flags.validatorImage, "template-validator")
+		if err != nil {
+			return nil, err
+		}
+		relatedImages = append(relatedImages, relatedImage)
+	}
+
+	img := node_labeller.KubevirtNodeLabellerDefaultImage
+	if flags.nodeLabellerImage != "" {
+		img = flags.nodeLabellerImage
+	}
+	relatedImage, err := buildRelatedImage(img, "node-labeller")
+	if err != nil {
+		return nil, err
+	}
+	relatedImages = append(relatedImages, relatedImage)
+
+	img = node_labeller.KvmInfoNfdDefaultImage
+	if flags.kvmInfoImage != "" {
+		img = flags.kvmInfoImage
+	}
+	relatedImage, err = buildRelatedImage(img, "kvm-info-nfd-plugin")
+	if err != nil {
+		return nil, err
+	}
+	relatedImages = append(relatedImages, relatedImage)
+
+	img = node_labeller.KvmCpuNfdDefaultImage
+	if flags.cpuPlugin != "" {
+		img = flags.cpuPlugin
+	}
+	relatedImage, err = buildRelatedImage(img, "cpu-nfd-plugin")
+	if err != nil {
+		return nil, err
+	}
+	relatedImages = append(relatedImages, relatedImage)
+
+	img = node_labeller.LibvirtDefaultImage
+	if flags.virtLauncher != "" {
+		img = flags.virtLauncher
+	}
+	relatedImage, err = buildRelatedImage(img, "virt-launcher")
+	if err != nil {
+		return nil, err
+	}
+	relatedImages = append(relatedImages, relatedImage)
+
+	return relatedImages, nil
 }
 
 func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) error {
@@ -227,7 +295,7 @@ func removeCerts(flags generatorFlags, csv *csvv1.ClusterServiceVersion) {
 	templateSpec.Volumes = updatedVolumes
 }
 
-func marshallObject(obj interface{}, writer io.Writer) error {
+func marshallObject(obj interface{}, relatedImages []interface{}, writer io.Writer) error {
 	jsonBytes, err := json.Marshal(obj)
 	if err != nil {
 		return err
@@ -258,6 +326,8 @@ func marshallObject(obj interface{}, writer io.Writer) error {
 		}
 		unstructured.SetNestedSlice(r.Object, deployments, "spec", "install", "spec", "deployments")
 	}
+
+	unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages")
 
 	jsonBytes, err = json.Marshal(r.Object)
 	if err != nil {
