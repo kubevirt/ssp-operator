@@ -116,7 +116,7 @@ var _ = Describe("Common templates", func() {
 			err := apiClient.List(ctx, liveTemplates,
 				client.InNamespace(strategy.GetTemplatesNamespace()),
 				client.MatchingLabels{
-					"template.kubevirt.io/version": commonTemplates.Version,
+					commonTemplates.TemplateVersionLabel: commonTemplates.Version,
 				},
 			)
 			Expect(err).ToNot(HaveOccurred())
@@ -126,7 +126,7 @@ var _ = Describe("Common templates", func() {
 				_, isDefaultOSVariant := liveTemplate.Labels["template.kubevirt.io/default-os-variant"]
 
 				for labelKey := range liveTemplate.Labels {
-					if strings.HasPrefix(labelKey, "os.template.kubevirt.io/") {
+					if strings.HasPrefix(labelKey, commonTemplates.TemplateOsLabelPrefix) {
 						if isDefaultOSVariant {
 							osDefaultCounts[labelKey]++
 							continue
@@ -149,7 +149,7 @@ var _ = Describe("Common templates", func() {
 			err := apiClient.List(ctx, liveTemplates,
 				client.InNamespace(strategy.GetTemplatesNamespace()),
 				client.MatchingLabels{
-					"template.kubevirt.io/version": commonTemplates.Version,
+					commonTemplates.TemplateVersionLabel: commonTemplates.Version,
 				},
 			)
 			Expect(err).ToNot(HaveOccurred())
@@ -165,15 +165,15 @@ var _ = Describe("Common templates", func() {
 				)
 
 				for labelKey := range template.ObjectMeta.Labels {
-					if strings.HasPrefix(labelKey, "os.template.kubevirt.io/") {
+					if strings.HasPrefix(labelKey, commonTemplates.TemplateOsLabelPrefix) {
 						oss = append(oss, labelKey)
 						continue
 					}
-					if strings.HasPrefix(labelKey, "workload.template.kubevirt.io/") {
+					if strings.HasPrefix(labelKey, commonTemplates.TemplateWorkloadLabelPrefix) {
 						workloads = append(workloads, labelKey)
 						continue
 					}
-					if strings.HasPrefix(labelKey, "flavor.template.kubevirt.io/") {
+					if strings.HasPrefix(labelKey, commonTemplates.TemplateFlavorLabelPrefix) {
 						flavors = append(flavors, labelKey)
 						continue
 					}
@@ -252,6 +252,12 @@ var _ = Describe("Common templates", func() {
 	})
 
 	Context("older templates update", func() {
+		const (
+			testOsLabel       = commonTemplates.TemplateOsLabelPrefix + "some-os"
+			testFlavorLabel   = commonTemplates.TemplateFlavorLabelPrefix + "test"
+			testWorkflowLabel = commonTemplates.TemplateWorkloadLabelPrefix + "server"
+		)
+
 		var (
 			ownerTemplate, oldTemplate *templatev1.Template
 		)
@@ -274,11 +280,11 @@ var _ = Describe("Common templates", func() {
 					Name:      "test-old-template",
 					Namespace: strategy.GetTemplatesNamespace(),
 					Labels: map[string]string{
-						"template.kubevirt.io/version":         "not-latest",
-						"template.kubevirt.io/type":            "base",
-						"os.template.kubevirt.io/some-os":      "true",
-						"flavor.template.kubevirt.io/test":     "true",
-						"workload.template.kubevirt.io/server": "true",
+						commonTemplates.TemplateVersionLabel: "not-latest",
+						commonTemplates.TemplateTypeLabel:    "base",
+						testOsLabel:                          "true",
+						testFlavorLabel:                      "true",
+						testWorkflowLabel:                    "true",
 					},
 					OwnerReferences: []metav1.OwnerReference{{
 						APIVersion: "template.openshift.io/v1",
@@ -317,19 +323,19 @@ var _ = Describe("Common templates", func() {
 				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
 				err := apiClient.Get(ctx, key, updatedTpl)
 				return err == nil &&
-					updatedTpl.Labels["os.template.kubevirt.io/some-os"] == "" &&
-					updatedTpl.Labels["flavor.template.kubevirt.io/test"] == "" &&
-					updatedTpl.Labels["workload.template.kubevirt.io/server"] == "" &&
-					updatedTpl.Labels["template.kubevirt.io/type"] == "base" &&
-					updatedTpl.Labels["template.kubevirt.io/version"] == "not-latest"
+					updatedTpl.Labels[testOsLabel] == "" &&
+					updatedTpl.Labels[testFlavorLabel] == "" &&
+					updatedTpl.Labels[testWorkflowLabel] == "" &&
+					updatedTpl.Labels[commonTemplates.TemplateTypeLabel] == "base" &&
+					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest"
 			}, shortTimeout).Should(BeTrue(), "labels were not removed from older templates")
 		})
 		It("should continue to have labels on latest templates", func() {
 			triggerReconciliation()
 
-			baseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+			baseRequirement, err := labels.NewRequirement(commonTemplates.TemplateTypeLabel, selection.Equals, []string{"base"})
 			Expect(err).To(BeNil())
-			versionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.Equals, []string{commonTemplates.Version})
+			versionRequirement, err := labels.NewRequirement(commonTemplates.TemplateVersionLabel, selection.Equals, []string{commonTemplates.Version})
 			Expect(err).To(BeNil())
 			labelsSelector := labels.NewSelector().Add(*baseRequirement, *versionRequirement)
 			opts := client.ListOptions{
@@ -344,15 +350,14 @@ var _ = Describe("Common templates", func() {
 
 			for _, template := range latestTemplates.Items {
 				for label, value := range template.Labels {
-					if strings.HasPrefix(label, "os.template.kubevirt.io/") ||
-						strings.HasPrefix(label, "flavor.template.kubevirt.io/") ||
-						strings.HasPrefix(label, "workload.template.kubevirt.io/") {
+					if strings.HasPrefix(label, commonTemplates.TemplateOsLabelPrefix) ||
+						strings.HasPrefix(label, commonTemplates.TemplateFlavorLabelPrefix) ||
+						strings.HasPrefix(label, commonTemplates.TemplateWorkloadLabelPrefix) {
 						Expect(value).To(Equal("true"))
 					}
 				}
-				Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"))
-				Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(commonTemplates.Version))
-
+				Expect(template.Labels[commonTemplates.TemplateTypeLabel]).To(Equal("base"))
+				Expect(template.Labels[commonTemplates.TemplateVersionLabel]).To(Equal(commonTemplates.Version))
 			}
 		})
 	})
