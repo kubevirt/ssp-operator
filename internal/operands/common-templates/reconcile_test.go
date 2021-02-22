@@ -2,8 +2,6 @@ package common_templates
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"strings"
 	"testing"
 
@@ -204,13 +202,8 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
 
 			var latestTemplates templatev1.TemplateList
-			versionRequirement, err := labels.NewRequirement(TemplateVersionLabel, selection.Equals, []string{Version})
+			err = request.Client.List(request.Context, &latestTemplates, client.MatchingLabels{TemplateVersionLabel: Version})
 			Expect(err).ToNot(HaveOccurred())
-			labelsSelector := labels.NewSelector().Add(*versionRequirement)
-			opts := client.ListOptions{
-				LabelSelector: labelsSelector,
-			}
-			Expect(request.Client.List(request.Context, &latestTemplates, &opts)).ToNot(HaveOccurred())
 			for _, template := range latestTemplates.Items {
 				for _, label := range template.Labels {
 					if strings.HasPrefix(label, TemplateOsLabelPrefix) {

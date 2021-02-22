@@ -5,9 +5,6 @@ import (
 	"reflect"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
-
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -333,18 +330,13 @@ var _ = Describe("Common templates", func() {
 		It("should continue to have labels on latest templates", func() {
 			triggerReconciliation()
 
-			baseRequirement, err := labels.NewRequirement(commonTemplates.TemplateTypeLabel, selection.Equals, []string{"base"})
-			Expect(err).To(BeNil())
-			versionRequirement, err := labels.NewRequirement(commonTemplates.TemplateVersionLabel, selection.Equals, []string{commonTemplates.Version})
-			Expect(err).To(BeNil())
-			labelsSelector := labels.NewSelector().Add(*baseRequirement, *versionRequirement)
-			opts := client.ListOptions{
-				LabelSelector: labelsSelector,
-				Namespace:     strategy.GetTemplatesNamespace(),
-			}
-
 			var latestTemplates templatev1.TemplateList
-			err = apiClient.List(ctx, &latestTemplates, &opts)
+			err := apiClient.List(ctx, &latestTemplates,
+				client.InNamespace(strategy.GetTemplatesNamespace()),
+				client.MatchingLabels{
+					commonTemplates.TemplateTypeLabel:    "base",
+					commonTemplates.TemplateVersionLabel: commonTemplates.Version,
+				})
 			Expect(err).To(BeNil())
 			Expect(len(latestTemplates.Items)).To(BeNumerically(">", 0))
 
