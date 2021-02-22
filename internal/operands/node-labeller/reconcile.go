@@ -93,38 +93,43 @@ const (
 )
 
 func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newClusterRole()),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newClusterRole()).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileServiceAccount(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newServiceAccount(request.Namespace)),
-		func(_, _ controllerutil.Object) {})
+	return common.CreateOrUpdate(request).
+		NamespacedResource(newServiceAccount(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		Reconcile()
 }
 
 func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newClusterRoleBinding(request.Namespace)),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newClusterRoleBinding(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
 			foundBinding.RoleRef = newBinding.RoleRef
 			foundBinding.Subjects = newBinding.Subjects
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newConfigMap(request.Namespace)),
-		func(newRes, foundRes controllerutil.Object) {
-			newConfigMap := newRes.(*v1.ConfigMap)
-			foundConfigMap := foundRes.(*v1.ConfigMap)
-			foundConfigMap.Data = newConfigMap.Data
-		})
+	return common.CreateOrUpdate(request).
+		NamespacedResource(newConfigMap(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+			foundRes.(*v1.ConfigMap).Data = newRes.(*v1.ConfigMap).Data
+		}).
+		Reconcile()
 }
 
 func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) {
@@ -138,13 +143,14 @@ func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) 
 	return status, err
 }
 
-func createOrUpdateDaemonSet(request *common.Request, resource controllerutil.Object) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateResourceWithStatus(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, resource),
-		func(newRes, foundRes controllerutil.Object) {
+func createOrUpdateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet) (common.ResourceStatus, error) {
+	return common.CreateOrUpdate(request).
+		NamespacedResource(daemonSet).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*apps.DaemonSet).Spec = newRes.(*apps.DaemonSet).Spec
-		},
-		func(res controllerutil.Object) common.ResourceStatus {
+		}).
+		StatusFunc(func(res controllerutil.Object) common.ResourceStatus {
 			ds := res.(*apps.DaemonSet)
 			status := common.ResourceStatus{}
 			if ds.Status.NumberReady != ds.Status.DesiredNumberScheduled {
@@ -156,14 +162,15 @@ func createOrUpdateDaemonSet(request *common.Request, resource controllerutil.Ob
 				status.Degraded = &msg
 			}
 			return status
-		})
+		}).
+		Reconcile()
 }
 
-func recreateDaemonSet(request *common.Request, resource controllerutil.Object) (common.ResourceStatus, error) {
-	if err := request.Client.Delete(request.Context, resource, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil {
+func recreateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet) (common.ResourceStatus, error) {
+	if err := request.Client.Delete(request.Context, daemonSet, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil {
 		return common.ResourceStatus{}, err
 	}
-	return createOrUpdateDaemonSet(request, resource)
+	return createOrUpdateDaemonSet(request, daemonSet)
 }
 
 func addPlacementFields(daemonset *apps.DaemonSet, nodePlacement *lifecycleapi.NodePlacement) {
@@ -178,12 +185,16 @@ func addPlacementFields(daemonset *apps.DaemonSet, nodePlacement *lifecycleapi.N
 }
 
 func reconcileSecurityContextConstraint(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newSecurityContextConstraint(request.Namespace)),
-		func(newRes, foundRes controllerutil.Object) {
-			foundRes.(*secv1.SecurityContextConstraints).AllowPrivilegedContainer = newRes.(*secv1.SecurityContextConstraints).AllowPrivilegedContainer
-			foundRes.(*secv1.SecurityContextConstraints).RunAsUser = newRes.(*secv1.SecurityContextConstraints).RunAsUser
-			foundRes.(*secv1.SecurityContextConstraints).SELinuxContext = newRes.(*secv1.SecurityContextConstraints).SELinuxContext
-			foundRes.(*secv1.SecurityContextConstraints).Users = newRes.(*secv1.SecurityContextConstraints).Users
-		})
+	return common.CreateOrUpdate(request).
+		ClusterResource(newSecurityContextConstraint(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+			foundScc := foundRes.(*secv1.SecurityContextConstraints)
+			newScc := newRes.(*secv1.SecurityContextConstraints)
+			foundScc.AllowPrivilegedContainer = newScc.AllowPrivilegedContainer
+			foundScc.RunAsUser = newScc.RunAsUser
+			foundScc.SELinuxContext = newScc.SELinuxContext
+			foundScc.Users = newScc.Users
+		}).
+		Reconcile()
 }

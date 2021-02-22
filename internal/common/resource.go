@@ -36,24 +36,87 @@ func CollectResourceStatus(request *Request, funcs ...ReconcileFunc) ([]Resource
 type ResourceUpdateFunc = func(expected, found controllerutil.Object)
 type ResourceStatusFunc = func(resource controllerutil.Object) ResourceStatus
 
-func CreateOrUpdateResource(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) (ResourceStatus, error) {
-	return createOrUpdate(request, resource, false, updateResource, statusOk)
+type ReconcileBuilder interface {
+	NamespacedResource(controllerutil.Object) ReconcileBuilder
+	ClusterResource(controllerutil.Object) ReconcileBuilder
+	WithAppLabels(name string, component AppComponent) ReconcileBuilder
+	UpdateFunc(ResourceUpdateFunc) ReconcileBuilder
+	StatusFunc(ResourceStatusFunc) ReconcileBuilder
+
+	Reconcile() (ResourceStatus, error)
 }
 
-func CreateOrUpdateResourceWithStatus(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ResourceStatus, error) {
-	return createOrUpdate(request, resource, false, updateResource, statusFunc)
+type reconcileBuilder struct {
+	request           *Request
+	resource          controllerutil.Object
+	isClusterResource bool
+
+	addLabels        bool
+	operandName      string
+	operandComponent AppComponent
+
+	updateFunc ResourceUpdateFunc
+	statusFunc ResourceStatusFunc
 }
 
-func CreateOrUpdateClusterResource(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc) (ResourceStatus, error) {
-	return createOrUpdate(request, resource, true, updateResource, statusOk)
+var _ ReconcileBuilder = &reconcileBuilder{}
+
+func (r *reconcileBuilder) NamespacedResource(resource controllerutil.Object) ReconcileBuilder {
+	r.resource = resource
+	r.isClusterResource = false
+	return r
 }
 
-func CreateOrUpdateClusterResourceWithStatus(request *Request, resource controllerutil.Object, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ResourceStatus, error) {
-	return createOrUpdate(request, resource, true, updateResource, statusFunc)
+func (r *reconcileBuilder) ClusterResource(resource controllerutil.Object) ReconcileBuilder {
+	r.resource = resource
+	r.isClusterResource = true
+	return r
 }
 
-func statusOk(_ controllerutil.Object) ResourceStatus {
-	return ResourceStatus{}
+func (r *reconcileBuilder) UpdateFunc(updateFunc ResourceUpdateFunc) ReconcileBuilder {
+	r.updateFunc = updateFunc
+	return r
+}
+
+func (r *reconcileBuilder) StatusFunc(statusFunc ResourceStatusFunc) ReconcileBuilder {
+	r.statusFunc = statusFunc
+	return r
+}
+
+func (r *reconcileBuilder) WithAppLabels(name string, component AppComponent) ReconcileBuilder {
+	r.addLabels = true
+	r.operandName = name
+	r.operandComponent = component
+	return r
+}
+
+func (r *reconcileBuilder) Reconcile() (ResourceStatus, error) {
+	if r.addLabels {
+		AddAppLabels(r.request.Instance, r.operandName, r.operandComponent, r.resource)
+	}
+	return createOrUpdate(
+		r.request,
+		r.resource,
+		r.isClusterResource,
+		r.updateFunc,
+		r.statusFunc,
+	)
+}
+
+func CreateOrUpdate(request *Request) ReconcileBuilder {
+	if request == nil {
+		panic("Request should not be nil")
+	}
+
+	return &reconcileBuilder{
+		request: request,
+		updateFunc: func(_, _ controllerutil.Object) {
+			// Empty function
+		},
+		statusFunc: func(_ controllerutil.Object) ResourceStatus {
+			return ResourceStatus{}
+		},
+	}
 }
 
 func createOrUpdate(request *Request, resource controllerutil.Object, isClusterRes bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ResourceStatus, error) {

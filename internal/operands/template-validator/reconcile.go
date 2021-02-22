@@ -89,34 +89,40 @@ const (
 )
 
 func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newClusterRole()),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newClusterRole()).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileServiceAccount(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newServiceAccount(request.Namespace)),
-		func(_, _ controllerutil.Object) {})
+	return common.CreateOrUpdate(request).
+		NamespacedResource(newServiceAccount(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		Reconcile()
 }
 
 func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newClusterRoleBinding(request.Namespace)),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newClusterRoleBinding(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
 			foundBinding.RoleRef = newBinding.RoleRef
 			foundBinding.Subjects = newBinding.Subjects
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileService(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newService(request.Namespace)),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		NamespacedResource(newService(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			newService := newRes.(*v1.Service)
 			foundService := foundRes.(*v1.Service)
 
@@ -124,7 +130,8 @@ func reconcileService(request *common.Request) (common.ResourceStatus, error) {
 			newService.Spec.ClusterIP = foundService.Spec.ClusterIP
 
 			foundService.Spec = newService.Spec
-		})
+		}).
+		Reconcile()
 }
 
 func reconcileDeployment(request *common.Request) (common.ResourceStatus, error) {
@@ -132,12 +139,13 @@ func reconcileDeployment(request *common.Request) (common.ResourceStatus, error)
 	image := getTemplateValidatorImage()
 	deployment := newDeployment(request.Namespace, *validatorSpec.Replicas, image)
 	addPlacementFields(deployment, validatorSpec.Placement)
-	return common.CreateOrUpdateResourceWithStatus(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, deployment),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		NamespacedResource(deployment).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
-		},
-		func(res controllerutil.Object) common.ResourceStatus {
+		}).
+		StatusFunc(func(res controllerutil.Object) common.ResourceStatus {
 			dep := res.(*apps.Deployment)
 			status := common.ResourceStatus{}
 			if *validatorSpec.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
@@ -154,7 +162,8 @@ func reconcileDeployment(request *common.Request) (common.ResourceStatus, error)
 				status.Degraded = &msg
 			}
 			return status
-		})
+		}).
+		Reconcile()
 }
 
 func addPlacementFields(deployment *apps.Deployment, nodePlacement *lifecycleapi.NodePlacement) {
@@ -169,9 +178,10 @@ func addPlacementFields(deployment *apps.Deployment, nodePlacement *lifecycleapi
 }
 
 func reconcileValidatingWebhook(request *common.Request) (common.ResourceStatus, error) {
-	return common.CreateOrUpdateClusterResource(request,
-		common.AddAppLabels(request.Instance, operandName, operandComponent, newValidatingWebhook(request.Namespace)),
-		func(newRes, foundRes controllerutil.Object) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newValidatingWebhook(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
 			newWebhookConf := newRes.(*admission.ValidatingWebhookConfiguration)
 			foundWebhookConf := foundRes.(*admission.ValidatingWebhookConfiguration)
 
@@ -180,7 +190,8 @@ func reconcileValidatingWebhook(request *common.Request) (common.ResourceStatus,
 			copyFoundCaBundles(newWebhookConf.Webhooks, foundWebhookConf.Webhooks)
 
 			foundWebhookConf.Webhooks = newWebhookConf.Webhooks
-		})
+		}).
+		Reconcile()
 }
 
 func copyFoundCaBundles(newWebhooks []admission.ValidatingWebhook, foundWebhooks []admission.ValidatingWebhook) {
