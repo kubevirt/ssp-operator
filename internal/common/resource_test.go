@@ -24,8 +24,9 @@ import (
 var log = logf.Log.WithName("common_operand_package")
 
 const (
-	namespace = "kubevirt"
-	name      = "test-ssp"
+	namespace   = "kubevirt"
+	name        = "test-ssp"
+	changedName = "changed-name"
 )
 
 var _ = Describe("Create or update resource", func() {
@@ -71,7 +72,7 @@ var _ = Describe("Create or update resource", func() {
 
 	It("should update resource", func() {
 		resource := newTestResource(namespace)
-		resource.Spec.Ports[0].Name = "changed-name"
+		resource.Spec.Ports[0].Name = changedName
 		resource.Annotations["test-annotation"] = "test-changed"
 		resource.Labels["test-label"] = "new-change"
 		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
@@ -119,7 +120,7 @@ var _ = Describe("Create or update resource", func() {
 
 	It("should not update resource with cached version", func() {
 		resource := newTestResource(namespace)
-		resource.Spec.Ports[0].Name = "changed-name"
+		resource.Spec.Ports[0].Name = changedName
 		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
 
 		request.VersionCache.Add(resource)
@@ -132,7 +133,7 @@ var _ = Describe("Create or update resource", func() {
 	It("should not update resource with cached generation", func() {
 		resource := newTestResource(namespace)
 		resource.Generation = 1
-		resource.Spec.Ports[0].Name = "changed-name"
+		resource.Spec.Ports[0].Name = changedName
 		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
 
 		request.VersionCache.Add(resource)
@@ -147,7 +148,7 @@ var _ = Describe("Create or update resource", func() {
 
 	It("should update resource with different version in cache", func() {
 		resource := newTestResource(namespace)
-		resource.Spec.Ports[0].Name = "changed-name"
+		resource.Spec.Ports[0].Name = changedName
 		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
 
 		request.VersionCache.Add(resource)

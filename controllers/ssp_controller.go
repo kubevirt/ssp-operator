@@ -339,6 +339,8 @@ func preUpdateStatus(request *common.Request) error {
 	sspStatus.OperatorVersion = operatorVersion
 	sspStatus.TargetVersion = operatorVersion
 
+	reconcileSSPResourceMessage := "Reconciling SSP resources"
+
 	if sspStatus.Paused {
 		request.Logger.Info(fmt.Sprintf("Unpausing SSP operator on resource: %v/%v",
 			request.Instance.Namespace, request.Instance.Name))
@@ -350,7 +352,7 @@ func preUpdateStatus(request *common.Request) error {
 			Type:    conditionsv1.ConditionAvailable,
 			Status:  v1.ConditionFalse,
 			Reason:  "available",
-			Message: "Reconciling SSP resources",
+			Message: reconcileSSPResourceMessage,
 		})
 	}
 
@@ -359,7 +361,7 @@ func preUpdateStatus(request *common.Request) error {
 			Type:    conditionsv1.ConditionProgressing,
 			Status:  v1.ConditionTrue,
 			Reason:  "progressing",
-			Message: "Reconciling SSP resources",
+			Message: reconcileSSPResourceMessage,
 		})
 	}
 
@@ -368,7 +370,7 @@ func preUpdateStatus(request *common.Request) error {
 			Type:    conditionsv1.ConditionDegraded,
 			Status:  v1.ConditionTrue,
 			Reason:  "degraded",
-			Message: "Reconciling SSP resources",
+			Message: reconcileSSPResourceMessage,
 		})
 	}
 

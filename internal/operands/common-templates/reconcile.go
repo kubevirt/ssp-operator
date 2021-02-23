@@ -25,6 +25,14 @@ var (
 	templatesBundle   []templatev1.Template
 )
 
+const (
+	templateVersionLabel  = "template.kubevirt.io/version"
+	templateTypeLabel     = "template.kubevirt.io/type"
+	osTemplateLabel       = "os.template.kubevirt.io/"
+	flavorTemplateLabel   = "flavor.template.kubevirt.io/"
+	workloadTemplateLabel = "workload.template.kubevirt.io/"
+)
+
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch;create;update;patch;delete
@@ -157,15 +165,15 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
 	// Append functions to take ownership of previously deployed templates during an upgrade
 	templatesSelector := func() labels.Selector {
-		baseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+		baseRequirement, err := labels.NewRequirement(templateTypeLabel, selection.Equals, []string{"base"})
 		if err != nil {
-			panic("Failed creating label selector for 'template.kubevirt.io/type=base")
+			panic("Failed creating label selector for " + templateTypeLabel + "=base")
 		}
 
 		// Only fetching older templates  to prevent duplication of API calls
-		versionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.NotEquals, []string{Version})
+		versionRequirement, err := labels.NewRequirement(templateVersionLabel, selection.NotEquals, []string{Version})
 		if err != nil {
-			panic("Failed creating label selector for 'template.kubevirt.io/version")
+			panic("Failed creating label selector for " + templateVersionLabel)
 		}
 
 		return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
@@ -192,9 +200,9 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 				UpdateFunc(func(_, foundRes controllerutil.Object) {
 					foundTemplate := foundRes.(*templatev1.Template)
 					for key := range foundTemplate.Labels {
-						if strings.HasPrefix(key, "os.template.kubevirt.io/") ||
-							strings.HasPrefix(key, "flavor.template.kubevirt.io/") ||
-							strings.HasPrefix(key, "workload.template.kubevirt.io/") {
+						if strings.HasPrefix(key, osTemplateLabel) ||
+							strings.HasPrefix(key, flavorTemplateLabel) ||
+							strings.HasPrefix(key, workloadTemplateLabel) {
 							delete(foundTemplate.Labels, key)
 						}
 					}
