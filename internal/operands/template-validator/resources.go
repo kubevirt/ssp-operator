@@ -30,8 +30,10 @@ const (
 	DeploymentName         = virtTemplateValidator
 )
 
-var commonLabels = map[string]string{
-	kubevirtIo: virtTemplateValidator,
+func commonLabels() map[string]string {
+	return map[string]string{
+		kubevirtIo: virtTemplateValidator,
+	}
 }
 
 func getTemplateValidatorImage() string {
@@ -60,7 +62,7 @@ func newServiceAccount(namespace string) *core.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ServiceAccountName,
 			Namespace: namespace,
-			Labels:    commonLabels,
+			Labels:    commonLabels(),
 		},
 	}
 }
@@ -70,7 +72,7 @@ func newClusterRoleBinding(namespace string) *rbac.ClusterRoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ClusterRoleBindingName,
 			Namespace: "",
-			Labels:    commonLabels,
+			Labels:    commonLabels(),
 		},
 		RoleRef: rbac.RoleRef{
 			Kind:     "ClusterRole",
@@ -90,7 +92,7 @@ func newService(namespace string) *core.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ServiceName,
 			Namespace: namespace,
-			Labels:    commonLabels,
+			Labels:    commonLabels(),
 			Annotations: map[string]string{
 				"service.beta.openshift.io/serving-cert-secret-name": secretName,
 			},
@@ -101,9 +103,7 @@ func newService(namespace string) *core.Service {
 				Port:       443,
 				TargetPort: intstr.FromInt(containerPort),
 			}},
-			Selector: map[string]string{
-				kubevirtIo: virtTemplateValidator,
-			},
+			Selector: commonLabels(),
 		},
 	}
 }
@@ -124,14 +124,12 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 		Spec: apps.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					kubevirtIo: virtTemplateValidator,
-				},
+				MatchLabels: commonLabels(),
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   virtTemplateValidator,
-					Labels: commonLabels,
+					Labels: commonLabels(),
 				},
 				Spec: core.PodSpec{
 					ServiceAccountName: ServiceAccountName,

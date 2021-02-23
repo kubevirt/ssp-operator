@@ -33,28 +33,6 @@ type nodeLabellerImages struct {
 	virtLauncher string
 }
 
-var commonLabels = map[string]string{
-	"app": "kubevirt-node-labeller",
-}
-
-var cpuPluginConfigmap = `obsoleteCPUs:
-  - "486"
-  - "pentium"
-  - "pentium2"
-  - "pentium3"
-  - "pentiumpro"
-  - "coreduo"
-  - "n270"
-  - "core2duo"
-  - "Conroe"
-  - "athlon"
-  - "phenom"
-minCPU: "Penryn"`
-
-var configMapData = map[string]string{
-	"cpu-plugin-configmap.yaml": cpuPluginConfigmap,
-}
-
 func getNodeLabellerImages() nodeLabellerImages {
 	return nodeLabellerImages{
 		nodeLabeller: common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, KubevirtNodeLabellerDefaultImage),
@@ -106,12 +84,28 @@ func newClusterRoleBinding(namespace string) *rbac.ClusterRoleBinding {
 }
 
 func newConfigMap(namespace string) *core.ConfigMap {
+	const cpuPluginConfigmap = `obsoleteCPUs:
+  - "486"
+  - "pentium"
+  - "pentium2"
+  - "pentium3"
+  - "pentiumpro"
+  - "coreduo"
+  - "n270"
+  - "core2duo"
+  - "Conroe"
+  - "athlon"
+  - "phenom"
+minCPU: "Penryn"`
+
 	return &core.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ConfigMapName,
 			Namespace: namespace,
 		},
-		Data: configMapData,
+		Data: map[string]string{
+			"cpu-plugin-configmap.yaml": cpuPluginConfigmap,
+		},
 	}
 }
 
@@ -228,6 +222,10 @@ func newDaemonSet(namespace string) *apps.DaemonSet {
 	//Build the containers
 	containers := []core.Container{
 		*kubevirtNodeLabellerSleeperContainer(),
+	}
+
+	commonLabels := map[string]string{
+		"app": "kubevirt-node-labeller",
 	}
 	return &apps.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
