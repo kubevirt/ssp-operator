@@ -1,3 +1,4 @@
+---
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
@@ -33,417 +34,427 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-      - description: SSP is the Schema for the ssps API
-        displayName: SSP
-        kind: SSP
-        name: ssps.ssp.kubevirt.io
-        version: v1beta1
+    - description: SSP is the Schema for the ssps API
+      displayName: SSP
+      kind: SSP
+      name: ssps.ssp.kubevirt.io
+      version: v1beta1
   description: KubeVirt Schedule, Scale and Performance Operator
   displayName: ssp-operator
   icon:
-    - base64data: ""
-      mediatype: ""
+  - base64data: ""
+    mediatype: ""
   install:
     spec:
       clusterPermissions:
-        - rules:
-            - apiGroups:
-                - admissionregistration.k8s.io
-              resources:
-                - validatingwebhookconfigurations
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - apiextensions.k8s.io
-              resources:
-                - customresourcedefinitions
-              verbs:
-                - list
-            - apiGroups:
-                - apps
-              resources:
-                - daemonsets
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - apps
-              resources:
-                - deployments
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - cdi.kubevirt.io
-              resources:
-                - datavolumes
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - cdi.kubevirt.io
-              resources:
-                - datavolumes/source
-              verbs:
-                - create
-            - apiGroups:
-                - ""
-              resources:
-                - configmaps
-                - serviceaccounts
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ""
-              resources:
-                - namespaces
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ""
-              resources:
-                - nodes
-              verbs:
-                - get
-                - patch
-                - update
-            - apiGroups:
-                - ""
-              resources:
-                - persistentvolumeclaims
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ""
-              resources:
-                - persistentvolumeclaims/status
-              verbs:
-                - get
-                - list
-                - watch
-            - apiGroups:
-                - ""
-              resources:
-                - serviceaccounts
-                - services
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - monitoring.coreos.com
-              resources:
-                - prometheusrules
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - rbac.authorization.k8s.io
-              resources:
-                - clusterrolebindings
-                - clusterroles
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - rbac.authorization.k8s.io
-              resources:
-                - clusterroles
-                - rolebindings
-                - roles
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - security.openshift.io
-              resources:
-                - securitycontextconstraints
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - security.openshift.io
-              resourceNames:
-                - privileged
-              resources:
-                - securitycontextconstraints
-              verbs:
-                - use
-            - apiGroups:
-                - ssp.kubevirt.io
-              resources:
-                - kubevirtcommontemplatesbundles
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ssp.kubevirt.io
-              resources:
-                - kubevirtmetricsaggregations
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ssp.kubevirt.io
-              resources:
-                - kubevirtnodelabellerbundles
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ssp.kubevirt.io
-              resources:
-                - kubevirttemplatevalidators
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ssp.kubevirt.io
-              resources:
-                - ssps
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ssp.kubevirt.io
-              resources:
-                - ssps/finalizers
-              verbs:
-                - update
-            - apiGroups:
-                - ssp.kubevirt.io
-              resources:
-                - ssps/status
-              verbs:
-                - get
-                - patch
-                - update
-            - apiGroups:
-                - template.openshift.io
-              resources:
-                - templates
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-          serviceAccountName: ssp-operator
+      - rules:
+        - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - validatingwebhookconfigurations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apiextensions.k8s.io
+          resources:
+          - customresourcedefinitions
+          verbs:
+          - list
+        - apiGroups:
+          - apps
+          resources:
+          - daemonsets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - cdi.kubevirt.io
+          resources:
+          - datavolumes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - cdi.kubevirt.io
+          resources:
+          - datavolumes/source
+          verbs:
+          - create
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          - serviceaccounts
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - nodes
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - persistentvolumeclaims
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - persistentvolumeclaims/status
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
+          - services
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterrolebindings
+          - clusterroles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterroles
+          - rolebindings
+          - roles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - security.openshift.io
+          resources:
+          - securitycontextconstraints
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - security.openshift.io
+          resourceNames:
+          - privileged
+          resources:
+          - securitycontextconstraints
+          verbs:
+          - use
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - kubevirtcommontemplatesbundles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - kubevirtmetricsaggregations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - kubevirtnodelabellerbundles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - kubevirttemplatevalidators
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - ssps
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - ssps/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - ssp.kubevirt.io
+          resources:
+          - ssps/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - template.openshift.io
+          resources:
+          - templates
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        serviceAccountName: ssp-operator
       deployments:
-        - name: ssp-operator
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
+      - name: ssp-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: ssp-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
                 control-plane: ssp-operator
-            strategy: {}
-            template:
-              metadata:
-                labels:
-                  control-plane: ssp-operator
-              spec:
-                containers:
-                  - args:
-                      - --enable-leader-election
-                      - --ready-probe-addr
-                      - :9440
-                    command:
-                      - /manager
-                    env:
-                      - name: KVM_INFO_IMAGE
-                      - name: VALIDATOR_IMAGE
-                      - name: VIRT_LAUNCHER_IMAGE
-                      - name: NODE_LABELLER_IMAGE
-                      - name: CPU_PLUGIN_IMAGE
-                      - name: OPERATOR_VERSION
-                    image: quay.io/kubevirt/ssp-operator:latest
-                    name: manager
-                    ports:
-                      - containerPort: 9443
-                        name: webhook-server
-                        protocol: TCP
-                    readinessProbe:
-                      httpGet:
-                        path: /readyz
-                        port: 9440
-                      initialDelaySeconds: 5
-                    resources: {}
-                serviceAccountName: ssp-operator
-                terminationGracePeriodSeconds: 10
+            spec:
+              containers:
+              - args:
+                - --enable-leader-election
+                - --ready-probe-addr
+                - :9440
+                command:
+                - /manager
+                env:
+                - name: KVM_INFO_IMAGE
+                - name: VALIDATOR_IMAGE
+                - name: VIRT_LAUNCHER_IMAGE
+                - name: NODE_LABELLER_IMAGE
+                - name: CPU_PLUGIN_IMAGE
+                - name: OPERATOR_VERSION
+                  value: 0.0.1
+                image: quay.io/kubevirt/ssp-operator:latest
+                name: manager
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 9440
+                  initialDelaySeconds: 5
+                resources: {}
+              serviceAccountName: ssp-operator
+              terminationGracePeriodSeconds: 10
       permissions:
-        - rules:
-            - apiGroups:
-                - ""
-              resources:
-                - configmaps
-              verbs:
-                - get
-                - list
-                - watch
-                - create
-                - update
-                - patch
-                - delete
-            - apiGroups:
-                - ""
-              resources:
-                - configmaps/status
-              verbs:
-                - get
-                - update
-                - patch
-            - apiGroups:
-                - ""
-              resources:
-                - events
-              verbs:
-                - create
-                - patch
-          serviceAccountName: ssp-operator
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps/status
+          verbs:
+          - get
+          - update
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: ssp-operator
     strategy: deployment
   installModes:
-    - supported: true
-      type: OwnNamespace
-    - supported: true
-      type: SingleNamespace
-    - supported: false
-      type: MultiNamespace
-    - supported: true
-      type: AllNamespaces
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
   keywords:
-    - KubeVirt
-    - Virtualization
-    - Template
-    - Performance
-    - VirtualMachine
-    - Node
-    - Labels
+  - KubeVirt
+  - Virtualization
+  - Template
+  - Performance
+  - VirtualMachine
+  - Node
+  - Labels
   labels:
     alm-owner-kubevirt: ssp-operator
     operated-by: ssp-operator
   links:
-    - name: KubeVirt
-      url: https://kubevirt.io
-    - name: Source Code
-      url: https://github.com/kubevirt/ssp-operator
+  - name: KubeVirt
+    url: https://kubevirt.io
+  - name: Source Code
+    url: https://github.com/kubevirt/ssp-operator
   maintainers:
-    - email: kubevirt-dev@googlegroups.com
-      name: KubeVirt project
+  - email: kubevirt-dev@googlegroups.com
+    name: KubeVirt project
   maturity: alpha
   provider:
     name: KubeVirt project
+  relatedImages:
+  - image: quay.io/kubevirt/node-labeller@sha256:45391da5e8ecdd393830650061f8d68248a3b2961d60f42a04e4e0c58a7d3a3b
+    name: node-labeller
+  - image: quay.io/kubevirt/kvm-info-nfd-plugin@sha256:c74083d42f9503007712dea435289e5f10a846433df2d3af4358463adb3fc9ff
+    name: kvm-info-nfd-plugin
+  - image: quay.io/kubevirt/cpu-nfd-plugin@sha256:20225a3d7569295fa7607e069bdc75b3235bc2218dbe52c4302ec4e2e55df8b9
+    name: cpu-nfd-plugin
+  - image: quay.io/kubevirt/virt-launcher@sha256:970a078f150d14b053b69db66a9fc035182e5e7010d65b524a28f70498c158f3
+    name: virt-launcher
   selector:
     matchLabels:
       alm-owner-kubevirt: ssp-operator
       operated-by: ssp-operator
   version: 0.0.1
   webhookdefinitions:
-    - admissionReviewVersions:
-        - v1beta1
-      deploymentName: ssp-operator
-      failurePolicy: Fail
-      generateName: vssp.kb.io
-      rules:
-        - apiGroups:
-            - ssp.kubevirt.io
-          apiVersions:
-            - v1beta1
-          operations:
-            - CREATE
-            - UPDATE
-          resources:
-            - ssps
-      sideEffects: None
-      type: ValidatingAdmissionWebhook
-      webhookPath: /validate-ssp-kubevirt-io-v1beta1-ssp
-      containerPort: 9443
+  - admissionReviewVersions:
+    - v1beta1
+    containerPort: 9443
+    deploymentName: ssp-operator
+    failurePolicy: Fail
+    generateName: vssp.kb.io
+    rules:
+    - apiGroups:
+      - ssp.kubevirt.io
+      apiVersions:
+      - v1beta1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - ssps
+    sideEffects: None
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-ssp-kubevirt-io-v1beta1-ssp

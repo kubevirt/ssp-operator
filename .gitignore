@@ -9,3 +9,4 @@ bin/*
 csv-generator
 bundle/*
 cover.out
+bundle.Dockerfile
