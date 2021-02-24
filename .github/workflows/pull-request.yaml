@@ -1,0 +1,15 @@
+name: Test csv-generator
+
+on:
+  push: {}
+  pull_request: {}
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build and Test csv-generator
+      run: make container-build && ./tests/e2e-test-csv-generator.sh
