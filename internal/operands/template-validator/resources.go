@@ -18,7 +18,7 @@ import (
 //        repository, and import it as a go module
 
 const (
-	containerPort          = 8443
+	ContainerPort          = 8443
 	KubevirtIo             = "kubevirt.io"
 	SecretName             = "virt-template-validator-certs"
 	VirtTemplateValidator  = "virt-template-validator"
@@ -101,7 +101,7 @@ func newService(namespace string) *core.Service {
 			Ports: []core.ServicePort{{
 				Name:       "webhook",
 				Port:       443,
-				TargetPort: intstr.FromInt(containerPort),
+				TargetPort: intstr.FromInt(ContainerPort),
 			}},
 			Selector: commonLabels(),
 		},
@@ -139,7 +139,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 						ImagePullPolicy: core.PullAlways,
 						Args: []string{
 							"-v=2",
-							fmt.Sprintf("--port=%d", containerPort),
+							fmt.Sprintf("--port=%d", ContainerPort),
 							fmt.Sprintf("--cert-dir=%s", certMountPath),
 						},
 						VolumeMounts: []core.VolumeMount{{
@@ -152,7 +152,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 						},
 						Ports: []core.ContainerPort{{
 							Name:          "webhook",
-							ContainerPort: containerPort,
+							ContainerPort: ContainerPort,
 							Protocol:      core.ProtocolTCP,
 						}},
 					}},

@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -721,19 +723,34 @@ var _ = Describe("Template validator", func() {
 		})
 	})
 
-	PContext("Certificates", func() {
-		// TODO: Find a simpler way to test the certificate rotation
+	Context("Certificates", func() {
 		It("[test_id:4375] Test refreshing of certificates", func() {
-			By("destroying the CA certificate")
-			err := coreClient.CoreV1().Secrets(strategy.GetNamespace()).Delete(ctx, validator.SecretName, metav1.DeleteOptions{})
+			pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pods.Items).ToNot(HaveLen(0))
+
+			validatorPod := pods.Items[0]
+			oldCerts, err := getWebhookServerCertificates(&validatorPod)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("deleting the secret with certificate")
+			secret := &core.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      validator.SecretName,
+					Namespace: strategy.GetNamespace(),
+				},
+			}
+			err = apiClient.Delete(ctx, secret)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("checking that the secret gets restored with a new certificate")
-			Eventually(func() string {
-				sec, err := GetCertFromSecret(validator.SecretName, strategy.GetNamespace())
-				Expect(err).ToNot(HaveOccurred())
-				return sec
-			}, 120*time.Second, 1*time.Second).Should(Not(BeEmpty()))
+			Eventually(func() (bool, error) {
+				newCerts, err := getWebhookServerCertificates(&validatorPod)
+				if err != nil {
+					return true, err
+				}
+				return certsEqual(newCerts, oldCerts), nil
+			}, 5*time.Minute, 1*time.Second).Should(BeFalse())
 		})
 	})
 })
@@ -956,4 +973,33 @@ func TemplateWithIncorrectRulesJustWarning() *templatev1.Template {
 func TemplateWithoutRules() *templatev1.Template {
 	validations := `[]`
 	return addObjectsToTemplates("test-fedora-desktop-small-without-rules", validations)
+}
+
+func getWebhookServerCertificates(validatorPod *core.Pod) ([]*x509.Certificate, error) {
+	conn, err := portForwarder.Connect(validatorPod, validator.ContainerPort)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true})
+	defer tlsConn.Close()
+
+	err = tlsConn.Handshake()
+	if err != nil {
+		return nil, err
+	}
+
+	return tlsConn.ConnectionState().PeerCertificates, nil
+}
+
+func certsEqual(certs1, certs2 []*x509.Certificate) bool {
+	if len(certs1) != len(certs2) {
+		return false
+	}
+	for i := 0; i < len(certs1); i++ {
+		if !certs1[i].Equal(certs2[i]) {
+			return false
+		}
+	}
+	return true
 }

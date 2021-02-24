@@ -265,6 +265,7 @@ var (
 	ctx                context.Context
 	strategy           TestSuiteStrategy
 	sspListerWatcher   cache.ListerWatcher
+	portForwarder      PortForwarder
 	deploymentTimedOut bool
 )
 
@@ -323,6 +324,8 @@ func setupApiClient() {
 	Expect(err).ToNot(HaveOccurred())
 	coreClient, err = kubernetes.NewForConfig(cfg)
 	Expect(err).ToNot(HaveOccurred())
+
+	portForwarder = NewPortForwarder(cfg, coreClient.CoreV1().RESTClient())
 
 	ctx = context.Background()
 	sspListerWatcher = createSspListerWatcher(cfg)
