@@ -36,6 +36,9 @@ An example is in [config/samples/ssp_v1beta1_ssp.yaml](config/samples/ssp_v1beta
 
 ## Building
 
+The Make will try to install kustomize, however if it is already installed it will not reinstall it.
+In case of an error, make sure you are using at least v3 of kustomize, available here: https://kustomize.io/
+
 To build the container image run:
 ```shell
 make container-build
