@@ -13,11 +13,8 @@ import (
 )
 
 const (
-	GoldenImagesNSname  = "kubevirt-os-images"
-	BundleDir           = "data/common-templates-bundle/"
 	ViewRoleName        = "os-images.kubevirt.io:view"
 	EditClusterRoleName = "os-images.kubevirt.io:edit"
-	Version             = "v0.13.1"
 )
 
 // ReadTemplates from the combined yaml file and return the list of its templates

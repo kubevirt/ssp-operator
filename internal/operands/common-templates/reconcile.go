@@ -157,15 +157,15 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
 	// Append functions to take ownership of previously deployed templates during an upgrade
 	templatesSelector := func() labels.Selector {
-		baseRequirement, err := labels.NewRequirement("template.kubevirt.io/type", selection.Equals, []string{"base"})
+		baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{"base"})
 		if err != nil {
-			panic("Failed creating label selector for 'template.kubevirt.io/type=base")
+			panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateTypeLabel, "base"))
 		}
 
 		// Only fetching older templates  to prevent duplication of API calls
-		versionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.NotEquals, []string{Version})
+		versionRequirement, err := labels.NewRequirement(TemplateVersionLabel, selection.NotEquals, []string{Version})
 		if err != nil {
-			panic("Failed creating label selector for 'template.kubevirt.io/version")
+			panic(fmt.Sprintf("Failed creating label selector for '%s!=%s'", TemplateVersionLabel, Version))
 		}
 
 		return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
@@ -192,9 +192,9 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 				UpdateFunc(func(_, foundRes controllerutil.Object) {
 					foundTemplate := foundRes.(*templatev1.Template)
 					for key := range foundTemplate.Labels {
-						if strings.HasPrefix(key, "os.template.kubevirt.io/") ||
-							strings.HasPrefix(key, "flavor.template.kubevirt.io/") ||
-							strings.HasPrefix(key, "workload.template.kubevirt.io/") {
+						if strings.HasPrefix(key, TemplateOsLabelPrefix) ||
+							strings.HasPrefix(key, TemplateFlavorLabelPrefix) ||
+							strings.HasPrefix(key, TemplateWorkloadLabelPrefix) {
 							delete(foundTemplate.Labels, key)
 						}
 					}

@@ -2,8 +2,6 @@ package common_templates
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"strings"
 	"testing"
 
@@ -32,6 +30,10 @@ var (
 const (
 	namespace = "kubevirt"
 	name      = "test-ssp"
+
+	testOsLabel       = TemplateOsLabelPrefix + "some-os"
+	testFlavorLabel   = TemplateFlavorLabelPrefix + "test"
+	testWorkflowLabel = TemplateWorkloadLabelPrefix + "server"
 )
 
 func TestTemplates(t *testing.T) {
@@ -135,11 +137,11 @@ var _ = Describe("Common-Templates operand", func() {
 					Name:      "test-tpl",
 					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
 					Labels: map[string]string{
-						"template.kubevirt.io/version":         "not-latest",
-						"template.kubevirt.io/type":            "base",
-						"os.template.kubevirt.io/some-os":      "true",
-						"flavor.template.kubevirt.io/test":     "true",
-						"workload.template.kubevirt.io/server": "true",
+						TemplateVersionLabel: "not-latest",
+						TemplateTypeLabel:    "base",
+						testOsLabel:          "true",
+						testFlavorLabel:      "true",
+						testWorkflowLabel:    "true",
 					},
 					Annotations: map[string]string{},
 					OwnerReferences: []metav1.OwnerReference{{
@@ -189,37 +191,32 @@ var _ = Describe("Common-Templates operand", func() {
 			err = request.Client.Get(request.Context, key, updatedTpl)
 			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
 
-			Expect(updatedTpl.Labels["os.template.kubevirt.io/some-os"]).To(Equal(""), "os.template.kubevirt.io should be empty")
-			Expect(updatedTpl.Labels["flavor.template.kubevirt.io/test"]).To(Equal(""), "flavor.template.kubevirt.io should be empty")
-			Expect(updatedTpl.Labels["workload.template.kubevirt.io/server"]).To(Equal(""), "workload.template.kubevirt.io should be empty")
-			Expect(updatedTpl.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
-			Expect(updatedTpl.Labels["template.kubevirt.io/version"]).To(Equal("not-latest"), "template.kubevirt.io/version should equal not-latest")
+			Expect(updatedTpl.Labels[testOsLabel]).To(Equal(""), TemplateOsLabelPrefix+" should be empty")
+			Expect(updatedTpl.Labels[testFlavorLabel]).To(Equal(""), TemplateFlavorLabelPrefix+" should be empty")
+			Expect(updatedTpl.Labels[testWorkflowLabel]).To(Equal(""), TemplateWorkloadLabelPrefix+" should be empty")
+			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal("base"), TemplateTypeLabel+" should equal base")
+			Expect(updatedTpl.Labels[TemplateVersionLabel]).To(Equal("not-latest"), TemplateVersionLabel+" should equal not-latest")
 		})
 		It("should not remove labels from latest templates", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
 
 			var latestTemplates templatev1.TemplateList
-			versionRequirement, err := labels.NewRequirement("template.kubevirt.io/version", selection.Equals, []string{Version})
+			err = request.Client.List(request.Context, &latestTemplates, client.MatchingLabels{TemplateVersionLabel: Version})
 			Expect(err).ToNot(HaveOccurred())
-			labelsSelector := labels.NewSelector().Add(*versionRequirement)
-			opts := client.ListOptions{
-				LabelSelector: labelsSelector,
-			}
-			Expect(request.Client.List(request.Context, &latestTemplates, &opts)).ToNot(HaveOccurred())
 			for _, template := range latestTemplates.Items {
 				for _, label := range template.Labels {
-					if strings.HasPrefix(label, "os.template.kubevirt.io/") {
-						Expect(template.Labels[label]).To(Equal("true"), "os.template.kubevirt.io should not be empty")
+					if strings.HasPrefix(label, TemplateOsLabelPrefix) {
+						Expect(template.Labels[label]).To(Equal("true"), TemplateOsLabelPrefix+" should not be empty")
 					}
-					if strings.HasPrefix(label, "flavor.template.kubevirt.io/") {
-						Expect(template.Labels[label]).To(Equal("true"), "flavor.template.kubevirt.io should not be empty")
+					if strings.HasPrefix(label, TemplateFlavorLabelPrefix) {
+						Expect(template.Labels[label]).To(Equal("true"), TemplateFlavorLabelPrefix+" should not be empty")
 					}
-					if strings.HasPrefix(label, "workload.template.kubevirt.io/") {
-						Expect(template.Labels[label]).To(Equal("true"), "workload.template.kubevirt.io should not be empty")
+					if strings.HasPrefix(label, TemplateWorkloadLabelPrefix) {
+						Expect(template.Labels[label]).To(Equal("true"), TemplateWorkloadLabelPrefix+" should not be empty")
 					}
-					Expect(template.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
-					Expect(template.Labels["template.kubevirt.io/version"]).To(Equal(Version), "template.kubevirt.io/version should equal "+Version)
+					Expect(template.Labels[TemplateTypeLabel]).To(Equal("base"), TemplateTypeLabel+" should equal base")
+					Expect(template.Labels[TemplateVersionLabel]).To(Equal(Version), TemplateVersionLabel+" should equal "+Version)
 				}
 			}
 		})
