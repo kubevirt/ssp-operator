@@ -185,6 +185,7 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates.Items))
 	for i := range existingTemplates.Items {
 		template := &existingTemplates.Items[i]
+		template.Labels[TemplateDeprecatedLabel] = "true"
 		funcs = append(funcs, func(*common.Request) (common.ResourceStatus, error) {
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
