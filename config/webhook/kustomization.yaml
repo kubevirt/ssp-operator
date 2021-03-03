@@ -2,7 +2,7 @@
 namePrefix: "ssp-"
 
 resources:
-- manifests.v1beta1.yaml
+- manifests.yaml
 - service.yaml
 
 configurations:
