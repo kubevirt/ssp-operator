@@ -19,20 +19,20 @@ import (
 
 const (
 	containerPort          = 8443
-	kubevirtIo             = "kubevirt.io"
-	secretName             = "virt-template-validator-certs"
-	virtTemplateValidator  = "virt-template-validator"
+	KubevirtIo             = "kubevirt.io"
+	SecretName             = "virt-template-validator-certs"
+	VirtTemplateValidator  = "virt-template-validator"
 	ClusterRoleName        = "template:view"
 	ClusterRoleBindingName = "template-validator"
-	WebhookName            = virtTemplateValidator
+	WebhookName            = VirtTemplateValidator
 	ServiceAccountName     = "template-validator"
-	ServiceName            = virtTemplateValidator
-	DeploymentName         = virtTemplateValidator
+	ServiceName            = VirtTemplateValidator
+	DeploymentName         = VirtTemplateValidator
 )
 
 func commonLabels() map[string]string {
 	return map[string]string{
-		kubevirtIo: virtTemplateValidator,
+		KubevirtIo: VirtTemplateValidator,
 	}
 }
 
@@ -46,7 +46,7 @@ func newClusterRole() *rbac.ClusterRole {
 			Name:      ClusterRoleName,
 			Namespace: "",
 			Labels: map[string]string{
-				kubevirtIo: "",
+				KubevirtIo: "",
 			},
 		},
 		Rules: []rbac.PolicyRule{{
@@ -94,7 +94,7 @@ func newService(namespace string) *core.Service {
 			Namespace: namespace,
 			Labels:    commonLabels(),
 			Annotations: map[string]string{
-				"service.beta.openshift.io/serving-cert-secret-name": secretName,
+				"service.beta.openshift.io/serving-cert-secret-name": SecretName,
 			},
 		},
 		Spec: core.ServiceSpec{
@@ -118,7 +118,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 			Name:      DeploymentName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"name": virtTemplateValidator,
+				"name": VirtTemplateValidator,
 			},
 		},
 		Spec: apps.DeploymentSpec{
@@ -128,7 +128,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   virtTemplateValidator,
+					Name:   VirtTemplateValidator,
 					Labels: commonLabels(),
 				},
 				Spec: core.PodSpec{
@@ -160,7 +160,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 						Name: volumeName,
 						VolumeSource: core.VolumeSource{
 							Secret: &core.SecretVolumeSource{
-								SecretName: secretName,
+								SecretName: SecretName,
 							},
 						},
 					}},
