@@ -9,4 +9,5 @@ const (
 	TemplateOsLabelPrefix       = "os.template.kubevirt.io/"
 	TemplateFlavorLabelPrefix   = "flavor.template.kubevirt.io/"
 	TemplateWorkloadLabelPrefix = "workload.template.kubevirt.io/"
+	TemplateDeprecatedLabel     = "template.kubevirt.io/deprecated"
 )

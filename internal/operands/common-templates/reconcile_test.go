@@ -196,6 +196,7 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(updatedTpl.Labels[testWorkflowLabel]).To(Equal(""), TemplateWorkloadLabelPrefix+" should be empty")
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal("base"), TemplateTypeLabel+" should equal base")
 			Expect(updatedTpl.Labels[TemplateVersionLabel]).To(Equal("not-latest"), TemplateVersionLabel+" should equal not-latest")
+			Expect(updatedTpl.Labels[TemplateDeprecatedLabel]).To(Equal("true"), TemplateDeprecatedLabel+" should not be empty")
 		})
 		It("should not remove labels from latest templates", func() {
 			_, err := operand.Reconcile(&request)
