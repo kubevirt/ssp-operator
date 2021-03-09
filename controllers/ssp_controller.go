@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
@@ -51,8 +52,11 @@ import (
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
-const finalizerName = "finalize.ssp.kubevirt.io"
-const defaultOperatorVersion = "devel"
+const (
+	finalizerName          = "ssp.kubevirt.io/finalizer"
+	oldFinalizerName       = "finalize.ssp.kubevirt.io"
+	defaultOperatorVersion = "devel"
+)
 
 var sspOperands = []operands.Operand{
 	metrics.GetOperand(),
@@ -72,12 +76,13 @@ var kvsspCRDs = map[string]string{
 // SSPReconciler reconciles a SSP object
 type SSPReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log logr.Logger
 
 	LastSspSpec      ssp.SSPSpec
 	SubresourceCache common.VersionCache
 }
+
+var _ reconcile.Reconciler = &SSPReconciler{}
 
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=get;update;patch
@@ -88,11 +93,9 @@ type SSPReconciler struct {
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
-func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
 	reqLogger.V(1).Info("Starting reconciliation...")
-
-	ctx := context.Background()
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
@@ -113,7 +116,6 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	sspRequest := &common.Request{
 		Request:      req,
 		Client:       r,
-		Scheme:       r.Scheme,
 		Context:      ctx,
 		Instance:     instance,
 		Logger:       reqLogger,
@@ -124,6 +126,11 @@ func (r *SSPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		err := initialize(sspRequest)
 		// No need to requeue here, because
 		// the update will trigger reconciliation again
+		return ctrl.Result{}, err
+	}
+
+	if updated, err := updateSsp(sspRequest); updated || (err != nil) {
+		// SSP was updated, and the update will trigger reconciliation again.
 		return ctrl.Result{}, err
 	}
 
@@ -212,6 +219,28 @@ func isInitialized(ssp *ssp.SSP) bool {
 
 func initialize(request *common.Request) error {
 	controllerutil.AddFinalizer(request.Instance, finalizerName)
+	return updateSspResource(request)
+}
+
+func updateSsp(request *common.Request) (bool, error) {
+	updated := false
+
+	// Update old finalizer to new one
+	if controllerutil.ContainsFinalizer(request.Instance, oldFinalizerName) {
+		controllerutil.RemoveFinalizer(request.Instance, oldFinalizerName)
+		controllerutil.AddFinalizer(request.Instance, finalizerName)
+		updated = true
+	}
+
+	if !updated {
+		return false, nil
+	}
+
+	err := updateSspResource(request)
+	return err == nil, err
+}
+
+func updateSspResource(request *common.Request) error {
 	err := request.Client.Update(request.Context, request.Instance)
 	if err != nil {
 		return err
@@ -223,7 +252,9 @@ func initialize(request *common.Request) error {
 }
 
 func cleanup(request *common.Request) error {
-	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) {
+	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) ||
+		controllerutil.ContainsFinalizer(request.Instance, oldFinalizerName) {
+
 		request.Instance.Status.Phase = lifecycleapi.PhaseDeleting
 		request.Instance.Status.ObservedGeneration = request.Instance.Generation
 		err := request.Client.Status().Update(request.Context, request.Instance)
@@ -237,6 +268,7 @@ func cleanup(request *common.Request) error {
 			}
 		}
 		controllerutil.RemoveFinalizer(request.Instance, finalizerName)
+		controllerutil.RemoveFinalizer(request.Instance, oldFinalizerName)
 		err = request.Client.Update(request.Context, request.Instance)
 		if err != nil {
 			return err
@@ -478,7 +510,7 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
-func prefixResourceTypeAndName(message string, resource controllerutil.Object) string {
+func prefixResourceTypeAndName(message string, resource client.Object) string {
 	return fmt.Sprintf("%s %s/%s: %s",
 		resource.GetObjectKind().GroupVersionKind().Kind,
 		resource.GetNamespace(),
@@ -547,13 +579,13 @@ func watchSspResource(bldr *ctrl.Builder) {
 	// Importantly, the reconciliation is not triggered on status change.
 	// Otherwise it would cause a reconciliation loop.
 	pred := predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
-		oldMeta := event.MetaOld
-		newMeta := event.MetaNew
-		return newMeta.GetGeneration() != oldMeta.GetGeneration() ||
-			!newMeta.GetDeletionTimestamp().Equal(oldMeta.GetDeletionTimestamp()) ||
-			!reflect.DeepEqual(newMeta.GetLabels(), oldMeta.GetLabels()) ||
-			!reflect.DeepEqual(newMeta.GetAnnotations(), oldMeta.GetAnnotations()) ||
-			!reflect.DeepEqual(newMeta.GetFinalizers(), oldMeta.GetFinalizers())
+		oldObj := event.ObjectOld
+		newObj := event.ObjectNew
+		return newObj.GetGeneration() != oldObj.GetGeneration() ||
+			!newObj.GetDeletionTimestamp().Equal(oldObj.GetDeletionTimestamp()) ||
+			!reflect.DeepEqual(newObj.GetLabels(), oldObj.GetLabels()) ||
+			!reflect.DeepEqual(newObj.GetAnnotations(), oldObj.GetAnnotations()) ||
+			!reflect.DeepEqual(newObj.GetFinalizers(), oldObj.GetFinalizers())
 
 	}}
 
@@ -582,7 +614,7 @@ func watchClusterResources(builder *ctrl.Builder) {
 	)
 }
 
-func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesFunc func(operands.Operand) []runtime.Object) {
+func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesFunc func(operands.Operand) []client.Object) {
 	watchedTypes := make(map[reflect.Type]struct{})
 	for _, operand := range sspOperands {
 		for _, t := range watchTypesFunc(operand) {

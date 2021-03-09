@@ -12,7 +12,6 @@ import (
 	"gomodules.xyz/jsonpatch/v2"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func expectedLabelsFor(name string, component common.AppComponent) map[string]string {
@@ -46,12 +45,12 @@ func expectAppLabelsRestoreAfterUpdate(res *testResource) {
 
 func newLabelOperations(labels map[string]string) []jsonpatch.Operation {
 	operations := make([]jsonpatch.Operation, 0, len(labels)+1)
-	operations = append(operations, jsonpatch.NewPatch("add", "/metadata/labels", struct{}{}))
+	operations = append(operations, jsonpatch.NewOperation("add", "/metadata/labels", struct{}{}))
 	return operations
 }
 
 func labelPatchOperationFor(op, label, value string) jsonpatch.Operation {
-	return jsonpatch.NewPatch(op, fmt.Sprintf("/metadata/labels/%s", strings.ReplaceAll(label, "/", "~1")), value)
+	return jsonpatch.NewOperation(op, fmt.Sprintf("/metadata/labels/%s", strings.ReplaceAll(label, "/", "~1")), value)
 }
 
 func encodePatch(operations []jsonpatch.Operation) client.Patch {
@@ -62,7 +61,7 @@ func encodePatch(operations []jsonpatch.Operation) client.Patch {
 	return client.RawPatch(types.JSONPatchType, patchBytes)
 }
 
-func waitForLabelMatch(resource controllerutil.Object, key client.ObjectKey, expectedLabels map[string]string) {
+func waitForLabelMatch(resource client.Object, key client.ObjectKey, expectedLabels map[string]string) {
 	var lastResult badLabels
 	Eventually(func() bool {
 		err := apiClient.Get(ctx, key, resource)
@@ -81,7 +80,7 @@ func waitForLabelMatch(resource controllerutil.Object, key client.ObjectKey, exp
 	})
 }
 
-func labelsMatch(expectedLabels map[string]string, obj controllerutil.Object) badLabels {
+func labelsMatch(expectedLabels map[string]string, obj client.Object) badLabels {
 	labels := obj.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)

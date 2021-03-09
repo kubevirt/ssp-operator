@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -327,7 +326,7 @@ func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
 	sspGvk, err := apiutil.GVKForObject(&sspv1beta1.SSP{}, scheme.Scheme)
 	Expect(err).ToNot(HaveOccurred())
 
-	restClient, err := apiutil.RESTClientForGVK(sspGvk, cfg, serializer.NewCodecFactory(scheme.Scheme))
+	restClient, err := apiutil.RESTClientForGVK(sspGvk, false, cfg, serializer.NewCodecFactory(scheme.Scheme))
 	Expect(err).ToNot(HaveOccurred())
 
 	return cache.NewListWatchFromClient(restClient, "ssps", strategy.GetNamespace(), fields.Everything())
@@ -356,7 +355,7 @@ func waitUntilDeployed() {
 	deploymentTimedOut = false
 }
 
-func waitForDeletion(key client.ObjectKey, obj runtime.Object) {
+func waitForDeletion(key client.ObjectKey, obj client.Object) {
 	EventuallyWithOffset(1, func() bool {
 		err := apiClient.Get(ctx, key, obj)
 		return errors.IsNotFound(err)

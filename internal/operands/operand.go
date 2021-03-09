@@ -2,6 +2,7 @@ package operands
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
 )
@@ -12,10 +13,10 @@ type Operand interface {
 	AddWatchTypesToScheme(*runtime.Scheme) error
 
 	// WatchTypes returns a slice of namespaced resources, that the operator should watch.
-	WatchTypes() []runtime.Object
+	WatchTypes() []client.Object
 
 	// WatchClusterTypes returns a slice of cluster resources, that the operator should watch.
-	WatchClusterTypes() []runtime.Object
+	WatchClusterTypes() []client.Object
 
 	// Reconcile creates and updates resources.
 	Reconcile(*common.Request) ([]common.ResourceStatus, error)

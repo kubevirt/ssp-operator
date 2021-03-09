@@ -1,6 +1,8 @@
 package common
 
-import "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
 type cacheKey struct {
 	Kind      string
@@ -15,7 +17,7 @@ type cacheValue struct {
 
 type VersionCache map[cacheKey]cacheValue
 
-func (v VersionCache) Contains(obj controllerutil.Object) bool {
+func (v VersionCache) Contains(obj client.Object) bool {
 	cached, ok := v[cacheKeyFromObj(obj)]
 	if !ok {
 		return false
@@ -30,7 +32,7 @@ func (v VersionCache) Contains(obj controllerutil.Object) bool {
 	return cached.generation == obj.GetGeneration()
 }
 
-func (v VersionCache) Add(obj controllerutil.Object) {
+func (v VersionCache) Add(obj client.Object) {
 	kind := obj.GetObjectKind().GroupVersionKind().Kind
 	if kind == "" {
 		// Do not cache objects without kind
@@ -42,11 +44,11 @@ func (v VersionCache) Add(obj controllerutil.Object) {
 	}
 }
 
-func (v VersionCache) RemoveObj(obj controllerutil.Object) {
+func (v VersionCache) RemoveObj(obj client.Object) {
 	delete(v, cacheKeyFromObj(obj))
 }
 
-func cacheKeyFromObj(obj controllerutil.Object) cacheKey {
+func cacheKeyFromObj(obj client.Object) cacheKey {
 	return cacheKey{
 		Kind:      obj.GetObjectKind().GroupVersionKind().Kind,
 		Name:      obj.GetName(),

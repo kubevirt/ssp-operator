@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -39,16 +38,16 @@ func (nl *nodeLabeller) AddWatchTypesToScheme(s *runtime.Scheme) error {
 	return secv1.Install(s)
 }
 
-func (nl *nodeLabeller) WatchTypes() []runtime.Object {
-	return []runtime.Object{
+func (nl *nodeLabeller) WatchTypes() []client.Object {
+	return []client.Object{
 		&v1.ServiceAccount{},
 		&v1.ConfigMap{},
 		&apps.DaemonSet{},
 	}
 }
 
-func (nl *nodeLabeller) WatchClusterTypes() []runtime.Object {
-	return []runtime.Object{
+func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
+	return []client.Object{
 		&rbac.ClusterRole{},
 		&rbac.ClusterRoleBinding{},
 		&secv1.SecurityContextConstraints{},
@@ -67,7 +66,7 @@ func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ResourceSta
 }
 
 func (nl *nodeLabeller) Cleanup(request *common.Request) error {
-	for _, obj := range []controllerutil.Object{
+	for _, obj := range []client.Object{
 		newClusterRole(),
 		newClusterRoleBinding(request.Namespace),
 		newSecurityContextConstraint(request.Namespace),
@@ -96,7 +95,7 @@ func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRole()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
 		}).
 		Reconcile()
@@ -113,7 +112,7 @@ func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRoleBinding(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
 			foundBinding.RoleRef = newBinding.RoleRef
@@ -126,7 +125,7 @@ func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) 
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newConfigMap(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRes.(*v1.ConfigMap).Data = newRes.(*v1.ConfigMap).Data
 		}).
 		Reconcile()
@@ -147,10 +146,10 @@ func createOrUpdateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(daemonSet).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRes.(*apps.DaemonSet).Spec = newRes.(*apps.DaemonSet).Spec
 		}).
-		StatusFunc(func(res controllerutil.Object) common.ResourceStatus {
+		StatusFunc(func(res client.Object) common.ResourceStatus {
 			ds := res.(*apps.DaemonSet)
 			status := common.ResourceStatus{}
 			if ds.Status.NumberReady != ds.Status.DesiredNumberScheduled {
@@ -188,7 +187,7 @@ func reconcileSecurityContextConstraint(request *common.Request) (common.Resourc
 	return common.CreateOrUpdate(request).
 		ClusterResource(newSecurityContextConstraint(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundScc := foundRes.(*secv1.SecurityContextConstraints)
 			newScc := newRes.(*secv1.SecurityContextConstraints)
 			foundScc.AllowPrivilegedContainer = newScc.AllowPrivilegedContainer

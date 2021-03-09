@@ -45,6 +45,10 @@ var (
 )
 
 const (
+	// Do not change the leader election ID, otherwise multiple SSP operator instances
+	// can be running during upgrade.
+	leaderElectionID = "734f7229.kubevirt.io"
+
 	// Certificate directory and file names OLM mounts certificates to
 	olmTLSDir = "/apiserver.local.config/certificates"
 	olmTLSCrt = "apiserver.crt"
@@ -62,6 +66,9 @@ func init() {
 	utilruntime.Must(controllers.InitScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
+
+// Give permissions to use leases for leader election.
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 
 func main() {
 	var metricsAddr string
@@ -88,7 +95,7 @@ func main() {
 		HealthProbeBindAddress: readyProbeAddr,
 		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "734f7229.kubevirt.io",
+		LeaderElectionID:       leaderElectionID,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -98,7 +105,6 @@ func main() {
 	if err = (&controllers.SSPReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("SSP"),
-		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SSP")
 		os.Exit(1)

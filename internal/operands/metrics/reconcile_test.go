@@ -45,7 +45,6 @@ var _ = Describe("Metrics operand", func() {
 				},
 			},
 			Client:  client,
-			Scheme:  s,
 			Context: context.Background(),
 			Instance: &ssp.SSP{
 				TypeMeta: metav1.TypeMeta{

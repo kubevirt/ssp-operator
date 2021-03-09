@@ -5,15 +5,15 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
-
 	libhandler "github.com/operator-framework/operator-lib/handler"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type StatusMessage = *string
 
 type ResourceStatus struct {
-	Resource     controllerutil.Object
+	Resource     client.Object
 	Progressing  StatusMessage
 	NotAvailable StatusMessage
 	Degraded     StatusMessage
@@ -33,12 +33,12 @@ func CollectResourceStatus(request *Request, funcs ...ReconcileFunc) ([]Resource
 	return res, nil
 }
 
-type ResourceUpdateFunc = func(expected, found controllerutil.Object)
-type ResourceStatusFunc = func(resource controllerutil.Object) ResourceStatus
+type ResourceUpdateFunc = func(expected, found client.Object)
+type ResourceStatusFunc = func(resource client.Object) ResourceStatus
 
 type ReconcileBuilder interface {
-	NamespacedResource(controllerutil.Object) ReconcileBuilder
-	ClusterResource(controllerutil.Object) ReconcileBuilder
+	NamespacedResource(client.Object) ReconcileBuilder
+	ClusterResource(client.Object) ReconcileBuilder
 	WithAppLabels(name string, component AppComponent) ReconcileBuilder
 	UpdateFunc(ResourceUpdateFunc) ReconcileBuilder
 	StatusFunc(ResourceStatusFunc) ReconcileBuilder
@@ -48,7 +48,7 @@ type ReconcileBuilder interface {
 
 type reconcileBuilder struct {
 	request           *Request
-	resource          controllerutil.Object
+	resource          client.Object
 	isClusterResource bool
 
 	addLabels        bool
@@ -61,13 +61,13 @@ type reconcileBuilder struct {
 
 var _ ReconcileBuilder = &reconcileBuilder{}
 
-func (r *reconcileBuilder) NamespacedResource(resource controllerutil.Object) ReconcileBuilder {
+func (r *reconcileBuilder) NamespacedResource(resource client.Object) ReconcileBuilder {
 	r.resource = resource
 	r.isClusterResource = false
 	return r
 }
 
-func (r *reconcileBuilder) ClusterResource(resource controllerutil.Object) ReconcileBuilder {
+func (r *reconcileBuilder) ClusterResource(resource client.Object) ReconcileBuilder {
 	r.resource = resource
 	r.isClusterResource = true
 	return r
@@ -110,16 +110,16 @@ func CreateOrUpdate(request *Request) ReconcileBuilder {
 
 	return &reconcileBuilder{
 		request: request,
-		updateFunc: func(_, _ controllerutil.Object) {
+		updateFunc: func(_, _ client.Object) {
 			// Empty function
 		},
-		statusFunc: func(_ controllerutil.Object) ResourceStatus {
+		statusFunc: func(_ client.Object) ResourceStatus {
 			return ResourceStatus{}
 		},
 	}
 }
 
-func createOrUpdate(request *Request, resource controllerutil.Object, isClusterRes bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ResourceStatus, error) {
+func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ResourceStatus, error) {
 	err := setOwner(request, resource, isClusterRes)
 	if err != nil {
 		return ResourceStatus{}, err
@@ -155,22 +155,22 @@ func createOrUpdate(request *Request, resource controllerutil.Object, isClusterR
 	return status, nil
 }
 
-func setOwner(request *Request, resource controllerutil.Object, isClusterRes bool) error {
+func setOwner(request *Request, resource client.Object, isClusterRes bool) error {
 	if isClusterRes {
 		resource.SetOwnerReferences(nil)
 		return libhandler.SetOwnerAnnotations(request.Instance, resource)
 	} else {
 		delete(resource.GetAnnotations(), libhandler.NamespacedNameAnnotation)
 		delete(resource.GetAnnotations(), libhandler.TypeAnnotation)
-		return controllerutil.SetControllerReference(request.Instance, resource, request.Scheme)
+		return controllerutil.SetControllerReference(request.Instance, resource, request.Client.Scheme())
 	}
 }
 
-func newEmptyResource(resource controllerutil.Object) controllerutil.Object {
-	return reflect.New(reflect.TypeOf(resource).Elem()).Interface().(controllerutil.Object)
+func newEmptyResource(resource client.Object) client.Object {
+	return reflect.New(reflect.TypeOf(resource).Elem()).Interface().(client.Object)
 }
 
-func updateAnnotations(expected, found controllerutil.Object) {
+func updateAnnotations(expected, found client.Object) {
 	if found.GetAnnotations() == nil {
 		found.SetAnnotations(expected.GetAnnotations())
 		return
@@ -178,7 +178,7 @@ func updateAnnotations(expected, found controllerutil.Object) {
 	updateStringMap(expected.GetAnnotations(), found.GetAnnotations())
 }
 
-func updateLabels(expected, found controllerutil.Object) {
+func updateLabels(expected, found client.Object) {
 	if found.GetLabels() == nil {
 		found.SetLabels(expected.GetLabels())
 		return
@@ -195,7 +195,7 @@ func updateStringMap(expected, found map[string]string) {
 	}
 }
 
-func logOperation(result controllerutil.OperationResult, resource controllerutil.Object, logger logr.Logger) {
+func logOperation(result controllerutil.OperationResult, resource client.Object, logger logr.Logger) {
 	if result == controllerutil.OperationResultCreated {
 		logger.Info(fmt.Sprintf("Created %s resource: %s",
 			resource.GetObjectKind().GroupVersionKind().Kind,

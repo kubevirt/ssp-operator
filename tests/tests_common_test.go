@@ -18,7 +18,6 @@ import (
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/api/v1beta1"
 )
@@ -28,7 +27,7 @@ const pauseDuration = 10 * time.Second
 type testResource struct {
 	Name      string
 	Namespace string
-	Resource  controllerutil.Object
+	Resource  client.Object
 
 	ExpectedLabels map[string]string
 
@@ -36,8 +35,8 @@ type testResource struct {
 	EqualsFunc interface{}
 }
 
-func (r *testResource) NewResource() controllerutil.Object {
-	return r.Resource.DeepCopyObject().(controllerutil.Object)
+func (r *testResource) NewResource() client.Object {
+	return r.Resource.DeepCopyObject().(client.Object)
 }
 
 func (r *testResource) GetKey() client.ObjectKey {
@@ -47,11 +46,11 @@ func (r *testResource) GetKey() client.ObjectKey {
 	}
 }
 
-func (r *testResource) Update(obj controllerutil.Object) {
+func (r *testResource) Update(obj client.Object) {
 	reflect.ValueOf(r.UpdateFunc).Call([]reflect.Value{reflect.ValueOf(obj)})
 }
 
-func (r *testResource) Equals(a, b controllerutil.Object) bool {
+func (r *testResource) Equals(a, b client.Object) bool {
 	result := reflect.ValueOf(r.EqualsFunc).
 		Call([]reflect.Value{reflect.ValueOf(a), reflect.ValueOf(b)})
 	return result[0].Bool()
@@ -94,7 +93,7 @@ func expectRestoreAfterUpdate(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 	defer watch.Stop()
 
-	changed := original.DeepCopyObject().(controllerutil.Object)
+	changed := original.DeepCopyObject().(client.Object)
 	res.Update(changed)
 	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
 
@@ -119,7 +118,7 @@ func expectRestoreAfterUpdateWithPause(res *testResource) {
 
 	pauseSsp()
 
-	changed := original.DeepCopyObject().(controllerutil.Object)
+	changed := original.DeepCopyObject().(client.Object)
 	res.Update(changed)
 	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
 
@@ -207,7 +206,7 @@ func isStatusDeployed(obj *v1beta1.SSP) bool {
 		degraded.Status == core.ConditionFalse
 }
 
-func getResourceKey(obj controllerutil.Object) client.ObjectKey {
+func getResourceKey(obj client.Object) client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),

@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -35,16 +35,16 @@ func (t *templateValidator) AddWatchTypesToScheme(*runtime.Scheme) error {
 	return nil
 }
 
-func (t *templateValidator) WatchTypes() []runtime.Object {
-	return []runtime.Object{
+func (t *templateValidator) WatchTypes() []client.Object {
+	return []client.Object{
 		&v1.ServiceAccount{},
 		&v1.Service{},
 		&apps.Deployment{},
 	}
 }
 
-func (t *templateValidator) WatchClusterTypes() []runtime.Object {
-	return []runtime.Object{
+func (t *templateValidator) WatchClusterTypes() []client.Object {
+	return []client.Object{
 		&rbac.ClusterRole{},
 		&rbac.ClusterRoleBinding{},
 		&admission.ValidatingWebhookConfiguration{},
@@ -63,7 +63,7 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Resourc
 }
 
 func (t *templateValidator) Cleanup(request *common.Request) error {
-	for _, obj := range []controllerutil.Object{
+	for _, obj := range []client.Object{
 		newClusterRole(),
 		newClusterRoleBinding(request.Namespace),
 		newValidatingWebhook(request.Namespace),
@@ -92,7 +92,7 @@ func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRole()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
 		}).
 		Reconcile()
@@ -109,7 +109,7 @@ func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRoleBinding(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			newBinding := newRes.(*rbac.ClusterRoleBinding)
 			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
 			foundBinding.RoleRef = newBinding.RoleRef
@@ -122,7 +122,7 @@ func reconcileService(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newService(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			newService := newRes.(*v1.Service)
 			foundService := foundRes.(*v1.Service)
 
@@ -142,10 +142,10 @@ func reconcileDeployment(request *common.Request) (common.ResourceStatus, error)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(deployment).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
 		}).
-		StatusFunc(func(res controllerutil.Object) common.ResourceStatus {
+		StatusFunc(func(res client.Object) common.ResourceStatus {
 			dep := res.(*apps.Deployment)
 			status := common.ResourceStatus{}
 			if *validatorSpec.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
@@ -181,7 +181,7 @@ func reconcileValidatingWebhook(request *common.Request) (common.ResourceStatus,
 	return common.CreateOrUpdate(request).
 		ClusterResource(newValidatingWebhook(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes controllerutil.Object) {
+		UpdateFunc(func(newRes, foundRes client.Object) {
 			newWebhookConf := newRes.(*admission.ValidatingWebhookConfiguration)
 			foundWebhookConf := foundRes.(*admission.ValidatingWebhookConfiguration)
 
