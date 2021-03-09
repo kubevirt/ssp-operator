@@ -24,6 +24,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	admissionv1 "k8s.io/api/admission/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"kubevirt.io/client-go/log"
 )
@@ -66,7 +67,6 @@ func admitVMTemplate(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResp
 }
 
 func serve(resp http.ResponseWriter, req *http.Request, admit admitFunc) {
-	response := admissionv1.AdmissionReview{}
 	review, err := GetAdmissionReview(req)
 
 	log.Log.V(8).Infof("evaluating admission")
@@ -82,6 +82,13 @@ func serve(resp http.ResponseWriter, req *http.Request, admit admitFunc) {
 	reviewResponse := admit(review)
 
 	log.Log.V(8).Infof("admission review response:\n%s", spew.Sdump(reviewResponse))
+
+	response := admissionv1.AdmissionReview{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: admissionv1.SchemeGroupVersion.String(),
+			Kind:       "AdmissionReview",
+		},
+	}
 
 	if reviewResponse != nil {
 		response.Response = reviewResponse

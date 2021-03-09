@@ -15,10 +15,6 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 )
 
-// Resources from kubevirt-template-validator version v0.7.0
-// TODO - move this code to the kubevirt-template-validator
-//        repository, and import it as a go module
-
 const (
 	ContainerPort          = 8443
 	KubevirtIo             = "kubevirt.io"
@@ -214,12 +210,10 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 					Path:      &path,
 				},
 			},
-			Rules:         rules,
-			FailurePolicy: &fail,
-			SideEffects:   &sideEffectsNone,
-			// TODO - add "v1" to the list once the template-validator
-			//        is updated to new API
-			AdmissionReviewVersions: []string{"v1beta1"},
+			Rules:                   rules,
+			FailurePolicy:           &fail,
+			SideEffects:             &sideEffectsNone,
+			AdmissionReviewVersions: []string{"v1"},
 		}},
 	}
 }
