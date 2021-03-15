@@ -104,6 +104,12 @@ container-build: unittest bundle
 container-push:
 	docker push ${IMG}
 
+build-template-validator:
+	./hack/build-template-validator.sh ${VERSION}
+
+container-build-template-validator: build-template-validator
+	./hack/build-and-push-validator.sh ${VERSION}
+
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
