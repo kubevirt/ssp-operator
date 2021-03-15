@@ -4,6 +4,7 @@
 /operator-sdk
 /yq
 _out/*
+internal/template-validator/_out/*
 build/_output/*
 bin/*
 csv-generator
