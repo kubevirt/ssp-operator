@@ -1,5 +1,11 @@
 package node_labeller
 
+/*
+*
+* This package is deprecated! Do not add any new code here.
+*
+ */
+
 import (
 	"fmt"
 
@@ -8,10 +14,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -54,15 +59,26 @@ func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
 	}
 }
 
+//Reconsile deletes all node-labeller component, because labeller is migrated into kubevirt core.
 func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
-	return common.CollectResourceStatus(request,
-		reconcileClusterRole,
-		reconcileServiceAccount,
-		reconcileClusterRoleBinding,
-		reconcileConfigMap,
-		reconcileDaemonSet,
-		reconcileSecurityContextConstraint,
-	)
+	returnResults := make([]common.ResourceStatus, 0)
+	for _, obj := range []controllerutil.Object{
+		newClusterRole(),
+		newServiceAccount(request.Namespace),
+		newConfigMap(request.Namespace),
+		newClusterRoleBinding(request.Namespace),
+		newSecurityContextConstraint(request.Namespace),
+		newDaemonSet(request.Namespace),
+	} {
+		err := request.Client.Delete(request.Context, obj)
+
+		if err != nil && !errors.IsNotFound(err) {
+			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", obj.GetName(), err))
+			return []common.ResourceStatus{}, err
+		}
+		returnResults = append(returnResults, common.ResourceStatus{})
+	}
+	return returnResults, nil
 }
 
 func (nl *nodeLabeller) Cleanup(request *common.Request) error {
@@ -132,13 +148,9 @@ func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) 
 }
 
 func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) {
-	nodeLabellerSpec := request.Instance.Spec.NodeLabeller
 	daemonSet := newDaemonSet(request.Namespace)
-	addPlacementFields(daemonSet, nodeLabellerSpec.Placement)
 	status, err := createOrUpdateDaemonSet(request, daemonSet)
-	if errors.IsInvalid(err) {
-		return recreateDaemonSet(request, daemonSet)
-	}
+
 	return status, err
 }
 
@@ -163,24 +175,6 @@ func createOrUpdateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet)
 			return status
 		}).
 		Reconcile()
-}
-
-func recreateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet) (common.ResourceStatus, error) {
-	if err := request.Client.Delete(request.Context, daemonSet, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil {
-		return common.ResourceStatus{}, err
-	}
-	return createOrUpdateDaemonSet(request, daemonSet)
-}
-
-func addPlacementFields(daemonset *apps.DaemonSet, nodePlacement *lifecycleapi.NodePlacement) {
-	if nodePlacement == nil {
-		return
-	}
-
-	podSpec := &daemonset.Spec.Template.Spec
-	podSpec.Affinity = nodePlacement.Affinity
-	podSpec.NodeSelector = nodePlacement.NodeSelector
-	podSpec.Tolerations = nodePlacement.Tolerations
 }
 
 func reconcileSecurityContextConstraint(request *common.Request) (common.ResourceStatus, error) {
