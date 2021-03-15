@@ -1,22 +1,18 @@
 package tests
 
 import (
-	"fmt"
 	"reflect"
-	"strings"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	secv1 "github.com/openshift/api/security/v1"
-	yaml "gopkg.in/yaml.v2"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	cpunfd "kubevirt.io/cpu-nfd-plugin/pkg/config"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"kubevirt.io/ssp-operator/internal/common"
 	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Node Labeller", func() {
@@ -103,120 +99,25 @@ var _ = Describe("Node Labeller", func() {
 		waitUntilDeployed()
 	})
 
-	Context("resource creation", func() {
-		table.DescribeTable("created cluster resource", func(res *testResource) {
+	Context("resource deletion", func() {
+		table.DescribeTable("deleted cluster resource", func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
+			Expect(errors.IsNotFound(err)).To(Equal(true))
 		},
-			table.Entry("[test_id:5193] cluster role", &clusterRoleRes),
-			table.Entry("[test_id:5196] cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:5202] security context constraint", &securityContextConstraintRes),
+			table.Entry("cluster role", &clusterRoleRes),
+			table.Entry("cluster role binding", &clusterRoleBindingRes),
+			table.Entry("security context constraint", &securityContextConstraintRes),
 		)
 
-		table.DescribeTable("created namespaced resource", func(res *testResource) {
+		table.DescribeTable("deleted namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
-			Expect(err).ToNot(HaveOccurred())
+			Expect(errors.IsNotFound(err)).To(Equal(true))
 		},
-			table.Entry("[test_id:5205] service account", &serviceAccountRes),
-			table.Entry("[test_id:5199] configMap", &configMapRes),
-			table.Entry("[test_id:5190] daemonSet", &daemonSetRes),
-		)
-
-		table.DescribeTable("should set app labels", expectAppLabels,
-			table.Entry("cluster role", &clusterRoleRes),
-			table.Entry("cluster role binding", &clusterRoleBindingRes),
-			table.Entry("security context constraint", &securityContextConstraintRes),
-			table.Entry("Config Map", &configMapRes),
+			table.Entry("service account", &serviceAccountRes),
+			table.Entry("configMap", &configMapRes),
 			table.Entry("daemonSet", &daemonSetRes),
 		)
 	})
 
-	Context("resource deletion", func() {
-		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:5194] cluster role", &clusterRoleRes),
-			table.Entry("[test_id:5198] cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:5203] security context constraint", &securityContextConstraintRes),
-			table.Entry("[test_id:5206] service account", &serviceAccountRes),
-			table.Entry("[test_id:5200] configMap", &configMapRes),
-			table.Entry("[test_id:5191] daemonSet", &daemonSetRes),
-		)
-	})
-
-	Context("resource change", func() {
-		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:5195] cluster role", &clusterRoleRes),
-			table.Entry("[test_id:5197] cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:5204] security context constraint", &securityContextConstraintRes),
-			table.Entry("[test_id:5201] Config Map", &configMapRes),
-			table.Entry("[test_id:5192] daemonSet", &daemonSetRes),
-		)
-
-		Context("with pause", func() {
-			BeforeEach(func() {
-				strategy.SkipSspUpdateTestsIfNeeded()
-			})
-
-			JustAfterEach(func() {
-				unpauseSsp()
-			})
-
-			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
-				table.Entry("[test_id:5399] cluster role", &clusterRoleRes),
-				table.Entry("[test_id:5402] cluster role binding", &clusterRoleBindingRes),
-				table.Entry("[test_id:5404] security context constraint", &securityContextConstraintRes),
-				table.Entry("[test_id:5408] configMap", &configMapRes),
-				table.Entry("[test_id:5410] daemonSet", &daemonSetRes),
-			)
-		})
-
-		table.DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
-			table.Entry("cluster role", &clusterRoleRes),
-			table.Entry("cluster role binding", &clusterRoleBindingRes),
-			table.Entry("security context constraint", &securityContextConstraintRes),
-			table.Entry("Config Map", &configMapRes),
-			table.Entry("daemonSet", &daemonSetRes),
-		)
-	})
-
-	It("all pods should be ready when deployed", func() {
-		daemonSet := &apps.DaemonSet{}
-		Expect(apiClient.Get(ctx, daemonSetRes.GetKey(), daemonSet)).ToNot(HaveOccurred())
-		Expect(daemonSet.Status.NumberReady).To(Equal(daemonSet.Status.DesiredNumberScheduled))
-	})
-
-	Context("cpu-nfd-plugin", func() {
-		It("should not set deprecated cpu labels on nodes", func() {
-			cpuConfigCM := &core.ConfigMap{}
-			Expect(apiClient.Get(ctx, client.ObjectKey{
-				Namespace: strategy.GetNamespace(),
-				Name:      nodelabeller.ConfigMapName,
-			}, cpuConfigCM)).ToNot(HaveOccurred())
-
-			data := cpuConfigCM.Data["cpu-plugin-configmap.yaml"]
-			cpuConfig := &cpunfd.Config{}
-			Expect(yaml.Unmarshal([]byte(data), cpuConfig)).ToNot(HaveOccurred())
-
-			nodes := &core.NodeList{}
-			Expect(apiClient.List(ctx, nodes)).ToNot(HaveOccurred(), "failed to list nodes")
-			Expect(len(nodes.Items)).To(BeNumerically(">", 0), "no nodes found")
-
-			labels := map[string]string{}
-			for _, node := range nodes.Items {
-				for label, val := range node.GetLabels() {
-					labels[label] = val
-				}
-			}
-
-			for label := range labels {
-				if strings.HasPrefix(label, "feature.node.kubernetes.io/cpu-model") {
-					for _, deprecatedLabel := range cpuConfig.ObsoleteCPUs {
-						Expect(label).ToNot(ContainSubstring(deprecatedLabel),
-							fmt.Sprintf("deprecated cpu %s exists as label %s", deprecatedLabel, label))
-					}
-				}
-			}
-		})
-	})
 })

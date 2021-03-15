@@ -1,5 +1,11 @@
 package node_labeller
 
+/*
+*
+* This package is deprecated! Do not add any new code here.
+*
+ */
+
 const (
 	// quay.io/kubevirt/node-labeller:v0.2.0
 	KubevirtNodeLabellerDefaultImage = "quay.io/kubevirt/node-labeller@sha256:45391da5e8ecdd393830650061f8d68248a3b2961d60f42a04e4e0c58a7d3a3b"

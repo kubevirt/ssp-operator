@@ -1,5 +1,11 @@
 package node_labeller
 
+/*
+*
+* This package is deprecated! Do not add any new code here.
+*
+ */
+
 import (
 	secv1 "github.com/openshift/api/security/v1"
 	apps "k8s.io/api/apps/v1"
@@ -119,154 +125,11 @@ func kubevirtNodeLabellerSleeperContainer() *core.Container {
 	}
 }
 
-func initContainerKvmInfoNfdPlugin() *core.Container {
-	// Build the KvmInfoNfdPlugin Init Container
-	return &core.Container{
-		Name:            "kvm-info-nfd-plugin",
-		Image:           getNodeLabellerImages().kvmInfoNFD,
-		Command:         []string{"/bin/sh", "-c"},
-		Args:            []string{"cp /usr/bin/kvm-caps-info-nfd-plugin /etc/kubernetes/node-feature-discovery/source.d/;"},
-		ImagePullPolicy: core.PullAlways,
-		VolumeMounts: []core.VolumeMount{
-			{
-				Name:      nfdVolumeName,
-				MountPath: nfdVolumeMountPath,
-			},
-		},
-	}
-}
-
-func initContainerKubevirtCpuNfdPlugin() *core.Container {
-	// Build the KubevirtCpuNfdPlugin Init Container
-	args := []string{"cp /plugin/dest/cpu-nfd-plugin /etc/kubernetes/node-feature-discovery/source.d/;cp /config/cpu-plugin-configmap.yaml /etc/kubernetes/node-feature-discovery/source.d/cpu-plugin-configmap.yaml;"}
-	return &core.Container{
-		Name:            "kubevirt-cpu-nfd-plugin",
-		Image:           getNodeLabellerImages().cpuNFD,
-		Command:         []string{"/bin/sh", "-c"},
-		Args:            args,
-		ImagePullPolicy: core.PullAlways,
-		VolumeMounts: []core.VolumeMount{
-			{
-				Name:      nfdVolumeName,
-				MountPath: nfdVolumeMountPath,
-			},
-			{
-				Name:      configMapVolumeName,
-				MountPath: configMapVolumeMountPath,
-			},
-		},
-	}
-}
-
-func initContainerLibvirt() *core.Container {
-	// Build the Virt Launcher Init Container
-	args := []string{"if [ ! -e /dev/kvm ] && [ $(grep '\\<kvm\\>' /proc/misc | wc -l) -eq 0 ]; then echo 'exiting due to missing kvm device'; exit 0; fi; if [ ! -e /dev/kvm ]; then mknod /dev/kvm c 10 $(grep '\\<kvm\\>' /proc/misc | cut -f 1 -d' '); fi; libvirtd -d; chmod o+rw /dev/kvm; virsh domcapabilities --machine q35 --arch x86_64 --virttype kvm > /etc/kubernetes/node-feature-discovery/source.d/virsh_domcapabilities.xml; cp -r /usr/share/libvirt/cpu_map /etc/kubernetes/node-feature-discovery/source.d/"}
-	var boolVal = true
-	return &core.Container{
-		Name:            "libvirt",
-		Image:           getNodeLabellerImages().virtLauncher,
-		Command:         []string{"/bin/sh", "-c"},
-		Args:            args,
-		ImagePullPolicy: core.PullAlways,
-		VolumeMounts: []core.VolumeMount{
-			{
-				Name:      nfdVolumeName,
-				MountPath: nfdVolumeMountPath,
-			},
-		},
-		SecurityContext: &core.SecurityContext{
-			Privileged: &boolVal,
-		},
-	}
-}
-
-func initContainerKubevirtNodeLabeller() *core.Container {
-	// Build the KubevirtNodeLabeller Init Container
-	args := []string{"if [ ! -e /dev/kvm ] && [ $(grep '\\<kvm\\>' /proc/misc | wc -l) -eq 0 ]; then echo 'exiting due to missing kvm device'; exit 0; fi; if [ ! -e /dev/kvm ]; then mknod /dev/kvm c 10 $(grep '\\<kvm\\>' /proc/misc | cut -f 1 -d' '); fi; ./usr/sbin/node-labeller"}
-	var boolVal = true
-	return &core.Container{
-		Name:    "kubevirt-node-labeller",
-		Image:   getNodeLabellerImages().nodeLabeller,
-		Command: []string{"/bin/sh", "-c"},
-		Args:    args,
-		Env: []core.EnvVar{
-			{
-				Name: "NODE_NAME",
-				ValueFrom: &core.EnvVarSource{
-					FieldRef: &core.ObjectFieldSelector{
-						FieldPath: "spec.nodeName",
-					},
-				},
-			},
-		},
-		VolumeMounts: []core.VolumeMount{
-			{
-				Name:      nfdVolumeName,
-				MountPath: nfdVolumeMountPath,
-			},
-		},
-		SecurityContext: &core.SecurityContext{
-			Privileged: &boolVal,
-		},
-	}
-}
-
 func newDaemonSet(namespace string) *apps.DaemonSet {
-	//Build the InitContainers
-	initContainers := []core.Container{
-		*initContainerKvmInfoNfdPlugin(),
-		*initContainerKubevirtCpuNfdPlugin(),
-		*initContainerLibvirt(),
-		*initContainerKubevirtNodeLabeller(),
-	}
-	//Build the containers
-	containers := []core.Container{
-		*kubevirtNodeLabellerSleeperContainer(),
-	}
-
-	commonLabels := map[string]string{
-		"app": "kubevirt-node-labeller",
-	}
 	return &apps.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DaemonSetName,
 			Namespace: namespace,
-			Labels:    commonLabels,
-		},
-		Spec: apps.DaemonSetSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: commonLabels,
-			},
-			Template: core.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: commonLabels,
-				},
-				Spec: core.PodSpec{
-					ServiceAccountName: ServiceAccountName,
-					Containers:         containers,
-					InitContainers:     initContainers,
-					Volumes: []core.Volume{
-						{
-							Name: nfdVolumeName,
-							VolumeSource: core.VolumeSource{
-								EmptyDir: &core.EmptyDirVolumeSource{
-									Medium: "",
-								},
-							},
-						},
-						{
-							Name: configMapVolumeName,
-							VolumeSource: core.VolumeSource{
-								ConfigMap: &core.ConfigMapVolumeSource{
-									LocalObjectReference: core.LocalObjectReference{
-										Name: ConfigMapName,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
 		},
 	}
 }

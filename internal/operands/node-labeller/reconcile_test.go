@@ -61,30 +61,22 @@ var _ = Describe("Node Labeller operand", func() {
 		}
 	})
 
-	It("should create node labeller resources", func() {
+	It("should delete node-labeller during reconcile", func() {
+		reconcileClusterRole(&request)
+		reconcileServiceAccount(&request)
+		reconcileClusterRoleBinding(&request)
+		reconcileConfigMap(&request)
+		reconcileDaemonSet(&request)
+		reconcileSecurityContextConstraint(&request)
+
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-
-		ExpectResourceExists(newClusterRole(), request)
-		ExpectResourceExists(newServiceAccount(namespace), request)
-		ExpectResourceExists(newClusterRoleBinding(namespace), request)
-		ExpectResourceExists(newConfigMap(namespace), request)
-		ExpectResourceExists(newDaemonSet(namespace), request)
-		ExpectResourceExists(newSecurityContextConstraint(namespace), request)
-	})
-
-	It("should remove cluster resources on cleanup", func() {
-		_, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred())
-
-		ExpectResourceExists(newClusterRole(), request)
-		ExpectResourceExists(newClusterRoleBinding(namespace), request)
-		ExpectResourceExists(newSecurityContextConstraint(namespace), request)
-
-		Expect(operand.Cleanup(&request)).ToNot(HaveOccurred())
 
 		ExpectResourceNotExists(newClusterRole(), request)
+		ExpectResourceNotExists(newServiceAccount(namespace), request)
 		ExpectResourceNotExists(newClusterRoleBinding(namespace), request)
+		ExpectResourceNotExists(newConfigMap(namespace), request)
+		ExpectResourceNotExists(newDaemonSet(namespace), request)
 		ExpectResourceNotExists(newSecurityContextConstraint(namespace), request)
 	})
 })
