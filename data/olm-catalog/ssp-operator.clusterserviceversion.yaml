@@ -452,11 +452,12 @@ spec:
   version: 0.1.3
   webhookdefinitions:
   - admissionReviewVersions:
+    - v1
     - v1beta1
     containerPort: 9443
     deploymentName: ssp-operator
     failurePolicy: Fail
-    generateName: vssp.kb.io
+    generateName: validation.ssp.kubevirt.io
     rules:
     - apiGroups:
       - ssp.kubevirt.io
