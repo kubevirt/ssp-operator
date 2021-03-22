@@ -8,5 +8,5 @@
 package common_templates
 
 const (
-	Version = "v0.14.0-rc.2"
+	Version = "v0.13.2"
 )
