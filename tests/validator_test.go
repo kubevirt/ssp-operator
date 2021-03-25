@@ -369,11 +369,11 @@ var _ = Describe("Template validator", func() {
 			}
 		})
 
-		It("should create VM without template", func() {
+		It("[test_id:5584]should create VM without template", func() {
 			vm = NewVirtualMachine(vmi)
 			Expect(apiClient.Create(ctx, vm)).ToNot(HaveOccurred(), "Failed to create VM")
 		})
-		It("be created from template with no rules", func() {
+		It("[test_id:5585]be created from template with no rules", func() {
 			template = TemplateWithoutRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -413,7 +413,7 @@ var _ = Describe("Template validator", func() {
 			}
 			Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should match error type because of unfulfilled validations")
 		})
-		It("test with template optional rules unfulfilled", func() {
+		It("[test_id:5586]test with template optional rules unfulfilled", func() {
 			template = TemplateWithRulesOptional()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -428,7 +428,7 @@ var _ = Describe("Template validator", func() {
 				return apiClient.Create(ctx, vm)
 			}, shortTimeout).Should(BeNil(), "Failed to create VM")
 		})
-		It("test with cpu jsonpath nil should fail", func() {
+		It("[test_id:5587]test with cpu jsonpath nil should fail", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -441,7 +441,7 @@ var _ = Describe("Template validator", func() {
 			}
 			Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should have given the invalid error type")
 		})
-		It("Test template with incorrect rules satisfied", func() {
+		It("[test_id:5589]Test template with incorrect rules satisfied", func() {
 			template = TemplateWithIncorrectRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -454,7 +454,7 @@ var _ = Describe("Template validator", func() {
 			}
 			Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should have given the invalid error failing to fulfill validations")
 		})
-		It("Test template with incorrect rules unfulfilled", func() {
+		It("[test_id:5590]Test template with incorrect rules unfulfilled", func() {
 			template = TemplateWithIncorrectRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -494,7 +494,7 @@ var _ = Describe("Template validator", func() {
 				return false
 			}, shortTimeout).Should(BeTrue(), "Failed to find error msg in the logs")
 		})
-		It("test with partial annotations", func() {
+		It("[test_id:5591]test with partial annotations", func() {
 			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -518,7 +518,7 @@ var _ = Describe("Template validator", func() {
 				return apiClient.Create(ctx, vm)
 			}, shortTimeout).Should(BeNil(), "Failed to create VM")
 		})
-		It("Test vm with template info in labels", func() {
+		It("[test_id:5592]Test vm with template info in labels", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -532,7 +532,7 @@ var _ = Describe("Template validator", func() {
 				return apiClient.Create(ctx, vm)
 			}, shortTimeout).Should(BeNil(), "Failed to create VM")
 		})
-		It("test template with incomplete CPU info", func() {
+		It("[test_id:5593]test template with incomplete CPU info", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
