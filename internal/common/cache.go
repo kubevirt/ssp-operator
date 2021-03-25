@@ -1,6 +1,7 @@
 package common
 
 import (
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -11,6 +12,7 @@ type cacheKey struct {
 }
 
 type cacheValue struct {
+	uid types.UID
 	resourceVersion string
 	generation      int64
 }
@@ -22,13 +24,13 @@ func (v VersionCache) Contains(obj client.Object) bool {
 	if !ok {
 		return false
 	}
-	if obj.GetGeneration() == 0 {
-		if obj.GetResourceVersion() == "" {
-			return false
-		}
-		return cached.resourceVersion == obj.GetResourceVersion()
+	if obj.GetUID() != cached.uid {
+		return false
 	}
-
+	if obj.GetGeneration() == 0 {
+		objResourceVersion := obj.GetResourceVersion()
+		return objResourceVersion != "" && objResourceVersion == cached.resourceVersion
+	}
 	return cached.generation == obj.GetGeneration()
 }
 
@@ -39,6 +41,7 @@ func (v VersionCache) Add(obj client.Object) {
 		return
 	}
 	v[cacheKeyFromObj(obj)] = cacheValue{
+		uid: obj.GetUID(),
 		resourceVersion: obj.GetResourceVersion(),
 		generation:      obj.GetGeneration(),
 	}
