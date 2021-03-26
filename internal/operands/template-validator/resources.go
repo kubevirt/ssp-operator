@@ -197,6 +197,15 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 				},
 				Rule: admission.Rule{
 					APIGroups:   []string{"kubevirt.io"},
+					APIVersions: []string{"v1"},
+					Resources:   []string{"virtualmachines"},
+				},
+			}, {
+				Operations: []admission.OperationType{
+					admission.Create, admission.Update,
+				},
+				Rule: admission.Rule{
+					APIGroups:   []string{"kubevirt.io"},
 					APIVersions: []string{"v1alpha3"},
 					Resources:   []string{"virtualmachines"},
 				},
