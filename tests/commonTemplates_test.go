@@ -327,6 +327,17 @@ var _ = Describe("Common templates", func() {
 					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest"
 			}, shortTimeout).Should(BeTrue(), "labels were not removed from older templates")
 		})
+		It("[test_id:5969]: should add deprecated annotation to old templates", func() {
+			triggerReconciliation()
+
+			Eventually(func() bool {
+				updatedTpl := &templatev1.Template{}
+				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
+				err := apiClient.Get(ctx, key, updatedTpl)
+				return err == nil &&
+					updatedTpl.Annotations[commonTemplates.TemplateDeprecatedAnnotation] == "true"
+			}, shortTimeout).Should(BeTrue(), "deprecated annotation should be added to old template")
+		})
 		It("should continue to have labels on latest templates", func() {
 			triggerReconciliation()
 
