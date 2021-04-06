@@ -2,10 +2,11 @@ package common_templates
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"strings"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -194,6 +195,7 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(updatedTpl.Labels["workload.template.kubevirt.io/server"]).To(Equal(""), "workload.template.kubevirt.io should be empty")
 			Expect(updatedTpl.Labels["template.kubevirt.io/type"]).To(Equal("base"), "template.kubevirt.io/type should equal base")
 			Expect(updatedTpl.Labels["template.kubevirt.io/version"]).To(Equal("not-latest"), "template.kubevirt.io/version should equal not-latest")
+			Expect(updatedTpl.Annotations[TemplateDeprecatedAnnotation]).To(Equal("true"), TemplateDeprecatedAnnotation+" should not be empty")
 		})
 		It("should not remove labels from latest templates", func() {
 			_, err := operand.Reconcile(&request)
