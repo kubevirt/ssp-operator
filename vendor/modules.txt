@@ -149,6 +149,7 @@ github.com/operator-framework/operator-lib/handler/internal/metrics
 # github.com/pborman/uuid v1.2.0
 github.com/pborman/uuid
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/prometheus/client_golang v1.7.1
 github.com/prometheus/client_golang/prometheus
@@ -280,7 +281,6 @@ gopkg.in/inf.v0
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
 # gopkg.in/yaml.v2 v2.3.0
-## explicit
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 gopkg.in/yaml.v3
@@ -489,11 +489,6 @@ kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1
 # kubevirt.io/controller-lifecycle-operator-sdk v0.1.3-0.20210112105647-bbf16167410b
 ## explicit
 kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api
-# kubevirt.io/cpu-nfd-plugin v0.1.1
-## explicit
-kubevirt.io/cpu-nfd-plugin/pkg/config
-kubevirt.io/cpu-nfd-plugin/pkg/file
-kubevirt.io/cpu-nfd-plugin/pkg/util
 # kubevirt.io/qe-tools v0.1.7
 ## explicit
 kubevirt.io/qe-tools/pkg/ginkgo-reporters
