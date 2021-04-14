@@ -146,7 +146,7 @@ func runGenerator() error {
 				return err
 			}
 
-			err = marshallObject(crd, relatedImages, os.Stdout)
+			err = marshallObject(crd, nil, os.Stdout)
 			if err != nil {
 				return err
 			}
@@ -327,7 +327,9 @@ func marshallObject(obj interface{}, relatedImages []interface{}, writer io.Writ
 		unstructured.SetNestedSlice(r.Object, deployments, "spec", "install", "spec", "deployments")
 	}
 
-	unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages")
+	if len(relatedImages) > 0 {
+		unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages")
+	}
 
 	jsonBytes, err = json.Marshal(r.Object)
 	if err != nil {
