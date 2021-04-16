@@ -36,23 +36,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"kubevirt.io/ssp-operator/internal/common"
-	"kubevirt.io/ssp-operator/internal/operands/node-labeller"
 )
 
 type generatorFlags struct {
-	file              string
-	dumpCRDs          bool
-	removeCerts       bool
-	webhookPort       int32
-	csvVersion        string
-	namespace         string
-	operatorVersion   string
-	validatorImage    string
-	kvmInfoImage      string
-	virtLauncher      string
-	nodeLabellerImage string
-	cpuPlugin         string
-	operatorImage     string
+	file            string
+	dumpCRDs        bool
+	removeCerts     bool
+	webhookPort     int32
+	csvVersion      string
+	namespace       string
+	operatorVersion string
+	validatorImage  string
+	operatorImage   string
 }
 
 var (
@@ -82,10 +77,6 @@ func init() {
 	rootCmd.Flags().StringVar(&f.operatorImage, "operator-image", "", "Link to operator image (required)")
 	rootCmd.Flags().StringVar(&f.operatorVersion, "operator-version", "", "Operator version (required)")
 	rootCmd.Flags().StringVar(&f.validatorImage, "validator-image", "", "Link to template-validator image")
-	rootCmd.Flags().StringVar(&f.nodeLabellerImage, "node-labeller-image", "", "Link to node-labeller image")
-	rootCmd.Flags().StringVar(&f.kvmInfoImage, "kvm-info-image", "", "Link to kvm-info-nfd-plugin image")
-	rootCmd.Flags().StringVar(&f.virtLauncher, "virt-launcher-image", "", "Link to virt-launcher image")
-	rootCmd.Flags().StringVar(&f.cpuPlugin, "cpu-plugin-image", "", "Link to cpu-nfd-plugin image")
 	rootCmd.Flags().Int32Var(&f.webhookPort, "webhook-port", 0, "Container port for the admission webhook")
 	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
 	rootCmd.Flags().BoolVar(&f.dumpCRDs, "dump-crds", false, "Dump crds to stdout")
@@ -174,46 +165,6 @@ func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
 		relatedImages = append(relatedImages, relatedImage)
 	}
 
-	img := node_labeller.KubevirtNodeLabellerDefaultImage
-	if flags.nodeLabellerImage != "" {
-		img = flags.nodeLabellerImage
-	}
-	relatedImage, err := buildRelatedImage(img, "node-labeller")
-	if err != nil {
-		return nil, err
-	}
-	relatedImages = append(relatedImages, relatedImage)
-
-	img = node_labeller.KvmInfoNfdDefaultImage
-	if flags.kvmInfoImage != "" {
-		img = flags.kvmInfoImage
-	}
-	relatedImage, err = buildRelatedImage(img, "kvm-info-nfd-plugin")
-	if err != nil {
-		return nil, err
-	}
-	relatedImages = append(relatedImages, relatedImage)
-
-	img = node_labeller.KvmCpuNfdDefaultImage
-	if flags.cpuPlugin != "" {
-		img = flags.cpuPlugin
-	}
-	relatedImage, err = buildRelatedImage(img, "cpu-nfd-plugin")
-	if err != nil {
-		return nil, err
-	}
-	relatedImages = append(relatedImages, relatedImage)
-
-	img = node_labeller.LibvirtDefaultImage
-	if flags.virtLauncher != "" {
-		img = flags.virtLauncher
-	}
-	relatedImage, err = buildRelatedImage(img, "virt-launcher")
-	if err != nil {
-		return nil, err
-	}
-	relatedImages = append(relatedImages, relatedImage)
-
 	return relatedImages, nil
 }
 
@@ -234,21 +185,8 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 			updatedContainer.Image = flags.operatorImage
 			updatedVariables := make([]v1.EnvVar, 0)
 			for _, envVariable := range container.Env {
-
-				if envVariable.Name == common.KvmInfoNfdPluginImageKey {
-					envVariable.Value = flags.kvmInfoImage
-				}
 				if envVariable.Name == common.TemplateValidatorImageKey {
 					envVariable.Value = flags.validatorImage
-				}
-				if envVariable.Name == common.VirtLauncherImageKey {
-					envVariable.Value = flags.virtLauncher
-				}
-				if envVariable.Name == common.KubevirtNodeLabellerImageKey {
-					envVariable.Value = flags.nodeLabellerImage
-				}
-				if envVariable.Name == common.KubevirtCpuNfdPluginImageKey {
-					envVariable.Value = flags.cpuPlugin
 				}
 				if envVariable.Name == common.OperatorVersionKey {
 					envVariable.Value = flags.operatorVersion

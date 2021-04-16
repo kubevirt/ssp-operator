@@ -19,21 +19,13 @@ var log = logf.Log.WithName("csv_generator")
 
 var _ = Describe("csv generator", func() {
 	flags := generatorFlags{
-		csvVersion:        "9.9.9",
-		operatorImage:     "test",
-		kvmInfoImage:      "test",
-		cpuPlugin:         "test",
-		validatorImage:    "test",
-		nodeLabellerImage: "test",
-		virtLauncher:      "test",
+		csvVersion:     "9.9.9",
+		operatorImage:  "test",
+		validatorImage: "test",
 	}
 	envValues := []v1.EnvVar{
-		{Name: common.KvmInfoNfdPluginImageKey},
 		{Name: common.TemplateValidatorImageKey},
-		{Name: common.VirtLauncherImageKey},
 		{Name: common.OperatorVersionKey},
-		{Name: common.KubevirtNodeLabellerImageKey},
-		{Name: common.KubevirtCpuNfdPluginImageKey},
 	}
 
 	csv := csvv1.ClusterServiceVersion{
@@ -75,20 +67,8 @@ var _ = Describe("csv generator", func() {
 				Expect(container.Image).To(Equal(flags.operatorImage))
 
 				for _, envVariable := range container.Env {
-					if envVariable.Name == common.KvmInfoNfdPluginImageKey {
-						Expect(envVariable.Value).To(Equal(flags.kvmInfoImage))
-					}
 					if envVariable.Name == common.TemplateValidatorImageKey {
 						Expect(envVariable.Value).To(Equal(flags.validatorImage))
-					}
-					if envVariable.Name == common.VirtLauncherImageKey {
-						Expect(envVariable.Value).To(Equal(flags.virtLauncher))
-					}
-					if envVariable.Name == common.KubevirtNodeLabellerImageKey {
-						Expect(envVariable.Value).To(Equal(flags.nodeLabellerImage))
-					}
-					if envVariable.Name == common.KubevirtCpuNfdPluginImageKey {
-						Expect(envVariable.Value).To(Equal(flags.cpuPlugin))
 					}
 					if envVariable.Name == common.OperatorVersionKey {
 						Expect(envVariable.Value).To(Equal(flags.operatorVersion))
