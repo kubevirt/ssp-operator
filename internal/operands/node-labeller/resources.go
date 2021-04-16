@@ -12,42 +12,20 @@ import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"kubevirt.io/ssp-operator/internal/common"
 )
 
 // Resources from node-labeller
 const (
 	kubevirtNodeLabeller = "kubevirt-node-labeller"
 
-	ServiceAccountName       = kubevirtNodeLabeller
-	DaemonSetName            = kubevirtNodeLabeller
-	ConfigMapName            = "kubevirt-cpu-plugin-configmap"
-	ClusterRoleName          = kubevirtNodeLabeller
-	ClusterRoleBindingName   = kubevirtNodeLabeller
-	nfdVolumeName            = "nfd-source"
-	nfdVolumeMountPath       = "/etc/kubernetes/node-feature-discovery/source.d/"
-	configMapVolumeName      = "cpu-config"
-	configMapVolumeMountPath = "/config"
-	SecurityContextName      = kubevirtNodeLabeller
+	ServiceAccountName     = kubevirtNodeLabeller
+	DaemonSetName          = kubevirtNodeLabeller
+	ConfigMapName          = "kubevirt-cpu-plugin-configmap"
+	ClusterRoleName        = kubevirtNodeLabeller
+	ClusterRoleBindingName = kubevirtNodeLabeller
+
+	SecurityContextName = kubevirtNodeLabeller
 )
-
-type nodeLabellerImages struct {
-	nodeLabeller string
-	sleeper      string
-	kvmInfoNFD   string
-	cpuNFD       string
-	virtLauncher string
-}
-
-func getNodeLabellerImages() nodeLabellerImages {
-	return nodeLabellerImages{
-		nodeLabeller: common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, KubevirtNodeLabellerDefaultImage),
-		sleeper:      common.EnvOrDefault(common.KubevirtNodeLabellerImageKey, KubevirtNodeLabellerDefaultImage),
-		kvmInfoNFD:   common.EnvOrDefault(common.KvmInfoNfdPluginImageKey, KvmInfoNfdDefaultImage),
-		cpuNFD:       common.EnvOrDefault(common.KubevirtCpuNfdPluginImageKey, KvmCpuNfdDefaultImage),
-		virtLauncher: common.EnvOrDefault(common.VirtLauncherImageKey, LibvirtDefaultImage),
-	}
-}
 
 func newClusterRole() *rbac.ClusterRole {
 	return &rbac.ClusterRole{
@@ -112,16 +90,6 @@ minCPU: "Penryn"`
 		Data: map[string]string{
 			"cpu-plugin-configmap.yaml": cpuPluginConfigmap,
 		},
-	}
-}
-
-func kubevirtNodeLabellerSleeperContainer() *core.Container {
-	// Build the kubevirtNodeLabellerSleeper Container
-	return &core.Container{
-		Name:    "kubevirt-node-labeller-sleeper",
-		Image:   getNodeLabellerImages().sleeper,
-		Command: []string{"sleep"},
-		Args:    []string{"infinity"},
 	}
 }
 
