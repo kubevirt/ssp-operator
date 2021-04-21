@@ -16,9 +16,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.1.1
 	gomodules.xyz/jsonpatch/v2 v2.1.0
-	k8s.io/api v0.20.2
-	k8s.io/apiextensions-apiserver v0.20.1
-	k8s.io/apimachinery v0.20.2
+	k8s.io/api v0.20.6
+	k8s.io/apiextensions-apiserver v0.20.6
+	k8s.io/apimachinery v0.20.6
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 	kubevirt.io/client-go v0.33.0
@@ -27,4 +27,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.2
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.20.2
+replace k8s.io/client-go => k8s.io/client-go v0.20.6
