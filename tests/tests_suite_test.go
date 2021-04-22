@@ -19,20 +19,21 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
+	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 var (
 	shortTimeout = 1 * time.Minute
 	timeout      = 10 * time.Minute
+	testScheme   *runtime.Scheme
 )
 
 type TestSuiteStrategy interface {
@@ -287,7 +289,7 @@ var _ = BeforeSuite(func() {
 		shortTimeout = time.Duration(envShortTimeout) * time.Minute
 		fmt.Println(fmt.Sprintf("short timeout set to %d minutes", envShortTimeout))
 	}
-
+	testScheme = runtime.NewScheme()
 	setupApiClient()
 	strategy.Init()
 
@@ -306,14 +308,18 @@ func expectSuccessOrNotFound(err error) {
 }
 
 func setupApiClient() {
-	Expect(sspv1beta1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
-	Expect(promv1.AddToScheme(scheme.Scheme)).ToNot(HaveOccurred())
-	Expect(templatev1.Install(scheme.Scheme)).ToNot(HaveOccurred())
-	Expect(secv1.Install(scheme.Scheme)).ToNot(HaveOccurred())
+	Expect(sspv1beta1.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(promv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(templatev1.Install(testScheme)).ToNot(HaveOccurred())
+	Expect(secv1.Install(testScheme)).ToNot(HaveOccurred())
+
+	Expect(clientgoscheme.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1")).ToNot(HaveOccurred())
+	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
-	apiClient, err = client.New(cfg, client.Options{})
+	apiClient, err = client.New(cfg, client.Options{Scheme: testScheme})
 	Expect(err).ToNot(HaveOccurred())
 	coreClient, err = kubernetes.NewForConfig(cfg)
 	Expect(err).ToNot(HaveOccurred())
@@ -323,10 +329,10 @@ func setupApiClient() {
 }
 
 func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
-	sspGvk, err := apiutil.GVKForObject(&sspv1beta1.SSP{}, scheme.Scheme)
+	sspGvk, err := apiutil.GVKForObject(&sspv1beta1.SSP{}, testScheme)
 	Expect(err).ToNot(HaveOccurred())
 
-	restClient, err := apiutil.RESTClientForGVK(sspGvk, false, cfg, serializer.NewCodecFactory(scheme.Scheme))
+	restClient, err := apiutil.RESTClientForGVK(sspGvk, false, cfg, serializer.NewCodecFactory(testScheme))
 	Expect(err).ToNot(HaveOccurred())
 
 	return cache.NewListWatchFromClient(restClient, "ssps", strategy.GetNamespace(), fields.Everything())

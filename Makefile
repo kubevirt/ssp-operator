@@ -19,6 +19,11 @@ IMG_REPOSITORY ?= quay.io/kubevirt/ssp-operator
 IMG_TAG ?= latest
 IMG ?= ${IMG_REPOSITORY}:${IMG_TAG}
 
+# Image URL variables for template-validator
+VALIDATOR_REPOSITORY ?= quay.io/kubevirt/kubevirt-template-validator
+VALIDAOTR_IMAGE_TAG ?= latest
+VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDAOTR_IMAGE_TAG}
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -107,8 +112,11 @@ container-push:
 build-template-validator:
 	./hack/build-template-validator.sh ${VERSION}
 
-container-build-template-validator: build-template-validator
-	./hack/build-and-push-validator.sh ${VERSION}
+build-template-validator-container: build-template-validator
+	docker build -t ${VALIDATOR_IMG} ./internal/template-validator/
+
+push-template-validator-container: build-template-validator-container
+	docker push ${VALIDATOR_IMG}
 
 # find or download controller-gen
 # download controller-gen if necessary

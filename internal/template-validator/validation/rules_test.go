@@ -3,7 +3,6 @@ package validation
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"testing"
 )
 
 var _ = Describe("Rules", func() {
@@ -87,8 +86,3 @@ var _ = Describe("Rules", func() {
 
 	})
 })
-
-func TestValidation(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Validation Suite")
-}
