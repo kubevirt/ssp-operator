@@ -12,7 +12,7 @@ type cacheKey struct {
 }
 
 type cacheValue struct {
-	uid types.UID
+	uid             types.UID
 	resourceVersion string
 	generation      int64
 }
@@ -41,7 +41,7 @@ func (v VersionCache) Add(obj client.Object) {
 		return
 	}
 	v[cacheKeyFromObj(obj)] = cacheValue{
-		uid: obj.GetUID(),
+		uid:             obj.GetUID(),
 		resourceVersion: obj.GetResourceVersion(),
 		generation:      obj.GetGeneration(),
 	}

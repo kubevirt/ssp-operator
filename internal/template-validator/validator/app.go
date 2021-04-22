@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	templatev1 "github.com/openshift/api/template/v1"
 	flag "github.com/spf13/pflag"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"kubevirt.io/client-go/log"
 	kubevirtVersion "kubevirt.io/client-go/version"
@@ -20,6 +23,14 @@ const (
 	defaultPort = 8443
 	defaultHost = "0.0.0.0"
 )
+
+func init() {
+	// The Kubernetes Go client (nested within the OpenShift Go client)
+	// automatically registers its types in scheme.Scheme, however the
+	// additional OpenShift types must be registered manually.  AddToScheme
+	// registers the API group types (e.g. route.openshift.io/v1, Route) only.
+	utilruntime.Must(templatev1.Install(scheme.Scheme))
+}
 
 type App struct {
 	service.ServiceListen

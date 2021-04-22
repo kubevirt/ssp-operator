@@ -10,14 +10,14 @@ fi
 TAG="$1"  #TODO: validate tag is vX.Y.Z
 COMPONENT="kubevirt-template-validator"
 LDFLAGS="\
--X 'github.com/kubevirt/kubevirt-template-validator/internal/pkg/version.COMPONENT=$COMPONENT' \
--X 'github.com/kubevirt/kubevirt-template-validator/internal/pkg/version.VERSION=$TAG' "
+-X 'kubevirt.io/ssp-operator/internal/template-validator/version.COMPONENT=$COMPONENT' \
+-X 'kubevirt.io/ssp-operator/internal/template-validator/version.VERSION=$TAG' "
 if git rev-parse &>/dev/null; then
     BRANCH=$( git rev-parse --abbrev-ref HEAD )
     REVISION=$( git rev-parse --short HEAD )
     LDFLAGS="${LDFLAGS}\
--X 'github.com/kubevirt/kubevirt-template-validator/internal/pkg/version.BRANCH=$BRANCH' \
--X 'github.com/kubevirt/kubevirt-template-validator/internal/pkg/version.REVISION=$REVISION' "
+-X 'kubevirt.io/ssp-operator/internal/template-validator/version.BRANCH=$BRANCH' \
+-X 'kubevirt.io/ssp-operator/internal/template-validator/version.REVISION=$REVISION' "
 fi
 
 mkdir -p internal/template-validator/_out

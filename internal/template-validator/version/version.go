@@ -1,5 +1,5 @@
 // Don't edit this file:
-// the vars below are meant to be overwritten by ../../../hack/build/build.sh.
+// the vars below are meant to be overwritten by ssp-operator/hack/build-template-validator.sh
 
 package version
 
