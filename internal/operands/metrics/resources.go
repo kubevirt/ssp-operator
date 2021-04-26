@@ -23,7 +23,7 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 			Groups: []promv1.RuleGroup{{
 				Name: "cnv.rules",
 				Rules: []promv1.Rule{{
-					Expr:   intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by (node)"),
+					Expr:   intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by (node,os,workload,flavor)"),
 					Record: "cnv:vmi_status_running:count",
 				}},
 			}},
