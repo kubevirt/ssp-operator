@@ -19,12 +19,12 @@ var _ = Describe("Observed generation", func() {
 		waitUntilDeployed()
 	})
 
-	It("after deployment observedGeneration equals generation", func() {
+	It("[test_id:6058] after deployment observedGeneration equals generation", func() {
 		ssp := getSsp()
 		Expect(ssp.Status.ObservedGeneration).To(Equal(ssp.Generation))
 	})
 
-	It("should update observed generation after CR update", func() {
+	It("[test_id:6059] should update observed generation after CR update", func() {
 		watch, err := StartWatch(sspListerWatcher)
 		Expect(err).ToNot(HaveOccurred())
 		defer watch.Stop()
@@ -49,7 +49,7 @@ var _ = Describe("Observed generation", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("should update observed generation when removing CR", func() {
+	It("[test_id:6060] should update observed generation when removing CR", func() {
 		watch, err := StartWatch(sspListerWatcher)
 		Expect(err).ToNot(HaveOccurred())
 		defer watch.Stop()
