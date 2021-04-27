@@ -36,7 +36,7 @@ var _ = Describe("Metrics", func() {
 		Expect(apiClient.Get(ctx, prometheusRuleRes.GetKey(), &promv1.PrometheusRule{})).ToNot(HaveOccurred())
 	})
 
-	It("should recreate deleted prometheus rule", func() {
+	It("[test_id:6055] should recreate deleted prometheus rule", func() {
 		expectRecreateAfterDelete(&prometheusRuleRes)
 	})
 
