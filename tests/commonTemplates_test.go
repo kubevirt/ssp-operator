@@ -391,7 +391,7 @@ var _ = Describe("Common templates", func() {
 			})
 
 			table.DescribeTable("regular service account namespace RBAC", expectUserCan,
-				table.Entry("should be able to 'get' namespaces",
+				table.Entry("[test_id:6069] should be able to 'get' namespaces",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -402,7 +402,7 @@ var _ = Describe("Common templates", func() {
 							Resource:  "namespaces",
 						},
 					}),
-				table.Entry("should be able to 'list' namespaces",
+				table.Entry("[test_id:6070] should be able to 'list' namespaces",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -413,7 +413,7 @@ var _ = Describe("Common templates", func() {
 							Resource:  "namespaces",
 						},
 					}),
-				table.Entry("should be able to 'watch' namespaces",
+				table.Entry("[test_id:6071] should be able to 'watch' namespaces",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -426,7 +426,7 @@ var _ = Describe("Common templates", func() {
 					}))
 
 			table.DescribeTable("regular service account DV RBAC", expectUserCan,
-				table.Entry("should be able to 'get' datavolumes",
+				table.Entry("[test_id:6072] should be able to 'get' datavolumes",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -438,7 +438,7 @@ var _ = Describe("Common templates", func() {
 							Resource:  "datavolumes",
 						},
 					}),
-				table.Entry("should be able to 'list' datavolumes",
+				table.Entry("[test_id:6073] should be able to 'list' datavolumes",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -450,7 +450,7 @@ var _ = Describe("Common templates", func() {
 							Resource:  "datavolumes",
 						},
 					}),
-				table.Entry("should be able to 'watch' datavolumes",
+				table.Entry("[test_id:6074] should be able to 'watch' datavolumes",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
