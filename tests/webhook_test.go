@@ -110,7 +110,7 @@ var _ = Describe("Validation webhook", func() {
 				strategy.RevertToOriginalSspCr()
 			})
 
-			It("should fail to create SSP CR with invalid commonTemplates.namespace", func() {
+			It("[test_id:6056] should fail to create SSP CR with invalid commonTemplates.namespace", func() {
 				newSsp.Spec.CommonTemplates.Namespace = "nonexisting-templates-namespace"
 
 				err := apiClient.Create(ctx, newSsp)
@@ -157,7 +157,7 @@ var _ = Describe("Validation webhook", func() {
 			strategy.RevertToOriginalSspCr()
 		})
 
-		It("should fail to update commonTemplates.namespace", func() {
+		It("[test_id:6057] should fail to update commonTemplates.namespace", func() {
 			originalNs := foundSsp.Spec.CommonTemplates.Namespace
 			foundSsp.Spec.CommonTemplates.Namespace = originalNs + "-updated"
 			err := apiClient.Update(ctx, foundSsp)
