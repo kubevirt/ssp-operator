@@ -113,7 +113,7 @@ build-template-validator:
 	./hack/build-template-validator.sh ${VERSION}
 
 build-template-validator-container: build-template-validator
-	docker build -t ${VALIDATOR_IMG} ./internal/template-validator/
+	docker build -t ${VALIDATOR_IMG} . -f validator.Dockerfile
 
 push-template-validator-container: build-template-validator-container
 	docker push ${VALIDATOR_IMG}
