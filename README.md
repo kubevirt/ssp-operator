@@ -52,9 +52,8 @@ make container-push
 The repository and image name and tag can be changed 
 with these variables:
 ```shell
-export IMAGE_REGISTRY=<registry>
-export OPERATOR_IMAGE=<image_name>
-export IMAGE_TAG=<image_tag>
+export IMG_REPOSITORY=<registry>/<image_name> # for example: export IMG_REPOSITORY=quay.io/kubevirt/ssp-operator
+export IMG_TAG=<image_tag> # for example: export IMG_TAG=latest
 ```
 
 After the image is pushed to the repository,
