@@ -21,8 +21,8 @@ IMG ?= ${IMG_REPOSITORY}:${IMG_TAG}
 
 # Image URL variables for template-validator
 VALIDATOR_REPOSITORY ?= quay.io/kubevirt/kubevirt-template-validator
-VALIDAOTR_IMAGE_TAG ?= latest
-VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDAOTR_IMAGE_TAG}
+VALIDATOR_IMG_TAG ?= latest
+VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDATOR_IMG_TAG}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -115,10 +115,10 @@ container-push:
 build-template-validator:
 	./hack/build-template-validator.sh ${VERSION}
 
-build-template-validator-container: build-template-validator
+build-template-validator-container:
 	docker build -t ${VALIDATOR_IMG} . -f validator.Dockerfile
 
-push-template-validator-container: build-template-validator-container
+push-template-validator-container:
 	docker push ${VALIDATOR_IMG}
 
 # find or download controller-gen
@@ -176,5 +176,5 @@ bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: release
-release: container-build container-push bundle build-functests
+release: container-build container-push build-template-validator-container push-template-validator-container bundle build-functests
 	cp ./tests.test _out/tests.test
