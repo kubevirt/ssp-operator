@@ -30,6 +30,7 @@ spec:
         env:
           - name: KVM_INFO_IMAGE
           - name: VALIDATOR_IMAGE
+            value: "$VALIDATOR_IMG"
           - name: VIRT_LAUNCHER_IMAGE
           - name: NODE_LABELLER_IMAGE
           - name: CPU_PLUGIN_IMAGE

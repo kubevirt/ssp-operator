@@ -2,7 +2,6 @@ package template_validator
 
 import (
 	"fmt"
-
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -137,6 +136,9 @@ func reconcileService(request *common.Request) (common.ResourceStatus, error) {
 func reconcileDeployment(request *common.Request) (common.ResourceStatus, error) {
 	validatorSpec := request.Instance.Spec.TemplateValidator
 	image := getTemplateValidatorImage()
+	if image == "" {
+		panic("Cannot reconcile without valid image name")
+	}
 	deployment := newDeployment(request.Namespace, *validatorSpec.Replicas, image)
 	addPlacementFields(deployment, validatorSpec.Placement)
 	return common.CreateOrUpdate(request).
