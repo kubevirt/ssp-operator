@@ -72,8 +72,11 @@ install: manifests kustomize
 uninstall: manifests kustomize
 	$(KUSTOMIZE) build config/crd | $(OC) delete -f -
 
+manager-envsubst:
+	cd config/manager && VALIDATOR_IMG=${VALIDATOR_IMG} envsubst < manager.template.yaml > manager.yaml
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
+deploy: manifests kustomize manager-envsubst
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(OC) apply -f -
 
@@ -152,7 +155,7 @@ endif
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: kustomize operator-sdk manifests csv-generator
+bundle: kustomize operator-sdk manifests csv-generator manager-envsubst
 	./operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | ./operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
