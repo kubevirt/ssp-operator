@@ -59,11 +59,11 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("app labels", func() {
-		It("adds app labels from SSP CR", func() {
+		It("[test_id:5790]adds app labels from SSP CR", func() {
 			expectAppLabels(&prometheusRuleRes)
 		})
 
-		It("restores modified app labels", func() {
+		It("[test_id:5790]restores modified app labels", func() {
 			expectAppLabelsRestoreAfterUpdate(&prometheusRuleRes)
 		})
 	})
