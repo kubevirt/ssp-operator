@@ -196,11 +196,11 @@ var _ = Describe("Common templates", func() {
 		})
 
 		table.DescribeTable("should set app labels", expectAppLabels,
-			table.Entry("edit role", &editClusterRole),
-			table.Entry("golden images namespace", &goldenImageNS),
-			table.Entry("view role", &viewRole),
-			table.Entry("view role binding", &viewRoleBinding),
-			table.Entry("common-template in custom NS", &testTemplate),
+			table.Entry("[test_id:6215] edit role", &editClusterRole),
+			table.Entry("[test_id:6216] golden images namespace", &goldenImageNS),
+			table.Entry("[test_id:6217] view role", &viewRole),
+			table.Entry("[test_id:6218] view role binding", &viewRoleBinding),
+			table.Entry("[test_id:6219] common-template in custom NS", &testTemplate),
 		)
 	})
 
@@ -230,11 +230,11 @@ var _ = Describe("Common templates", func() {
 		})
 
 		table.DescribeTable("should restore app labels", expectAppLabelsRestoreAfterUpdate,
-			table.Entry("edit role", &editClusterRole),
-			table.Entry("golden images namespace", &goldenImageNS),
-			table.Entry("view role", &viewRole),
-			table.Entry("view role binding", &viewRoleBinding),
-			table.Entry("common-template in custom NS", &testTemplate),
+			table.Entry("[test_id:6210] edit role", &editClusterRole),
+			table.Entry("[test_id:6211] golden images namespace", &goldenImageNS),
+			table.Entry("[test_id:6212] view role", &viewRole),
+			table.Entry("[test_id:6213] view role binding", &viewRoleBinding),
+			table.Entry("[test_id:6214] common-template in custom NS", &testTemplate),
 		)
 	})
 
@@ -299,7 +299,7 @@ var _ = Describe("Common templates", func() {
 			Expect(apiClient.Delete(ctx, ownerTemplate)).ToNot(HaveOccurred(), "deletion of dummy owner template failed")
 		})
 
-		It("should replace ownerReference with owner annotations for older templates", func() {
+		It("[test_id:5621]should replace ownerReference with owner annotations for older templates", func() {
 			triggerReconciliation()
 
 			// Template should eventually be updated by the operator
@@ -312,7 +312,7 @@ var _ = Describe("Common templates", func() {
 					hasOwnerAnnotations(updatedTpl.GetAnnotations())
 			}, shortTimeout).Should(BeTrue(), "ownerReference was not replaced by owner annotations on the old template")
 		})
-		It("should remove labels from old templates", func() {
+		It("[test_id:5620]should remove labels from old templates", func() {
 			triggerReconciliation()
 			// Template should eventually be updated by the operator
 			Eventually(func() bool {
@@ -327,7 +327,7 @@ var _ = Describe("Common templates", func() {
 					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest"
 			}, shortTimeout).Should(BeTrue(), "labels were not removed from older templates")
 		})
-		It("[test_id:5969]: should add deprecated annotation to old templates", func() {
+		It("[test_id:5969] should add deprecated annotation to old templates", func() {
 			triggerReconciliation()
 
 			Eventually(func() bool {
@@ -338,7 +338,7 @@ var _ = Describe("Common templates", func() {
 					updatedTpl.Annotations[commonTemplates.TemplateDeprecatedAnnotation] == "true"
 			}, shortTimeout).Should(BeTrue(), "deprecated annotation should be added to old template")
 		})
-		It("should continue to have labels on latest templates", func() {
+		It("[test_id:5622]should continue to have labels on latest templates", func() {
 			triggerReconciliation()
 
 			var latestTemplates templatev1.TemplateList

@@ -135,12 +135,12 @@ var _ = Describe("Template validator", func() {
 		)
 
 		table.DescribeTable("should set app labels", expectAppLabels,
-			table.Entry("cluster role", &clusterRoleRes),
-			table.Entry("cluster role binding", &clusterRoleBindingRes),
-			table.Entry("validating webhook configuration", &webhookConfigRes),
-			table.Entry("service account", &serviceAccountRes),
-			table.Entry("service", &serviceRes),
-			table.Entry("deployment", &deploymentRes),
+			table.Entry("[test_id:5824]cluster role", &clusterRoleRes),
+			table.Entry("[test_id:5825]cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:5826]validating webhook configuration", &webhookConfigRes),
+			table.Entry("[test_id:6201]service account", &serviceAccountRes),
+			table.Entry("[test_id:5827]service", &serviceRes),
+			table.Entry("[test_id:5828]deployment", &deploymentRes),
 		)
 	})
 
@@ -183,11 +183,11 @@ var _ = Describe("Template validator", func() {
 		})
 
 		table.DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
-			table.Entry("cluster role", &clusterRoleRes),
-			table.Entry("cluster role binding", &clusterRoleBindingRes),
-			table.Entry("validating webhook configuration", &webhookConfigRes),
-			table.Entry("service", &serviceRes),
-			table.Entry("deployment", &deploymentRes),
+			table.Entry("[test_id:6205] cluster role", &clusterRoleRes),
+			table.Entry("[test_id:6206] cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:6207] validating webhook configuration", &webhookConfigRes),
+			table.Entry("[test_id:6208] service", &serviceRes),
+			table.Entry("[test_id:6209] deployment", &deploymentRes),
 		)
 	})
 
@@ -210,7 +210,7 @@ var _ = Describe("Template validator", func() {
 		}, timeout, time.Second).Should(BeTrue())
 	})
 
-	It("should set Deployed phase and conditions when validator pods are running", func() {
+	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", func() {
 		foundSsp := getSsp()
 
 		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed))
@@ -311,7 +311,7 @@ var _ = Describe("Template validator", func() {
 		// TODO - This test is currently pending, because it can be flaky.
 		//        If the operator is too slow and does not notice Deployment
 		//        state when not all pods are running, the test would fail.
-		PIt("[test_id: TODO]should set available condition when at least one validator pod is running", func() {
+		PIt("[test_id:5830]should set available condition when at least one validator pod is running", func() {
 			watch, err := StartWatch(sspListerWatcher)
 			Expect(err).ToNot(HaveOccurred())
 			defer watch.Stop()
@@ -504,7 +504,7 @@ var _ = Describe("Template validator", func() {
 				return apiClient.Create(ctx, vm)
 			}, shortTimeout).Should(BeNil(), "Failed to create VM")
 		})
-		It("Test vm with UI style annotations", func() {
+		It("[test_id:6199]Test vm with UI style annotations", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 

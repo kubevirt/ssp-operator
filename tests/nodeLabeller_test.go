@@ -105,18 +105,18 @@ var _ = Describe("Node Labeller", func() {
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(errors.IsNotFound(err)).To(Equal(true))
 		},
-			table.Entry("cluster role", &clusterRoleRes),
-			table.Entry("cluster role binding", &clusterRoleBindingRes),
-			table.Entry("security context constraint", &securityContextConstraintRes),
+			table.Entry("[test_id:6068]cluster role", &clusterRoleRes),
+			table.Entry("[test_id:6067]cluster role binding", &clusterRoleBindingRes),
+			table.Entry("[test_id:6066]security context constraint", &securityContextConstraintRes),
 		)
 
 		table.DescribeTable("deleted namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(errors.IsNotFound(err)).To(Equal(true))
 		},
-			table.Entry("service account", &serviceAccountRes),
-			table.Entry("configMap", &configMapRes),
-			table.Entry("daemonSet", &daemonSetRes),
+			table.Entry("[test_id:6063]service account", &serviceAccountRes),
+			table.Entry("[test_id:6064]configMap", &configMapRes),
+			table.Entry("[test_id:6065]daemonSet", &daemonSetRes),
 		)
 	})
 
