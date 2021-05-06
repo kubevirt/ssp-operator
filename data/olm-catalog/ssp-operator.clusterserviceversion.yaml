@@ -27,7 +27,7 @@ metadata:
     containerImage: REPLACE_IMAGE:TAG
     description: Manages KubeVirt addons for Scheduling, Scale, Performance
     operators.operatorframework.io/builder: operator-sdk-v1.4.2
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: ssp-operator.v0.12.0
   namespace: kubevirt
 spec:
@@ -108,18 +108,6 @@ spec:
           - datavolumes/source
           verbs:
           - create
-        - apiGroups:
-          - coordination.k8s.io
-          resources:
-          - leases
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
         - apiGroups:
           - ""
           resources:
@@ -347,9 +335,7 @@ spec:
             spec:
               containers:
               - args:
-                - --enable-leader-election
-                - --ready-probe-addr
-                - :9440
+                - --leader-elect
                 command:
                 - /manager
                 env:
@@ -362,6 +348,12 @@ spec:
                 - name: OPERATOR_VERSION
                   value: 0.12.0
                 image: quay.io/kubevirt/ssp-operator:latest
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
                 name: manager
                 ports:
                 - containerPort: 9443
@@ -370,18 +362,28 @@ spec:
                 readinessProbe:
                   httpGet:
                     path: /readyz
-                    port: 9440
+                    port: 8081
                   initialDelaySeconds: 5
-                resources: {}
+                  periodSeconds: 10
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 150Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
               priorityClassName: system-cluster-critical
+              securityContext:
+                runAsUser: 1000
               serviceAccountName: ssp-operator
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
         - apiGroups:
           - ""
+          - coordination.k8s.io
           resources:
           - configmaps
+          - leases
           verbs:
           - get
           - list
@@ -390,14 +392,6 @@ spec:
           - update
           - patch
           - delete
-        - apiGroups:
-          - ""
-          resources:
-          - configmaps/status
-          verbs:
-          - get
-          - update
-          - patch
         - apiGroups:
           - ""
           resources:

@@ -93,6 +93,11 @@ var _ reconcile.Reconciler = &SSPReconciler{}
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
 func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
 	reqLogger.V(1).Info("Starting reconciliation...")
