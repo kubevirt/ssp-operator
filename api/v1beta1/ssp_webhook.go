@@ -1,5 +1,5 @@
 /*
-
+Copyright 2021.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ func (r *SSP) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta1-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta1,name=validation.ssp.kubevirt.io,webhookVersions=v1,sideEffects=None
+// +kubebuilder:webhook:path=/validate-ssp-kubevirt-io-v1beta1-ssp,mutating=false,failurePolicy=fail,sideEffects=None,groups=ssp.kubevirt.io,resources=ssps,verbs=create;update,versions=v1beta1,name=validation.ssp.kubevirt.io,admissionReviewVersions={v1,v1beta1}
 
 var _ webhook.Validator = &SSP{}
 
