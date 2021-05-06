@@ -3,6 +3,7 @@ approvers:
   - ksimon1
   - vatsalparekh
   - akrejcir
+  - kwiesmueller
 reviewers:
   - omeryahud
   - ksimon1
@@ -10,3 +11,5 @@ reviewers:
   - vatsalparekh
   - shwetaap
   - rnetser
+  - kwiesmueller
+  
