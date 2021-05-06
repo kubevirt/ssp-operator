@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
