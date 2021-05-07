@@ -284,7 +284,7 @@ var _ = Describe("Common templates", func() {
 						testWorkflowLabel:                    "true",
 					},
 					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion: "template.openshift.io/v1",
+						APIVersion: templatev1.GroupVersion.String(),
 						Kind:       "Template",
 						Name:       ownerTemplate.Name,
 						UID:        ownerTemplate.UID,
@@ -398,7 +398,7 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Version:   "v1",
+							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
 					}),
@@ -409,7 +409,7 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Version:   "v1",
+							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
 					}),
@@ -420,7 +420,7 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Version:   "v1",
+							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
 					}))
@@ -433,8 +433,8 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     "cdi.kubevirt.io",
-							Version:   "v1beta1",
+							Group:     commonTemplates.CdiApiGroup,
+							Version:   commonTemplates.CdiApiVersion,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -445,8 +445,8 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     "cdi.kubevirt.io",
-							Version:   "v1beta1",
+							Group:     commonTemplates.CdiApiGroup,
+							Version:   commonTemplates.CdiApiVersion,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -457,8 +457,8 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "watch",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     "cdi.kubevirt.io",
-							Version:   "v1beta1",
+							Group:     commonTemplates.CdiApiGroup,
+							Version:   commonTemplates.CdiApiVersion,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -469,8 +469,8 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:        "create",
 							Namespace:   commonTemplates.GoldenImagesNSname,
-							Group:       "cdi.kubevirt.io",
-							Version:     "v1beta1",
+							Group:       commonTemplates.CdiApiGroup,
+							Version:     commonTemplates.CdiApiVersion,
 							Resource:    "datavolumes",
 							Subresource: "source",
 						},
@@ -485,8 +485,8 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     "cdi.kubevirt.io",
-							Version:   "v1beta1",
+							Group:     commonTemplates.CdiApiGroup,
+							Version:   commonTemplates.CdiApiVersion,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -497,8 +497,8 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     "cdi.kubevirt.io",
-							Version:   "v1beta1",
+							Group:     commonTemplates.CdiApiGroup,
+							Version:   commonTemplates.CdiApiVersion,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -511,7 +511,7 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Version:   "v1",
+							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
 					}))
@@ -523,7 +523,7 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Version:   "v1",
+							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
 					}),
@@ -534,7 +534,7 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Version:   "v1",
+							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
 					}),
@@ -545,7 +545,7 @@ var _ = Describe("Common templates", func() {
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
 							Namespace: commonTemplates.GoldenImagesNSname,
-							Version:   "v1",
+							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "pods",
 						},
 					}),
@@ -582,7 +582,7 @@ var _ = Describe("Common templates", func() {
 						RoleRef: rbac.RoleRef{
 							Kind:     "ClusterRole",
 							Name:     commonTemplates.EditClusterRoleName,
-							APIGroup: "rbac.authorization.k8s.io",
+							APIGroup: rbac.GroupName,
 						},
 					}
 					Expect(apiClient.Create(ctx, editObj)).ToNot(HaveOccurred(), "Failed to create RoleBinding")
@@ -602,7 +602,7 @@ var _ = Describe("Common templates", func() {
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
 								Namespace: commonTemplates.GoldenImagesNSname,
-								Version:   "v1",
+								Version:   core.SchemeGroupVersion.Version,
 								Resource:  "persistentvolumeclaims",
 							},
 						}),
@@ -611,7 +611,7 @@ var _ = Describe("Common templates", func() {
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
 								Namespace: commonTemplates.GoldenImagesNSname,
-								Version:   "v1",
+								Version:   core.SchemeGroupVersion.Version,
 								Resource:  "persistentvolumeclaims",
 							},
 						}),
@@ -620,8 +620,8 @@ var _ = Describe("Common templates", func() {
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "get",
 								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     "cdi.kubevirt.io",
-								Version:   "v1beta1",
+								Group:     commonTemplates.CdiApiGroup,
+								Version:   commonTemplates.CdiApiVersion,
 								Resource:  "datavolumes",
 							},
 						}),
@@ -630,8 +630,8 @@ var _ = Describe("Common templates", func() {
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
 								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     "cdi.kubevirt.io",
-								Version:   "v1beta1",
+								Group:     commonTemplates.CdiApiGroup,
+								Version:   commonTemplates.CdiApiVersion,
 								Resource:  "datavolumes",
 							},
 						}),
@@ -640,8 +640,8 @@ var _ = Describe("Common templates", func() {
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
 								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     "cdi.kubevirt.io",
-								Version:   "v1beta1",
+								Group:     commonTemplates.CdiApiGroup,
+								Version:   commonTemplates.CdiApiVersion,
 								Resource:  "datavolumes",
 							},
 						}),
@@ -650,8 +650,8 @@ var _ = Describe("Common templates", func() {
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
 								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     "cdi.kubevirt.io",
-								Version:   "v1beta1",
+								Group:     commonTemplates.CdiApiGroup,
+								Version:   commonTemplates.CdiApiVersion,
 								Resource:  "datavolumes",
 							},
 						}),

@@ -606,7 +606,7 @@ func watchClusterResources(builder *ctrl.Builder) {
 	watchResources(builder,
 		&libhandler.EnqueueRequestForAnnotation{
 			Type: schema.GroupKind{
-				Group: "ssp.kubevirt.io",
+				Group: ssp.GroupVersion.Group,
 				Kind:  "SSP",
 			},
 		},

@@ -10,4 +10,7 @@ const (
 	TemplateFlavorLabelPrefix    = "flavor.template.kubevirt.io/"
 	TemplateWorkloadLabelPrefix  = "workload.template.kubevirt.io/"
 	TemplateDeprecatedAnnotation = "template.kubevirt.io/deprecated"
+
+	CdiApiGroup = "cdi.kubevirt.io"
+	CdiApiVersion = "v1beta1"
 )

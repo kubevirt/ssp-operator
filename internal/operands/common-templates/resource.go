@@ -56,22 +56,22 @@ func newViewRole(namespace string) *rbac.Role {
 		},
 		Rules: []rbac.PolicyRule{
 			{
-				APIGroups: []string{""},
+				APIGroups: []string{core.GroupName},
 				Resources: []string{"persistentvolumeclaims", "persistentvolumeclaims/status"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
-				APIGroups: []string{"cdi.kubevirt.io"},
+				APIGroups: []string{CdiApiGroup},
 				Resources: []string{"datavolumes"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
-				APIGroups: []string{"cdi.kubevirt.io"},
+				APIGroups: []string{CdiApiGroup},
 				Resources: []string{"datavolumes/source"},
 				Verbs:     []string{"create"},
 			},
 			{
-				APIGroups: []string{""},
+				APIGroups: []string{core.GroupName},
 				Resources: []string{"namespaces"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
@@ -87,20 +87,20 @@ func newViewRoleBinding(namespace string) *rbac.RoleBinding {
 		},
 		Subjects: []rbac.Subject{
 			{
-				Kind:     "Group",
+				Kind:     rbac.GroupKind,
 				Name:     "system:authenticated",
-				APIGroup: "rbac.authorization.k8s.io",
+				APIGroup: rbac.GroupName,
 			},
 			{
-				Kind:     "Group",
+				Kind:     rbac.GroupKind,
 				Name:     "system:serviceaccounts",
-				APIGroup: "rbac.authorization.k8s.io",
+				APIGroup: rbac.GroupName,
 			},
 		},
 		RoleRef: rbac.RoleRef{
 			Kind:     "Role",
 			Name:     ViewRoleName,
-			APIGroup: "rbac.authorization.k8s.io",
+			APIGroup: rbac.GroupName,
 		},
 	}
 }
@@ -112,22 +112,22 @@ func newEditRole() *rbac.ClusterRole {
 		},
 		Rules: []rbac.PolicyRule{
 			{
-				APIGroups: []string{""},
+				APIGroups: []string{core.GroupName},
 				Resources: []string{"persistentvolumeclaims"},
 				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 			},
 			{
-				APIGroups: []string{""},
+				APIGroups: []string{core.GroupName},
 				Resources: []string{"persistentvolumeclaims/status"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
-				APIGroups: []string{"cdi.kubevirt.io"},
+				APIGroups: []string{CdiApiGroup},
 				Resources: []string{"datavolumes"},
 				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 			},
 			{
-				APIGroups: []string{"cdi.kubevirt.io"},
+				APIGroups: []string{CdiApiGroup},
 				Resources: []string{"datavolumes/source"},
 				Verbs:     []string{"create"},
 			},

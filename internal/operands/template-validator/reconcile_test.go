@@ -111,7 +111,9 @@ var _ = Describe("Template validator operand", func() {
 		service := &core.Service{}
 		Expect(request.Client.Get(request.Context, key, service)).ToNot(HaveOccurred())
 
-		const testClusterIp = "1.2.3.4"
+		// This address is from a range of IP addresses reserved for documentation.
+		const testClusterIp = "198.51.100.42"
+
 		service.Spec.ClusterIP = testClusterIp
 		Expect(request.Client.Update(request.Context, service)).ToNot(HaveOccurred())
 
