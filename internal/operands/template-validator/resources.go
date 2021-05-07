@@ -9,6 +9,7 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	kubevirt "kubevirt.io/client-go/api/v1"
 
 	"kubevirt.io/ssp-operator/internal/common"
 )
@@ -77,7 +78,7 @@ func newClusterRoleBinding(namespace string) *rbac.ClusterRoleBinding {
 		RoleRef: rbac.RoleRef{
 			Kind:     "ClusterRole",
 			Name:     ClusterRoleName,
-			APIGroup: "rbac.authorization.k8s.io",
+			APIGroup: rbac.GroupName,
 		},
 		Subjects: []rbac.Subject{{
 			Kind:      "ServiceAccount",
@@ -175,6 +176,20 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 	fail := admission.Fail
 	sideEffectsNone := admission.SideEffectClassNone
 
+	var rules []admission.RuleWithOperations
+	for _, version := range kubevirt.ApiSupportedWebhookVersions {
+		rules = append(rules, admission.RuleWithOperations{
+			Operations: []admission.OperationType{
+				admission.Create, admission.Update,
+			},
+			Rule: admission.Rule{
+				APIGroups:   []string{kubevirt.GroupName},
+				APIVersions: []string{version},
+				Resources:   []string{"virtualmachines"},
+			},
+		})
+	}
+
 	return &admission.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: WebhookName,
@@ -191,25 +206,7 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 					Path:      &path,
 				},
 			},
-			Rules: []admission.RuleWithOperations{{
-				Operations: []admission.OperationType{
-					admission.Create, admission.Update,
-				},
-				Rule: admission.Rule{
-					APIGroups:   []string{"kubevirt.io"},
-					APIVersions: []string{"v1"},
-					Resources:   []string{"virtualmachines"},
-				},
-			}, {
-				Operations: []admission.OperationType{
-					admission.Create, admission.Update,
-				},
-				Rule: admission.Rule{
-					APIGroups:   []string{"kubevirt.io"},
-					APIVersions: []string{"v1alpha3"},
-					Resources:   []string{"virtualmachines"},
-				},
-			}},
+			Rules: rules,
 			FailurePolicy: &fail,
 			SideEffects:   &sideEffectsNone,
 			// TODO - add "v1" to the list once the template-validator

@@ -57,7 +57,7 @@ func newClusterRoleBinding(namespace string) *rbac.ClusterRoleBinding {
 		RoleRef: rbac.RoleRef{
 			Kind:     "ClusterRole",
 			Name:     ClusterRoleName,
-			APIGroup: "rbac.authorization.k8s.io",
+			APIGroup: rbac.GroupName,
 		},
 		Subjects: []rbac.Subject{{
 			Kind:      "ServiceAccount",
