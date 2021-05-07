@@ -1,10 +1,12 @@
-package validation
+package path
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Path", func() {
@@ -27,7 +29,7 @@ var _ = Describe("Path", func() {
 				"$.spec.domain.resources.requests.memory",
 			}
 			for _, s := range testStrings {
-				p, err := NewPath(s)
+				p, err := New(s)
 				Expect(p).To(BeNil())
 				Expect(err).To(Equal(ErrInvalidJSONPath))
 			}
@@ -54,20 +56,20 @@ var _ = Describe("Path", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 		})
 
 		It("Should return error", func() {
-			p, err := NewPath("jsonpath::.spec.this.path.does.not.exist")
+			p, err := New("jsonpath::.spec.this.path.does.not.exist")
 			Expect(p).To(Not(BeNil()))
 			Expect(err).To(BeNil())
 
-			err = p.Find(vmCirros)
+			_, err = p.Find(vmCirros)
 			Expect(err).To(Equal(ErrInvalidJSONPath))
 		})
 
 		It("Should detect malformed path", func() {
-			p, err := NewPath("jsonpath::random56junk%(*$%&*()")
+			p, err := New("jsonpath::random56junk%(*$%&*()")
 			Expect(p).To(BeNil())
 			Expect(err).To(Not(BeNil()))
 		})
@@ -80,20 +82,20 @@ var _ = Describe("Path", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 		})
 
 		It("Should provide some integer results", func() {
 			s := "jsonpath::.spec.domain.resources.requests.memory"
-			p, err := NewPath(s)
+			p, err := New(s)
 			Expect(p).To(Not(BeNil()))
 			Expect(err).To(BeNil())
 
-			err = p.Find(vmCirros)
+			results, err := p.Find(vmCirros)
 			Expect(err).To(BeNil())
-			Expect(p.Len()).To(BeNumerically(">=", 1))
+			Expect(results.Len()).To(BeNumerically(">=", 1))
 
-			vals, err := p.AsInt64()
+			vals, err := results.AsInt64()
 			Expect(err).To(BeNil())
 			Expect(len(vals)).To(Equal(1))
 			Expect(vals[0]).To(BeNumerically(">", 1024))
@@ -101,15 +103,15 @@ var _ = Describe("Path", func() {
 
 		It("Should provide some string results", func() {
 			s := "jsonpath::.spec.domain.machine.type"
-			p, err := NewPath(s)
+			p, err := New(s)
 			Expect(p).To(Not(BeNil()))
 			Expect(err).To(BeNil())
 
-			err = p.Find(vmCirros)
+			results, err := p.Find(vmCirros)
 			Expect(err).To(BeNil())
-			Expect(p.Len()).To(BeNumerically(">=", 1))
+			Expect(results.Len()).To(BeNumerically(">=", 1))
 
-			vals, err := p.AsString()
+			vals, err := results.AsString()
 			Expect(err).To(BeNil())
 			Expect(len(vals)).To(Equal(1))
 			Expect(vals[0]).To(Equal("q35"))
@@ -120,7 +122,7 @@ var _ = Describe("Path", func() {
 		   - uninitialized paths (e.g. legal paths but with a nil along the chain)
 		It("Should handle uninitialized paths", func() {
 			s := "jsonpath::.spec.domain.cpu.cores"
-			p, err := validation.NewPath(s)
+			p, err := New(s)
 			Expect(p).To(Not(BeNil()))
 			Expect(err).To(BeNil())
 

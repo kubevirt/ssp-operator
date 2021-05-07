@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	k6tv1 "kubevirt.io/client-go/api/v1"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 )
 
 // the flow:
@@ -31,15 +33,15 @@ type Rule struct {
 
 func (r *Rule) findPathOn(vm *k6tv1.VirtualMachine) (bool, error) {
 	var err error
-	p, err := NewPath(r.Valid)
+	p, err := path.New(r.Valid)
 	if err != nil {
 		return false, err
 	}
-	err = p.Find(vm)
+	results, err := p.Find(vm)
 	if err != nil {
 		return false, err
 	}
-	return p.Len() > 0, nil
+	return results.Len() > 0, nil
 }
 
 func (r *Rule) IsAppliableOn(vm *k6tv1.VirtualMachine) (bool, error) {
@@ -48,7 +50,7 @@ func (r *Rule) IsAppliableOn(vm *k6tv1.VirtualMachine) (bool, error) {
 		return true, nil
 	}
 	ok, err := r.findPathOn(vm)
-	if err == ErrInvalidJSONPath {
+	if err == path.ErrInvalidJSONPath {
 		return false, nil
 	}
 	return ok, err

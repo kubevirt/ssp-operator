@@ -6,7 +6,9 @@ import (
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
+
 	k6tobjs "kubevirt.io/ssp-operator/internal/template-validator/kubevirtjobs"
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Specialized", func() {
@@ -18,7 +20,7 @@ var _ = Describe("Specialized", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 			vmRef = k6tobjs.NewDefaultVirtualMachine()
 		})
 
@@ -99,7 +101,7 @@ var _ = Describe("Specialized", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 			vmRef = k6tobjs.NewDefaultVirtualMachine()
 		})
 

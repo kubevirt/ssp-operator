@@ -3,6 +3,8 @@ package validation
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Rules", func() {
@@ -54,7 +56,7 @@ var _ = Describe("Rules", func() {
 			Expect(len(rules)).To(Equal(2))
 		})
 		It("Should apply on a relevant VM", func() {
-			vm := NewVMCirros()
+			vm := test_utils.NewVMCirros()
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
@@ -69,7 +71,7 @@ var _ = Describe("Rules", func() {
 			Expect(ok).To(BeTrue())
 		})
 		It("Should NOT apply on a NOT relevant VM", func() {
-			vm := NewVMCirros()
+			vm := test_utils.NewVMCirros()
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",

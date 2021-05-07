@@ -27,6 +27,8 @@ import (
 	"strings"
 
 	k6tv1 "kubevirt.io/client-go/api/v1"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 )
 
 type RuleType string
@@ -139,7 +141,7 @@ type intRule struct {
 // The first argument is either a single literal integer or a JSON path to one or more integers.
 // Currently the function does not support multiple literal integers.
 func decodeInts(obj interface{}, vm, ref *k6tv1.VirtualMachine) ([]int64, error) {
-	if val, ok := toInt64(obj); ok {
+	if val, ok := path.ToInt64(obj); ok {
 		return []int64{val}, nil
 	}
 
@@ -147,7 +149,7 @@ func decodeInts(obj interface{}, vm, ref *k6tv1.VirtualMachine) ([]int64, error)
 	if !ok {
 		return nil, fmt.Errorf("unsupported type %v (%v)", obj, reflect.TypeOf(obj).Name())
 	}
-	if !isJSONPath(jsonPath) {
+	if !path.IsJSONPath(jsonPath) {
 		return nil, fmt.Errorf("parameter is not JSONPath: %v", jsonPath)
 	}
 
@@ -172,7 +174,7 @@ func decodeInt(obj interface{}, vm, ref *k6tv1.VirtualMachine) (int64, error) {
 // The first argument is either a single literal string or a JSON path to one or more strings.
 // Currently the function does not support multiple literal strings.
 func decodeStrings(s string, vm, ref *k6tv1.VirtualMachine) ([]string, error) {
-	if !isJSONPath(s) {
+	if !path.IsJSONPath(s) {
 		return []string{s}, nil
 	}
 	v, err := decodeJSONPathString(s, vm)
@@ -209,16 +211,12 @@ func decodeJSONPathString(jsonPath string, vm *k6tv1.VirtualMachine) ([]string, 
 	return path.AsString()
 }
 
-func findJsonPath(jsonPath string, vm *k6tv1.VirtualMachine) (*Path, error) {
-	path, err := NewPath(jsonPath)
+func findJsonPath(jsonPath string, vm *k6tv1.VirtualMachine) (path.Results, error) {
+	path, err := path.New(jsonPath)
 	if err != nil {
 		return nil, err
 	}
-	err = path.Find(vm)
-	if err != nil {
-		return nil, err
-	}
-	return path, nil
+	return path.Find(vm)
 }
 
 func NewIntRule(r *Rule, vm, ref *k6tv1.VirtualMachine) (RuleApplier, error) {

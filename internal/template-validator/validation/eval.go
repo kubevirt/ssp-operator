@@ -30,6 +30,7 @@ import (
 	"kubevirt.io/client-go/log"
 
 	k6tobjs "kubevirt.io/ssp-operator/internal/template-validator/kubevirtjobs"
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 )
 
 var (
@@ -118,7 +119,7 @@ func (r *Result) ToStatusCauses() []metav1.StatusCause {
 		if ok, message := needsCause(&rr); ok {
 			causes = append(causes, metav1.StatusCause{
 				Type:    metav1.CauseTypeFieldValueInvalid,
-				Field:   TrimJSONPath(rr.Ref.Path),
+				Field:   path.TrimJSONPath(rr.Ref.Path),
 				Message: fmt.Sprintf("%s: %s", rr.Ref.Message, message),
 			})
 		}

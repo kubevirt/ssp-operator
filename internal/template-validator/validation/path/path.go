@@ -16,7 +16,7 @@
  * Copyright 2019 Red Hat, Inc.
  */
 
-package validation
+package path
 
 import (
 	"fmt"
@@ -37,14 +37,11 @@ const (
 	JSONPathPrefix string = "jsonpath::"
 )
 
-func isJSONPath(s string) bool {
+func IsJSONPath(s string) bool {
 	return strings.HasPrefix(s, JSONPathPrefix)
 }
 
-type Path struct {
-	jp      *jsonpath.JSONPath
-	results [][]reflect.Value
-}
+type Path jsonpath.JSONPath
 
 func TrimJSONPath(path string) string {
 	s := strings.TrimPrefix(path, JSONPathPrefix)
@@ -53,14 +50,14 @@ func TrimJSONPath(path string) string {
 }
 
 func NewJSONPathFromString(path string) (string, error) {
-	if !isJSONPath(path) {
+	if !IsJSONPath(path) {
 		return "", ErrInvalidJSONPath
 	}
 	expr := TrimJSONPath(path)
 	return fmt.Sprintf("{.spec.template%s}", expr), nil
 }
 
-func NewPath(expr string) (*Path, error) {
+func New(expr string) (*Path, error) {
 	var err error
 	pathExpr, err := NewJSONPathFromString(expr)
 	if err != nil {
@@ -72,30 +69,31 @@ func NewPath(expr string) (*Path, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Path{jp: jp}, nil
+	return (*Path)(jp), nil
 }
 
-func (p *Path) Find(vm *k6tv1.VirtualMachine) error {
-	var err error
-	p.results, err = p.jp.FindResults(vm)
+func (p *Path) Find(vm *k6tv1.VirtualMachine) (Results, error) {
+	results, err := (*jsonpath.JSONPath)(p).FindResults(vm)
 	if err != nil {
-		return ErrInvalidJSONPath
+		return nil, ErrInvalidJSONPath
 	}
-	return nil
+	return results, nil
 }
 
-func (p *Path) Len() int {
+type Results [][]reflect.Value
+
+func (r *Results) Len() int {
 	totalCount := 0
-	for _, result := range p.results {
+	for _, result := range *r {
 		totalCount += len(result)
 	}
 	return totalCount
 }
 
-func (p *Path) AsString() ([]string, error) {
+func (r *Results) AsString() ([]string, error) {
 	var ret []string
-	for i := range p.results {
-		res := p.results[i]
+	for i := range *r {
+		res := (*r)[i]
 		for j := range res {
 			obj := res[j].Interface()
 			strObj, ok := obj.(string)
@@ -109,13 +107,13 @@ func (p *Path) AsString() ([]string, error) {
 	return ret, nil
 }
 
-func (p *Path) AsInt64() ([]int64, error) {
+func (r *Results) AsInt64() ([]int64, error) {
 	var ret []int64
-	for i := range p.results {
-		res := p.results[i]
+	for i := range *r {
+		res := (*r)[i]
 		for j := range res {
 			obj := res[j].Interface()
-			if intObj, ok := toInt64(obj); ok {
+			if intObj, ok := ToInt64(obj); ok {
 				ret = append(ret, intObj)
 				continue
 			}

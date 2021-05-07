@@ -16,13 +16,13 @@
  * Copyright 2019 Red Hat, Inc.
  */
 
-package validation
+package path
 
 import (
 	"math"
 )
 
-func toInt64(obj interface{}) (int64, bool) {
+func ToInt64(obj interface{}) (int64, bool) {
 	switch val := obj.(type) {
 	case int:
 		return int64(val), true

@@ -7,6 +7,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Eval", func() {
@@ -126,7 +128,7 @@ var _ = Describe("Eval", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 		})
 
 		It("should skip uninitialized paths if requested", func() {
@@ -263,7 +265,7 @@ var _ = Describe("Eval", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 		})
 
 		It("Should succeed applying a ruleset", func() {
