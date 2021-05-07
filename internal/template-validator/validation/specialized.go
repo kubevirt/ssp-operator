@@ -29,6 +29,29 @@ import (
 	k6tv1 "kubevirt.io/client-go/api/v1"
 )
 
+type RuleType string
+
+const (
+	IntegerRule RuleType = "integer"
+	StringRule  RuleType = "string"
+	EnumRule    RuleType = "enum"
+	RegexRule   RuleType = "regex"
+)
+
+func (r RuleType) IsValid() bool {
+	switch r {
+	case IntegerRule:
+		fallthrough
+	case StringRule:
+		fallthrough
+	case EnumRule:
+		fallthrough
+	case RegexRule:
+		return true
+	}
+	return false
+}
+
 type RuleApplier interface {
 	Apply(vm, ref *k6tv1.VirtualMachine) (bool, error)
 	String() string
@@ -41,13 +64,13 @@ var ErrNoValuesFound = errors.New("no values were found")
 // or the limits to enforce.
 func (r *Rule) Specialize(vm, ref *k6tv1.VirtualMachine) (RuleApplier, error) {
 	switch r.Rule {
-	case "integer":
+	case IntegerRule:
 		return NewIntRule(r, vm, ref)
-	case "string":
+	case StringRule:
 		return NewStringRule(r, vm, ref)
-	case "enum":
+	case EnumRule:
 		return NewEnumRule(r, vm, ref)
-	case "regex":
+	case RegexRule:
 		return NewRegexRule(r)
 	}
 	return nil, fmt.Errorf("usupported rule: %s", r.Rule)

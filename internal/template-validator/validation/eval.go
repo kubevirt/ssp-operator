@@ -39,16 +39,6 @@ var (
 	ErrUnsatisfiedRule      = errors.New("rule is not satisfied")
 )
 
-func isValidRule(r string) bool {
-	validRules := []string{"integer", "string", "regex", "enum"}
-	for _, v := range validRules {
-		if r == v {
-			return true
-		}
-	}
-	return false
-}
-
 type Report struct {
 	Ref       *Rule
 	Skipped   bool   // because not valid, with `valid` defined as per spec
@@ -151,7 +141,7 @@ func (ev *Evaluator) isRuleWellFormed(r *Rule, names map[string]int) (bool, erro
 		return false, ErrDuplicateRuleName
 	}
 
-	if !isValidRule(r.Rule) {
+	if !r.Rule.IsValid() {
 		fmt.Fprintf(ev.Sink, "%s failed: invalid type\n", r.Name)
 		return false, ErrUnrecognizedRuleType
 	}

@@ -24,7 +24,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply simple integer rules", func() {
 			r := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",
@@ -36,7 +36,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply simple string rules", func() {
 			r := Rule{
-				Rule:      "string",
+				Rule:      StringRule,
 				Name:      "HasChipset",
 				Path:      "jsonpath::.spec.domain.machine.type",
 				Message:   "machine type must be specified",
@@ -48,7 +48,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply simple enum rules", func() {
 			r := Rule{
-				Rule:    "enum",
+				Rule:    EnumRule,
 				Name:    "SupportedChipset",
 				Path:    "jsonpath::.spec.domain.machine.type",
 				Message: "machine type must be a supported value",
@@ -59,7 +59,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply enum rule to multiple values", func() {
 			r := Rule{
-				Rule:    "enum",
+				Rule:    EnumRule,
 				Name:    "SupportedDiskBus",
 				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 				Message: "disk bus must be a supported value",
@@ -70,7 +70,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply simple regex rules", func() {
 			r := Rule{
-				Rule:    "regex",
+				Rule:    RegexRule,
 				Name:    "SupportedChipset",
 				Path:    "jsonpath::.spec.domain.machine.type",
 				Message: "machine type must be a supported value",
@@ -81,7 +81,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply regex rule to multiple values", func() {
 			r := Rule{
-				Rule:    "regex",
+				Rule:    RegexRule,
 				Name:    "SupportedDiskBus",
 				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 				Message: "disk bus must be a supported value",
@@ -121,7 +121,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should fail simple integer rules", func() {
 			r1 := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",
@@ -131,7 +131,7 @@ var _ = Describe("Specialized", func() {
 			expectRuleApplicationFailure(&r1, vmCirros, vmRef)
 
 			r2 := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",
@@ -143,7 +143,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply simple string rules", func() {
 			r1 := Rule{
-				Rule:      "string",
+				Rule:      StringRule,
 				Name:      "HasChipset",
 				Path:      "jsonpath::.spec.domain.machine.type",
 				Message:   "machine type must be specified",
@@ -152,7 +152,7 @@ var _ = Describe("Specialized", func() {
 			expectRuleApplicationFailure(&r1, vmCirros, vmRef)
 
 			r2 := Rule{
-				Rule:      "string",
+				Rule:      StringRule,
 				Name:      "HasChipset",
 				Path:      "jsonpath::.spec.domain.machine.type",
 				Message:   "machine type must be specified",
@@ -163,7 +163,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply simple enum rules", func() {
 			r := Rule{
-				Rule:    "enum",
+				Rule:    EnumRule,
 				Name:    "SupportedChipset",
 				Path:    "jsonpath::.spec.domain.machine.type",
 				Message: "machine type must be a supported value",
@@ -174,7 +174,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply enum rule to multiple values", func() {
 			r := Rule{
-				Rule:    "enum",
+				Rule:    EnumRule,
 				Name:    "SupportedDiskBus",
 				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 				Message: "disk bus must be a supported value",
@@ -186,7 +186,7 @@ var _ = Describe("Specialized", func() {
 		It("Should error enum rule if values do not exist", func() {
 			vmCirros.Spec.Template.Spec.Domain.Devices.Disks = nil
 			r := Rule{
-				Rule:    "enum",
+				Rule:    EnumRule,
 				Name:    "SupportedDiskBus",
 				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 				Message: "disk bus must be a supported value",
@@ -197,7 +197,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply simple regex rules", func() {
 			r := Rule{
-				Rule:    "regex",
+				Rule:    RegexRule,
 				Name:    "SupportedChipset",
 				Path:    "jsonpath::.spec.domain.machine.type",
 				Message: "machine type must be a supported value",
@@ -208,7 +208,7 @@ var _ = Describe("Specialized", func() {
 
 		It("Should apply regex rule to multiple values", func() {
 			r := Rule{
-				Rule:    "regex",
+				Rule:    RegexRule,
 				Name:    "SupportedDiskBus",
 				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 				Message: "disk bus must be a supported value",
@@ -220,7 +220,7 @@ var _ = Describe("Specialized", func() {
 		It("Should error regex rule if values do not exist", func() {
 			vmCirros.Spec.Template.Spec.Domain.Devices.Disks = nil
 			r := Rule{
-				Rule:    "regex",
+				Rule:    RegexRule,
 				Name:    "SupportedDiskBus",
 				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 				Message: "disk bus must be a supported value",
@@ -235,7 +235,7 @@ var _ = Describe("Specialized", func() {
 			}
 
 			r := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",
@@ -260,7 +260,7 @@ var _ = Describe("Specialized", func() {
 			}
 
 			r := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",
@@ -285,7 +285,7 @@ var _ = Describe("Specialized", func() {
 			}
 
 			r := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",

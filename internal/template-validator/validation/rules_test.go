@@ -56,7 +56,7 @@ var _ = Describe("Rules", func() {
 		It("Should apply on a relevant VM", func() {
 			vm := NewVMCirros()
 			r := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",
@@ -71,7 +71,7 @@ var _ = Describe("Rules", func() {
 		It("Should NOT apply on a NOT relevant VM", func() {
 			vm := NewVMCirros()
 			r := Rule{
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
 				Path:    "jsonpath::.spec.domain.resources.requests.memory",
 				Message: "Memory size not specified",

@@ -15,13 +15,13 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name: "rule-1",
-					Rule: "integer",
+					Rule: IntegerRule,
 					// any legal path is fine
 					Path:    "jsonpath::.spec.domain.cpu.cores",
 					Message: "testing",
 				}, {
 					Name: "rule-1",
-					Rule: "string",
+					Rule: StringRule,
 					// any legal path is fine
 					Path:    "jsonpath::.spec.domain.cpu.cores",
 					Message: "testing",
@@ -41,12 +41,12 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name: "rule-1",
-					Rule: "integer",
+					Rule: IntegerRule,
 					// any legal path is fine
 					Path: "jsonpath::.spec.domain.cpu.cores",
 				}, {
 					Name:    "rule-2",
-					Rule:    "string",
+					Rule:    StringRule,
 					Message: "testing",
 				},
 			}
@@ -77,7 +77,7 @@ var _ = Describe("Eval", func() {
 		It("Should detect unappliable rules", func() {
 			rules := []Rule{{
 				Name: "rule-1",
-				Rule: "integer",
+				Rule: IntegerRule,
 				// any legal path is fine
 				Path:    "jsonpath::.spec.domain.cpu.cores",
 				Message: "testing",
@@ -99,7 +99,7 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name: "rule-1",
-					Rule: "integer",
+					Rule: IntegerRule,
 					Min:  8,
 					// any legal path is fine
 					Path:        "jsonpath::.spec.domain.cpu.cores",
@@ -132,7 +132,7 @@ var _ = Describe("Eval", func() {
 		It("should skip uninitialized paths if requested", func() {
 			rules := []Rule{{
 				Name:    "LimitCores",
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Path:    "jsonpath::.spec.domain.cpu.cores",
 				Valid:   "jsonpath::.spec.domain.cpu.cores",
 				Message: "testing",
@@ -154,7 +154,7 @@ var _ = Describe("Eval", func() {
 		It("should handle uninitialized paths", func() {
 			rules := []Rule{{
 				Name:    "LimitCores",
-				Rule:    "integer",
+				Rule:    IntegerRule,
 				Path:    "jsonpath::.spec.domain.cpu.cores",
 				Message: "testing",
 				Min:     1,
@@ -170,21 +170,21 @@ var _ = Describe("Eval", func() {
 		It("should handle uninitialized paths intermixed with valid paths", func() {
 			rules := []Rule{
 				{
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "EnoughMemory",
 					Path:    "jsonpath::.spec.domain.resources.requests.memory",
 					Message: "Memory size not specified",
 					Min:     64 * 1024 * 1024,
 					Max:     512 * 1024 * 1024,
 				}, {
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "LimitCores",
 					Path:    "jsonpath::.spec.domain.cpu.cores",
 					Message: "Core amount not within range",
 					Min:     1,
 					Max:     4,
 				}, {
-					Rule:    "enum",
+					Rule:    EnumRule,
 					Name:    "SupportedChipset",
 					Path:    "jsonpath::.spec.domain.machine.type",
 					Message: "machine type must be a supported value",
@@ -204,7 +204,7 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name:        "disk bus",
-					Rule:        "enum",
+					Rule:        EnumRule,
 					Path:        "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 					Message:     "testing",
 					Values:      []string{"sata"},
@@ -226,14 +226,14 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name:        "disk bus",
-					Rule:        "enum",
+					Rule:        EnumRule,
 					Path:        "jsonpath::.spec.domain.devices.disks[*].disk.bus",
 					Message:     "testing",
 					Values:      []string{"sata"},
 					JustWarning: true,
 				}, {
 					Name: "rule-2",
-					Rule: "integer",
+					Rule: IntegerRule,
 					Min:  6,
 					Max:  8,
 					// any legal path is fine
@@ -269,14 +269,14 @@ var _ = Describe("Eval", func() {
 		It("Should succeed applying a ruleset", func() {
 			rules := []Rule{
 				{
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "EnoughMemory",
 					Path:    "jsonpath::.spec.domain.resources.requests.memory",
 					Message: "Memory size not specified",
 					Min:     64 * 1024 * 1024,
 					Max:     512 * 1024 * 1024,
 				}, {
-					Rule:    "enum",
+					Rule:    EnumRule,
 					Name:    "SupportedChipset",
 					Path:    "jsonpath::.spec.domain.machine.type",
 					Message: "machine type must be a supported value",
@@ -302,7 +302,7 @@ var _ = Describe("Eval", func() {
 		It("Should fail applying a ruleset with at least one malformed rule", func() {
 			rules := []Rule{
 				{
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "EnoughMemory",
 					Path:    "jsonpath::.spec.domain.resources.requests.memory",
 					Message: "Memory size not specified",
@@ -326,14 +326,14 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name:        "disk bus",
-					Rule:        "enum",
+					Rule:        EnumRule,
 					Path:        "jsonpath::.spec.domain.devices.some.non.existing.path",
 					Message:     "testing",
 					Values:      []string{"sata"},
 					JustWarning: true,
 				}, {
 					Name: "rule-2",
-					Rule: "integer",
+					Rule: IntegerRule,
 					Min:  0,
 					Max:  8,
 					// any legal path is fine
