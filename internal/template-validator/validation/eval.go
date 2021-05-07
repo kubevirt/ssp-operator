@@ -30,7 +30,6 @@ import (
 	"kubevirt.io/client-go/log"
 
 	k6tobjs "kubevirt.io/ssp-operator/internal/template-validator/kubevirtjobs"
-	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 )
 
 var (
@@ -119,7 +118,7 @@ func (r *Result) ToStatusCauses() []metav1.StatusCause {
 		if ok, message := needsCause(&rr); ok {
 			causes = append(causes, metav1.StatusCause{
 				Type:    metav1.CauseTypeFieldValueInvalid,
-				Field:   path.TrimJSONPath(rr.Ref.Path),
+				Field:   rr.Ref.Path.Expr(),
 				Message: fmt.Sprintf("%s: %s", rr.Ref.Message, message),
 			})
 		}
@@ -147,8 +146,8 @@ func (ev *Evaluator) isRuleWellFormed(r *Rule, names map[string]int) (bool, erro
 		return false, ErrUnrecognizedRuleType
 	}
 
-	if r.Path == "" || r.Message == "" {
-		fmt.Fprintf(ev.Sink, "%s failed: missing keys\n", r.Name)
+	if r.Message == "" {
+		fmt.Fprintf(ev.Sink, "%s failed: missing \"Message\" key\n", r.Name)
 		return false, ErrMissingRequiredKey
 	}
 	return true, nil

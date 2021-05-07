@@ -22,7 +22,7 @@ import (
 	"math"
 )
 
-func ToInt64(obj interface{}) (int64, bool) {
+func toInt64(obj interface{}) (int64, bool) {
 	switch val := obj.(type) {
 	case int:
 		return int64(val), true

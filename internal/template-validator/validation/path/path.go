@@ -19,6 +19,7 @@
 package path
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -37,23 +38,29 @@ const (
 	JSONPathPrefix string = "jsonpath::"
 )
 
-func IsJSONPath(s string) bool {
+func isJSONPath(s string) bool {
 	return strings.HasPrefix(s, JSONPathPrefix)
 }
 
-type Path jsonpath.JSONPath
+type Path struct {
+	expr string
+	path *jsonpath.JSONPath
+}
 
-func TrimJSONPath(path string) string {
+var _ json.Marshaler = &Path{}
+var _ json.Unmarshaler = &Path{}
+
+func trimJSONPath(path string) string {
 	s := strings.TrimPrefix(path, JSONPathPrefix)
 	// we always need to interpret the user-supplied path as relative path
 	return strings.TrimPrefix(s, "$")
 }
 
 func NewJSONPathFromString(path string) (string, error) {
-	if !IsJSONPath(path) {
+	if !isJSONPath(path) {
 		return "", ErrInvalidJSONPath
 	}
-	expr := TrimJSONPath(path)
+	expr := trimJSONPath(path)
 	return fmt.Sprintf("{.spec.template%s}", expr), nil
 }
 
@@ -69,15 +76,49 @@ func New(expr string) (*Path, error) {
 	if err != nil {
 		return nil, err
 	}
-	return (*Path)(jp), nil
+	return &Path{
+		expr: trimJSONPath(expr),
+		path: jp,
+	}, nil
+}
+
+func NewOrPanic(expr string) *Path {
+	path, err := New(expr)
+	if err != nil {
+		panic(err)
+	}
+	return path
+}
+
+func (p *Path) Expr() string {
+	return p.expr
 }
 
 func (p *Path) Find(vm *k6tv1.VirtualMachine) (Results, error) {
-	results, err := (*jsonpath.JSONPath)(p).FindResults(vm)
+	results, err := p.path.FindResults(vm)
 	if err != nil {
 		return nil, ErrInvalidJSONPath
 	}
 	return results, nil
+}
+
+func (p *Path) MarshalJSON() ([]byte, error) {
+	strVal := JSONPathPrefix + p.Expr()
+	return json.Marshal(strVal)
+}
+
+func (p *Path) UnmarshalJSON(bytes []byte) error {
+	var str string
+	err := json.Unmarshal(bytes, &str)
+	if err != nil {
+		return err
+	}
+	path, err := New(str)
+	if err != nil {
+		return err
+	}
+	*p = *path
+	return nil
 }
 
 type Results [][]reflect.Value
@@ -113,7 +154,7 @@ func (r *Results) AsInt64() ([]int64, error) {
 		res := (*r)[i]
 		for j := range res {
 			obj := res[j].Interface()
-			if intObj, ok := ToInt64(obj); ok {
+			if intObj, ok := toInt64(obj); ok {
 				ret = append(ret, intObj)
 				continue
 			}

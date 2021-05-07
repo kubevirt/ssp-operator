@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
@@ -21,8 +22,8 @@ var _ = Describe("Rules", func() {
 		It("Should parse a single rule", func() {
 			text := `[{
             "name": "core-limits",
-            "valid": "spec.domain.cpu.cores",
-            "path": "spec.domain.cpu.cores",
+            "valid": "jsonpath::spec.domain.cpu.cores",
+            "path": "jsonpath::spec.domain.cpu.cores",
             "rule": "integer",
             "message": "cpu cores must be limited",
             "min": 1,
@@ -37,15 +38,15 @@ var _ = Describe("Rules", func() {
 		It("Should parse multiple rules", func() {
 			text := `[{
             "name": "core-limits",
-            "valid": "spec.domain.cpu.cores",
-            "path": "spec.domain.cpu.cores",
+            "valid": "jsonpath::spec.domain.cpu.cores",
+            "path": "jsonpath::spec.domain.cpu.cores",
             "rule": "integer",
             "message": "cpu cores must be limited",
             "min": 1,
             "max": 8
 	  }, {
             "name": "supported-bus",
-            "path": "spec.devices.disks[*].type",
+            "path": "jsonpath::spec.devices.disks[*].type",
             "rule": "enum",
             "message": "the disk bus type must be one of the supported values",
             "values": ["virtio", "scsi"]
@@ -60,10 +61,10 @@ var _ = Describe("Rules", func() {
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Valid:   "jsonpath::.spec.domain.resources.requests.memory",
-				Min:     64 * 1024 * 1024,
+				Valid:   path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
+				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
 			}
 			ok, err := r.IsAppliableOn(vm)
 
@@ -75,10 +76,10 @@ var _ = Describe("Rules", func() {
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Valid:   "jsonpath::.spec.domain.this.path.does.not.exist",
-				Min:     64 * 1024 * 1024,
+				Valid:   path.NewOrPanic("jsonpath::.spec.domain.this.path.does.not.exist"),
+				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
 			}
 			ok, err := r.IsAppliableOn(vm)
 

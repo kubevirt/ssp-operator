@@ -21,7 +21,6 @@ package validation
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -85,18 +84,17 @@ type Range struct {
 	Max    int64
 }
 
-func (r *Range) Decode(Min, Max interface{}, vm, ref *k6tv1.VirtualMachine) error {
-	if Min != nil {
-		v, err := decodeInt(Min, vm, ref)
+func (r *Range) Decode(min, max *path.IntOrPath, vm, ref *k6tv1.VirtualMachine) error {
+	if min != nil {
+		v, err := decodeInt(*min, vm, ref)
 		if err != nil {
 			return err
 		}
 		r.Min = v
 		r.MinSet = true
 	}
-	if Max != nil {
-		v, err := decodeInt(Max, vm, ref)
-
+	if max != nil {
+		v, err := decodeInt(*max, vm, ref)
 		if err != nil {
 			return err
 		}
@@ -138,30 +136,34 @@ type intRule struct {
 //   if even this lookup fails, we mark the path as bogus.
 //   Otherwise we use the zero, default, value for our logic.
 
-// The first argument is either a single literal integer or a JSON path to one or more integers.
-// Currently the function does not support multiple literal integers.
-func decodeInts(obj interface{}, vm, ref *k6tv1.VirtualMachine) ([]int64, error) {
-	if val, ok := path.ToInt64(obj); ok {
-		return []int64{val}, nil
+func findPathOnVmOrRef(path *path.Path, vm, ref *k6tv1.VirtualMachine) (path.Results, error) {
+	res, err := path.Find(vm)
+	if err == nil {
+		return res, nil
 	}
 
-	jsonPath, ok := obj.(string)
-	if !ok {
-		return nil, fmt.Errorf("unsupported type %v (%v)", obj, reflect.TypeOf(obj).Name())
-	}
-	if !path.IsJSONPath(jsonPath) {
-		return nil, fmt.Errorf("parameter is not JSONPath: %v", jsonPath)
+	res, err = path.Find(ref)
+	if err == nil {
+		return res, nil
 	}
 
-	v, err := decodeInt64FromJSONPath(jsonPath, vm)
-	if err != nil {
-		v, err = decodeInt64FromJSONPath(jsonPath, ref)
-	}
-	return v, err
+	return nil, err
 }
 
-func decodeInt(obj interface{}, vm, ref *k6tv1.VirtualMachine) (int64, error) {
-	v, err := decodeInts(obj, vm, ref)
+func decodeInts(path *path.Path, vm, ref *k6tv1.VirtualMachine) ([]int64, error) {
+	res, err := findPathOnVmOrRef(path, vm, ref)
+	if err != nil {
+		return nil, err
+	}
+	return res.AsInt64()
+}
+
+func decodeInt(ip path.IntOrPath, vm, ref *k6tv1.VirtualMachine) (int64, error) {
+	if ip.IsInt() {
+		return ip.Int, nil
+	}
+
+	v, err := decodeInts(ip.Path, vm, ref)
 	if err != nil {
 		return 0, err
 	}
@@ -171,21 +173,20 @@ func decodeInt(obj interface{}, vm, ref *k6tv1.VirtualMachine) (int64, error) {
 	return v[0], nil
 }
 
-// The first argument is either a single literal string or a JSON path to one or more strings.
-// Currently the function does not support multiple literal strings.
-func decodeStrings(s string, vm, ref *k6tv1.VirtualMachine) ([]string, error) {
-	if !path.IsJSONPath(s) {
-		return []string{s}, nil
-	}
-	v, err := decodeJSONPathString(s, vm)
+func decodeStrings(path *path.Path, vm, ref *k6tv1.VirtualMachine) ([]string, error) {
+	res, err := findPathOnVmOrRef(path, vm, ref)
 	if err != nil {
-		v, err = decodeJSONPathString(s, ref)
+		return nil, err
 	}
-	return v, err
+	return res.AsString()
 }
 
-func decodeString(s string, vm, ref *k6tv1.VirtualMachine) (string, error) {
-	vals, err := decodeStrings(s, vm, ref)
+func decodeString(sp path.StringOrPath, vm, ref *k6tv1.VirtualMachine) (string, error) {
+	if sp.IsString() {
+		return sp.Str, nil
+	}
+
+	vals, err := decodeStrings(sp.Path, vm, ref)
 	if err != nil {
 		return "", err
 	}
@@ -193,30 +194,6 @@ func decodeString(s string, vm, ref *k6tv1.VirtualMachine) (string, error) {
 		return "", fmt.Errorf("expected one value, found %v", len(vals))
 	}
 	return vals[0], nil
-}
-
-func decodeInt64FromJSONPath(jsonPath string, vm *k6tv1.VirtualMachine) ([]int64, error) {
-	path, err := findJsonPath(jsonPath, vm)
-	if err != nil {
-		return nil, err
-	}
-	return path.AsInt64()
-}
-
-func decodeJSONPathString(jsonPath string, vm *k6tv1.VirtualMachine) ([]string, error) {
-	path, err := findJsonPath(jsonPath, vm)
-	if err != nil {
-		return nil, err
-	}
-	return path.AsString()
-}
-
-func findJsonPath(jsonPath string, vm *k6tv1.VirtualMachine) (path.Results, error) {
-	path, err := path.New(jsonPath)
-	if err != nil {
-		return nil, err
-	}
-	return path.Find(vm)
 }
 
 func NewIntRule(r *Rule, vm, ref *k6tv1.VirtualMachine) (RuleApplier, error) {
@@ -229,7 +206,7 @@ func NewIntRule(r *Rule, vm, ref *k6tv1.VirtualMachine) (RuleApplier, error) {
 }
 
 func (ir *intRule) Apply(vm, ref *k6tv1.VirtualMachine) (bool, error) {
-	vals, err := decodeInts(ir.Ref.Path, vm, ref)
+	vals, err := decodeInts(&ir.Ref.Path, vm, ref)
 	if err != nil {
 		return false, err
 	}
@@ -296,7 +273,7 @@ func NewStringRule(r *Rule, vm, ref *k6tv1.VirtualMachine) (RuleApplier, error) 
 }
 
 func (sr *stringRule) Apply(vm, ref *k6tv1.VirtualMachine) (bool, error) {
-	vals, err := decodeStrings(sr.Ref.Path, vm, ref)
+	vals, err := decodeStrings(&sr.Ref.Path, vm, ref)
 	if err != nil {
 		return false, err
 	}
@@ -354,7 +331,7 @@ func NewEnumRule(r *Rule, vm, ref *k6tv1.VirtualMachine) (RuleApplier, error) {
 }
 
 func (er *enumRule) Apply(vm, ref *k6tv1.VirtualMachine) (bool, error) {
-	vals, err := decodeStrings(er.Ref.Path, vm, ref)
+	vals, err := decodeStrings(&er.Ref.Path, vm, ref)
 	if err != nil {
 		return false, err
 	}
@@ -411,7 +388,7 @@ func NewRegexRule(r *Rule) (RuleApplier, error) {
 }
 
 func (rr *regexRule) Apply(vm, ref *k6tv1.VirtualMachine) (bool, error) {
-	vals, err := decodeStrings(rr.Ref.Path, vm, ref)
+	vals, err := decodeStrings(&rr.Ref.Path, vm, ref)
 	if err != nil {
 		return false, err
 	}

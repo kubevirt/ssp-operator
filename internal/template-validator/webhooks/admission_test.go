@@ -11,6 +11,7 @@ import (
 
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation"
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 )
 
 var _ = Describe("Admission", func() {
@@ -48,10 +49,10 @@ var _ = Describe("Admission", func() {
 		It("should set default sockets", func() {
 			rules := []validation.Rule{{
 				Name:    "test-sockets-default",
-				Path:    "jsonpath::.spec.domain.cpu.sockets",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.sockets"),
 				Rule:    "integer",
 				Message: "invalid number of sockets",
-				Min:     1,
+				Min:     &path.IntOrPath{Int: 1},
 			}}
 
 			causes := ValidateVm(rules, &vm)
@@ -61,10 +62,10 @@ var _ = Describe("Admission", func() {
 		It("should set default cores", func() {
 			rules := []validation.Rule{{
 				Name:    "test-cores-default",
-				Path:    "jsonpath::.spec.domain.cpu.cores",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 				Rule:    "integer",
 				Message: "invalid number of cores",
-				Min:     1,
+				Min:     &path.IntOrPath{Int: 1},
 			}}
 
 			causes := ValidateVm(rules, &vm)
@@ -74,10 +75,10 @@ var _ = Describe("Admission", func() {
 		It("should set default threads", func() {
 			rules := []validation.Rule{{
 				Name:    "test-threads-default",
-				Path:    "jsonpath::.spec.domain.cpu.threads",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.threads"),
 				Rule:    "integer",
 				Message: "invalid number of threads",
-				Min:     1,
+				Min:     &path.IntOrPath{Int: 1},
 			}}
 
 			causes := ValidateVm(rules, &vm)
@@ -90,6 +91,7 @@ var _ = Describe("Admission", func() {
 			ruleName := "vmRule"
 			rules, err := json.Marshal([]validation.Rule{{
 				Name: ruleName,
+				Path: *path.NewOrPanic("jsonpath::.test.path"),
 			}})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -108,6 +110,7 @@ var _ = Describe("Admission", func() {
 
 			Expect(len(vmRules)).To(Equal(1))
 			Expect(vmRules[0].Name).To(Equal(ruleName))
+			Expect(vmRules[0].Path.Expr()).To(Equal(".test.path"))
 		})
 	})
 })

@@ -8,6 +8,7 @@ import (
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
 
 	k6tobjs "kubevirt.io/ssp-operator/internal/template-validator/kubevirtjobs"
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
@@ -28,10 +29,10 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Min:     64 * 1024 * 1024,
-				Max:     512 * 1024 * 1024,
+				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			expectRuleApplicationSuccess(&r, vmCirros, vmRef)
 		})
@@ -40,10 +41,10 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:      StringRule,
 				Name:      "HasChipset",
-				Path:      "jsonpath::.spec.domain.machine.type",
+				Path:      *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 				Message:   "machine type must be specified",
-				MinLength: 1,
-				MaxLength: 32,
+				MinLength: &path.IntOrPath{Int: 1},
+				MaxLength: &path.IntOrPath{Int: 32},
 			}
 			expectRuleApplicationSuccess(&r, vmCirros, vmRef)
 		})
@@ -52,9 +53,9 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    EnumRule,
 				Name:    "SupportedChipset",
-				Path:    "jsonpath::.spec.domain.machine.type",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 				Message: "machine type must be a supported value",
-				Values:  []string{"q35", "440fx"},
+				Values:  []path.StringOrPath{{Str: "q35"}, {Str: "440fx"}},
 			}
 			expectRuleApplicationSuccess(&r, vmCirros, vmRef)
 		})
@@ -63,9 +64,9 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    EnumRule,
 				Name:    "SupportedDiskBus",
-				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 				Message: "disk bus must be a supported value",
-				Values:  []string{"virtio", "sata"},
+				Values:  []path.StringOrPath{{Str: "virtio"}, {Str: "sata"}},
 			}
 			expectRuleApplicationSuccess(&r, vmCirros, vmRef)
 		})
@@ -74,7 +75,7 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    RegexRule,
 				Name:    "SupportedChipset",
-				Path:    "jsonpath::.spec.domain.machine.type",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 				Message: "machine type must be a supported value",
 				Regex:   "q35|440fx",
 			}
@@ -85,7 +86,7 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    RegexRule,
 				Name:    "SupportedDiskBus",
-				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 				Message: "disk bus must be a supported value",
 				Regex:   "virtio|sata",
 			}
@@ -109,11 +110,11 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    "integer-value",
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Valid:   "jsonpath::.spec.domain.this.path.does.not.exist",
-				Min:     64 * 1024 * 1024,
-				Max:     512 * 1024 * 1024,
+				Valid:   path.NewOrPanic("jsonpath::.spec.domain.this.path.does.not.exist"),
+				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 
 			ra, err := r.Specialize(vmCirros, vmRef)
@@ -125,20 +126,20 @@ var _ = Describe("Specialized", func() {
 			r1 := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Valid:   "jsonpath::.spec.domain.this.path.does.not.exist",
-				Min:     512 * 1024 * 1024,
+				Valid:   path.NewOrPanic("jsonpath::.spec.domain.this.path.does.not.exist"),
+				Min:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			expectRuleApplicationFailure(&r1, vmCirros, vmRef)
 
 			r2 := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Valid:   "jsonpath::.spec.domain.this.path.does.not.exist",
-				Max:     64 * 1024 * 1024,
+				Valid:   path.NewOrPanic("jsonpath::.spec.domain.this.path.does.not.exist"),
+				Max:     &path.IntOrPath{Int: 64 * 1024 * 1024},
 			}
 			expectRuleApplicationFailure(&r2, vmCirros, vmRef)
 		})
@@ -147,18 +148,18 @@ var _ = Describe("Specialized", func() {
 			r1 := Rule{
 				Rule:      StringRule,
 				Name:      "HasChipset",
-				Path:      "jsonpath::.spec.domain.machine.type",
+				Path:      *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 				Message:   "machine type must be specified",
-				MinLength: 64,
+				MinLength: &path.IntOrPath{Int: 64},
 			}
 			expectRuleApplicationFailure(&r1, vmCirros, vmRef)
 
 			r2 := Rule{
 				Rule:      StringRule,
 				Name:      "HasChipset",
-				Path:      "jsonpath::.spec.domain.machine.type",
+				Path:      *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 				Message:   "machine type must be specified",
-				MaxLength: 1,
+				MaxLength: &path.IntOrPath{Int: 1},
 			}
 			expectRuleApplicationFailure(&r2, vmCirros, vmRef)
 		})
@@ -167,9 +168,9 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    EnumRule,
 				Name:    "SupportedChipset",
-				Path:    "jsonpath::.spec.domain.machine.type",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 				Message: "machine type must be a supported value",
-				Values:  []string{"foo", "bar"},
+				Values:  []path.StringOrPath{{Str: "foo"}, {Str: "bar"}},
 			}
 			expectRuleApplicationFailure(&r, vmCirros, vmRef)
 		})
@@ -178,9 +179,9 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    EnumRule,
 				Name:    "SupportedDiskBus",
-				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 				Message: "disk bus must be a supported value",
-				Values:  []string{"foo", "bar"},
+				Values:  []path.StringOrPath{{Str: "foo"}, {Str: "bar"}},
 			}
 			expectRuleApplicationFailure(&r, vmCirros, vmRef)
 		})
@@ -190,9 +191,9 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    EnumRule,
 				Name:    "SupportedDiskBus",
-				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 				Message: "disk bus must be a supported value",
-				Values:  []string{"virtio"},
+				Values:  []path.StringOrPath{{Str: "virtio"}},
 			}
 			expectRuleApplicationError(&r, vmCirros, vmRef)
 		})
@@ -201,7 +202,7 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    RegexRule,
 				Name:    "SupportedChipset",
-				Path:    "jsonpath::.spec.domain.machine.type",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 				Message: "machine type must be a supported value",
 				Regex:   "\\d[a-z]+\\d\\d",
 			}
@@ -212,7 +213,7 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    RegexRule,
 				Name:    "SupportedDiskBus",
-				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 				Message: "disk bus must be a supported value",
 				Regex:   "foo|bar",
 			}
@@ -224,7 +225,7 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    RegexRule,
 				Name:    "SupportedDiskBus",
-				Path:    "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 				Message: "disk bus must be a supported value",
 				Regex:   "virtio|sata",
 			}
@@ -239,10 +240,10 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Min:     64 * 1024 * 1024,
-				Max:     512 * 1024 * 1024,
+				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			ra, err := r.Specialize(vmCirros, vmRef)
 			Expect(err).To(BeNil())
@@ -264,10 +265,10 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Min:     64 * 1024 * 1024,
-				Max:     512 * 1024 * 1024,
+				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			ra, err := r.Specialize(vmCirros, vmRef)
 			Expect(err).To(BeNil())
@@ -289,10 +290,10 @@ var _ = Describe("Specialized", func() {
 			r := Rule{
 				Rule:    IntegerRule,
 				Name:    "EnoughMemory",
-				Path:    "jsonpath::.spec.domain.resources.requests.memory",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Message: "Memory size not specified",
-				Min:     64 * 1024 * 1024,
-				Max:     512 * 1024 * 1024,
+				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			ra, err := r.Specialize(vmCirros, vmRef)
 			Expect(err).To(BeNil())
