@@ -66,10 +66,7 @@ var _ = Describe("Rules", func() {
 				Valid:   path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
 			}
-			ok, err := r.IsAppliableOn(vm)
-
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(ok).To(BeTrue())
+			Expect(r.IsAppliableOn(vm)).To(BeTrue())
 		})
 		It("Should NOT apply on a NOT relevant VM", func() {
 			vm := test_utils.NewVMCirros()
@@ -81,10 +78,7 @@ var _ = Describe("Rules", func() {
 				Valid:   path.NewOrPanic("jsonpath::.spec.domain.this.path.does.not.exist"),
 				Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
 			}
-			ok, err := r.IsAppliableOn(vm)
-
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(ok).To(BeFalse())
+			Expect(r.IsAppliableOn(vm)).To(BeFalse())
 		})
 
 	})
