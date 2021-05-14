@@ -134,6 +134,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 				},
 				Spec: core.PodSpec{
 					ServiceAccountName: ServiceAccountName,
+					PriorityClassName: "system-cluster-critical",
 					Containers: []core.Container{{
 						Name:            "webhook",
 						Image:           image,
