@@ -23,6 +23,7 @@ spec:
         control-plane: ssp-operator
     spec:
       serviceAccountName: ssp-operator
+      priorityClassName: system-cluster-critical
       containers:
       - command:
         - /manager
