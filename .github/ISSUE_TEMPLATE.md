@@ -14,8 +14,8 @@ Also make sure that you visit our User Guide at https://kubevirt.io/user-guide/
 
 **What you expected to happen**:
 
-**How to reproduce it (as minimally and precisely as possible)**:
-
+**How to reproduce it**:
+<!-- (as minimally and precisely as possible) -->
 
 **Anything else we need to know?**:
 
