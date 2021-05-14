@@ -5,7 +5,7 @@
 VERSION ?= 0.12.0
 
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.5.1
+OPERATOR_SDK_VERSION ?= v1.6.4
 
 
 # CHANNELS define the bundle channels used in the bundle.
