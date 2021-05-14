@@ -5,7 +5,7 @@
 VERSION ?= 0.12.0
 
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.6.4
+OPERATOR_SDK_VERSION ?= v1.7.2
 
 
 # CHANNELS define the bundle channels used in the bundle.
@@ -49,6 +49,12 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
+
+# TODO -- validate that this is useful
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
 ifeq (, $(shell which oc))
 OC = kubectl
