@@ -29,9 +29,8 @@ COPY hack/csv-generator.go hack/csv-generator.go
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make manager
-
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make csv-generator
-RUN chmod +x csv-generator
+
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 LABEL org.kubevirt.hco.csv-generator.v1="/csv-generator"
@@ -42,5 +41,5 @@ COPY data/ data/
 USER 1000
 
 # Copy csv generator
-COPY --from=builder /workspace/csv-generator .
+COPY --from=builder /workspace/bin/csv-generator .
 ENTRYPOINT ["/manager"]

@@ -75,7 +75,7 @@ manager: generate fmt vet
 
 # Build csv-generator binary
 csv-generator: generate fmt vet
-	go build -o csv-generator hack/csv-generator.go
+	go build -o bin/csv-generator hack/csv-generator.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
@@ -196,7 +196,7 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	./csv-generator --csv-version $(VERSION) --namespace kubevirt --operator-image $(IMG) --operator-version $(VERSION) \
+	./bin/csv-generator --csv-version $(VERSION) --namespace kubevirt --operator-image $(IMG) --operator-version $(VERSION) \
 			--file bundle/manifests/ssp-operator.clusterserviceversion.yaml \
 			--webhook-port 9443 --webhook-remove-certs > bundle/manifests/ssp-operator.clusterserviceversion.yaml.new
 	mv bundle/manifests/ssp-operator.clusterserviceversion.yaml.new bundle/manifests/ssp-operator.clusterserviceversion.yaml
