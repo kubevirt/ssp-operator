@@ -34,6 +34,8 @@ require (
 
 replace (
 	github.com/go-kit/kit => github.com/go-kit/kit v0.3.0
+	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
+	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f // release-4.6
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20200929181438-91d71ef2122c // release-4.6
 	github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a

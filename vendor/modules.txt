@@ -51,7 +51,7 @@ github.com/go-openapi/spec
 github.com/go-openapi/swag
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
-# github.com/gogo/protobuf v1.3.2
+# github.com/gogo/protobuf v1.3.2 => github.com/gogo/protobuf v1.3.2
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/sortkeys
 # github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -81,7 +81,7 @@ github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/jsonschema
 github.com/googleapis/gnostic/openapiv2
-# github.com/gorilla/websocket v1.4.2
+# github.com/gorilla/websocket v1.4.2 => github.com/gorilla/websocket v1.4.2
 github.com/gorilla/websocket
 # github.com/hashicorp/golang-lru v0.5.4
 github.com/hashicorp/golang-lru
@@ -613,6 +613,8 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
 # github.com/go-kit/kit => github.com/go-kit/kit v0.3.0
+# github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
+# github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 # github.com/openshift/api => github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f
 # github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20200929181438-91d71ef2122c
 # github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a
