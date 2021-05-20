@@ -7,7 +7,6 @@ _out/*
 internal/template-validator/_out/*
 build/_output/*
 bin/*
-csv-generator
 bundle/*
 cover.out
 bundle.Dockerfile

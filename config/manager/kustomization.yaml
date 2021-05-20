@@ -3,6 +3,17 @@ namePrefix: ssp-
 
 resources:
 - manager.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+# We don't use config map now, but leaving this here in case we want to use it in the future.
+#
+#configMapGenerator:
+#- files:
+#  - controller_manager_config.yaml
+#  name: manager-config
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:

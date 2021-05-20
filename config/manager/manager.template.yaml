@@ -24,10 +24,12 @@ spec:
     spec:
       serviceAccountName: ssp-operator
       priorityClassName: system-cluster-critical
+      securityContext:
+        runAsUser: 1000
       containers:
       - command:
         - /manager
-        args: ["--enable-leader-election", "--ready-probe-addr", ":9440"]
+        args: ["--leader-elect"]
         env:
           - name: KVM_INFO_IMAGE
           - name: VALIDATOR_IMAGE
@@ -38,11 +40,20 @@ spec:
           - name: OPERATOR_VERSION
         image: controller:latest
         name: manager
+        securityContext:
+          allowPrivilegeEscalation: false
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /readyz
-            port: 9440
+            port: 8081
           initialDelaySeconds: 5
+          periodSeconds: 10
       terminationGracePeriodSeconds: 10
       resources:
         requests:

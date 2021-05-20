@@ -7,15 +7,3 @@ resources:
 
 configurations:
 - kustomizeconfig.yaml
-
-patches:
-- target:
-    kind: ValidatingWebhookConfiguration
-    name: validating-webhook-configuration
-  patch: |-
-    - op: replace
-      path: /webhooks/0/clientConfig/service/name
-      value: ssp-webhook-service
-    - op: replace
-      path: /webhooks/0/clientConfig/service/namespace
-      value: kubevirt
