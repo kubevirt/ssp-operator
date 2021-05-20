@@ -44,3 +44,7 @@ spec:
             port: 9440
           initialDelaySeconds: 5
       terminationGracePeriodSeconds: 10
+      resources:
+        requests:
+          memory: "150Mi"
+          cpu: "100m"

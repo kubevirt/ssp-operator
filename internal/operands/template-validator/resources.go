@@ -7,6 +7,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubevirt "kubevirt.io/client-go/api/v1"
@@ -134,11 +135,17 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 				},
 				Spec: core.PodSpec{
 					ServiceAccountName: ServiceAccountName,
-					PriorityClassName: "system-cluster-critical",
+					PriorityClassName:  "system-cluster-critical",
 					Containers: []core.Container{{
 						Name:            "webhook",
 						Image:           image,
 						ImagePullPolicy: core.PullAlways,
+						Resources: core.ResourceRequirements{
+							Requests: core.ResourceList{
+								core.ResourceCPU:    resource.MustParse("50m"),
+								core.ResourceMemory: resource.MustParse("150Mi"),
+							},
+						},
 						Args: []string{
 							"-v=2",
 							fmt.Sprintf("--port=%d", ContainerPort),
@@ -207,7 +214,7 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 					Path:      &path,
 				},
 			},
-			Rules: rules,
+			Rules:         rules,
 			FailurePolicy: &fail,
 			SideEffects:   &sideEffectsNone,
 			// TODO - add "v1" to the list once the template-validator
