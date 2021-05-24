@@ -2,6 +2,7 @@ package template_validator
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -137,6 +138,12 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 						Name:            "webhook",
 						Image:           image,
 						ImagePullPolicy: core.PullAlways,
+						Resources: core.ResourceRequirements{
+							Requests: core.ResourceList{
+								core.ResourceCPU:    resource.MustParse("50m"),
+								core.ResourceMemory: resource.MustParse("150Mi"),
+							},
+						},
 						Args: []string{
 							"-v=2",
 							fmt.Sprintf("--port=%d", ContainerPort),
