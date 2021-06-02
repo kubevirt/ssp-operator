@@ -656,6 +656,18 @@ var _ = Describe("Common templates", func() {
 							},
 						}),
 				)
+				It("[test_id:4878]should not create any other resurces than the ones listed in the Edit Cluster role", func() {
+					sars := &authv1.SubjectAccessReviewSpec{
+						ResourceAttributes: &authv1.ResourceAttributes{
+							Verb:      "create",
+							Namespace: commonTemplates.GoldenImagesNSname,
+							Version:   core.SchemeGroupVersion.Version,
+							Resource:  "pods",
+						},
+					}
+					sars.User = privilegedSAFullName
+					expectUserCannot(sars)
+				})
 			})
 		})
 	})
