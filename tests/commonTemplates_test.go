@@ -418,7 +418,7 @@ var _ = Describe("Common templates", func() {
 						User:   regularSAFullName,
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
-							Verb:      "list",
+							Verb:      "watch",
 							Namespace: commonTemplates.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
