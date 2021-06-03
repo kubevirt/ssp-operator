@@ -645,16 +645,6 @@ var _ = Describe("Common templates", func() {
 								Resource:  "datavolumes",
 							},
 						}),
-					table.Entry("[test_id:4876]: ServiceAccounts with edit role can delete DVs",
-						&authv1.SubjectAccessReviewSpec{
-							ResourceAttributes: &authv1.ResourceAttributes{
-								Verb:      "delete",
-								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     commonTemplates.CdiApiGroup,
-								Version:   commonTemplates.CdiApiVersion,
-								Resource:  "datavolumes",
-							},
-						}),
 				)
 				It("[test_id:4878]should not create any other resurces than the ones listed in the Edit Cluster role", func() {
 					sars := &authv1.SubjectAccessReviewSpec{
