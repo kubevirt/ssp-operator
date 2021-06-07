@@ -185,10 +185,10 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 			updatedContainer.Image = flags.operatorImage
 			updatedVariables := make([]v1.EnvVar, 0)
 			for _, envVariable := range container.Env {
-				if envVariable.Name == common.TemplateValidatorImageKey {
+				if envVariable.Name == common.TemplateValidatorImageKey && flags.validatorImage != "" {
 					envVariable.Value = flags.validatorImage
 				}
-				if envVariable.Name == common.OperatorVersionKey {
+				if envVariable.Name == common.OperatorVersionKey && flags.operatorVersion != "" {
 					envVariable.Value = flags.operatorVersion
 				}
 				updatedVariables = append(updatedVariables, envVariable)
