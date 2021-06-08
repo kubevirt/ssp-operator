@@ -1,5 +1,7 @@
 package template_validator
 
-const (
-	defaultTemplateValidatorImage = "quay.io/kubevirt/kubevirt-template-validator:v0.10.0"
+var (
+	// This value will be updated at build time to point to the latest released validator image's
+	// tag, for example vx.y.z
+	defaultTemplateValidatorImage = "quay.io/kubevirt/kubevirt-template-validator:latest"
 )
