@@ -54,7 +54,9 @@ functest: generate fmt vet manifests
 
 # Build manager binary
 manager: generate fmt vet
-	go build -o bin/manager main.go
+	go build -o bin/manager \
+		-ldflags="-X 'kubevirt.io/ssp-operator/internal/operands/template-validator.defaultTemplateValidatorImage=${VALIDATOR_IMG}'" \
+		main.go
 
 # Build csv-generator binary
 csv-generator: generate fmt vet
@@ -106,7 +108,14 @@ container-build: unittest bundle
 	mkdir -p data/crd
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	docker build -t ${IMG} .
+	docker build -t ${IMG} \
+		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
+		--build-arg IMG_TAG=${IMG_TAG} \
+		--build-arg IMG=${IMG} \
+		--build-arg VALIDATOR_REPOSITORY=${VALIDATOR_REPOSITORY} \
+		--build-arg VALIDATOR_IMG_TAG=${VALIDATOR_IMG_TAG} \
+		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
+		.
 
 # Push the container image
 container-push:
@@ -116,7 +125,14 @@ build-template-validator:
 	./hack/build-template-validator.sh ${VERSION}
 
 build-template-validator-container:
-	docker build -t ${VALIDATOR_IMG} . -f validator.Dockerfile
+	docker build -t ${VALIDATOR_IMG} \
+		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
+		--build-arg IMG_TAG=${IMG_TAG} \
+		--build-arg IMG=${IMG} \
+		--build-arg VALIDATOR_REPOSITORY=${VALIDATOR_REPOSITORY} \
+		--build-arg VALIDATOR_IMG_TAG=${VALIDATOR_IMG_TAG} \
+		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
+		. -f validator.Dockerfile
 
 push-template-validator-container:
 	docker push ${VALIDATOR_IMG}
