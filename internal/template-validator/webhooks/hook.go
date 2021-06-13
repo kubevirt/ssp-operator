@@ -23,10 +23,19 @@ import (
 	"net/http"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"kubevirt.io/client-go/log"
+)
+
+var (
+	vmsRejected = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "total_rejected_vms",
+		Help: "The total number of rejected vms",
+	})
 )
 
 const (
@@ -60,6 +69,7 @@ func admitVMTemplate(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResp
 
 	causes := ValidateVMTemplate(rules, newVM, oldVM)
 	if len(causes) > 0 {
+		vmsRejected.Inc()
 		return ToAdmissionResponse(causes)
 	}
 

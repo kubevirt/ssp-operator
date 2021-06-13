@@ -4,13 +4,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"reflect"
+	"strings"
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"reflect"
-	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
@@ -408,7 +409,6 @@ var _ = Describe("Template validator", func() {
 		It("[test_id:2960] Negative test - Create a VM with machine type violation", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
-
 			// set value unfulfilling validation
 			vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
 			vm = NewVirtualMachine(vmi)
@@ -418,6 +418,22 @@ var _ = Describe("Template validator", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
+
+		It("[test_id:7060]vm rejected metrics increses by one when vm is rejected", func() {
+			rejectedCountBefore := totalRejectedVmsMetricsValue()
+			template = TemplateWithRules()
+			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
+			// set value unfulfilling validation
+			vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+			}
+			eventuallyFailToCreateVm(vm)
+			Expect(totalRejectedVmsMetricsValue() - rejectedCountBefore).To(Equal(1))
+		})
+
 		It("[test_id:5586]test with template optional rules unfulfilled", func() {
 			template = TemplateWithRulesOptional()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
@@ -773,6 +789,16 @@ func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 		}
 		return errors.ReasonForError(err), nil
 	}, shortTimeout).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
+}
+
+func totalRejectedVmsMetricsValue() (sum int) {
+	pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
+	Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
+	Expect(pods.Items).ToNot(BeEmpty())
+	for _, validatorPod := range pods.Items {
+		sum += intMetricValue("total_rejected_vms", validator.MetricsPort, &validatorPod)
+	}
+	return
 }
 
 func addObjectsToTemplates(genName, validation string) *templatev1.Template {
