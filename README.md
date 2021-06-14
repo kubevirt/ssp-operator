@@ -5,7 +5,7 @@ Operator that manages Scheduling, Scale and Performance addons for [KubeVirt](ht
 
 The operator deploys and manages resources needed by these four components:
 
-- [Template Validator](https://github.com/kubevirt/kubevirt-template-validator)
+- [Template Validator](https://github.com/kubevirt/ssp-operator/tree/master/internal/template-validator) (You can read more about it here: [Template Validator old repository](https://github.com/kubevirt/kubevirt-template-validator)
 - [Node Labeller](https://github.com/kubevirt/node-labeller)
 - [Common Templates Bundle](https://github.com/kubevirt/common-templates)
 - Metrics rules - Currently it is only a single Prometheus rule containing the count of all running VMs.
@@ -61,7 +61,30 @@ manifests and the operator can be deployed using:
 ```shell
 make deploy
 ```
+## Building the Template Validator
+Please note that building and deploying the Template Validator requires a separate process
 
+To build the container image run:
+```shell
+make build-template-validator-container
+```
+
+To upload the image to the default repository run:
+```shell
+make push-template-validator-container
+```
+
+The repository and image name and tag can be changed
+with these variables:
+```shell
+export VALIDATOR_REPOSITORY=<registry>/<image_name> # for example: export VALIDATOR_REPOSITORY=quay.io/kubevirt/kubevirt-template-validator
+export VALIDATOR_IMG_TAG=<image_tag> # for example: export VALIDATOR_IMG_TAG=latest
+```
+
+You should also edit the deployment to pull the image you want, for example you can use this command:
+```shell
+oc set env deployment/ssp-operator VALIDATOR_IMAGE=$VALIDATOR_IMG
+```
 ## Development
 
 ### Running locally
