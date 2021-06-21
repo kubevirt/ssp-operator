@@ -27,6 +27,7 @@ const (
 var (
 	loadTemplatesOnce sync.Once
 	templatesBundle   []templatev1.Template
+	deployedTemplates = make(map[string]bool)
 )
 
 // Define RBAC rules needed by this operand:
@@ -71,6 +72,25 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceS
 		reconcileViewRoleBinding,
 		reconcileEditRole,
 	}
+
+	loadTemplates := func() {
+		var err error
+		filename := filepath.Join(BundleDir, "common-templates-"+Version+".yaml")
+		templatesBundle, err = ReadTemplates(filename)
+		if err != nil {
+			request.Logger.Error(err, fmt.Sprintf("Error reading from template bundle, %v", err))
+			panic(err)
+		}
+		if len(templatesBundle) == 0 {
+			panic("No templates could be found in the installed bundle")
+		}
+
+		for _, template := range templatesBundle {
+			deployedTemplates[template.Name] = true
+		}
+	}
+	// Only load templates Once
+	loadTemplatesOnce.Do(loadTemplates)
 
 	oldTemplateFuncs, err := reconcileOlderTemplates(request)
 	if err != nil {
@@ -170,6 +190,11 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates.Items))
 	for i := range existingTemplates.Items {
 		template := &existingTemplates.Items[i]
+
+		if _, ok := deployedTemplates[template.Name]; ok {
+			continue
+		}
+
 		if template.Annotations == nil {
 			template.Annotations = make(map[string]string)
 		}
@@ -191,21 +216,6 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 }
 
 func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
-	loadTemplates := func() {
-		var err error
-		filename := filepath.Join(BundleDir, "common-templates-"+Version+".yaml")
-		templatesBundle, err = ReadTemplates(filename)
-		if err != nil {
-			request.Logger.Error(err, fmt.Sprintf("Error reading from template bundle, %v", err))
-			panic(err)
-		}
-		if len(templatesBundle) == 0 {
-			panic("No templates could be found in the installed bundle")
-		}
-	}
-	// Only load templates Once
-	loadTemplatesOnce.Do(loadTemplates)
-
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
 	funcs := make([]common.ReconcileFunc, 0, len(templatesBundle))
 	for i := range templatesBundle {
