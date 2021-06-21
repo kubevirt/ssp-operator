@@ -94,6 +94,10 @@ fmt:
 vet:
 	go vet ./...
 
+# Validate that this repository does not contain offensive language
+validate-no-offensive-lang:
+	./hack/validate-no-offensive-lang.sh
+
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
