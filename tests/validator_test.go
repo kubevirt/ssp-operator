@@ -3,13 +3,14 @@ package tests
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"reflect"
+	"strings"
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"reflect"
-	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
@@ -117,10 +118,11 @@ var _ = Describe("Template validator", func() {
 
 	Context("resource creation", func() {
 		table.DescribeTable("created cluster resource", func(res *testResource) {
-			resource := res.NewResource()
-			err := apiClient.Get(ctx, res.GetKey(), resource)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
+			Eventually(func() bool {
+				resource := res.NewResource()
+				err := apiClient.Get(ctx, res.GetKey(), resource)
+				return err == nil && hasOwnerAnnotations(resource.GetAnnotations())
+			}, shortTimeout).Should(BeTrue(), "ownerReference was not replaced by owner annotations on validator")
 		},
 			table.Entry("[test_id:4907] cluster role", &clusterRoleRes),
 			table.Entry("[test_id:4908] cluster role binding", &clusterRoleBindingRes),

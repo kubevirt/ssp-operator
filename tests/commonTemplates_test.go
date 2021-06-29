@@ -89,23 +89,26 @@ var _ = Describe("Common templates", func() {
 	})
 
 	Context("resource creation", func() {
-		table.DescribeTable("created cluster resource", func(res *testResource) {
-			resource := res.NewResource()
-			err := apiClient.Get(ctx, res.GetKey(), resource)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
+		table.DescribeTable("created cluster resource", func(res *testResource, name string) {
+			Eventually(func() bool {
+				resource := res.NewResource()
+				err := apiClient.Get(ctx, res.GetKey(), resource)
+				return err == nil && hasOwnerAnnotations(resource.GetAnnotations())
+			}, shortTimeout).Should(BeTrue(), "ownerReference was not replaced by owner annotations on "+name)
+
 		},
-			table.Entry("[test_id:4584]edit role", &editClusterRole),
-			table.Entry("[test_id:4494]golden images namespace", &goldenImageNS),
+			table.Entry("[test_id:4584]edit role", &editClusterRole, "edit role"),
+			table.Entry("[test_id:4494]golden images namespace", &goldenImageNS, "golden images namespace"),
 		)
 
-		table.DescribeTable("created namespaced resource", func(res *testResource) {
-			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
-			Expect(err).ToNot(HaveOccurred())
+		table.DescribeTable("created namespaced resource", func(res *testResource, name string) {
+			Eventually(func() error {
+				return apiClient.Get(ctx, res.GetKey(), res.NewResource())
+			}, shortTimeout).Should(BeNil(), "ownerReference was not replaced by owner annotations on "+name)
 		},
-			table.Entry("[test_id:4777]view role", &viewRole),
-			table.Entry("[test_id:4772]view role binding", &viewRoleBinding),
-			table.Entry("[test_id:5086]common-template in custom NS", &testTemplate),
+			table.Entry("[test_id:4777]view role", &viewRole, "view role"),
+			table.Entry("[test_id:4772]view role binding", &viewRoleBinding, "view role binding"),
+			table.Entry("[test_id:5086]common-template in custom NS", &testTemplate, "common-template in custom NS"),
 		)
 
 		It("[test_id:5352]creates only one default variant per OS", func() {
