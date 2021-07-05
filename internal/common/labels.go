@@ -23,6 +23,8 @@ const (
 	AppComponentMonitoring AppComponent = "monitoring"
 	AppComponentSchedule   AppComponent = "schedule"
 	AppComponentTemplating AppComponent = "templating"
+
+	OperatorName = "ssp-operator"
 )
 
 // AddAppLabels to the provided obj
@@ -35,7 +37,7 @@ func AddAppLabels(requestInstance *v1beta1.SSP, name string, component AppCompon
 
 	labels[AppKubernetesNameLabel] = name
 	labels[AppKubernetesComponentLabel] = component.String()
-	labels[AppKubernetesManagedByLabel] = "ssp-operator"
+	labels[AppKubernetesManagedByLabel] = OperatorName
 
 	return obj
 }

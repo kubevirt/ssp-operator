@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	cdiv1beta1 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 )
 
@@ -57,6 +58,10 @@ type SSPSpec struct {
 
 	// NodeLabeller is configuration of the node-labeller operand
 	NodeLabeller NodeLabeller `json:"nodeLabeller,omitempty"`
+
+	// DataImportCronTemplates defines a list of DataImportCrons managed by the SSP
+	// Operator. This is intended for images used by CommonTemplates.
+	DataImportCronTemplates []cdiv1beta1.DataImportCron `json:"dataImportCronTemplates,omitempty"`
 }
 
 // SSPStatus defines the observed state of SSP
