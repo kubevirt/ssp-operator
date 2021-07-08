@@ -1,5 +1,7 @@
 # Build the manager binary
-FROM golang:1.15 as builder
+FROM registry.access.redhat.com/ubi8/ubi-minimal as builder
+
+RUN microdnf install -y make golang-1.15.* which && microdnf clean all
 
 # Consume required variables so we can work with make
 ARG IMG_REPOSITORY

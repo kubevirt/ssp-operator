@@ -1,4 +1,6 @@
-FROM golang:1.15 as builder
+FROM registry.access.redhat.com/ubi8/ubi-minimal as builder
+
+RUN microdnf install -y golang-1.15.* && microdnf clean all
 
 ARG VERSION=latest
 ARG COMPONENT="kubevirt-template-validator"
