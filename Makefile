@@ -1,5 +1,9 @@
 # Current Operator version
-VERSION ?= 0.1.3
+# The value here should be equal to the next version:
+# - next minor version on main branch
+# - next patch version on release branches
+VERSION ?= 0.11.3
+
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 #operator-sdk version
