@@ -24,6 +24,7 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY internal/ internal/
 
+COPY hack/boilerplate.go.txt hack/boilerplate.go.txt
 COPY hack/csv-generator.go hack/csv-generator.go
 
 # Build
