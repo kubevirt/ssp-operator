@@ -174,27 +174,25 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 		}).
 		Reconcile()
 }
+func getOldTemplatesLabelSelector() labels.Selector {
+	baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{"base"})
+	if err != nil {
+		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateTypeLabel, "base"))
+	}
+
+	// Only fetching older templates  to prevent duplication of API calls
+	versionRequirement, err := labels.NewRequirement(TemplateVersionLabel, selection.NotEquals, []string{Version})
+	if err != nil {
+		panic(fmt.Sprintf("Failed creating label selector for '%s!=%s'", TemplateVersionLabel, Version))
+	}
+
+	return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
+}
 
 func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
-	// Append functions to take ownership of previously deployed templates during an upgrade
-	templatesSelector := func() labels.Selector {
-		baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{"base"})
-		if err != nil {
-			panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateTypeLabel, "base"))
-		}
-
-		// Only fetching older templates  to prevent duplication of API calls
-		versionRequirement, err := labels.NewRequirement(TemplateVersionLabel, selection.NotEquals, []string{Version})
-		if err != nil {
-			panic(fmt.Sprintf("Failed creating label selector for '%s!=%s'", TemplateVersionLabel, Version))
-		}
-
-		return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
-	}()
-
 	existingTemplates := &templatev1.TemplateList{}
 	err := request.Client.List(request.Context, existingTemplates, &client.ListOptions{
-		LabelSelector: templatesSelector,
+		LabelSelector: getOldTemplatesLabelSelector(),
 		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,
 	})
 
@@ -211,16 +209,13 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 			continue
 		}
 
-		if template.Annotations == nil {
-			template.Annotations = make(map[string]string)
-		}
-		template.Annotations[TemplateDeprecatedAnnotation] = "true"
 		funcs = append(funcs, func(*common.Request) (common.ResourceStatus, error) {
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
 				WithAppLabels(operandName, operandComponent).
 				UpdateFunc(func(_, foundRes client.Object) {
 					foundTemplate := foundRes.(*templatev1.Template)
+					foundTemplate.Annotations[TemplateDeprecatedAnnotation] = "true"
 					for key := range foundTemplate.Labels {
 						if strings.HasPrefix(key, TemplateOsLabelPrefix) ||
 							strings.HasPrefix(key, TemplateFlavorLabelPrefix) ||
