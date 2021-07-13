@@ -214,15 +214,15 @@ func getResourceKey(obj client.Object) client.ObjectKey {
 }
 
 func expectUserCan(sars *authv1.SubjectAccessReviewSpec) {
-	sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
-		Spec: *sars,
-	}, metav1.CreateOptions{})
-	ExpectWithOffset(1, err).ToNot(HaveOccurred())
-	ExpectWithOffset(1, sar.Status.Allowed).To(BeTrue(),
-		fmt.Sprintf("user [%s] with groups %v cannot [%s] resource: [%s], subresource: [%s], name: [%s] in group [%s/%s] in namespace [%s]",
-			sars.User, sars.Groups, sars.ResourceAttributes.Verb, sars.ResourceAttributes.Resource,
-			sars.ResourceAttributes.Subresource, sars.ResourceAttributes.Name, sars.ResourceAttributes.Group,
-			sars.ResourceAttributes.Version, sars.ResourceAttributes.Namespace))
+	Eventually(func() bool {
+		sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
+			Spec: *sars,
+		}, metav1.CreateOptions{})
+		return err == nil && sar.Status.Allowed
+	}, 15*time.Second, 2*time.Second).Should(BeTrue(), fmt.Sprintf("user [%s] with groups %v cannot [%s] resource: [%s], subresource: [%s], name: [%s] in group [%s/%s] in namespace [%s]",
+		sars.User, sars.Groups, sars.ResourceAttributes.Verb, sars.ResourceAttributes.Resource,
+		sars.ResourceAttributes.Subresource, sars.ResourceAttributes.Name, sars.ResourceAttributes.Group,
+		sars.ResourceAttributes.Version, sars.ResourceAttributes.Namespace))
 }
 
 func expectUserCannot(sars *authv1.SubjectAccessReviewSpec) {

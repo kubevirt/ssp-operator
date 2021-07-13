@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
+	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +32,7 @@ import (
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -362,6 +364,18 @@ func waitUntilDeployed() {
 			ssp.Status.Phase == lifecycleapi.PhaseDeployed
 	}, timeout, time.Second).Should(BeTrue())
 	deploymentTimedOut = false
+}
+
+func waitUntilTemplateValidatorIsRunning() {
+	key := client.ObjectKey{Name: validator.VirtTemplateValidator, Namespace: strategy.GetNamespace()}
+	foundValidator := new(apps.Deployment)
+	Expect(apiClient.Get(ctx, key, foundValidator)).ToNot(HaveOccurred())
+
+	EventuallyWithOffset(1, func() bool {
+		Expect(apiClient.Get(ctx, key, foundValidator)).ToNot(HaveOccurred())
+
+		return foundValidator.Status.AvailableReplicas > 1
+	}, timeout, time.Second).Should(BeTrue())
 }
 
 func waitForDeletion(key client.ObjectKey, obj client.Object) {

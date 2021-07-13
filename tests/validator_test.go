@@ -3,13 +3,14 @@ package tests
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"reflect"
+	"strings"
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"reflect"
-	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
@@ -113,6 +114,7 @@ var _ = Describe("Template validator", func() {
 		}
 
 		waitUntilDeployed()
+		waitUntilTemplateValidatorIsRunning()
 	})
 
 	Context("resource creation", func() {
