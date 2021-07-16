@@ -2,6 +2,8 @@ package tests
 
 import (
 	"fmt"
+	"github.com/onsi/gomega/format"
+	"github.com/onsi/gomega/types"
 	"reflect"
 	"time"
 
@@ -56,6 +58,34 @@ func (r *testResource) Equals(a, b client.Object) bool {
 	return result[0].Bool()
 }
 
+type resourceEqualsMatcher struct {
+	res      *testResource
+	expected client.Object
+}
+
+func (r *resourceEqualsMatcher) Match(actual interface{}) (success bool, err error) {
+	actualObj, ok := actual.(client.Object)
+	if !ok {
+		return false, fmt.Errorf("EqualResource matcher expects client.Object. Got:\n%s", format.Object(actual, 1))
+	}
+	return r.res.Equals(r.expected, actualObj), nil
+}
+
+func (r *resourceEqualsMatcher) FailureMessage(actual interface{}) (message string) {
+	return format.Message(actual, "to be equal resource as", r.expected)
+}
+
+func (r *resourceEqualsMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	return format.Message(actual, "to not be equal resource as", r.expected)
+}
+
+func EqualResource(testRes *testResource, expected client.Object) types.GomegaMatcher {
+	return &resourceEqualsMatcher{
+		res:      testRes,
+		expected: expected,
+	}
+}
+
 func expectRecreateAfterDelete(res *testResource) {
 	resource := res.NewResource()
 	resource.SetName(res.Name)
@@ -105,7 +135,7 @@ func expectRestoreAfterUpdate(res *testResource) {
 
 	found := res.NewResource()
 	Expect(apiClient.Get(ctx, res.GetKey(), found)).ToNot(HaveOccurred())
-	Expect(res.Equals(original, found)).To(BeTrue())
+	Expect(found).To(EqualResource(res, original))
 }
 
 func expectRestoreAfterUpdateWithPause(res *testResource) {
@@ -122,25 +152,19 @@ func expectRestoreAfterUpdateWithPause(res *testResource) {
 	res.Update(changed)
 	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
 
-	Consistently(func() (bool, error) {
+	Consistently(func() (client.Object, error) {
 		found := res.NewResource()
 		err := apiClient.Get(ctx, res.GetKey(), found)
-		if err != nil {
-			return false, err
-		}
-		return res.Equals(changed, found), nil
-	}, pauseDuration, time.Second).Should(BeTrue())
+		return found, err
+	}, pauseDuration, time.Second).Should(EqualResource(res, changed))
 
 	unpauseSsp()
 
-	Eventually(func() (bool, error) {
+	Eventually(func() (client.Object, error) {
 		found := res.NewResource()
 		err := apiClient.Get(ctx, res.GetKey(), found)
-		if err != nil {
-			return false, err
-		}
-		return res.Equals(original, found), nil
-	}, timeout, time.Second).Should(BeTrue())
+		return found, err
+	}, timeout, time.Second).Should(EqualResource(res, original))
 }
 
 func hasOwnerAnnotations(annotations map[string]string) bool {
