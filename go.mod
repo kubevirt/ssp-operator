@@ -27,9 +27,10 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 	kubevirt.io/client-go v0.38.1
-	kubevirt.io/controller-lifecycle-operator-sdk v0.1.3-0.20210112105647-bbf16167410b
+	kubevirt.io/containerized-data-importer v1.36.0
+	kubevirt.io/controller-lifecycle-operator-sdk v0.2.0
 	kubevirt.io/qe-tools v0.1.7
-	sigs.k8s.io/controller-runtime v0.8.2
+	sigs.k8s.io/controller-runtime v0.8.3
 )
 
 replace (
