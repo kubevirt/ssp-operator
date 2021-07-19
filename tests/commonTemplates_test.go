@@ -93,7 +93,7 @@ var _ = Describe("Common templates", func() {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
+			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue(), "Missing owner annotations")
 		},
 			table.Entry("[test_id:4584]edit role", &editClusterRole),
 			table.Entry("[test_id:4494]golden images namespace", &goldenImageNS),
@@ -136,8 +136,7 @@ var _ = Describe("Common templates", func() {
 			}
 
 			for os, defaultCount := range osDefaultCounts {
-				fmt.Fprintf(GinkgoWriter, "checking osDefaultCount for %s\n", os)
-				Expect(defaultCount).To(BeNumerically("==", 1))
+				Expect(defaultCount).To(BeNumerically("==", 1), fmt.Sprintf("osDefaultCount for %s is not 1", os))
 			}
 		})
 
@@ -188,7 +187,9 @@ var _ = Describe("Common templates", func() {
 									matchingLiveTemplates++
 								}
 							}
-							Expect(matchingLiveTemplates).To(BeNumerically("==", 1))
+							Expect(matchingLiveTemplates).To(BeNumerically("==", 1),
+								fmt.Sprintf("More than 1 matching live template for (%s, %s, %s)", os, workload, flavor),
+							)
 						}
 					}
 				}
@@ -266,16 +267,16 @@ var _ = Describe("Common templates", func() {
 			// removed by the GC, the choice to use a template as an owner object was arbitrary
 			ownerTemplate = &templatev1.Template{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "owner-template",
-					Namespace: strategy.GetTemplatesNamespace(),
+					GenerateName: "owner-template-",
+					Namespace:    strategy.GetTemplatesNamespace(),
 				},
 			}
 			Expect(apiClient.Create(ctx, ownerTemplate)).ToNot(HaveOccurred(), "failed to create dummy owner for an old template")
 
 			oldTemplate = &templatev1.Template{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-old-template",
-					Namespace: strategy.GetTemplatesNamespace(),
+					GenerateName: "test-old-template-",
+					Namespace:    strategy.GetTemplatesNamespace(),
 					Labels: map[string]string{
 						commonTemplates.TemplateVersionLabel: "not-latest",
 						commonTemplates.TemplateTypeLabel:    "base",
@@ -303,39 +304,45 @@ var _ = Describe("Common templates", func() {
 			triggerReconciliation()
 
 			// Template should eventually be updated by the operator
-			Eventually(func() bool {
+			Eventually(func() (bool, error) {
 				updatedTpl := &templatev1.Template{}
 				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
 				err := apiClient.Get(ctx, key, updatedTpl)
-				return err == nil &&
-					len(updatedTpl.GetOwnerReferences()) == 0 &&
-					hasOwnerAnnotations(updatedTpl.GetAnnotations())
+				if err != nil {
+					return false, err
+				}
+				return len(updatedTpl.GetOwnerReferences()) == 0 &&
+					hasOwnerAnnotations(updatedTpl.GetAnnotations()), nil
 			}, shortTimeout).Should(BeTrue(), "ownerReference was not replaced by owner annotations on the old template")
 		})
 		It("[test_id:5620]should remove labels from old templates", func() {
 			triggerReconciliation()
 			// Template should eventually be updated by the operator
-			Eventually(func() bool {
+			Eventually(func() (bool, error) {
 				updatedTpl := &templatev1.Template{}
 				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
 				err := apiClient.Get(ctx, key, updatedTpl)
-				return err == nil &&
-					updatedTpl.Labels[testOsLabel] == "" &&
+				if err != nil {
+					return false, err
+				}
+				return updatedTpl.Labels[testOsLabel] == "" &&
 					updatedTpl.Labels[testFlavorLabel] == "" &&
 					updatedTpl.Labels[testWorkflowLabel] == "" &&
 					updatedTpl.Labels[commonTemplates.TemplateTypeLabel] == "base" &&
-					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest"
+					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest", nil
 			}, shortTimeout).Should(BeTrue(), "labels were not removed from older templates")
 		})
 		It("[test_id:5969] should add deprecated annotation to old templates", func() {
 			triggerReconciliation()
 
-			Eventually(func() bool {
+			Eventually(func() (bool, error) {
 				updatedTpl := &templatev1.Template{}
 				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
 				err := apiClient.Get(ctx, key, updatedTpl)
-				return err == nil &&
-					updatedTpl.Annotations[commonTemplates.TemplateDeprecatedAnnotation] == "true"
+				if err != nil {
+					return false, err
+				}
+				return updatedTpl.Annotations[commonTemplates.TemplateDeprecatedAnnotation] == "true", nil
 			}, shortTimeout).Should(BeTrue(), "deprecated annotation should be added to old template")
 		})
 		It("[test_id:5622]should continue to have labels on latest templates", func() {
@@ -348,19 +355,31 @@ var _ = Describe("Common templates", func() {
 					commonTemplates.TemplateTypeLabel:    "base",
 					commonTemplates.TemplateVersionLabel: commonTemplates.Version,
 				})
-			Expect(err).To(BeNil())
-			Expect(len(latestTemplates.Items)).To(BeNumerically(">", 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(latestTemplates.Items)).To(BeNumerically(">", 0), "Latest templates are missing")
 
 			for _, template := range latestTemplates.Items {
 				for label, value := range template.Labels {
 					if strings.HasPrefix(label, commonTemplates.TemplateOsLabelPrefix) ||
 						strings.HasPrefix(label, commonTemplates.TemplateFlavorLabelPrefix) ||
 						strings.HasPrefix(label, commonTemplates.TemplateWorkloadLabelPrefix) {
-						Expect(value).To(Equal("true"))
+						Expect(value).To(Equal("true"),
+							fmt.Sprintf("Required label for template is not 'true': {template: %s/%s, label: %s}",
+								template.GetNamespace(), template.GetName(), label),
+						)
 					}
 				}
-				Expect(template.Labels[commonTemplates.TemplateTypeLabel]).To(Equal("base"))
-				Expect(template.Labels[commonTemplates.TemplateVersionLabel]).To(Equal(commonTemplates.Version))
+				Expect(template.Labels[commonTemplates.TemplateTypeLabel]).To(Equal("base"),
+					fmt.Sprintf("Label '%s' is not equal 'base' for template %s/%s",
+						commonTemplates.TemplateTypeLabel,
+						template.GetNamespace(), template.GetName()),
+				)
+				Expect(template.Labels[commonTemplates.TemplateVersionLabel]).To(Equal(commonTemplates.Version),
+					fmt.Sprintf("Label '%s' is not equal '%s' for template %s/%s",
+						commonTemplates.TemplateVersionLabel,
+						commonTemplates.Version,
+						template.GetNamespace(), template.GetName()),
+				)
 			}
 		})
 	})
@@ -376,14 +395,13 @@ var _ = Describe("Common templates", func() {
 			BeforeEach(func() {
 				regularSA = &core.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "regular-sa",
-						Namespace: strategy.GetNamespace(),
+						GenerateName: "regular-sa-",
+						Namespace:    strategy.GetNamespace(),
 					},
 				}
-				regularSAFullName = fmt.Sprintf("system:serviceaccount:%s:%s", regularSA.GetNamespace(), regularSA.GetName())
+				Expect(apiClient.Create(ctx, regularSA)).To(Succeed(), "creation of regular service account failed")
 
-				Expect(apiClient.Create(ctx, regularSA)).ToNot(HaveOccurred(), "creation of regular service account failed")
-				Expect(apiClient.Get(ctx, getResourceKey(regularSA), regularSA)).ToNot(HaveOccurred())
+				regularSAFullName = fmt.Sprintf("system:serviceaccount:%s:%s", regularSA.GetNamespace(), regularSA.GetName())
 			})
 
 			AfterEach(func() {
@@ -553,32 +571,31 @@ var _ = Describe("Common templates", func() {
 			Context("With Edit permission", func() {
 				var (
 					privilegedSA         *core.ServiceAccount
-					privilegedSAName     = "privileged-sa"
 					privilegedSAFullName string
+
+					editObj *rbac.RoleBinding
 				)
 				BeforeEach(func() {
 					privilegedSA = &core.ServiceAccount{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      privilegedSAName,
-							Namespace: strategy.GetNamespace(),
+							GenerateName: "privileged-sa-",
+							Namespace:    strategy.GetNamespace(),
 						},
 					}
-					Expect(apiClient.Create(ctx, privilegedSA)).ToNot(HaveOccurred(), "creation of regular service account failed")
-					Expect(apiClient.Get(ctx, getResourceKey(privilegedSA), privilegedSA)).ToNot(HaveOccurred())
-					privilegedSAFullName = fmt.Sprintf("system:serviceaccount:%s:%s", strategy.GetNamespace(), privilegedSAName)
 
-					editObj := &rbac.RoleBinding{
+					Expect(apiClient.Create(ctx, privilegedSA)).To(Succeed(), "creation of regular service account failed")
+					privilegedSAFullName = fmt.Sprintf("system:serviceaccount:%s:%s", privilegedSA.GetNamespace(), privilegedSA.GetName())
+
+					editObj = &rbac.RoleBinding{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-edit",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							GenerateName: "test-edit-",
+							Namespace:    commonTemplates.GoldenImagesNSname,
 						},
-						Subjects: []rbac.Subject{
-							{
-								Kind:      "ServiceAccount",
-								Name:      privilegedSAName,
-								Namespace: strategy.GetNamespace(),
-							},
-						},
+						Subjects: []rbac.Subject{{
+							Kind:      "ServiceAccount",
+							Name:      privilegedSA.GetName(),
+							Namespace: privilegedSA.GetNamespace(),
+						}},
 						RoleRef: rbac.RoleRef{
 							Kind:     "ClusterRole",
 							Name:     commonTemplates.EditClusterRoleName,
@@ -588,7 +605,6 @@ var _ = Describe("Common templates", func() {
 					Expect(apiClient.Create(ctx, editObj)).ToNot(HaveOccurred(), "Failed to create RoleBinding")
 				})
 				AfterEach(func() {
-					editObj := &rbac.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "test-edit", Namespace: commonTemplates.GoldenImagesNSname}}
 					Expect(apiClient.Delete(ctx, editObj)).ToNot(HaveOccurred())
 					Expect(apiClient.Delete(ctx, privilegedSA)).NotTo(HaveOccurred())
 				})
