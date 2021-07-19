@@ -21,6 +21,7 @@ spec:
     metadata:
       labels:
         control-plane: ssp-operator
+        prometheus.kubevirt.io: ""
     spec:
       serviceAccountName: ssp-operator
       priorityClassName: system-cluster-critical
@@ -42,6 +43,10 @@ spec:
           requests:
             memory: "150Mi"
             cpu: "100m"
+        ports:
+          - name: metrics
+            protocol: TCP
+            containerPort: 8443
         readinessProbe:
           httpGet:
             path: /readyz

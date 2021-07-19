@@ -17,6 +17,7 @@ import (
 
 const (
 	ContainerPort          = 8443
+	MetricsPort            = 8443
 	KubevirtIo             = "kubevirt.io"
 	SecretName             = "virt-template-validator-certs"
 	VirtTemplateValidator  = "virt-template-validator"
@@ -26,12 +27,19 @@ const (
 	ServiceAccountName     = "template-validator"
 	ServiceName            = VirtTemplateValidator
 	DeploymentName         = VirtTemplateValidator
+	PrometheusLabel        = "prometheus.kubevirt.io"
 )
 
 func commonLabels() map[string]string {
 	return map[string]string{
 		KubevirtIo: VirtTemplateValidator,
 	}
+}
+
+func podLabels() map[string]string {
+	labels := commonLabels()
+	labels[PrometheusLabel] = ""
+	return labels
 }
 
 func getTemplateValidatorImage() string {
@@ -127,7 +135,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   VirtTemplateValidator,
-					Labels: commonLabels(),
+					Labels: podLabels(),
 				},
 				Spec: core.PodSpec{
 					ServiceAccountName: ServiceAccountName,
@@ -159,7 +167,12 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							Name:          "webhook",
 							ContainerPort: ContainerPort,
 							Protocol:      core.ProtocolTCP,
-						}},
+						},
+							{
+								Name:          "metrics",
+								ContainerPort: MetricsPort,
+								Protocol:      core.ProtocolTCP,
+							}},
 					}},
 					Volumes: []core.Volume{{
 						Name: volumeName,

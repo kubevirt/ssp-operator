@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 
@@ -30,7 +31,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/controllers"
 	// +kubebuilder:scaffold:imports
@@ -67,6 +71,30 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
+func runPrometheusServer(metricsAddr string) {
+	setupLog.Info("Starting Prometheus metrics endpoint server with TLS")
+	// we need to unregister a couple of collectors, otherwise the metrics gathering will fail
+	// due to duplicate metrics collection
+	metrics.Registry.Unregister(prometheus.NewGoCollector())
+	metrics.Registry.Unregister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	gatherers := prometheus.Gatherers{
+		metrics.Registry,
+		prometheus.DefaultGatherer,
+	}
+	handler := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{})
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", handler)
+	server := http.Server{
+		Addr:    metricsAddr,
+		Handler: mux,
+	}
+
+	err := server.ListenAndServeTLS(path.Join(sdkTLSDir, sdkTLSCrt), path.Join(sdkTLSDir, sdkTLSKey))
+	if err != nil {
+		setupLog.Error(err, "Failed to start Prometheus metrics endpoint server")
+	}
+}
+
 // Give permissions to use leases for leader election.
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 
@@ -74,7 +102,7 @@ func main() {
 	var metricsAddr string
 	var readyProbeAddr string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8443", "The address the metric endpoint binds to.")
 	flag.StringVar(&readyProbeAddr, "ready-probe-addr", ":9440", "The address the readiness probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
@@ -89,9 +117,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	go runPrometheusServer(metricsAddr)
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
+		MetricsBindAddress:     "0",
 		HealthProbeBindAddress: readyProbeAddr,
 		Port:                   9443,
 		LeaderElection:         enableLeaderElection,

@@ -8,3 +8,5 @@ spec:
     namespace: kubevirt
   templateValidator:
     replicas: 2
+  metrics:
+    namespace: kubevirt

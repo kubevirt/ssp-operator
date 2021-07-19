@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	templatev1 "github.com/openshift/api/template/v1"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	flag "github.com/spf13/pflag"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -89,6 +90,8 @@ func (app *App) Run() {
 	}
 
 	log.Log.Infof("validator app: running with TLSInfo.CertsDirectory%+v", app.TLSInfo.CertsDirectory)
+
+	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc(validating.VMTemplateValidatePath,
 		func(w http.ResponseWriter, r *http.Request) {
