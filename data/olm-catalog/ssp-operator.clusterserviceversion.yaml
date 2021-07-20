@@ -32,6 +32,8 @@ metadata:
   namespace: kubevirt
 spec:
   apiservicedefinitions: {}
+  cleanup:
+    enabled: false
   customresourcedefinitions:
     owned:
     - description: SSP is the Schema for the ssps API

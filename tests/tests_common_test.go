@@ -345,7 +345,7 @@ func addDomainResourcesToVMI(vmi *kubevirtv1.VirtualMachineInstance, cpuCores ui
 	vmi.Spec.Domain.CPU = &kubevirtv1.CPU{
 		Cores: cpuCores,
 	}
-	vmi.Spec.Domain.Machine.Type = machineType
+	vmi.Spec.Domain.Machine = &kubevirtv1.Machine{Type: machineType}
 	vmi.Spec.Domain.Resources.Requests = core.ResourceList{
 		core.ResourceMemory: resource.MustParse(memory),
 	}
