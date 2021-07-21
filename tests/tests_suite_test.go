@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	promv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	. "github.com/onsi/ginkgo"
 	ginkgo_reporters "github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
