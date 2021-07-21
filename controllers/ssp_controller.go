@@ -47,6 +47,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	dataimportcrons "kubevirt.io/ssp-operator/internal/operands/data-import-crons"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	node_labeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
@@ -60,6 +61,7 @@ const (
 
 var sspOperands = []operands.Operand{
 	metrics.GetOperand(),
+	dataimportcrons.GetOperand(),
 	template_validator.GetOperand(),
 	common_templates.GetOperand(),
 	node_labeller.GetOperand(),

@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,19 +49,12 @@ func (c *dataImportCrons) WatchTypes() []client.Object {
 }
 
 func (c *dataImportCrons) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
-	return common.CollectResourceStatus(request, reconcileDataImportCronsFuncs(request)...)
+	return common.CollectResourceStatus(request, c.reconcileDataImportCronsFuncs(request)...)
 }
 
 func (c *dataImportCrons) Cleanup(request *common.Request) error {
-	var existingDataImportCrons cdiv1beta1.DataImportCronList
-	requirement, err := labels.NewRequirement(common.AppKubernetesManagedByLabel, selection.Equals, []string{common.OperatorName})
+	existingDataImportCrons, err := listExistingDataImportCrons(request)
 	if err != nil {
-		panic(err)
-	}
-	if err := request.Client.List(request.Context, &existingDataImportCrons, &client.ListOptions{
-		LabelSelector: labels.NewSelector().Add(*requirement),
-	}); err != nil {
-		request.Logger.Error(err, fmt.Sprintf("Error listing resources for deletion: %s", err))
 		return err
 	}
 	for _, obj := range existingDataImportCrons.Items {
@@ -73,14 +67,39 @@ func (c *dataImportCrons) Cleanup(request *common.Request) error {
 	return nil
 }
 
-func reconcileDataImportCronsFuncs(request *common.Request) []common.ReconcileFunc {
+func listExistingDataImportCrons(request *common.Request) (cdiv1beta1.DataImportCronList, error) {
+	var existingDataImportCrons cdiv1beta1.DataImportCronList
+	if err := request.Client.List(request.Context, &existingDataImportCrons, &client.ListOptions{
+		Namespace:     ssp.GoldenImagesNSname,
+		LabelSelector: managedBySSPLabelSelector(),
+	}); err != nil {
+		request.Logger.Error(err, fmt.Sprintf("Error listing resources for deletion: %s", err))
+		return cdiv1beta1.DataImportCronList{}, err
+	}
+	return existingDataImportCrons, nil
+}
+
+func managedBySSPLabelSelector() labels.Selector {
+	requirement, err := labels.NewRequirement(common.AppKubernetesManagedByLabel, selection.Equals, []string{common.OperatorName})
+	if err != nil {
+		panic(err)
+	}
+	return labels.NewSelector().Add(*requirement)
+}
+
+func (c *dataImportCrons) reconcileDataImportCronsFuncs(request *common.Request) []common.ReconcileFunc {
 	funcs := make([]common.ReconcileFunc, 0, len(request.Instance.Spec.DataImportCronTemplates))
 	cronTemplates := request.Instance.Spec.DataImportCronTemplates
-	for i := range cronTemplates {
-		cron := &cronTemplates[i]
+	requestDataImportCrons := make(map[string]struct{})
+
+	for _, cronTemplate := range cronTemplates {
+		cron := cronTemplate.AsDataImportCron()
+		cron.Namespace = ssp.GoldenImagesNSname
+
 		funcs = append(funcs, func(request *common.Request) (common.ResourceStatus, error) {
+			requestDataImportCrons[cron.Name] = struct{}{}
 			return common.CreateOrUpdate(request).
-				NamespacedResource(cron).
+				ClusterResource(&cron).
 				WithAppLabels(operandName, operandComponent).
 				UpdateFunc(func(newRes, foundRes client.Object) {
 					newDataImportCron := newRes.(*cdiv1beta1.DataImportCron)
@@ -92,5 +111,27 @@ func reconcileDataImportCronsFuncs(request *common.Request) []common.ReconcileFu
 				Reconcile()
 		})
 	}
+
+	existingDataImportCrons, err := listExistingDataImportCrons(request)
+	if err != nil {
+		request.Logger.Error(err, "error reconciling existing DataImportCrons")
+		return funcs
+	}
+	for _, cron := range existingDataImportCrons.Items {
+		if _, inRequest := requestDataImportCrons[cron.Name]; inRequest {
+			continue
+		}
+		funcs = append(funcs, func(r *common.Request) (common.ResourceStatus, error) {
+			err := request.Client.Delete(request.Context, &cron)
+			if err != nil && !errors.IsNotFound(err) {
+				request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", cron.GetName(), err))
+				return common.ResourceStatus{}, err
+			}
+			return common.ResourceStatus{
+				Resource: &cron,
+			}, nil
+		})
+	}
+
 	return funcs
 }

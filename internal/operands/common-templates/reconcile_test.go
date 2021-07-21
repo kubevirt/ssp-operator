@@ -83,7 +83,7 @@ var _ = Describe("Common-Templates operand", func() {
 	It("should create golden-images namespace", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newGoldenImagesNS(GoldenImagesNSname), request)
+		ExpectResourceExists(newGoldenImagesNS(ssp.GoldenImagesNSname), request)
 	})
 	It("should create common-template resources", func() {
 		_, err := operand.Reconcile(&request)
@@ -97,12 +97,12 @@ var _ = Describe("Common-Templates operand", func() {
 	It("should create view role", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newViewRole(GoldenImagesNSname), request)
+		ExpectResourceExists(newViewRole(ssp.GoldenImagesNSname), request)
 	})
 	It("should create view role binding", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newViewRoleBinding(GoldenImagesNSname), request)
+		ExpectResourceExists(newViewRoleBinding(ssp.GoldenImagesNSname), request)
 	})
 	It("should create view role binding", func() {
 		_, err := operand.Reconcile(&request)

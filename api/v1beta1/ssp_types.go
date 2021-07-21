@@ -61,7 +61,23 @@ type SSPSpec struct {
 
 	// DataImportCronTemplates defines a list of DataImportCrons managed by the SSP
 	// Operator. This is intended for images used by CommonTemplates.
-	DataImportCronTemplates []cdiv1beta1.DataImportCron `json:"dataImportCronTemplates,omitempty"`
+	DataImportCronTemplates []DataImportCronTemplate `json:"dataImportCronTemplates,omitempty"`
+}
+
+// DataImportCronTemplate defines the template type for DataImportCrons.
+// It requires metadata.name to be specified while leaving namespace as optional.
+type DataImportCronTemplate struct {
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec cdiv1beta1.DataImportCronSpec `json:"spec"`
+}
+
+// AsDataImportCron converts the DataImportCronTemplate to a cdiv1beta1.DataImportCron
+func (t DataImportCronTemplate) AsDataImportCron() cdiv1beta1.DataImportCron {
+	return cdiv1beta1.DataImportCron{
+		ObjectMeta: t.ObjectMeta,
+		Spec:       t.Spec,
+	}
 }
 
 // SSPStatus defines the observed state of SSP

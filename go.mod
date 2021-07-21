@@ -42,5 +42,7 @@ replace (
 	github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a
 	k8s.io/client-go => k8s.io/client-go v0.20.6
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.20.6
+	// TODO: this is a development change, do not merge
+	kubevirt.io/client-go => github.com/mhenriks/kubevirt/staging/src/kubevirt.io/client-go v0.0.0-20210713010427-205f1bddd635
 	sigs.k8s.io/structured-merge-diff => sigs.k8s.io/structured-merge-diff v1.0.0
 )

@@ -22,4 +22,12 @@ type CDIExpansion interface{}
 
 type CDIConfigExpansion interface{}
 
+type DataImportCronExpansion interface{}
+
+type DataSourceExpansion interface{}
+
 type DataVolumeExpansion interface{}
+
+type ObjectTransferExpansion interface{}
+
+type StorageProfileExpansion interface{}

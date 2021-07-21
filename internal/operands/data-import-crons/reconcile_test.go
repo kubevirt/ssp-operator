@@ -2,6 +2,7 @@ package dataimportcrons
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -38,11 +39,10 @@ var _ = Describe("DataImportCrons operand", func() {
 	const dataImportCronName = "dataimportcron-"
 	var (
 		request     common.Request
-		importCrons = []cdiv1beta1.DataImportCron{
+		importCrons = []ssp.DataImportCronTemplate{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      dataImportCronName + "1",
-					Namespace: namespace,
+					Name: dataImportCronName + "1",
 				},
 				Spec: cdiv1beta1.DataImportCronSpec{
 					Source: cdiv1beta1.DataImportCronSource{
@@ -55,8 +55,7 @@ var _ = Describe("DataImportCrons operand", func() {
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      dataImportCronName + "2",
-					Namespace: namespace,
+					Name: dataImportCronName + "2",
 				},
 				Spec: cdiv1beta1.DataImportCronSpec{
 					Source: cdiv1beta1.DataImportCronSource{
@@ -107,8 +106,37 @@ var _ = Describe("DataImportCrons operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(importCrons).ToNot(BeNil())
-		for _, cron := range importCrons {
+		for _, cronTemplate := range importCrons {
+			cron := cronTemplate.AsDataImportCron()
+			cron.Namespace = ssp.GoldenImagesNSname
+
+			By(fmt.Sprintf("expecting %s/%s to be created", cron.Namespace, cron.Name))
 			ExpectResourceExists(&cron, request)
+		}
+	})
+
+	It("should delete DataImportCron resources previously created by the operator and no longer managed", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(importCrons).ToNot(BeNil())
+		for _, cronTemplate := range importCrons {
+			cron := cronTemplate.AsDataImportCron()
+			cron.Namespace = ssp.GoldenImagesNSname
+
+			By(fmt.Sprintf("expecting %s/%s to be created", cron.Namespace, cron.Name))
+			ExpectResourceExists(&cron, request)
+		}
+		noLongerManaged := request.Instance.Spec.DataImportCronTemplates[1:]
+		request.Instance.Spec.DataImportCronTemplates = request.Instance.Spec.DataImportCronTemplates[:1]
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(importCrons).ToNot(BeNil())
+		for _, cronTemplate := range noLongerManaged {
+			cron := cronTemplate.AsDataImportCron()
+			cron.Namespace = ssp.GoldenImagesNSname
+
+			By(fmt.Sprintf("expecting %s/%s to be deleted", cron.Namespace, cron.Name))
+			ExpectResourceNotExists(&cron, request)
 		}
 	})
 
@@ -117,7 +145,11 @@ var _ = Describe("DataImportCrons operand", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = operand.Cleanup(&request)
 		Expect(err).NotTo(HaveOccurred())
-		for _, cron := range importCrons {
+		for _, cronTemplate := range importCrons {
+			cron := cronTemplate.AsDataImportCron()
+			cron.Namespace = ssp.GoldenImagesNSname
+
+			By(fmt.Sprintf("expecting %s/%s to be deleted", cron.Namespace, cron.Name))
 			ExpectResourceNotExists(&cron, request)
 		}
 	})

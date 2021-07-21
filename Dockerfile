@@ -26,6 +26,7 @@ COPY internal/ internal/
 
 COPY hack/boilerplate.go.txt hack/boilerplate.go.txt
 COPY hack/csv-generator.go hack/csv-generator.go
+COPY hack/boilerplate.go.txt hack/boilerplate.go.txt
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make manager

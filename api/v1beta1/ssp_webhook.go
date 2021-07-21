@@ -74,6 +74,10 @@ func (r *SSP) ValidateCreate() error {
 		return errors.Wrap(err, "placement api validation error")
 	}
 
+	if err := validateDataImportCronTemplates(r); err != nil {
+		return errors.Wrap(err, "dataImportCronTemplates validation error")
+	}
+
 	return nil
 }
 
@@ -90,6 +94,10 @@ func (r *SSP) ValidateUpdate(old runtime.Object) error {
 
 	if err := validatePlacement(r); err != nil {
 		return errors.Wrap(err, "placement api validation error")
+	}
+
+	if err := validateDataImportCronTemplates(r); err != nil {
+		return errors.Wrap(err, "dataImportCronTemplates validation error")
 	}
 
 	return nil
@@ -159,4 +167,17 @@ func validateOperandPlacement(placement *api.NodePlacement) error {
 	}
 
 	return clt.Create(context.TODO(), deployment, &client.CreateOptions{DryRun: []string{metav1.DryRunAll}})
+}
+
+// TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation
+func validateDataImportCronTemplates(r *SSP) error {
+	for _, cron := range r.Spec.DataImportCronTemplates {
+		if len(cron.Name) < 1 {
+			return fmt.Errorf("missing name in DataImportCronTemplate")
+		}
+		if len(cron.Namespace) > 0 && cron.Namespace != GoldenImagesNSname {
+			return fmt.Errorf("invalid namespace in DataImportCronTemplate %s: must be empty or %s", cron.Name, GoldenImagesNSname)
+		}
+	}
+	return nil
 }

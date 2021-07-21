@@ -44,6 +44,16 @@ func SetDefaults_FeatureState(obj *FeatureState) {
 	}
 }
 
+func SetDefaults_SyNICTimer(obj *SyNICTimer) {
+	if obj.Enabled == nil {
+		obj.Enabled = _true
+	}
+
+	if obj.Direct != nil && obj.Direct.Enabled == nil {
+		obj.Direct.Enabled = _true
+	}
+}
+
 func SetDefaults_FeatureAPIC(obj *FeatureAPIC) {
 	if obj.Enabled == nil {
 		obj.Enabled = _true
@@ -117,6 +127,8 @@ func SetDefaults_VirtualMachineInstance(obj *VirtualMachineInstance) {
 	}
 
 	setDefaults_Disk(obj)
+	SetDefaults_Probe(obj.Spec.ReadinessProbe)
+	SetDefaults_Probe(obj.Spec.LivenessProbe)
 }
 
 func setDefaults_Disk(obj *VirtualMachineInstance) {
@@ -139,6 +151,28 @@ func setDefaults_Disk(obj *VirtualMachineInstance) {
 		if disk.LUN != nil && disk.LUN.Bus == "" {
 			disk.LUN.Bus = bus
 		}
+	}
+}
+
+func SetDefaults_Probe(probe *Probe) {
+	if probe == nil {
+		return
+	}
+
+	if probe.TimeoutSeconds < 1 {
+		probe.TimeoutSeconds = 1
+	}
+
+	if probe.PeriodSeconds < 1 {
+		probe.PeriodSeconds = 10
+	}
+
+	if probe.SuccessThreshold < 1 {
+		probe.SuccessThreshold = 1
+	}
+
+	if probe.FailureThreshold < 1 {
+		probe.FailureThreshold = 3
 	}
 }
 

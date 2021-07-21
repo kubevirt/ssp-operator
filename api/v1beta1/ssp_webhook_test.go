@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
 	v1 "k8s.io/api/core/v1"
@@ -138,7 +139,73 @@ var _ = Describe("SSP Validation", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("commonTemplates.namespace cannot be changed."))
 	})
+
+	Context("DataImportCronTemplates", func() {
+		const (
+			templatesNamespace = "test-templates-ns"
+		)
+
+		BeforeEach(func() {
+			objects = append(objects, &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            templatesNamespace,
+					ResourceVersion: "1",
+				},
+			})
+		})
+
+		AfterEach(func() {
+			objects = make([]runtime.Object, 0)
+		})
+
+		table.DescribeTable("validate dataImportCronTemplates", func(namespace, name string, shouldFail bool) {
+
+			oldSSP := &SSP{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ssp",
+					Namespace: "test-ns",
+				},
+				Spec: SSPSpec{
+					CommonTemplates: CommonTemplates{
+						Namespace: templatesNamespace,
+					},
+					DataImportCronTemplates: []DataImportCronTemplate{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      name,
+								Namespace: namespace,
+							},
+						},
+					},
+				},
+			}
+
+			newSSP := oldSSP.DeepCopy()
+
+			By("validating create")
+			err := newSSP.ValidateCreate()
+			checkExpectedError(err, shouldFail)
+
+			By("validating update")
+			err = newSSP.ValidateUpdate(oldSSP)
+			checkExpectedError(err, shouldFail)
+		},
+			table.Entry("no namepsace provided", "", "test-name", false),
+			table.Entry("no name provided", GoldenImagesNSname, "", true),
+			table.Entry("golden image namespace provided", GoldenImagesNSname, "test-name", false),
+			table.Entry("invalid namespace provided", "invalid-namespace", "test-name", true),
+		)
+
+	})
 })
+
+func checkExpectedError(err error, shouldFail bool) {
+	if shouldFail {
+		Expect(err).To(HaveOccurred())
+	} else {
+		Expect(err).NotTo(HaveOccurred())
+	}
+}
 
 func TestAPI(t *testing.T) {
 	RegisterFailHandler(Fail)

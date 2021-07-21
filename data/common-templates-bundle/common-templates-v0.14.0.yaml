@@ -87,10 +87,11 @@ objects:
           resources:
             requests:
               storage: 30Gi
-        source:
-          pvc:
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+        # TODO: this is a manual change for testing and should not be merged
+        sourceRef:
+          kind: DataSource
+          name: ${SRC_PVC_NAME}
+          namespace: ${SRC_PVC_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4379,10 +4380,11 @@ objects:
           resources:
             requests:
               storage: 30Gi
-        source:
-          pvc:
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+        # TODO: this is a manual change for testing and should not be merged
+        sourceRef:
+          kind: DataSource
+          name: ${SRC_PVC_NAME}
+          namespace: ${SRC_PVC_NAMESPACE}
     running: false
     template:
       metadata:

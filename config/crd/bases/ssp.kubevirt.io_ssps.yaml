@@ -54,22 +54,28 @@ spec:
                   managed by the SSP Operator. This is intended for images used by
                   CommonTemplates.
                 items:
-                  description: DataImportCron defines a cron job for recurring polling/importing
-                    disk images as PVCs into a golden image namespace
+                  description: DataImportCronTemplate defines the template type for
+                    DataImportCrons. It requires metadata.name to be specified while
+                    leaving namespace as optional.
                   properties:
-                    apiVersion:
-                      description: 'APIVersion defines the versioned schema of this
-                        representation of an object. Servers should convert recognized
-                        schemas to the latest internal value, and may reject unrecognized
-                        values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-                      type: string
-                    kind:
-                      description: 'Kind is a string value representing the REST resource
-                        this object represents. Servers may infer this from the endpoint
-                        the client submits requests to. Cannot be updated. In CamelCase.
-                        More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                      type: string
                     metadata:
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        finalizers:
+                          items:
+                            type: string
+                          type: array
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        name:
+                          type: string
+                        namespace:
+                          type: string
                       type: object
                     spec:
                       description: DataImportCronSpec defines specification for DataImportCron
@@ -118,60 +124,6 @@ spec:
                       - managedDataSource
                       - schedule
                       - source
-                      type: object
-                    status:
-                      description: DataImportCronStatus provides the most recently
-                        observed status of the DataImportCron
-                      properties:
-                        conditions:
-                          items:
-                            description: DataImportCronCondition represents the state
-                              of a data import cron condition
-                            properties:
-                              lastHeartbeatTime:
-                                format: date-time
-                                type: string
-                              lastTransitionTime:
-                                format: date-time
-                                type: string
-                              message:
-                                type: string
-                              reason:
-                                type: string
-                              status:
-                                type: string
-                              type:
-                                description: DataImportCronConditionType is the string
-                                  representation of known condition types
-                                type: string
-                            required:
-                            - status
-                            - type
-                            type: object
-                          type: array
-                        lastExecutionTimestamp:
-                          description: LastExecutionTimestamp is the time of the last
-                            polling
-                          format: date-time
-                          type: string
-                        lastImportTimestamp:
-                          description: LastImportTimestamp is the time of the last
-                            import
-                          format: date-time
-                          type: string
-                        lastImportedPVC:
-                          description: LastImportedPVC is the last imported PVC
-                          properties:
-                            name:
-                              description: The name of the source PVC
-                              type: string
-                            namespace:
-                              description: The namespace of the source PVC
-                              type: string
-                          required:
-                          - name
-                          - namespace
-                          type: object
                       type: object
                   required:
                   - spec

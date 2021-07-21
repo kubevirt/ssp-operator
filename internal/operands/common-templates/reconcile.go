@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,6 +55,10 @@ const (
 )
 
 func (c *commonTemplates) AddWatchTypesToScheme(s *runtime.Scheme) error {
+	if err := registerDataSourceSchemes(s); err != nil {
+		return err
+	}
+
 	return templatev1.Install(s)
 }
 
@@ -72,14 +77,33 @@ func (c *commonTemplates) WatchTypes() []client.Object {
 }
 
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
-	funcs := []common.ReconcileFunc{
+	loadTemplatesOnce.Do(loadTemplates(request))
+
+	dataSourceFuncs, err := reconcileDataSources(request)
+	if err != nil {
+		return nil, err
+	}
+
+	funcs := append(dataSourceFuncs,
 		reconcileGoldenImagesNS,
 		reconcileViewRole,
 		reconcileViewRoleBinding,
 		reconcileEditRole,
+	)
+
+	oldTemplateFuncs, err := reconcileOlderTemplates(request)
+	if err != nil {
+		return nil, err
 	}
 
-	loadTemplates := func() {
+	funcs = append(funcs, oldTemplateFuncs...)
+	funcs = append(funcs, reconcileTemplatesFuncs(request)...)
+
+	return common.CollectResourceStatus(request, funcs...)
+}
+
+func loadTemplates(request *common.Request) func() {
+	return func() {
 		var err error
 		filename := filepath.Join(BundleDir, "common-templates-"+Version+".yaml")
 		templatesBundle, err = ReadTemplates(filename)
@@ -95,25 +119,13 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceS
 			deployedTemplates[template.Name] = true
 		}
 	}
-	// Only load templates Once
-	loadTemplatesOnce.Do(loadTemplates)
-
-	oldTemplateFuncs, err := reconcileOlderTemplates(request)
-	if err != nil {
-		return nil, err
-	}
-
-	funcs = append(funcs, oldTemplateFuncs...)
-	funcs = append(funcs, reconcileTemplatesFuncs(request)...)
-
-	return common.CollectResourceStatus(request, funcs...)
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) error {
 	objects := []client.Object{
-		newGoldenImagesNS(GoldenImagesNSname),
-		newViewRole(GoldenImagesNSname),
-		newViewRoleBinding(GoldenImagesNSname),
+		newGoldenImagesNS(ssp.GoldenImagesNSname),
+		newViewRole(ssp.GoldenImagesNSname),
+		newViewRoleBinding(ssp.GoldenImagesNSname),
 		newEditRole(),
 	}
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
@@ -133,14 +145,14 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 
 func reconcileGoldenImagesNS(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newGoldenImagesNS(GoldenImagesNSname)).
+		ClusterResource(newGoldenImagesNS(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }
 
 func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRole(GoldenImagesNSname)).
+		ClusterResource(newViewRole(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRole := foundRes.(*rbac.Role)
@@ -152,7 +164,7 @@ func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
 
 func reconcileViewRoleBinding(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRoleBinding(GoldenImagesNSname)).
+		ClusterResource(newViewRoleBinding(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			newBinding := newRes.(*rbac.RoleBinding)
