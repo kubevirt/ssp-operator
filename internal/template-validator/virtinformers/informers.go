@@ -13,8 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"kubevirt.io/client-go/kubecli"
 	"kubevirt.io/client-go/log"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var once sync.Once
@@ -43,11 +43,7 @@ func SetInformers(informers *Informers) {
 }
 
 func newInformers() *Informers {
-	config, err := kubecli.GetConfig()
-	if err != nil {
-		panic(err)
-	}
-
+	config := ctrl.GetConfigOrDie()
 	kubeInformerFactory := NewKubeInformerFactory(config)
 	return &Informers{
 		TemplateInformer: kubeInformerFactory.Template(),
