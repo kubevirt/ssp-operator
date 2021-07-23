@@ -2,22 +2,24 @@ package validating
 
 import (
 	"encoding/json"
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k6tv1 "kubevirt.io/client-go/api/v1"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/labels"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation"
-	"testing"
 )
 
 var _ = Describe("Admission", func() {
 	Context("Without some data", func() {
 		It("should admit without template", func() {
 			newVM := k6tv1.VirtualMachine{}
-			oldVM := k6tv1.VirtualMachine{}
 			var rules []validation.Rule
 
-			causes := ValidateVMTemplate(rules, &newVM, &oldVM)
+			causes := ValidateVm(rules, &newVM)
 
 			Expect(len(causes)).To(Equal(0))
 		})
@@ -52,7 +54,7 @@ var _ = Describe("Admission", func() {
 				Min:     1,
 			}}
 
-			causes := ValidateVMTemplate(rules, &vm, &k6tv1.VirtualMachine{})
+			causes := ValidateVm(rules, &vm)
 			Expect(len(causes)).To(Equal(0))
 		})
 
@@ -65,7 +67,7 @@ var _ = Describe("Admission", func() {
 				Min:     1,
 			}}
 
-			causes := ValidateVMTemplate(rules, &vm, &k6tv1.VirtualMachine{})
+			causes := ValidateVm(rules, &vm)
 			Expect(len(causes)).To(Equal(0))
 		})
 
@@ -78,7 +80,7 @@ var _ = Describe("Admission", func() {
 				Min:     1,
 			}}
 
-			causes := ValidateVMTemplate(rules, &vm, &k6tv1.VirtualMachine{})
+			causes := ValidateVm(rules, &vm)
 			Expect(len(causes)).To(Equal(0))
 		})
 	})
@@ -95,13 +97,13 @@ var _ = Describe("Admission", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-vm",
 					Annotations: map[string]string{
-						vmValidationAnnotationKey: string(rules),
+						labels.VmValidationAnnotationKey: string(rules),
 					},
 				},
 				Spec: k6tv1.VirtualMachineSpec{},
 			}
 
-			vmRules, err := getValidationRulesForVM(vm)
+			vmRules, err := getValidationRulesForVM(vm, nil)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(len(vmRules)).To(Equal(1))

@@ -33,7 +33,7 @@ import (
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
-var _ = Describe("Template validator", func() {
+var _ = Describe("Template validator operand", func() {
 	var (
 		clusterRoleRes        testResource
 		clusterRoleBindingRes testResource
@@ -346,38 +346,42 @@ var _ = Describe("Template validator", func() {
 			Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 		})
 	})
+})
 
-	Context("Validation rules tests", func() {
-		var (
-			vm       *kubevirtv1.VirtualMachine
-			vmi      *kubevirtv1.VirtualMachineInstance
-			template *templatev1.Template
-		)
-		const (
-			TemplateNameAnnotation      = "vm.kubevirt.io/template"
-			TemplateNamespaceAnnotation = "vm.kubevirt.io/template-namespace"
-		)
+var _ = Describe("Template validator webhooks", func() {
+	var (
+		vm       *kubevirtv1.VirtualMachine
+		vmi      *kubevirtv1.VirtualMachineInstance
+		template *templatev1.Template
+	)
+	const (
+		TemplateNameAnnotation      = "vm.kubevirt.io/template"
+		TemplateNamespaceAnnotation = "vm.kubevirt.io/template-namespace"
+	)
 
-		BeforeEach(func() {
-			vmi = NewRandomVMIWithBridgeInterface(strategy.GetNamespace())
-			vm = nil
-			template = nil
-		})
-		AfterEach(func() {
-			if template != nil {
-				err := apiClient.Delete(ctx, template)
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred(), "Failed to delete Template")
-				}
+	BeforeEach(func() {
+		vmi = NewRandomVMIWithBridgeInterface(strategy.GetNamespace())
+		vm = nil
+		template = nil
+
+		waitUntilDeployed()
+	})
+	AfterEach(func() {
+		if template != nil {
+			err := apiClient.Delete(ctx, template)
+			if !errors.IsNotFound(err) {
+				Expect(err).ToNot(HaveOccurred(), "Failed to delete Template")
 			}
-			if vm != nil {
-				err := apiClient.Delete(ctx, vm)
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
-				}
+		}
+		if vm != nil {
+			err := apiClient.Delete(ctx, vm)
+			if !errors.IsNotFound(err) {
+				Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
 			}
-		})
+		}
+	})
 
+	Context("Validation defined on template", func() {
 		It("[test_id:5584]should create VM without template", func() {
 			vm = NewVirtualMachine(vmi)
 			Expect(apiClient.Create(ctx, vm)).ToNot(HaveOccurred(), "Failed to create VM")
@@ -543,17 +547,19 @@ var _ = Describe("Template validator", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		Context("with Validation inside VM object", func() {
-			It("[test_id:5173]: should create a VM that passes validation", func() {
-				template = TemplateWithoutRules()
-				Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
+	})
 
-				vmi = addDomainResourcesToVMI(vmi, 1, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					TemplateNameAnnotation:      template.Name,
-					TemplateNamespaceAnnotation: template.Namespace,
-					"vm.kubevirt.io/validations": `[
+	Context("Validation inside VM object", func() {
+		It("[test_id:5173]: should create a VM that passes validation", func() {
+			template = TemplateWithoutRules()
+			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
+
+			vmi = addDomainResourcesToVMI(vmi, 1, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -563,19 +569,19 @@ var _ = Describe("Template validator", func() {
 														"max": 4
         										 }
 												]`,
-				}
-				eventuallyCreateVm(vm)
-			})
-			It("[test_id:5034]: should fail to create VM that fails validation", func() {
-				template = TemplateWithoutRules()
-				Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
+			}
+			eventuallyCreateVm(vm)
+		})
+		It("[test_id:5034]: should fail to create VM that fails validation", func() {
+			template = TemplateWithoutRules()
+			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-				vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					TemplateNameAnnotation:      template.Name,
-					TemplateNamespaceAnnotation: template.Namespace,
-					"vm.kubevirt.io/validations": `[
+			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -585,19 +591,19 @@ var _ = Describe("Template validator", func() {
 														"max": 4
         										 }
 												]`,
-				}
-				eventuallyFailToCreateVm(vm)
-			})
-			It("[test_id:5035]: Template with validations, VM with validations", func() {
-				template = TemplateWithRules()
-				Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
+			}
+			eventuallyFailToCreateVm(vm)
+		})
+		It("[test_id:5035]: Template with validations, VM with validations", func() {
+			template = TemplateWithRules()
+			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-				vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					TemplateNameAnnotation:      template.Name,
-					TemplateNamespaceAnnotation: template.Namespace,
-					"vm.kubevirt.io/validations": `[
+			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -607,19 +613,19 @@ var _ = Describe("Template validator", func() {
 														"max": 4
         										 }
 												]`,
-				}
-				eventuallyFailToCreateVm(vm)
-			})
-			It("[test_id:5036]: should successfully create a VM based on the VM validation rules priority over template rules", func() {
-				template = TemplateWithRules()
-				Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
+			}
+			eventuallyFailToCreateVm(vm)
+		})
+		It("[test_id:5036]: should successfully create a VM based on the VM validation rules priority over template rules", func() {
+			template = TemplateWithRules()
+			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-				vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					TemplateNameAnnotation:      template.Name,
-					TemplateNamespaceAnnotation: template.Namespace,
-					"vm.kubevirt.io/validations": `[
+			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -629,16 +635,16 @@ var _ = Describe("Template validator", func() {
 														"max": 6
         										 }
 												]`,
-				}
-				eventuallyCreateVm(vm)
-			})
-			It("[test_id:5174]: VM with validations and deleted template", func() {
-				vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					TemplateNameAnnotation:      "nonexisting-vm-template",
-					TemplateNamespaceAnnotation: strategy.GetTemplatesNamespace(),
-					"vm.kubevirt.io/validations": `[
+			}
+			eventuallyCreateVm(vm)
+		})
+		It("[test_id:5174]: VM with validations and deleted template", func() {
+			vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      "nonexisting-vm-template",
+				TemplateNamespaceAnnotation: strategy.GetTemplatesNamespace(),
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -648,16 +654,16 @@ var _ = Describe("Template validator", func() {
 														"max": 4
         										 }
 												]`,
-				}
-				eventuallyCreateVm(vm)
-			})
-			It("[test_id:5046]: should override template rules and fail to create a VM based on the VM validation rules", func() {
-				vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					TemplateNameAnnotation:      "nonexisting-vm-template",
-					TemplateNamespaceAnnotation: strategy.GetTemplatesNamespace(),
-					"vm.kubevirt.io/validations": `[
+			}
+			eventuallyCreateVm(vm)
+		})
+		It("[test_id:5046]: should override template rules and fail to create a VM based on the VM validation rules", func() {
+			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      "nonexisting-vm-template",
+				TemplateNamespaceAnnotation: strategy.GetTemplatesNamespace(),
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -667,14 +673,14 @@ var _ = Describe("Template validator", func() {
 														"max": 4
         										 }
 												]`,
-				}
-				eventuallyFailToCreateVm(vm)
-			})
-			It("[test_id:5047]: should fail to create a VM based on the VM validation rules", func() {
-				vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					"vm.kubevirt.io/validations": `[
+			}
+			eventuallyFailToCreateVm(vm)
+		})
+		It("[test_id:5047]: should fail to create a VM based on the VM validation rules", func() {
+			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -684,14 +690,14 @@ var _ = Describe("Template validator", func() {
 														"max": 4
         										 }
 												]`,
-				}
-				eventuallyFailToCreateVm(vm)
-			})
-			It("[test_id:5175]: VM with validations without template", func() {
-				vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
-				vm = NewVirtualMachine(vmi)
-				vm.ObjectMeta.Annotations = map[string]string{
-					"vm.kubevirt.io/validations": `[
+			}
+			eventuallyFailToCreateVm(vm)
+		})
+		It("[test_id:5175]: VM with validations without template", func() {
+			vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
 														"path": "jsonpath::.spec.domain.cpu.cores",
@@ -701,41 +707,38 @@ var _ = Describe("Template validator", func() {
 														"max": 4
         										 }
 												]`,
-				}
-				eventuallyCreateVm(vm)
-			})
+			}
+			eventuallyCreateVm(vm)
 		})
 	})
 
-	Context("Certificates", func() {
-		It("[test_id:4375] Test refreshing of certificates", func() {
-			pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pods.Items).ToNot(HaveLen(0), "no pods found")
+	It("[test_id:4375] Test refreshing of certificates", func() {
+		pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
+		Expect(err).ToNot(HaveOccurred())
+		Expect(pods.Items).ToNot(HaveLen(0), "no pods found")
 
-			validatorPod := pods.Items[0]
-			oldCerts, err := getWebhookServerCertificates(&validatorPod)
-			Expect(err).ToNot(HaveOccurred())
+		validatorPod := pods.Items[0]
+		oldCerts, err := getWebhookServerCertificates(&validatorPod)
+		Expect(err).ToNot(HaveOccurred())
 
-			By("deleting the secret with certificate")
-			secret := &core.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      validator.SecretName,
-					Namespace: strategy.GetNamespace(),
-				},
+		By("deleting the secret with certificate")
+		secret := &core.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      validator.SecretName,
+				Namespace: strategy.GetNamespace(),
+			},
+		}
+		err = apiClient.Delete(ctx, secret)
+		Expect(err).ToNot(HaveOccurred())
+
+		By("checking that the secret gets restored with a new certificate")
+		Eventually(func() (bool, error) {
+			newCerts, err := getWebhookServerCertificates(&validatorPod)
+			if err != nil {
+				return true, err
 			}
-			err = apiClient.Delete(ctx, secret)
-			Expect(err).ToNot(HaveOccurred())
-
-			By("checking that the secret gets restored with a new certificate")
-			Eventually(func() (bool, error) {
-				newCerts, err := getWebhookServerCertificates(&validatorPod)
-				if err != nil {
-					return true, err
-				}
-				return certsEqual(newCerts, oldCerts), nil
-			}, 5*time.Minute, 1*time.Second).Should(BeFalse(), "Certificates should be different")
-		})
+			return certsEqual(newCerts, oldCerts), nil
+		}, 5*time.Minute, 1*time.Second).Should(BeFalse(), "Certificates should be different")
 	})
 })
 

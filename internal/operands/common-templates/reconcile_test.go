@@ -136,7 +136,7 @@ var _ = Describe("Common-Templates operand", func() {
 					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
 					Labels: map[string]string{
 						TemplateVersionLabel: "not-latest",
-						TemplateTypeLabel:    "base",
+						TemplateTypeLabel:    TemplateTypeLabelBaseValue,
 						testOsLabel:          "true",
 						testFlavorLabel:      "true",
 						testWorkflowLabel:    "true",
@@ -188,7 +188,7 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(updatedTpl.Labels[testOsLabel]).To(Equal(""), TemplateOsLabelPrefix+" should be empty")
 			Expect(updatedTpl.Labels[testFlavorLabel]).To(Equal(""), TemplateFlavorLabelPrefix+" should be empty")
 			Expect(updatedTpl.Labels[testWorkflowLabel]).To(Equal(""), TemplateWorkloadLabelPrefix+" should be empty")
-			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal("base"), TemplateTypeLabel+" should equal base")
+			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(TemplateTypeLabelBaseValue), TemplateTypeLabel+" should equal base")
 			Expect(updatedTpl.Labels[TemplateVersionLabel]).To(Equal("not-latest"), TemplateVersionLabel+" should equal not-latest")
 			Expect(updatedTpl.Annotations[TemplateDeprecatedAnnotation]).To(Equal("true"), TemplateDeprecatedAnnotation+" should not be empty")
 		})
@@ -210,7 +210,7 @@ var _ = Describe("Common-Templates operand", func() {
 					if strings.HasPrefix(label, TemplateWorkloadLabelPrefix) {
 						Expect(template.Labels[label]).To(Equal("true"), TemplateWorkloadLabelPrefix+" should not be empty")
 					}
-					Expect(template.Labels[TemplateTypeLabel]).To(Equal("base"), TemplateTypeLabel+" should equal base")
+					Expect(template.Labels[TemplateTypeLabel]).To(Equal(TemplateTypeLabelBaseValue), TemplateTypeLabel+" should equal base")
 					Expect(template.Labels[TemplateVersionLabel]).To(Equal(Version), TemplateVersionLabel+" should equal "+Version)
 				}
 				Expect(template.Annotations[TemplateDeprecatedAnnotation]).To(Equal(""), TemplateDeprecatedAnnotation+" should be empty")

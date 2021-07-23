@@ -9,7 +9,6 @@ import (
 	flag "github.com/spf13/pflag"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
 	"kubevirt.io/client-go/log"
 	kubevirtVersion "kubevirt.io/client-go/version"
 
@@ -35,9 +34,8 @@ func init() {
 
 type App struct {
 	service.ServiceListen
-	TLSInfo       tlsinfo.TLSInfo
-	versionOnly   bool
-	skipInformers bool
+	TLSInfo     tlsinfo.TLSInfo
+	versionOnly bool
 }
 
 var _ service.Service = &App{}
@@ -50,7 +48,6 @@ func (app *App) AddFlags() {
 
 	flag.StringVarP(&app.TLSInfo.CertsDirectory, "cert-dir", "c", "", "specify path to the directory containing TLS key and certificate - this enables TLS")
 	flag.BoolVarP(&app.versionOnly, "version", "V", false, "show version and exit")
-	flag.BoolVarP(&app.skipInformers, "skip-informers", "S", false, "don't initialize informerers - use this only in devel mode")
 }
 
 func (app *App) KubevirtVersion() string {
@@ -68,35 +65,20 @@ func (app *App) Run() {
 	app.TLSInfo.Init()
 	defer app.TLSInfo.Clean()
 
-	stopChan := make(chan struct{}, 1)
-	defer close(stopChan)
-
-	if app.skipInformers {
-		log.Log.Infof("validator app: informers DISALBED")
-		virtinformers.SetInformers(nil)
+	informers, err := virtinformers.NewInformers()
+	if err != nil {
+		log.Log.Criticalf("Error creating informers: %v", err)
+		panic(err)
 	}
 
-	informers := virtinformers.GetInformers()
-	if !informers.Available() {
-		log.Log.Infof("validator app: template informer NOT available")
-	} else {
-		go informers.TemplateInformer.Run(stopChan)
-		log.Log.Infof("validator app: started informers")
-		cache.WaitForCacheSync(
-			stopChan,
-			informers.TemplateInformer.HasSynced,
-		)
-		log.Log.Infof("validator app: synced informers")
-	}
+	informers.Start()
+	defer informers.Stop()
+
+	validating.NewWebhooks(informers).Register()
 
 	log.Log.Infof("validator app: running with TLSInfo.CertsDirectory%+v", app.TLSInfo.CertsDirectory)
 
 	http.Handle("/metrics", promhttp.Handler())
-
-	http.HandleFunc(validating.VMTemplateValidatePath,
-		func(w http.ResponseWriter, r *http.Request) {
-			validating.ServeVMTemplateValidate(w, r)
-		})
 
 	if app.TLSInfo.IsEnabled() {
 		server := &http.Server{Addr: app.Address(), TLSConfig: app.TLSInfo.CrateTlsConfig()}

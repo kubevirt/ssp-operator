@@ -10,9 +10,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 	kubevirt "kubevirt.io/client-go/api/v1"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
 
 const (
@@ -187,8 +189,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	}
 }
 
-func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfiguration {
-	path := "/virtualmachine-template-validate"
+func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookConfiguration {
 	fail := admission.Fail
 	sideEffectsNone := admission.SideEffectClassNone
 
@@ -214,12 +215,12 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 			},
 		},
 		Webhooks: []admission.ValidatingWebhook{{
-			Name: "virt-template-admission.kubevirt.io",
+			Name: "virtualmachine-admission.ssp.kubevirt.io",
 			ClientConfig: admission.WebhookClientConfig{
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
-					Namespace: namespace,
-					Path:      &path,
+					Namespace: serviceNamespace,
+					Path:      pointer.StringPtr(webhook.VmValidatePath),
 				},
 			},
 			Rules:                   rules,

@@ -69,29 +69,16 @@ func ToAdmissionResponse(causes []metav1.StatusCause) *admissionv1.AdmissionResp
 	}
 }
 
-func GetAdmissionReviewVM(ar *admissionv1.AdmissionReview) (*kubevirt.VirtualMachine, *kubevirt.VirtualMachine, error) {
+func GetAdmissionReviewVM(ar *admissionv1.AdmissionReview) (*kubevirt.VirtualMachine, error) {
 	if ar.Request.Resource.Resource != "virtualmachines" {
-		return nil, nil, fmt.Errorf("expect resource %v to be '%s'", ar.Request.Resource, "virtualmachines")
+		return nil, fmt.Errorf("expect resource %v to be '%s'", ar.Request.Resource, "virtualmachines")
 	}
 
-	var err error
-	raw := ar.Request.Object.Raw
-	newVM := kubevirt.VirtualMachine{}
-
-	err = json.Unmarshal(raw, &newVM)
+	newVM := &kubevirt.VirtualMachine{}
+	err := json.Unmarshal(ar.Request.Object.Raw, newVM)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	if ar.Request.Operation == admissionv1.Update {
-		raw := ar.Request.OldObject.Raw
-		oldVM := kubevirt.VirtualMachine{}
-		err = json.Unmarshal(raw, &oldVM)
-		if err != nil {
-			return nil, nil, err
-		}
-		return &newVM, &oldVM, nil
-	}
-
-	return &newVM, nil, nil
+	return newVM, nil
 }

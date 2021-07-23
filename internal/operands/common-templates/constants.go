@@ -11,6 +11,8 @@ const (
 	TemplateWorkloadLabelPrefix  = "workload.template.kubevirt.io/"
 	TemplateDeprecatedAnnotation = "template.kubevirt.io/deprecated"
 
+	TemplateTypeLabelBaseValue = "base"
+
 	CdiApiGroup   = "cdi.kubevirt.io"
 	CdiApiVersion = "v1beta1"
 )
