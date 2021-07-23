@@ -5,7 +5,7 @@
 VERSION ?= 0.12.0
 
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.4.2
+OPERATOR_SDK_VERSION ?= v1.9.0
 
 
 # CHANNELS define the bundle channels used in the bundle.
@@ -49,6 +49,12 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
+
+# TODO -- validate that this is useful
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
 ifeq (, $(shell which oc))
 OC = kubectl
@@ -170,7 +176,7 @@ kustomize:
 # Download operator-sdk locally if necessary
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
 $(OPERATOR_SDK):
-	curl -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_linux_amd64 -o $(OPERATOR_SDK)
+	curl --create-dirs -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_linux_amd64 -o $(OPERATOR_SDK)
 	chmod 0755 $(OPERATOR_SDK)
 
 .PHONY: operator-sdk
