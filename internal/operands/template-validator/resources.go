@@ -3,6 +3,7 @@ package template_validator
 import (
 	"fmt"
 
+	templatev1 "github.com/openshift/api/template/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	kubevirt "kubevirt.io/client-go/api/v1"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
 
@@ -58,8 +60,12 @@ func newClusterRole() *rbac.ClusterRole {
 			},
 		},
 		Rules: []rbac.PolicyRule{{
-			APIGroups: []string{"template.openshift.io"},
+			APIGroups: []string{templatev1.GroupName},
 			Resources: []string{"templates"},
+			Verbs:     []string{"get", "list", "watch"},
+		}, {
+			APIGroups: []string{kubevirt.GroupName},
+			Resources: []string{"virtualmachines"},
 			Verbs:     []string{"get", "list", "watch"},
 		}},
 	}
@@ -204,9 +210,9 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 	fail := admission.Fail
 	sideEffectsNone := admission.SideEffectClassNone
 
-	var rules []admission.RuleWithOperations
+	var vmRules []admission.RuleWithOperations
 	for _, version := range kubevirt.ApiSupportedWebhookVersions {
-		rules = append(rules, admission.RuleWithOperations{
+		vmRules = append(vmRules, admission.RuleWithOperations{
 			Operations: []admission.OperationType{
 				admission.Create, admission.Update,
 			},
@@ -234,7 +240,34 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 					Path:      pointer.StringPtr(webhook.VmValidatePath),
 				},
 			},
-			Rules:                   rules,
+			Rules:                   vmRules,
+			FailurePolicy:           &fail,
+			SideEffects:             &sideEffectsNone,
+			AdmissionReviewVersions: []string{"v1"},
+		}, {
+			Name: "template-admission.ssp.kubevirt.io",
+			ClientConfig: admission.WebhookClientConfig{
+				Service: &admission.ServiceReference{
+					Name:      ServiceName,
+					Namespace: serviceNamespace,
+					Path:      pointer.StringPtr(webhook.TemplateValidatePath),
+				},
+			},
+			ObjectSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					common_templates.TemplateTypeLabel: common_templates.TemplateTypeLabelBaseValue,
+				},
+			},
+			Rules: []admission.RuleWithOperations{{
+				Operations: []admission.OperationType{
+					admission.Delete,
+				},
+				Rule: admission.Rule{
+					APIGroups:   []string{templatev1.GroupVersion.Group},
+					APIVersions: []string{templatev1.GroupVersion.Version},
+					Resources:   []string{"templates"},
+				},
+			}},
 			FailurePolicy:           &fail,
 			SideEffects:             &sideEffectsNone,
 			AdmissionReviewVersions: []string{"v1"},

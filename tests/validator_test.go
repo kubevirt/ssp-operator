@@ -367,16 +367,19 @@ var _ = Describe("Template validator webhooks", func() {
 		waitUntilDeployed()
 	})
 	AfterEach(func() {
-		if template != nil {
-			err := apiClient.Delete(ctx, template)
-			if !errors.IsNotFound(err) {
-				Expect(err).ToNot(HaveOccurred(), "Failed to delete Template")
-			}
-		}
 		if vm != nil {
 			err := apiClient.Delete(ctx, vm)
 			if !errors.IsNotFound(err) {
 				Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
+			}
+			// Need to wait until VM is removed, otherwise the webhook may
+			// not allow template to be removed.
+			waitForDeletion(client.ObjectKeyFromObject(vm), vm)
+		}
+		if template != nil {
+			err := apiClient.Delete(ctx, template)
+			if !errors.IsNotFound(err) {
+				Expect(err).ToNot(HaveOccurred(), "Failed to delete Template")
 			}
 		}
 	})
@@ -709,6 +712,81 @@ var _ = Describe("Template validator webhooks", func() {
 												]`,
 			}
 			eventuallyCreateVm(vm)
+		})
+	})
+
+	Context("Deleting template", func() {
+		It("[test_id:7026] Can delete template if no VM uses it", func() {
+			template = TemplateWithRules()
+			Expect(apiClient.Create(ctx, template)).To(Succeed())
+
+			Consistently(func() error {
+				return apiClient.Delete(ctx, template, client.DryRunAll)
+			}, 5*time.Second, 500*time.Millisecond).Should(Succeed())
+		})
+
+		It("[test_id:7027] Should fail to delete template if a VM uses it", func() {
+			template = TemplateWithRules()
+			Expect(apiClient.Create(ctx, template)).To(Succeed())
+
+			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+			}
+			eventuallyCreateVm(vm)
+
+			Eventually(func() metav1.StatusReason {
+				err := apiClient.Delete(ctx, template, client.DryRunAll)
+				return errors.ReasonForError(err)
+			}, shortTimeout, 1*time.Second).Should(Equal(metav1.StatusReasonForbidden), "Should have given forbidden error")
+		})
+
+		It("[test_id:7037] Can delete template without validations if a VM uses it", func() {
+			template = TemplateWithoutRules()
+			delete(template.Annotations, "validations")
+
+			Expect(apiClient.Create(ctx, template)).To(Succeed())
+
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+			}
+			eventuallyCreateVm(vm)
+
+			Consistently(func() error {
+				return apiClient.Delete(ctx, template, client.DryRunAll)
+			}, 5*time.Second, 500*time.Millisecond).Should(Succeed())
+		})
+
+		It("[test_id:7035] Can delete template if validations are defined on VM", func() {
+			template = TemplateWithRules()
+			Expect(apiClient.Create(ctx, template)).To(Succeed())
+
+			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vm = NewVirtualMachine(vmi)
+			vm.ObjectMeta.Annotations = map[string]string{
+				TemplateNameAnnotation:      template.Name,
+				TemplateNamespaceAnnotation: template.Namespace,
+				"vm.kubevirt.io/validations": `[
+												 {
+														"name": "LimitCores",
+														"path": "jsonpath::.spec.domain.cpu.cores",
+														"message": "Core amount not within range",
+														"rule": "integer",
+														"min": 1,
+														"max": 4
+        										 }
+												]`,
+			}
+
+			eventuallyCreateVm(vm)
+
+			Consistently(func() error {
+				return apiClient.Delete(ctx, template, client.DryRunAll)
+			}, 5*time.Second, 500*time.Millisecond).Should(Succeed())
 		})
 	})
 

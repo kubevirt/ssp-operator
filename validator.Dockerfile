@@ -15,6 +15,9 @@ COPY go.sum go.sum
 COPY vendor/ vendor/
 
 # Copy the go source
+COPY main.go main.go
+COPY api/ api/
+COPY controllers/ controllers/
 COPY internal/ internal/
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -ldflags="-X 'kubevirt.io/ssp-operator/internal/template-validator/version.COMPONENT=$COMPONENT'\

@@ -3,12 +3,15 @@ package validator
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	flag "github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/client-go/log"
 	kubevirtVersion "kubevirt.io/client-go/version"
 
@@ -23,14 +26,6 @@ const (
 	defaultPort = 8443
 	defaultHost = "0.0.0.0"
 )
-
-func init() {
-	// The Kubernetes Go client (nested within the OpenShift Go client)
-	// automatically registers its types in scheme.Scheme, however the
-	// additional OpenShift types must be registered manually.  AddToScheme
-	// registers the API group types (e.g. route.openshift.io/v1, Route) only.
-	utilruntime.Must(templatev1.Install(scheme.Scheme))
-}
 
 type App struct {
 	service.ServiceListen
@@ -65,7 +60,12 @@ func (app *App) Run() {
 	app.TLSInfo.Init()
 	defer app.TLSInfo.Clean()
 
-	informers, err := virtinformers.NewInformers()
+	// We cannot use default scheme.Scheme, because it contains duplicate definitions
+	// for kubevirt resources and the client would fail with an error:
+	// "multiple group-version-kinds associated with type *v1.VirtualMachineList, refusing to guess at one"
+	apiScheme := createScheme()
+
+	informers, err := virtinformers.NewInformers(apiScheme)
 	if err != nil {
 		log.Log.Criticalf("Error creating informers: %v", err)
 		panic(err)
@@ -102,4 +102,17 @@ func registerReadinessProbe() {
 	http.HandleFunc("/readyz", func(resp http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(resp, "ok")
 	})
+}
+
+func createScheme() *runtime.Scheme {
+	sch := runtime.NewScheme()
+
+	utilruntime.Must(clientgoscheme.AddToScheme(sch))
+	utilruntime.Must(templatev1.Install(sch))
+
+	// Setting API version of kubevirt that we want to register
+	utilruntime.Must(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1"))
+	utilruntime.Must(kubevirtv1.AddToScheme(sch))
+
+	return sch
 }

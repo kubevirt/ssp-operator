@@ -23,6 +23,7 @@ import (
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch
+// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines,verbs=get;list;watch
 
 type templateValidator struct{}
 
