@@ -372,6 +372,7 @@ var _ = Describe("Template validator", func() {
 		})
 
 		It("[test_id:5584]should create VM without template", func() {
+			Fail("Fail this test on purpose, to check that CI is running on correct PR.")
 			vm = NewVirtualMachine(vmi)
 			Expect(apiClient.Create(ctx, vm)).ToNot(HaveOccurred(), "Failed to create VM")
 		})

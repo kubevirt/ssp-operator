@@ -70,6 +70,8 @@ func init() {
 // Give permissions to use leases for leader election.
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 
+// This is an empty change to test CI.
+
 func main() {
 	var metricsAddr string
 	var readyProbeAddr string
