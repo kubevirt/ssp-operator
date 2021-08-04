@@ -91,7 +91,9 @@ func getParentTemplateForVM(vm *k6tv1.VirtualMachine) (*templatev1.Template, err
 
 	log.Log.V(8).Infof("found parent template for %s", vm.Name)
 	tmpl := obj.(*templatev1.Template)
-	// TODO explain deepcopy
+	// We must copy what is retrieved from the cache to allow modifying it.
+	// Modifying tmpl without DeepCopy would break the cache on modification.
+	// Ref: vendor/k8s.io/client-go/tools/cache.ThreadSafeStore
 	return tmpl.DeepCopy(), nil
 }
 
