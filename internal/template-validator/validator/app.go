@@ -76,6 +76,8 @@ func (app *App) Run() {
 
 	validating.NewWebhooks(informers).Register()
 
+	registerReadinessProbe()
+
 	log.Log.Infof("validator app: running with TLSInfo.CertsDirectory%+v", app.TLSInfo.CertsDirectory)
 
 	http.Handle("/metrics", promhttp.Handler())
@@ -94,4 +96,10 @@ func (app *App) Run() {
 			panic(err)
 		}
 	}
+}
+
+func registerReadinessProbe() {
+	http.HandleFunc("/readyz", func(resp http.ResponseWriter, req *http.Request) {
+		fmt.Fprintf(resp, "ok")
+	})
 }

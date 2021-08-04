@@ -174,6 +174,17 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ContainerPort: MetricsPort,
 							Protocol:      core.ProtocolTCP,
 						}},
+						ReadinessProbe: &core.Probe{
+							Handler: core.Handler{
+								HTTPGet: &core.HTTPGetAction{
+									Path:   "/readyz",
+									Port:   intstr.FromInt(ContainerPort),
+									Scheme: core.URISchemeHTTPS,
+								},
+							},
+							InitialDelaySeconds: 5,
+							PeriodSeconds:       10,
+						},
 					}},
 					Volumes: []core.Volume{{
 						Name: volumeName,
