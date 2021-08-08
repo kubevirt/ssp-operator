@@ -106,17 +106,16 @@ func setClientForWebhook(c client.Client) {
 }
 
 func validatePlacement(ssp *SSP) error {
-	return validateOperandPlacement(ssp.Spec.TemplateValidator.Placement)
+	return validateOperandPlacement(ssp.Namespace, ssp.Spec.TemplateValidator.Placement)
 }
 
-func validateOperandPlacement(placement *api.NodePlacement) error {
+func validateOperandPlacement(namespace string, placement *api.NodePlacement) error {
 	if placement == nil {
 		return nil
 	}
 
 	const (
 		dplName          = "ssp-webhook-placement-verification-deployment"
-		namespace        = "default"
 		webhookTestLabel = "webhook.ssp.kubevirt.io/placement-verification-pod"
 		podName          = "ssp-webhook-placement-verification-pod"
 		naImage          = "ssp.kubevirt.io/not-available"
