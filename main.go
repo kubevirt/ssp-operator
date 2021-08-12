@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 
@@ -33,7 +34,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/controllers"
 	// +kubebuilder:scaffold:imports
@@ -70,11 +73,29 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
+func runPrometheusServer(metricsAddr string) {
+	setupLog.Info("Starting Prometheus metrics endpoint server with TLS")
+	handler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{})
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", handler)
+	server := http.Server{
+		Addr:    metricsAddr,
+		Handler: mux,
+	}
+
+	go func() {
+		err := server.ListenAndServeTLS(path.Join(sdkTLSDir, sdkTLSCrt), path.Join(sdkTLSDir, sdkTLSKey))
+		if err != nil {
+			setupLog.Error(err, "Failed to start Prometheus metrics endpoint server")
+		}
+	}()
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8443", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -93,9 +114,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	runPrometheusServer(metricsAddr)
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
+		MetricsBindAddress:     "0",
 		HealthProbeBindAddress: probeAddr,
 		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
