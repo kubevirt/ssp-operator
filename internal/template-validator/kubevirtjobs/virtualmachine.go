@@ -68,8 +68,8 @@ func setVirtualMachineDefaults(in *k6tv1.VirtualMachine) {
 }
 
 func setCDRomTargetDefaults(obj *k6tv1.CDRomTarget) {
-	_true := true
-	obj.ReadOnly = &_true
+	var True = true
+	obj.ReadOnly = &True
 	if obj.Tray == "" {
 		obj.Tray = k6tv1.TrayStateClosed
 	}

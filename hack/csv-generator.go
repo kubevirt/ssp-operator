@@ -34,7 +34,6 @@ import (
 	extv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-
 	"kubevirt.io/ssp-operator/internal/common"
 )
 
@@ -124,15 +123,9 @@ func runGenerator() error {
 			return err
 		}
 		for _, file := range files {
-			crdFile, err := ioutil.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
-			if err != nil {
-				return err
-			}
-
 			crd := extv1beta1.CustomResourceDefinition{}
-			decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(crdFile), 1024)
 
-			err = decoder.Decode(&crd)
+			err := readAndDecodeToCRD(file, &crd)
 			if err != nil {
 				return err
 			}
@@ -146,6 +139,19 @@ func runGenerator() error {
 	return nil
 }
 
+func readAndDecodeToCRD(file os.FileInfo, crd *extv1beta1.CustomResourceDefinition) error {
+	crdFile, err := ioutil.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
+	if err != nil {
+		return err
+	}
+	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(crdFile), 1024)
+	err = decoder.Decode(&crd)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func buildRelatedImage(imageDesc string, imageName string) (map[string]interface{}, error) {
 	ri := make(map[string]interface{})
 	ri["name"] = imageName
@@ -155,7 +161,7 @@ func buildRelatedImage(imageDesc string, imageName string) (map[string]interface
 }
 
 func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
-	var relatedImages []interface{} = make([]interface{}, 0)
+	var relatedImages = make([]interface{}, 0)
 
 	if flags.validatorImage != "" {
 		relatedImage, err := buildRelatedImage(flags.validatorImage, "template-validator")
@@ -183,17 +189,7 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 		updatedContainer := container
 		if container.Name == "manager" {
 			updatedContainer.Image = flags.operatorImage
-			updatedVariables := make([]v1.EnvVar, 0)
-			for _, envVariable := range container.Env {
-				if envVariable.Name == common.TemplateValidatorImageKey && flags.validatorImage != "" {
-					envVariable.Value = flags.validatorImage
-				}
-				if envVariable.Name == common.OperatorVersionKey && flags.operatorVersion != "" {
-					envVariable.Value = flags.operatorVersion
-				}
-				updatedVariables = append(updatedVariables, envVariable)
-			}
-			updatedContainer.Env = updatedVariables
+			updatedContainer.Env = updateContainerEnvVars(flags, container)
 			templateSpec.Containers[i] = updatedContainer
 			break
 		}
@@ -204,6 +200,20 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 	}
 
 	return nil
+}
+
+func updateContainerEnvVars(flags generatorFlags, container v1.Container) []v1.EnvVar {
+	updatedVariables := make([]v1.EnvVar, 0)
+	for _, envVariable := range container.Env {
+		if envVariable.Name == common.TemplateValidatorImageKey && flags.validatorImage != "" {
+			envVariable.Value = flags.validatorImage
+		}
+		if envVariable.Name == common.OperatorVersionKey && flags.operatorVersion != "" {
+			envVariable.Value = flags.operatorVersion
+		}
+		updatedVariables = append(updatedVariables, envVariable)
+	}
+	return updatedVariables
 }
 
 func removeCerts(flags generatorFlags, csv *csvv1.ClusterServiceVersion) {
