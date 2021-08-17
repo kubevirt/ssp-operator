@@ -29,30 +29,32 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							Record: "cnv:vmi_status_running:count",
 						},
 						{
-							Record: "num_of_running_ssp_operators",
+							Record: "kubevirt_ssp_operator_up_total",
 							Expr:   intstr.FromString("sum(up{pod=~'ssp-operator.*'}) OR on() vector(0)"),
 						},
 						{
-							Record: "num_of_running_template_validator_pods",
+							Record: "kubevirt_ssp_template_validator_up_total",
 							Expr:   intstr.FromString("sum(up{pod=~'virt-template-validator.*'}) OR on() vector(0)"),
 						},
 						{
 							Alert: "SSPDown",
-							Expr:  intstr.FromString("num_of_running_ssp_operators == 0"),
+							Expr:  intstr.FromString("kubevirt_ssp_operator_up_total == 0"),
 							For:   "5m",
 							Annotations: map[string]string{
-								"summary": "All SSP operator pods are down.",
+								"summary":     "All SSP operator pods are down.",
+								"runbook_url": "http://kubevirt.io/monitoring/runbooks/SSPOperatorDown",
 							},
 							Labels: map[string]string{
 								"severity": "Critical",
 							},
 						},
 						{
-							Alert: "TemplateValidatorDown",
-							Expr:  intstr.FromString("num_of_running_template_validator_pods == 0"),
+							Alert: "SSPTemplateValidatorDown",
+							Expr:  intstr.FromString("kubevirt_ssp_template_validator_up_total == 0"),
 							For:   "5m",
 							Annotations: map[string]string{
-								"summary": "All Template Validator pods are down.",
+								"summary":     "All Template Validator pods are down.",
+								"runbook_url": "http://kubevirt.io/monitoring/runbooks/SSPTemplateValidatorDown",
 							},
 							Labels: map[string]string{
 								"severity": "Critical",
