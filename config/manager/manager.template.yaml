@@ -19,7 +19,7 @@ spec:
       serviceAccountName: ssp-operator
       priorityClassName: system-cluster-critical
       securityContext:
-        runAsUser: 1000
+        runAsNonRoot: true
       containers:
       - command:
         - /manager
