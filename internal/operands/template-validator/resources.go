@@ -3,6 +3,7 @@ package template_validator
 import (
 	"fmt"
 
+	templatev1 "github.com/openshift/api/template/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -10,9 +11,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 	kubevirt "kubevirt.io/client-go/api/v1"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
 
 const (
@@ -56,8 +60,12 @@ func newClusterRole() *rbac.ClusterRole {
 			},
 		},
 		Rules: []rbac.PolicyRule{{
-			APIGroups: []string{"template.openshift.io"},
+			APIGroups: []string{templatev1.GroupName},
 			Resources: []string{"templates"},
+			Verbs:     []string{"get", "list", "watch"},
+		}, {
+			APIGroups: []string{kubevirt.GroupName},
+			Resources: []string{"virtualmachines"},
 			Verbs:     []string{"get", "list", "watch"},
 		}},
 	}
@@ -172,6 +180,17 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ContainerPort: MetricsPort,
 							Protocol:      core.ProtocolTCP,
 						}},
+						ReadinessProbe: &core.Probe{
+							Handler: core.Handler{
+								HTTPGet: &core.HTTPGetAction{
+									Path:   "/readyz",
+									Port:   intstr.FromInt(ContainerPort),
+									Scheme: core.URISchemeHTTPS,
+								},
+							},
+							InitialDelaySeconds: 5,
+							PeriodSeconds:       10,
+						},
 					}},
 					Volumes: []core.Volume{{
 						Name: volumeName,
@@ -187,14 +206,13 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	}
 }
 
-func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfiguration {
-	path := "/virtualmachine-template-validate"
+func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookConfiguration {
 	fail := admission.Fail
 	sideEffectsNone := admission.SideEffectClassNone
 
-	var rules []admission.RuleWithOperations
+	var vmRules []admission.RuleWithOperations
 	for _, version := range kubevirt.ApiSupportedWebhookVersions {
-		rules = append(rules, admission.RuleWithOperations{
+		vmRules = append(vmRules, admission.RuleWithOperations{
 			Operations: []admission.OperationType{
 				admission.Create, admission.Update,
 			},
@@ -214,15 +232,42 @@ func newValidatingWebhook(namespace string) *admission.ValidatingWebhookConfigur
 			},
 		},
 		Webhooks: []admission.ValidatingWebhook{{
-			Name: "virt-template-admission.kubevirt.io",
+			Name: "virtualmachine-admission.ssp.kubevirt.io",
 			ClientConfig: admission.WebhookClientConfig{
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
-					Namespace: namespace,
-					Path:      &path,
+					Namespace: serviceNamespace,
+					Path:      pointer.StringPtr(webhook.VmValidatePath),
 				},
 			},
-			Rules:                   rules,
+			Rules:                   vmRules,
+			FailurePolicy:           &fail,
+			SideEffects:             &sideEffectsNone,
+			AdmissionReviewVersions: []string{"v1"},
+		}, {
+			Name: "template-admission.ssp.kubevirt.io",
+			ClientConfig: admission.WebhookClientConfig{
+				Service: &admission.ServiceReference{
+					Name:      ServiceName,
+					Namespace: serviceNamespace,
+					Path:      pointer.StringPtr(webhook.TemplateValidatePath),
+				},
+			},
+			ObjectSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					common_templates.TemplateTypeLabel: common_templates.TemplateTypeLabelBaseValue,
+				},
+			},
+			Rules: []admission.RuleWithOperations{{
+				Operations: []admission.OperationType{
+					admission.Delete,
+				},
+				Rule: admission.Rule{
+					APIGroups:   []string{templatev1.GroupVersion.Group},
+					APIVersions: []string{templatev1.GroupVersion.Version},
+					Resources:   []string{"templates"},
+				},
+			}},
 			FailurePolicy:           &fail,
 			SideEffects:             &sideEffectsNone,
 			AdmissionReviewVersions: []string{"v1"},

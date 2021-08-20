@@ -11,7 +11,6 @@ require (
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
 	github.com/openshift/api v0.0.0
-	github.com/openshift/client-go v0.0.0
 	github.com/openshift/custom-resource-status v1.1.0
 	github.com/operator-framework/api v0.9.2
 	github.com/operator-framework/operator-lib v0.4.0

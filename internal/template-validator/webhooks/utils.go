@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	templatev1 "github.com/openshift/api/template/v1"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubevirt "kubevirt.io/client-go/api/v1"
@@ -69,29 +70,28 @@ func ToAdmissionResponse(causes []metav1.StatusCause) *admissionv1.AdmissionResp
 	}
 }
 
-func GetAdmissionReviewVM(ar *admissionv1.AdmissionReview) (*kubevirt.VirtualMachine, *kubevirt.VirtualMachine, error) {
+func GetAdmissionReviewVM(ar *admissionv1.AdmissionReview) (*kubevirt.VirtualMachine, error) {
 	if ar.Request.Resource.Resource != "virtualmachines" {
-		return nil, nil, fmt.Errorf("expect resource %v to be '%s'", ar.Request.Resource, "virtualmachines")
+		return nil, fmt.Errorf("expect resource %v to be '%s'", ar.Request.Resource, "virtualmachines")
 	}
 
-	var err error
-	raw := ar.Request.Object.Raw
-	newVM := kubevirt.VirtualMachine{}
+	newVM := &kubevirt.VirtualMachine{}
+	err := json.Unmarshal(ar.Request.Object.Raw, newVM)
+	return newVM, err
+}
 
-	err = json.Unmarshal(raw, &newVM)
-	if err != nil {
-		return nil, nil, err
+func GetAdmissionReviewTemplate(ar *admissionv1.AdmissionReview) (*templatev1.Template, error) {
+	const resourceName = "templates"
+	if ar.Request.Resource.Resource != resourceName {
+		return nil, fmt.Errorf("expected resource %v to be '%s'", ar.Request.Resource, resourceName)
 	}
 
-	if ar.Request.Operation == admissionv1.Update {
-		raw := ar.Request.OldObject.Raw
-		oldVM := kubevirt.VirtualMachine{}
-		err = json.Unmarshal(raw, &oldVM)
-		if err != nil {
-			return nil, nil, err
-		}
-		return &newVM, &oldVM, nil
+	obj := &ar.Request.Object
+	if ar.Request.Operation == admissionv1.Delete {
+		obj = &ar.Request.OldObject
 	}
 
-	return &newVM, nil, nil
+	template := &templatev1.Template{}
+	err := json.Unmarshal(obj.Raw, template)
+	return template, err
 }

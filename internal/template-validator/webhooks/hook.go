@@ -20,50 +20,117 @@ package validating
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"kubevirt.io/client-go/log"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	"kubevirt.io/ssp-operator/internal/template-validator/labels"
+	"kubevirt.io/ssp-operator/internal/template-validator/virtinformers"
 )
 
 const (
-	VMTemplateValidatePath string = "/virtualmachine-template-validate"
+	VmValidatePath       string = "/virtualmachine-validate"
+	TemplateValidatePath string = "/template-validate"
 )
-
-func ServeVMTemplateValidate(resp http.ResponseWriter, req *http.Request) {
-	serve(resp, req, admitVMTemplate)
-}
 
 type admitFunc func(*admissionv1.AdmissionReview) *admissionv1.AdmissionResponse
 
-func admitVMTemplate(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResponse {
-	newVM, oldVM, err := GetAdmissionReviewVM(ar)
+type Webhooks interface {
+	Register()
+}
+
+type webhooks struct {
+	informers *virtinformers.Informers
+}
+
+func NewWebhooks(informers *virtinformers.Informers) Webhooks {
+	return &webhooks{
+		informers: informers,
+	}
+}
+
+func (w *webhooks) Register() {
+	http.HandleFunc(VmValidatePath, func(resp http.ResponseWriter, req *http.Request) {
+		serve(resp, req, w.admitVm)
+	})
+	http.HandleFunc(TemplateValidatePath, func(resp http.ResponseWriter, req *http.Request) {
+		serve(resp, req, w.admitTemplate)
+	})
+}
+
+func (w *webhooks) admitVm(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResponse {
+	vm, err := GetAdmissionReviewVM(ar)
 	if err != nil {
 		return ToAdmissionResponseError(err)
 	}
 
-	if newVM.DeletionTimestamp != nil {
+	if vm.DeletionTimestamp != nil {
 		return ToAdmissionResponseOK()
 	}
 
-	rules, err := getValidationRulesForVM(newVM)
+	rules, err := getValidationRulesForVM(vm, w.informers.TemplateStore())
 	if err != nil {
 		return ToAdmissionResponseError(err)
 	}
 
-	log.Log.V(8).Infof("admission newVM:\n%s", spew.Sdump(newVM))
-	log.Log.V(8).Infof("admission oldVM:\n%s", spew.Sdump(oldVM))
+	log.Log.V(8).Infof("admission vm:\n%s", spew.Sdump(vm))
 	log.Log.V(8).Infof("admission rules:\n%s", spew.Sdump(rules))
 
-	causes := ValidateVMTemplate(rules, newVM, oldVM)
+	causes := ValidateVm(rules, vm)
 	if len(causes) > 0 {
 		return ToAdmissionResponse(causes)
 	}
 
 	return ToAdmissionResponseOK()
+}
+
+func (w *webhooks) admitTemplate(ar *admissionv1.AdmissionReview) *admissionv1.AdmissionResponse {
+	if ar.Request.Operation != admissionv1.Delete {
+		return ToAdmissionResponseOK()
+	}
+
+	template, err := GetAdmissionReviewTemplate(ar)
+	if err != nil {
+		return ToAdmissionResponseError(err)
+	}
+
+	// Check if template is a common template
+	_, ok := template.Labels[common_templates.TemplateTypeLabel]
+	if !ok {
+		return ToAdmissionResponseOK()
+	}
+
+	// Old versions of common templates had annotation validation
+	_, ok = template.Annotations[labels.AnnotationValidationKey]
+	if !ok {
+		return ToAdmissionResponseOK()
+	}
+
+	// Old template cannot be removed if a VM uses it.
+	templateKey := client.ObjectKeyFromObject(template).String()
+	vms := w.informers.VmCache().GetVmsForTemplate(templateKey)
+	if len(vms) == 0 {
+		return ToAdmissionResponseOK()
+	}
+
+	return &admissionv1.AdmissionResponse{
+		Allowed: false,
+		Result: &metav1.Status{
+			Message: fmt.Sprintf(
+				"Template cannot be deleted, because the following VMs are referencing it for validation: %s",
+				strings.Join(vms, ", "),
+			),
+			Reason: metav1.StatusReasonForbidden,
+			Code:   http.StatusForbidden,
+		},
+	}
 }
 
 func serve(resp http.ResponseWriter, req *http.Request, admit admitFunc) {
@@ -94,9 +161,6 @@ func serve(resp http.ResponseWriter, req *http.Request, admit admitFunc) {
 		response.Response = reviewResponse
 		response.Response.UID = review.Request.UID
 	}
-	// reset the Object and OldObject, they are not needed in a response.
-	review.Request.Object = runtime.RawExtension{}
-	review.Request.OldObject = runtime.RawExtension{}
 
 	responseBytes, err := json.Marshal(response)
 	if err != nil {

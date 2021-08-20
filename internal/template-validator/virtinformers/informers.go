@@ -1,131 +1,144 @@
 package virtinformers
 
 import (
-	"context"
 	"math/rand"
-	"sync"
 	"time"
 
 	templatev1 "github.com/openshift/api/template/v1"
-	templatev1client "github.com/openshift/client-go/template/clientset/versioned/typed/template/v1"
 	k8sv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/client-go/log"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/labels"
 )
 
-var once sync.Once
-var pkgInformers *Informers
-
 type Informers struct {
-	TemplateInformer cache.SharedIndexInformer
+	templateInformer cache.SharedIndexInformer
+	vmCache          VmCache
+	vmCacheReflector *cache.Reflector
+	stopCh           chan struct{}
 }
 
-func (inf *Informers) Available() bool {
-	return inf != nil && inf.TemplateInformer != nil
+func (inf *Informers) Start() {
+	go inf.templateInformer.Run(inf.stopCh)
+	go inf.vmCacheReflector.Run(inf.stopCh)
+
+	log.Log.Infof("validator app: started informers")
+	cache.WaitForCacheSync(
+		inf.stopCh,
+		inf.templateInformer.HasSynced,
+	)
+	log.Log.Infof("validator app: synced informers")
 }
 
-func GetInformers() *Informers {
-	once.Do(func() {
-		pkgInformers = newInformers()
-	})
-	return pkgInformers
+func (inf *Informers) Stop() {
+	close(inf.stopCh)
 }
 
-// SetInformers created for unittest usage only
-func SetInformers(informers *Informers) {
-	once.Do(func() {
-		pkgInformers = informers
-	})
+func (inf *Informers) TemplateStore() cache.Store {
+	return inf.templateInformer.GetStore()
 }
 
-func newInformers() *Informers {
-	config := ctrl.GetConfigOrDie()
-	kubeInformerFactory := NewKubeInformerFactory(config)
+func (inf *Informers) VmCache() VmCache {
+	return inf.vmCache
+}
+
+func NewInformers(scheme *runtime.Scheme) (*Informers, error) {
+	config, err := ctrl.GetConfig()
+	if err != nil {
+		log.Log.Errorf("unable to get kubeconfig: %v", err)
+		return nil, err
+	}
+
+	informer, err := createTemplateInformer(config, scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	vms := NewVmCache(vmNeedsTemplate)
+	reflector, err := createVmCacheReflector(config, scheme, vms)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Informers{
-		TemplateInformer: kubeInformerFactory.Template(),
+		templateInformer: informer,
+		vmCache:          vms,
+		vmCacheReflector: reflector,
+		stopCh:           make(chan struct{}, 1),
+	}, nil
+}
+
+func vmNeedsTemplate(vm metav1.Object) bool {
+	if _, ok := vm.GetAnnotations()[labels.VmValidationAnnotationKey]; ok {
+		return false
 	}
+
+	templateKeys := labels.GetTemplateKeys(vm)
+	return templateKeys.IsValid()
 }
 
-type newSharedInformer func() cache.SharedIndexInformer
-
-type KubeInformerFactory interface {
-	// Starts any informers that have not been started yet
-	// This function is thread safe and idempotent
-	Start(stopCh <-chan struct{})
-
-	Template() cache.SharedIndexInformer
-}
-
-type kubeInformerFactory struct {
-	restConfig    *rest.Config
-	lock          sync.Mutex
-	defaultResync time.Duration
-
-	informers        map[string]cache.SharedIndexInformer
-	startedInformers map[string]bool
-}
-
-func NewKubeInformerFactory(restConfig *rest.Config) KubeInformerFactory {
-	return &kubeInformerFactory{
-		restConfig: restConfig,
-		// Resulting resync period will be between 12 and 24 hours, like the default for k8s
-		defaultResync:    resyncPeriod(12 * time.Hour),
-		informers:        make(map[string]cache.SharedIndexInformer),
-		startedInformers: make(map[string]bool),
+func createTemplateInformer(restConfig *rest.Config, scheme *runtime.Scheme) (cache.SharedIndexInformer, error) {
+	restClient, err := restClientForObject(&templatev1.Template{}, restConfig, scheme)
+	if err != nil {
+		return nil, err
 	}
-}
 
-func (f *kubeInformerFactory) Start(stopCh <-chan struct{}) {
-	f.lock.Lock()
-	defer f.lock.Unlock()
+	lw := cache.NewListWatchFromClient(restClient, "templates", k8sv1.NamespaceAll, fields.Everything())
 
-	for name, informer := range f.informers {
-		if f.startedInformers[name] {
-			// skip informers that have already started.
-			log.Log.Infof("SKIPPING informer %s", name)
-			continue
-		}
-		log.Log.Infof("STARTING informer %s", name)
-		go informer.Run(stopCh)
-		f.startedInformers[name] = true
+	_, err = lw.List(metav1.ListOptions{Limit: 1})
+	if err != nil {
+		log.Log.Errorf("error probing the template resource: %v", err)
+		return nil, err
 	}
+
+	// Resulting resync period will be between 12 and 24 hours, like the default for k8s
+	resync := resyncPeriod(12 * time.Hour)
+	return cache.NewSharedIndexInformer(lw, &templatev1.Template{}, resync, cache.Indexers{}), nil
 }
 
-func (f *kubeInformerFactory) getInformer(key string, newFunc newSharedInformer) cache.SharedIndexInformer {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-
-	informer, exists := f.informers[key]
-	if exists {
-		return informer
+func createVmCacheReflector(restConfig *rest.Config, scheme *runtime.Scheme, store cache.Store) (*cache.Reflector, error) {
+	restClient, err := restClientForObject(&kubevirtv1.VirtualMachine{}, restConfig, scheme)
+	if err != nil {
+		return nil, err
 	}
-	informer = newFunc()
-	f.informers[key] = informer
 
-	return informer
+	lw := cache.NewListWatchFromClient(restClient, "virtualmachines", k8sv1.NamespaceAll, fields.Everything())
+
+	_, err = lw.List(metav1.ListOptions{Limit: 1})
+	if err != nil {
+		log.Log.Errorf("error probing the virtual machine resource: %v", err)
+		return nil, err
+	}
+
+	return cache.NewReflector(
+		lw,
+		&kubevirtv1.VirtualMachine{},
+		store,
+		resyncPeriod(12*time.Hour),
+	), nil
 }
 
-func (f *kubeInformerFactory) Template() cache.SharedIndexInformer {
-	return f.getInformer("templateInformer", func() cache.SharedIndexInformer {
-		tmplclient, err := templatev1client.NewForConfig(f.restConfig)
-		if err != nil {
-			log.Log.Errorf("error creating the template client: %v", err)
-			return nil
-		}
+func restClientForObject(obj runtime.Object, restConfig *rest.Config, scheme *runtime.Scheme) (rest.Interface, error) {
+	gvk, err := apiutil.GVKForObject(obj, scheme)
+	if err != nil {
+		return nil, err
+	}
 
-		_, err = tmplclient.Templates(k8sv1.NamespaceAll).List(context.TODO(), metav1.ListOptions{Limit: 1})
-		if err != nil {
-			log.Log.Errorf("error probing the template resource: %v", err)
-			return nil
-		}
-
-		lw := cache.NewListWatchFromClient(tmplclient.RESTClient(), "templates", k8sv1.NamespaceAll, fields.Everything())
-		return cache.NewSharedIndexInformer(lw, &templatev1.Template{}, f.defaultResync, cache.Indexers{})
-	})
+	restClient, err := apiutil.RESTClientForGVK(gvk, false, restConfig, serializer.NewCodecFactory(scheme))
+	if err != nil {
+		log.Log.Errorf("error creating client: %v", err)
+		return nil, err
+	}
+	return restClient, nil
 }
 
 // resyncPeriod computes the time interval a shared informer waits before resyncing with the api server

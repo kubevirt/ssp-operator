@@ -279,7 +279,7 @@ var _ = Describe("Common templates", func() {
 					Namespace:    strategy.GetTemplatesNamespace(),
 					Labels: map[string]string{
 						commonTemplates.TemplateVersionLabel: "not-latest",
-						commonTemplates.TemplateTypeLabel:    "base",
+						commonTemplates.TemplateTypeLabel:    commonTemplates.TemplateTypeLabelBaseValue,
 						testOsLabel:                          "true",
 						testFlavorLabel:                      "true",
 						testWorkflowLabel:                    "true",
@@ -328,7 +328,7 @@ var _ = Describe("Common templates", func() {
 				return updatedTpl.Labels[testOsLabel] == "" &&
 					updatedTpl.Labels[testFlavorLabel] == "" &&
 					updatedTpl.Labels[testWorkflowLabel] == "" &&
-					updatedTpl.Labels[commonTemplates.TemplateTypeLabel] == "base" &&
+					updatedTpl.Labels[commonTemplates.TemplateTypeLabel] == commonTemplates.TemplateTypeLabelBaseValue &&
 					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest", nil
 			}, shortTimeout).Should(BeTrue(), "labels were not removed from older templates")
 		})
@@ -352,7 +352,7 @@ var _ = Describe("Common templates", func() {
 			err := apiClient.List(ctx, &latestTemplates,
 				client.InNamespace(strategy.GetTemplatesNamespace()),
 				client.MatchingLabels{
-					commonTemplates.TemplateTypeLabel:    "base",
+					commonTemplates.TemplateTypeLabel:    commonTemplates.TemplateTypeLabelBaseValue,
 					commonTemplates.TemplateVersionLabel: commonTemplates.Version,
 				})
 			Expect(err).ToNot(HaveOccurred())
@@ -369,7 +369,7 @@ var _ = Describe("Common templates", func() {
 						)
 					}
 				}
-				Expect(template.Labels[commonTemplates.TemplateTypeLabel]).To(Equal("base"),
+				Expect(template.Labels[commonTemplates.TemplateTypeLabel]).To(Equal(commonTemplates.TemplateTypeLabelBaseValue),
 					fmt.Sprintf("Label '%s' is not equal 'base' for template %s/%s",
 						commonTemplates.TemplateTypeLabel,
 						template.GetNamespace(), template.GetName()),

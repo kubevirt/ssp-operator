@@ -175,9 +175,9 @@ func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
 		Reconcile()
 }
 func getOldTemplatesLabelSelector() labels.Selector {
-	baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{"base"})
+	baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{TemplateTypeLabelBaseValue})
 	if err != nil {
-		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateTypeLabel, "base"))
+		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateTypeLabel, TemplateTypeLabelBaseValue))
 	}
 
 	// Only fetching older templates  to prevent duplication of API calls
