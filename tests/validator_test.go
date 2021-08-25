@@ -3,6 +3,7 @@ package tests
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -120,7 +121,7 @@ var _ = Describe("Template validator", func() {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue())
+			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue(), "owner annotations are missing")
 		},
 			table.Entry("[test_id:4907] cluster role", &clusterRoleRes),
 			table.Entry("[test_id:4908] cluster role binding", &clusterRoleBindingRes),
@@ -195,7 +196,7 @@ var _ = Describe("Template validator", func() {
 
 	It("[test_id:4913] should successfully start template-validator pod", func() {
 		labels := map[string]string{"kubevirt.io": "virt-template-validator"}
-		Eventually(func() bool {
+		Eventually(func() int {
 			pods := core.PodList{}
 			err := apiClient.List(ctx, &pods,
 				client.InNamespace(strategy.GetNamespace()),
@@ -208,23 +209,29 @@ var _ = Describe("Template validator", func() {
 					runningCount++
 				}
 			}
-			return runningCount == strategy.GetValidatorReplicas()
-		}, timeout, time.Second).Should(BeTrue())
+			return runningCount
+		}, timeout, time.Second).Should(BeNumerically("==", strategy.GetValidatorReplicas()))
 	})
 
 	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", func() {
 		foundSsp := getSsp()
 
-		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed))
+		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed), "SSP should be in phase Deployed")
 
 		conditions := foundSsp.Status.Conditions
-		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionAvailable).Status).To(Equal(core.ConditionTrue))
-		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionProgressing).Status).To(Equal(core.ConditionFalse))
-		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionDegraded).Status).To(Equal(core.ConditionFalse))
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionAvailable).Status).To(Equal(core.ConditionTrue),
+			fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionAvailable, core.ConditionTrue),
+		)
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionProgressing).Status).To(Equal(core.ConditionFalse),
+			fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionProgressing, core.ConditionFalse),
+		)
+		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionDegraded).Status).To(Equal(core.ConditionFalse),
+			fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionDegraded, core.ConditionFalse),
+		)
 
 		deployment := &apps.Deployment{}
 		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
-		Expect(deployment.Status.AvailableReplicas).To(Equal(int32(strategy.GetValidatorReplicas())))
+		Expect(deployment.Status.AvailableReplicas).To(Equal(int32(strategy.GetValidatorReplicas())), "deployment available replicas")
 	})
 
 	Context("with SSP resource modification", func() {
@@ -287,7 +294,7 @@ var _ = Describe("Template validator", func() {
 				return reflect.DeepEqual(podSpec.Affinity, affinity) &&
 					reflect.DeepEqual(podSpec.NodeSelector, nodeSelector) &&
 					reflect.DeepEqual(podSpec.Tolerations, tolerations)
-			}, timeout, 1*time.Second).Should(BeTrue())
+			}, timeout, 1*time.Second).Should(BeTrue(), "placement is different")
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
 				placement := foundSsp.Spec.TemplateValidator.Placement
@@ -307,7 +314,7 @@ var _ = Describe("Template validator", func() {
 				return podSpec.Affinity == nil &&
 					podSpec.NodeSelector == nil &&
 					podSpec.Tolerations == nil
-			}, timeout, 1*time.Second).Should(BeTrue())
+			}, timeout, 1*time.Second).Should(BeTrue(), "placement should be nil")
 		})
 
 		// TODO - This test is currently pending, because it can be flaky.
@@ -384,9 +391,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
 		})
 		It("[test_id:5033]: Template with validations, VM without validations", func() {
 			template = TemplateWithRules()
@@ -398,9 +403,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
 		})
 		It("[test_id:2960] Negative test - Create a VM with machine type violation", func() {
 			template = TemplateWithRules()
@@ -413,7 +416,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should match error type because of unfulfilled validations")
+			eventuallyFailToCreateVm(vm)
 		})
 		It("[test_id:5586]test with template optional rules unfulfilled", func() {
 			template = TemplateWithRulesOptional()
@@ -426,9 +429,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
 		})
 		It("[test_id:5587]test with cpu jsonpath nil should fail", func() {
 			template = TemplateWithRules()
@@ -441,7 +442,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should have given the invalid error type")
+			eventuallyFailToCreateVm(vm)
 		})
 		It("[test_id:5589]Test template with incorrect rules satisfied", func() {
 			template = TemplateWithIncorrectRules()
@@ -454,7 +455,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should have given the invalid error failing to fulfill validations")
+			eventuallyFailToCreateVm(vm)
 		})
 		It("[test_id:5590]Test template with incorrect rules unfulfilled", func() {
 			template = TemplateWithIncorrectRules()
@@ -467,7 +468,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should have given the invalid error failing to fulfill validations")
+			eventuallyFailToCreateVm(vm)
 		})
 		It("[test_id:2959] Create a VM with memory restrictions violation that succeeds with a warning", func() {
 			template = TemplateWithIncorrectRulesJustWarning()
@@ -480,9 +481,8 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
+
 			pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 			Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
 			Eventually(func() bool {
@@ -502,9 +502,7 @@ var _ = Describe("Template validator", func() {
 			vm.ObjectMeta.Annotations = map[string]string{
 				"vm.kubevirt.io/template-namespace": strategy.GetNamespace(),
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
 		})
 		It("[test_id:6199]Test vm with UI style annotations", func() {
 			template = TemplateWithRules()
@@ -516,9 +514,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:              template.Name,
 				"vm.kubevirt.io/template.namespace": template.Namespace,
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
 		})
 		It("[test_id:5592]Test vm with template info in labels", func() {
 			template = TemplateWithRules()
@@ -530,9 +526,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:              template.Name,
 				"vm.kubevirt.io/template.namespace": template.Namespace,
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
 		})
 		It("[test_id:5593]test template with incomplete CPU info", func() {
 			template = TemplateWithRules()
@@ -547,9 +541,7 @@ var _ = Describe("Template validator", func() {
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
-			Eventually(func() error {
-				return apiClient.Create(ctx, vm)
-			}, shortTimeout).Should(BeNil(), "Failed to create VM")
+			eventuallyCreateVm(vm)
 		})
 		Context("with Validation inside VM object", func() {
 			It("[test_id:5173]: should create a VM that passes validation", func() {
@@ -572,9 +564,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Eventually(func() error {
-					return apiClient.Create(ctx, vm)
-				}, shortTimeout).Should(BeNil(), "Failed to create VM")
+				eventuallyCreateVm(vm)
 			})
 			It("[test_id:5034]: should fail to create VM that fails validation", func() {
 				template = TemplateWithoutRules()
@@ -596,7 +586,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should give the invalid error type")
+				eventuallyFailToCreateVm(vm)
 			})
 			It("[test_id:5035]: Template with validations, VM with validations", func() {
 				template = TemplateWithRules()
@@ -618,7 +608,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should give the invalid error type")
+				eventuallyFailToCreateVm(vm)
 			})
 			It("[test_id:5036]: should successfully create a VM based on the VM validation rules priority over template rules", func() {
 				template = TemplateWithRules()
@@ -640,9 +630,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Eventually(func() error {
-					return apiClient.Create(ctx, vm)
-				}, shortTimeout).Should(BeNil(), "Failed to create VM")
+				eventuallyCreateVm(vm)
 			})
 			It("[test_id:5174]: VM with validations and deleted template", func() {
 				vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
@@ -661,9 +649,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Eventually(func() error {
-					return apiClient.Create(ctx, vm)
-				}, shortTimeout).Should(BeNil(), "Failed to create VM")
+				eventuallyCreateVm(vm)
 			})
 			It("[test_id:5046]: should override template rules and fail to create a VM based on the VM validation rules", func() {
 				vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
@@ -682,7 +668,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should have given the invalid error type")
+				eventuallyFailToCreateVm(vm)
 			})
 			It("[test_id:5047]: should fail to create a VM based on the VM validation rules", func() {
 				vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
@@ -699,7 +685,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Expect(errors.IsInvalid(apiClient.Create(ctx, vm))).To(BeTrue(), "Should give the invalid error type")
+				eventuallyFailToCreateVm(vm)
 			})
 			It("[test_id:5175]: VM with validations without template", func() {
 				vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
@@ -716,9 +702,7 @@ var _ = Describe("Template validator", func() {
         										 }
 												]`,
 				}
-				Eventually(func() error {
-					return apiClient.Create(ctx, vm)
-				}, shortTimeout).Should(BeNil(), "Failed to create VM")
+				eventuallyCreateVm(vm)
 			})
 		})
 	})
@@ -727,7 +711,7 @@ var _ = Describe("Template validator", func() {
 		It("[test_id:4375] Test refreshing of certificates", func() {
 			pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 			Expect(err).ToNot(HaveOccurred())
-			Expect(pods.Items).ToNot(HaveLen(0))
+			Expect(pods.Items).ToNot(HaveLen(0), "no pods found")
 
 			validatorPod := pods.Items[0]
 			oldCerts, err := getWebhookServerCertificates(&validatorPod)
@@ -750,12 +734,48 @@ var _ = Describe("Template validator", func() {
 					return true, err
 				}
 				return certsEqual(newCerts, oldCerts), nil
-			}, 5*time.Minute, 1*time.Second).Should(BeFalse())
+			}, 5*time.Minute, 1*time.Second).Should(BeFalse(), "Certificates should be different")
 		})
 	})
 })
 
-func addObjectsToTemplates(name, validation string) *templatev1.Template {
+func eventuallyCreateVm(vm *kubevirtv1.VirtualMachine) bool {
+	// Using Eventually, because it can take a while until
+	// new templates propagate to template validator
+	return EventuallyWithOffset(1, func() error {
+		return apiClient.Create(ctx, vm)
+	}, shortTimeout).Should(Succeed(), "Failed to create VM")
+}
+
+func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
+	// Using Eventually, because it can take a while until
+	// new templates propagate to template validator
+	return EventuallyWithOffset(1, func() (metav1.StatusReason, error) {
+		// Check if VM is still being deleted from previous call
+		foundVm := &kubevirtv1.VirtualMachine{}
+		err := apiClient.Get(ctx, client.ObjectKeyFromObject(vm), foundVm)
+		if err == nil {
+			if foundVm.GetDeletionTimestamp().IsZero() {
+				// This should not happen
+				return metav1.StatusReasonUnknown, fmt.Errorf("created VM is not being deleted")
+			}
+			return metav1.StatusReasonUnknown, fmt.Errorf("VM was created")
+		}
+
+		err = apiClient.Create(ctx, vm)
+		if err == nil {
+			// VM was created, but it should not have been
+			err := apiClient.Delete(ctx, vm.DeepCopy())
+			if err != nil {
+				Fail(fmt.Sprintf("Unexpected error when deleting created VM: %v", err))
+			}
+			return metav1.StatusReasonUnknown, fmt.Errorf("VM was created")
+		}
+		return errors.ReasonForError(err), nil
+	}, shortTimeout).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
+}
+
+func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 	editable := `/objects[0].spec.template.spec.domain.cpu.sockets
 				/objects[0].spec.template.spec.domain.cpu.cores
  				/objects[0].spec.template.spec.domain.cpu.threads
@@ -770,8 +790,8 @@ func addObjectsToTemplates(name, validation string) *templatev1.Template {
 	liveMigrate := kubevirtv1.EvictionStrategyLiveMigrate
 	template := &templatev1.Template{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: strategy.GetNamespace(),
+			GenerateName: genName + "-",
+			Namespace:    strategy.GetNamespace(),
 			Annotations: map[string]string{
 				"openshift.io/display-name":             "Fedora 23+ VM",
 				"description":                           "This template can be used to create a VM",

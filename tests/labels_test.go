@@ -63,18 +63,17 @@ func encodePatch(operations []jsonpatch.Operation) client.Patch {
 
 func waitForLabelMatch(resource client.Object, key client.ObjectKey, expectedLabels map[string]string) {
 	var lastResult badLabels
-	Eventually(func() bool {
+	Eventually(func() (bool, error) {
 		err := apiClient.Get(ctx, key, resource)
 		if err != nil {
-			fmt.Fprintln(GinkgoWriter, err)
-			return false
+			return false, err
 		}
 		badLabels := labelsMatch(expectedLabels, resource)
 		if len(badLabels) > 0 {
 			lastResult = badLabels
-			return false
+			return false, nil
 		}
-		return true
+		return true, nil
 	}, shortTimeout).Should(BeTrue(), func() string {
 		return lastResult.String()
 	})

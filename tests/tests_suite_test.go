@@ -304,7 +304,7 @@ var _ = AfterSuite(func() {
 
 func expectSuccessOrNotFound(err error) {
 	if err != nil && !errors.IsNotFound(err) {
-		Expect(err).ToNot(HaveOccurred())
+		ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	}
 }
 
