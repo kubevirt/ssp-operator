@@ -372,7 +372,10 @@ spec:
                     path: /readyz
                     port: 9440
                   initialDelaySeconds: 5
-                resources: {}
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 150Mi
               serviceAccountName: ssp-operator
               terminationGracePeriodSeconds: 10
       permissions:
