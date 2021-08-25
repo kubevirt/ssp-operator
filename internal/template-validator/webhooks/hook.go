@@ -25,6 +25,8 @@ import (
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"kubevirt.io/client-go/log"
@@ -33,6 +35,13 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
 	"kubevirt.io/ssp-operator/internal/template-validator/virtinformers"
+)
+
+var (
+	vmsRejected = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "total_rejected_vms",
+		Help: "The total number of rejected vms",
+	})
 )
 
 const (
@@ -85,6 +94,7 @@ func (w *webhooks) admitVm(ar *admissionv1.AdmissionReview) *admissionv1.Admissi
 
 	causes := ValidateVm(rules, vm)
 	if len(causes) > 0 {
+		vmsRejected.Inc()
 		return ToAdmissionResponse(causes)
 	}
 
