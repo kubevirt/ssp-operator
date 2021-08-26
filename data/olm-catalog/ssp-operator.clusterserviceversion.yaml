@@ -28,7 +28,7 @@ metadata:
     description: Manages KubeVirt addons for Scheduling, Scale, Performance
     operators.operatorframework.io/builder: operator-sdk-v1.8.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: ssp-operator.v0.12.0
+  name: ssp-operator.v0.13.0
   namespace: kubevirt
 spec:
   apiservicedefinitions: {}
@@ -357,7 +357,7 @@ spec:
                 - name: NODE_LABELLER_IMAGE
                 - name: CPU_PLUGIN_IMAGE
                 - name: OPERATOR_VERSION
-                  value: 0.12.0
+                  value: 0.13.0
                 image: quay.io/kubevirt/ssp-operator:latest
                 livenessProbe:
                   httpGet:
@@ -387,7 +387,7 @@ spec:
                   allowPrivilegeEscalation: false
               priorityClassName: system-cluster-critical
               securityContext:
-                runAsUser: 1000
+                runAsNonRoot: true
               serviceAccountName: ssp-operator
               terminationGracePeriodSeconds: 10
       permissions:
@@ -460,7 +460,7 @@ spec:
     matchLabels:
       alm-owner-kubevirt: ssp-operator
       operated-by: ssp-operator
-  version: 0.12.0
+  version: 0.13.0
   webhookdefinitions:
   - admissionReviewVersions:
     - v1
