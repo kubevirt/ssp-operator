@@ -2,7 +2,7 @@
 # The value here should be equal to the next version:
 # - next minor version on main branch
 # - next patch version on release branches
-VERSION ?= 0.12.0
+VERSION ?= 0.13.0
 
 #operator-sdk version
 OPERATOR_SDK_VERSION ?= v1.9.0
