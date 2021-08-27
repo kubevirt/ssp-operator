@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -111,9 +112,9 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceS
 
 func (c *commonTemplates) Cleanup(request *common.Request) error {
 	objects := []client.Object{
-		newGoldenImagesNS(GoldenImagesNSname),
-		newViewRole(GoldenImagesNSname),
-		newViewRoleBinding(GoldenImagesNSname),
+		newGoldenImagesNS(ssp.GoldenImagesNSname),
+		newViewRole(ssp.GoldenImagesNSname),
+		newViewRoleBinding(ssp.GoldenImagesNSname),
 		newEditRole(),
 	}
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
@@ -133,14 +134,14 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 
 func reconcileGoldenImagesNS(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newGoldenImagesNS(GoldenImagesNSname)).
+		ClusterResource(newGoldenImagesNS(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }
 
 func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRole(GoldenImagesNSname)).
+		ClusterResource(newViewRole(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRole := foundRes.(*rbac.Role)
@@ -152,7 +153,7 @@ func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
 
 func reconcileViewRoleBinding(request *common.Request) (common.ResourceStatus, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRoleBinding(GoldenImagesNSname)).
+		ClusterResource(newViewRoleBinding(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			newBinding := newRes.(*rbac.RoleBinding)
