@@ -42,7 +42,7 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							For:   "5m",
 							Annotations: map[string]string{
 								"summary":     "All SSP operator pods are down.",
-								"runbook_url": "http://kubevirt.io/monitoring/runbooks/SSPOperatorDown",
+								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPOperatorDown",
 							},
 							Labels: map[string]string{
 								"severity": "Critical",
@@ -54,10 +54,26 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							For:   "5m",
 							Annotations: map[string]string{
 								"summary":     "All Template Validator pods are down.",
-								"runbook_url": "http://kubevirt.io/monitoring/runbooks/SSPTemplateValidatorDown",
+								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPTemplateValidatorDown",
 							},
 							Labels: map[string]string{
 								"severity": "Critical",
+							},
+						},
+						{
+							Record: "kubevirt_ssp_rejected_vms_total",
+							Expr:   intstr.FromString("sum(increase(total_rejected_vms{pod=~'virt-template-validator.*'}[1h]))"),
+						},
+						{
+							Alert: "SSPHighRateRejectedVms",
+							Expr:  intstr.FromString("kubevirt_ssp_rejected_vms_total > 5"),
+							For:   "5m",
+							Annotations: map[string]string{
+								"summary":     "High rate of rejected Vms",
+								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPHighRateRejectedVms",
+							},
+							Labels: map[string]string{
+								"severity": "Warn",
 							},
 						},
 					},
