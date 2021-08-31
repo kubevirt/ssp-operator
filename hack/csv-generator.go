@@ -117,23 +117,24 @@ func runGenerator() error {
 	if err != nil {
 		return err
 	}
-	if f.dumpCRDs {
-		files, err := ioutil.ReadDir("data/crd")
+	if !f.dumpCRDs {
+		return nil
+	}
+	files, err := ioutil.ReadDir("data/crd")
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		crd := extv1beta1.CustomResourceDefinition{}
+
+		err := readAndDecodeToCRD(file, &crd)
 		if err != nil {
 			return err
 		}
-		for _, file := range files {
-			crd := extv1beta1.CustomResourceDefinition{}
 
-			err := readAndDecodeToCRD(file, &crd)
-			if err != nil {
-				return err
-			}
-
-			err = marshallObject(crd, nil, os.Stdout)
-			if err != nil {
-				return err
-			}
+		err = marshallObject(crd, nil, os.Stdout)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
