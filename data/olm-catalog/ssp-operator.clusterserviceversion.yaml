@@ -387,7 +387,7 @@ spec:
                   allowPrivilegeEscalation: false
               priorityClassName: system-cluster-critical
               securityContext:
-                runAsUser: 1000
+                runAsNonRoot: true
               serviceAccountName: ssp-operator
               terminationGracePeriodSeconds: 10
       permissions:
