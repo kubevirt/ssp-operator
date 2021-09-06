@@ -13,8 +13,10 @@ import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	cdiv1beta1 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
@@ -32,7 +34,7 @@ var _ = Describe("Common templates", func() {
 		expectedLabels := expectedLabelsFor("common-templates", common.AppComponentTemplating)
 		viewRole = testResource{
 			Name:           commonTemplates.ViewRoleName,
-			Namespace:      commonTemplates.GoldenImagesNSname,
+			Namespace:      ssp.GoldenImagesNSname,
 			Resource:       &rbac.Role{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(role *rbac.Role) {
@@ -44,7 +46,7 @@ var _ = Describe("Common templates", func() {
 		}
 		viewRoleBinding = testResource{
 			Name:           commonTemplates.ViewRoleName,
-			Namespace:      commonTemplates.GoldenImagesNSname,
+			Namespace:      ssp.GoldenImagesNSname,
 			Resource:       &rbac.RoleBinding{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
@@ -67,7 +69,7 @@ var _ = Describe("Common templates", func() {
 			},
 		}
 		goldenImageNS = testResource{
-			Name:           commonTemplates.GoldenImagesNSname,
+			Name:           ssp.GoldenImagesNSname,
 			Resource:       &core.Namespace{},
 			ExpectedLabels: expectedLabels,
 			Namespace:      "",
@@ -415,7 +417,7 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
@@ -426,7 +428,7 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
@@ -437,7 +439,7 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "watch",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
@@ -450,9 +452,9 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     commonTemplates.CdiApiGroup,
-							Version:   commonTemplates.CdiApiVersion,
+							Namespace: ssp.GoldenImagesNSname,
+							Group:     cdiv1beta1.SchemeGroupVersion.Group,
+							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -462,9 +464,9 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
-							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     commonTemplates.CdiApiGroup,
-							Version:   commonTemplates.CdiApiVersion,
+							Namespace: ssp.GoldenImagesNSname,
+							Group:     cdiv1beta1.SchemeGroupVersion.Group,
+							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -474,9 +476,9 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "watch",
-							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     commonTemplates.CdiApiGroup,
-							Version:   commonTemplates.CdiApiVersion,
+							Namespace: ssp.GoldenImagesNSname,
+							Group:     cdiv1beta1.SchemeGroupVersion.Group,
+							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -486,9 +488,9 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:        "create",
-							Namespace:   commonTemplates.GoldenImagesNSname,
-							Group:       commonTemplates.CdiApiGroup,
-							Version:     commonTemplates.CdiApiVersion,
+							Namespace:   ssp.GoldenImagesNSname,
+							Group:       cdiv1beta1.SchemeGroupVersion.Group,
+							Version:     cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:    "datavolumes",
 							Subresource: "source",
 						},
@@ -502,9 +504,9 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
-							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     commonTemplates.CdiApiGroup,
-							Version:   commonTemplates.CdiApiVersion,
+							Namespace: ssp.GoldenImagesNSname,
+							Group:     cdiv1beta1.SchemeGroupVersion.Group,
+							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -514,9 +516,9 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: commonTemplates.GoldenImagesNSname,
-							Group:     commonTemplates.CdiApiGroup,
-							Version:   commonTemplates.CdiApiVersion,
+							Namespace: ssp.GoldenImagesNSname,
+							Group:     cdiv1beta1.SchemeGroupVersion.Group,
+							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
 						},
 					}),
@@ -528,7 +530,7 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
@@ -540,7 +542,7 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
@@ -551,7 +553,7 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
@@ -562,7 +564,7 @@ var _ = Describe("Common templates", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "pods",
 						},
@@ -589,7 +591,7 @@ var _ = Describe("Common templates", func() {
 					editObj = &rbac.RoleBinding{
 						ObjectMeta: metav1.ObjectMeta{
 							GenerateName: "test-edit-",
-							Namespace:    commonTemplates.GoldenImagesNSname,
+							Namespace:    ssp.GoldenImagesNSname,
 						},
 						Subjects: []rbac.Subject{{
 							Kind:      "ServiceAccount",
@@ -617,7 +619,7 @@ var _ = Describe("Common templates", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
-								Namespace: commonTemplates.GoldenImagesNSname,
+								Namespace: ssp.GoldenImagesNSname,
 								Version:   core.SchemeGroupVersion.Version,
 								Resource:  "persistentvolumeclaims",
 							},
@@ -626,7 +628,7 @@ var _ = Describe("Common templates", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
-								Namespace: commonTemplates.GoldenImagesNSname,
+								Namespace: ssp.GoldenImagesNSname,
 								Version:   core.SchemeGroupVersion.Version,
 								Resource:  "persistentvolumeclaims",
 							},
@@ -635,9 +637,9 @@ var _ = Describe("Common templates", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "get",
-								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     commonTemplates.CdiApiGroup,
-								Version:   commonTemplates.CdiApiVersion,
+								Namespace: ssp.GoldenImagesNSname,
+								Group:     cdiv1beta1.SchemeGroupVersion.Group,
+								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datavolumes",
 							},
 						}),
@@ -645,9 +647,9 @@ var _ = Describe("Common templates", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
-								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     commonTemplates.CdiApiGroup,
-								Version:   commonTemplates.CdiApiVersion,
+								Namespace: ssp.GoldenImagesNSname,
+								Group:     cdiv1beta1.SchemeGroupVersion.Group,
+								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datavolumes",
 							},
 						}),
@@ -655,9 +657,9 @@ var _ = Describe("Common templates", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
-								Namespace: commonTemplates.GoldenImagesNSname,
-								Group:     commonTemplates.CdiApiGroup,
-								Version:   commonTemplates.CdiApiVersion,
+								Namespace: ssp.GoldenImagesNSname,
+								Group:     cdiv1beta1.SchemeGroupVersion.Group,
+								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datavolumes",
 							},
 						}),
@@ -666,7 +668,7 @@ var _ = Describe("Common templates", func() {
 					sars := &authv1.SubjectAccessReviewSpec{
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: commonTemplates.GoldenImagesNSname,
+							Namespace: ssp.GoldenImagesNSname,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "pods",
 						},
