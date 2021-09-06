@@ -12,12 +12,13 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -37,6 +38,10 @@ var (
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datavolumes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datavolumes/source,verbs=create
 
+func init() {
+	utilruntime.Must(templatev1.Install(common.Scheme))
+}
+
 type commonTemplates struct{}
 
 var _ operands.Operand = &commonTemplates{}
@@ -53,10 +58,6 @@ const (
 	operandName      = "common-templates"
 	operandComponent = common.AppComponentTemplating
 )
-
-func (c *commonTemplates) AddWatchTypesToScheme(s *runtime.Scheme) error {
-	return templatev1.Install(s)
-}
 
 func (c *commonTemplates) WatchClusterTypes() []client.Object {
 	return []client.Object{

@@ -7,7 +7,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -29,10 +28,6 @@ type templateValidator struct{}
 
 func (t *templateValidator) Name() string {
 	return operandName
-}
-
-func (t *templateValidator) AddWatchTypesToScheme(*runtime.Scheme) error {
-	return nil
 }
 
 func (t *templateValidator) WatchTypes() []client.Object {
