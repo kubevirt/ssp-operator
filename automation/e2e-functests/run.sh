@@ -8,6 +8,8 @@ set -e
 # CI_OPERATOR_IMG - path of the operator image in the local repository accessible on the CI
 # CI_VALIDATOR_IMG - path of the validator image in the local repository accessible on the CI
 
+./automation/common/deploy-kubevirt-and-cdi.sh
+
 export VALIDATOR_IMG=${CI_VALIDATOR_IMG}
 export IMG=${CI_OPERATOR_IMG}
 export SKIP_CLEANUP_AFTER_TESTS=true
