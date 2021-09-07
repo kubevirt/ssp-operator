@@ -342,6 +342,7 @@ spec:
             metadata:
               labels:
                 control-plane: ssp-operator
+                name: ssp-operator
                 prometheus.kubevirt.io: ""
             spec:
               containers:

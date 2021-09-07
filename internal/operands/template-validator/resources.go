@@ -40,12 +40,6 @@ func commonLabels() map[string]string {
 	}
 }
 
-func podLabels() map[string]string {
-	labels := commonLabels()
-	labels[PrometheusLabel] = ""
-	return labels
-}
-
 func getTemplateValidatorImage() string {
 	return common.EnvOrDefault(common.TemplateValidatorImageKey, defaultTemplateValidatorImage)
 }
@@ -127,12 +121,16 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	const certMountPath = "/etc/webhook/certs"
 	trueVal := true
 
+	podLabels := commonLabels()
+	podLabels[PrometheusLabel] = ""
+	podLabels["name"] = DeploymentName
+
 	return &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DeploymentName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"name": VirtTemplateValidator,
+				"name": DeploymentName,
 			},
 		},
 		Spec: apps.DeploymentSpec{
@@ -143,7 +141,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   VirtTemplateValidator,
-					Labels: podLabels(),
+					Labels: podLabels,
 				},
 				Spec: core.PodSpec{
 					ServiceAccountName: ServiceAccountName,
