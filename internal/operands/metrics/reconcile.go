@@ -2,7 +2,7 @@ package metrics
 
 import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -12,14 +12,14 @@ import (
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch;create;update;patch;delete
 
+func init() {
+	utilruntime.Must(promv1.AddToScheme(common.Scheme))
+}
+
 type metrics struct{}
 
 func (m *metrics) Name() string {
 	return operandName
-}
-
-func (m *metrics) AddWatchTypesToScheme(scheme *runtime.Scheme) error {
-	return promv1.AddToScheme(scheme)
 }
 
 func (m *metrics) WatchTypes() []client.Object {

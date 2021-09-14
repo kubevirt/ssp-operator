@@ -14,7 +14,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -33,14 +33,14 @@ import (
 // RBAC for created roles
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;update;patch
 
+func init() {
+	utilruntime.Must(secv1.Install(common.Scheme))
+}
+
 type nodeLabeller struct{}
 
 func (nl *nodeLabeller) Name() string {
 	return operandName
-}
-
-func (nl *nodeLabeller) AddWatchTypesToScheme(s *runtime.Scheme) error {
-	return secv1.Install(s)
 }
 
 func (nl *nodeLabeller) WatchTypes() []client.Object {

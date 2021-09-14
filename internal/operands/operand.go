@@ -1,17 +1,12 @@
 package operands
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
 )
 
 type Operand interface {
-	// AddWatchTypesToScheme adds any additional types to the scheme.
-	// The default scheme already contains types from k8s.io/api.
-	AddWatchTypesToScheme(*runtime.Scheme) error
-
 	// WatchTypes returns a slice of namespaced resources, that the operator should watch.
 	WatchTypes() []client.Object
 

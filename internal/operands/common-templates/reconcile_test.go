@@ -10,7 +10,6 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -46,11 +45,7 @@ var _ = Describe("Common-Templates operand", func() {
 	var request common.Request
 
 	BeforeEach(func() {
-		s := scheme.Scheme
-		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
-		Expect(operand.AddWatchTypesToScheme(s)).ToNot(HaveOccurred())
-
-		client := fake.NewFakeClientWithScheme(s)
+		client := fake.NewFakeClientWithScheme(common.Scheme)
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
