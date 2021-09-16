@@ -11,9 +11,11 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	authv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cdiv1beta1 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1"
@@ -208,6 +210,43 @@ var _ = Describe("Common templates", func() {
 	})
 
 	Context("resource change", func() {
+		Context("namespace change", func() {
+			var newTemplateNamespace string
+			var namespaceObj *v1.Namespace
+			BeforeEach(func() {
+				strategy.SkipSspUpdateTestsIfNeeded()
+
+				namespaceObj = &v1.Namespace{ObjectMeta: metav1.ObjectMeta{GenerateName: "ssp-operator-functests-new-templates"}}
+				err := apiClient.Create(ctx, namespaceObj)
+				Expect(err).To(BeNil(), "err should be nil")
+
+				newTemplateNamespace = namespaceObj.GetName()
+			})
+
+			AfterEach(func() {
+				strategy.RevertToOriginalSspCr()
+				err := apiClient.Delete(ctx, namespaceObj)
+				Expect(err).To(BeNil(), "err should be nil")
+			})
+
+			It("[test_id:6057] should update commonTemplates.namespace", func() {
+				foundSsp := getSsp()
+				Expect(foundSsp.Spec.CommonTemplates.Namespace).ToNot(Equal(newTemplateNamespace), "namespaces should not equal")
+
+				updateSsp(func(foundSsp *sspv1beta1.SSP) {
+					foundSsp.Spec.CommonTemplates.Namespace = newTemplateNamespace
+				})
+				waitUntilDeployed()
+
+				templates := &templatev1.TemplateList{}
+				Eventually(func() bool {
+					err := apiClient.List(ctx, templates, &client.ListOptions{
+						Namespace: newTemplateNamespace,
+					})
+					return len(templates.Items) > 0 && err == nil
+				}, shortTimeout).Should(BeTrue(), "templates should be in new namespace")
+			})
+		})
 		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
 			table.Entry("[test_id:5315]edit cluster role", &editClusterRole),
 			table.Entry("[test_id:5316]view role", &viewRole),
