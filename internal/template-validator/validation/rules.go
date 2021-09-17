@@ -4,54 +4,40 @@ import (
 	"encoding/json"
 
 	k6tv1 "kubevirt.io/client-go/api/v1"
-)
 
-// the flow:
-// 1. first you do ParseRule and get []Rule. This is little more than raw data rearranged in Go structs.
-//    You can work with that programmatically, but the first thing you may want to do is
-// 2. ...
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
+)
 
 type Rule struct {
 	// mandatory keys
-	Rule    string `json:"rule"`
-	Name    string `json:"name"`
-	Path    string `json:"path"`
-	Message string `json:"message"`
+	Rule    RuleType  `json:"rule"`
+	Name    string    `json:"name"`
+	Path    path.Path `json:"path"`
+	Message string    `json:"message"`
 	// optional keys
-	Valid       string `json:"valid,omitempty"`
-	JustWarning bool   `json:"justWarning,omitempty"`
+	Valid       *path.Path `json:"valid,omitempty"`
+	JustWarning bool       `json:"justWarning,omitempty"`
 	// arguments (optional keys)
-	Values    []string    `json:"values,omitempty"`
-	Min       interface{} `json:"min,omitempty"`
-	Max       interface{} `json:"max,omitempty"`
-	MinLength interface{} `json:"minLength,omitempty"`
-	MaxLength interface{} `json:"maxLength,omitempty"`
-	Regex     string      `json:"regex,omitempty"`
+	Values    []path.StringOrPath `json:"values,omitempty"`
+	Min       *path.IntOrPath     `json:"min,omitempty"`
+	Max       *path.IntOrPath     `json:"max,omitempty"`
+	MinLength *path.IntOrPath     `json:"minLength,omitempty"`
+	MaxLength *path.IntOrPath     `json:"maxLength,omitempty"`
+	Regex     string              `json:"regex,omitempty"`
 }
 
-func (r *Rule) findPathOn(vm *k6tv1.VirtualMachine) (bool, error) {
-	var err error
-	p, err := NewPath(r.Valid)
-	if err != nil {
-		return false, err
-	}
-	err = p.Find(vm)
-	if err != nil {
-		return false, err
-	}
-	return p.Len() > 0, nil
-}
-
-func (r *Rule) IsAppliableOn(vm *k6tv1.VirtualMachine) (bool, error) {
-	if r.Valid == "" {
+func (r *Rule) IsAppliableOn(vm *k6tv1.VirtualMachine) bool {
+	if r.Valid == nil {
 		// nothing to check against, so it is OK
-		return true, nil
+		return true
 	}
-	ok, err := r.findPathOn(vm)
-	if err == ErrInvalidJSONPath {
-		return false, nil
+	// If valid path does not point to an existing JSON filed,
+	// this rule is not applicable for the VM.
+	results, err := r.Valid.Find(vm)
+	if err != nil {
+		return false
 	}
-	return ok, err
+	return results.Len() > 0
 }
 
 func ParseRules(data []byte) ([]Rule, error) {

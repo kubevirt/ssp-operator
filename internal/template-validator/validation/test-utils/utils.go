@@ -1,4 +1,4 @@
-package validation
+package test_utils
 
 import (
 	"bytes"

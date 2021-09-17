@@ -7,6 +7,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
+
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
+	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Eval", func() {
@@ -15,15 +18,15 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name: "rule-1",
-					Rule: "integer",
+					Rule: IntegerRule,
 					// any legal path is fine
-					Path:    "jsonpath::.spec.domain.cpu.cores",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 					Message: "testing",
 				}, {
 					Name: "rule-1",
-					Rule: "string",
+					Rule: StringRule,
 					// any legal path is fine
-					Path:    "jsonpath::.spec.domain.cpu.cores",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 					Message: "testing",
 				},
 			}
@@ -38,25 +41,18 @@ var _ = Describe("Eval", func() {
 		})
 
 		It("Should detect missing keys", func() {
-			rules := []Rule{
-				{
-					Name: "rule-1",
-					Rule: "integer",
-					// any legal path is fine
-					Path: "jsonpath::.spec.domain.cpu.cores",
-				}, {
-					Name:    "rule-2",
-					Rule:    "string",
-					Message: "testing",
-				},
-			}
+			rules := []Rule{{
+				Name: "rule-1",
+				Rule: IntegerRule,
+				// any legal path is fine
+				Path: *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
+			}}
 			vm := kubevirtv1.VirtualMachine{}
 
 			res := NewEvaluator().Evaluate(rules, &vm)
 			Expect(res.Succeeded()).To(BeFalse())
-			Expect(len(res.Status)).To(Equal(2))
+			Expect(len(res.Status)).To(Equal(1))
 			Expect(res.Status[0].Error).To(Equal(ErrMissingRequiredKey))
-			Expect(res.Status[1].Error).To(Equal(ErrMissingRequiredKey))
 		})
 
 		It("Should detect invalid rules", func() {
@@ -64,7 +60,7 @@ var _ = Describe("Eval", func() {
 				Name: "rule-1",
 				Rule: "foobar",
 				// any legal path is fine
-				Path:    "jsonpath::.spec.domain.cpu.cores",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 				Message: "testing",
 			}}
 			vm := kubevirtv1.VirtualMachine{}
@@ -77,11 +73,11 @@ var _ = Describe("Eval", func() {
 		It("Should detect unappliable rules", func() {
 			rules := []Rule{{
 				Name: "rule-1",
-				Rule: "integer",
+				Rule: IntegerRule,
 				// any legal path is fine
-				Path:    "jsonpath::.spec.domain.cpu.cores",
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 				Message: "testing",
-				Valid:   "jsonpath::.spec.domain.some.inexistent.path",
+				Valid:   path.NewOrPanic("jsonpath::.spec.domain.some.inexistent.path"),
 			}}
 			vm := kubevirtv1.VirtualMachine{}
 
@@ -99,10 +95,10 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name: "rule-1",
-					Rule: "integer",
-					Min:  8,
+					Rule: IntegerRule,
+					Min:  &path.IntOrPath{Int: 8},
 					// any legal path is fine
-					Path:        "jsonpath::.spec.domain.cpu.cores",
+					Path:        *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 					Message:     "testing",
 					JustWarning: true,
 				},
@@ -126,18 +122,18 @@ var _ = Describe("Eval", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 		})
 
 		It("should skip uninitialized paths if requested", func() {
 			rules := []Rule{{
 				Name:    "LimitCores",
-				Rule:    "integer",
-				Path:    "jsonpath::.spec.domain.cpu.cores",
-				Valid:   "jsonpath::.spec.domain.cpu.cores",
+				Rule:    IntegerRule,
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
+				Valid:   path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 				Message: "testing",
-				Min:     1,
-				Max:     8,
+				Min:     &path.IntOrPath{Int: 1},
+				Max:     &path.IntOrPath{Int: 8},
 			}}
 
 			ev := Evaluator{Sink: GinkgoWriter}
@@ -154,11 +150,11 @@ var _ = Describe("Eval", func() {
 		It("should handle uninitialized paths", func() {
 			rules := []Rule{{
 				Name:    "LimitCores",
-				Rule:    "integer",
-				Path:    "jsonpath::.spec.domain.cpu.cores",
+				Rule:    IntegerRule,
+				Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 				Message: "testing",
-				Min:     1,
-				Max:     8,
+				Min:     &path.IntOrPath{Int: 1},
+				Max:     &path.IntOrPath{Int: 8},
 			}}
 
 			ev := Evaluator{Sink: GinkgoWriter}
@@ -170,25 +166,25 @@ var _ = Describe("Eval", func() {
 		It("should handle uninitialized paths intermixed with valid paths", func() {
 			rules := []Rule{
 				{
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "EnoughMemory",
-					Path:    "jsonpath::.spec.domain.resources.requests.memory",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 					Message: "Memory size not specified",
-					Min:     64 * 1024 * 1024,
-					Max:     512 * 1024 * 1024,
+					Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+					Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 				}, {
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "LimitCores",
-					Path:    "jsonpath::.spec.domain.cpu.cores",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 					Message: "Core amount not within range",
-					Min:     1,
-					Max:     4,
+					Min:     &path.IntOrPath{Int: 1},
+					Max:     &path.IntOrPath{Int: 4},
 				}, {
-					Rule:    "enum",
+					Rule:    EnumRule,
 					Name:    "SupportedChipset",
-					Path:    "jsonpath::.spec.domain.machine.type",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 					Message: "machine type must be a supported value",
-					Values:  []string{"q35"},
+					Values:  []path.StringOrPath{{Str: "q35"}},
 				},
 			}
 
@@ -204,10 +200,10 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name:        "disk bus",
-					Rule:        "enum",
-					Path:        "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+					Rule:        EnumRule,
+					Path:        *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 					Message:     "testing",
-					Values:      []string{"sata"},
+					Values:      []path.StringOrPath{{Str: "sata"}},
 					JustWarning: true,
 				},
 			}
@@ -226,18 +222,18 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name:        "disk bus",
-					Rule:        "enum",
-					Path:        "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+					Rule:        EnumRule,
+					Path:        *path.NewOrPanic("jsonpath::.spec.domain.devices.disks[*].disk.bus"),
 					Message:     "testing",
-					Values:      []string{"sata"},
+					Values:      []path.StringOrPath{{Str: "sata"}},
 					JustWarning: true,
 				}, {
 					Name: "rule-2",
-					Rule: "integer",
-					Min:  6,
-					Max:  8,
+					Rule: IntegerRule,
+					Min:  &path.IntOrPath{Int: 6},
+					Max:  &path.IntOrPath{Int: 8},
 					// any legal path is fine
-					Path:    "jsonpath::.spec.domain.cpu.cores",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 					Message: "enough cores",
 				},
 			}
@@ -263,24 +259,24 @@ var _ = Describe("Eval", func() {
 		)
 
 		BeforeEach(func() {
-			vmCirros = NewVMCirros()
+			vmCirros = test_utils.NewVMCirros()
 		})
 
 		It("Should succeed applying a ruleset", func() {
 			rules := []Rule{
 				{
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "EnoughMemory",
-					Path:    "jsonpath::.spec.domain.resources.requests.memory",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 					Message: "Memory size not specified",
-					Min:     64 * 1024 * 1024,
-					Max:     512 * 1024 * 1024,
+					Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+					Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 				}, {
-					Rule:    "enum",
+					Rule:    EnumRule,
 					Name:    "SupportedChipset",
-					Path:    "jsonpath::.spec.domain.machine.type",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 					Message: "machine type must be a supported value",
-					Values:  []string{"q35"},
+					Values:  []path.StringOrPath{{Str: "q35"}},
 				},
 			}
 
@@ -302,18 +298,18 @@ var _ = Describe("Eval", func() {
 		It("Should fail applying a ruleset with at least one malformed rule", func() {
 			rules := []Rule{
 				{
-					Rule:    "integer",
+					Rule:    IntegerRule,
 					Name:    "EnoughMemory",
-					Path:    "jsonpath::.spec.domain.resources.requests.memory",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.resources.requests.memory"),
 					Message: "Memory size not specified",
-					Min:     64 * 1024 * 1024,
-					Max:     512 * 1024 * 1024,
+					Min:     &path.IntOrPath{Int: 64 * 1024 * 1024},
+					Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 				}, {
 					Rule:    "value-set",
 					Name:    "SupportedChipset",
-					Path:    "jsonpath::.spec.domain.machine.type",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.machine.type"),
 					Message: "machine type must be a supported value",
-					Values:  []string{"q35"},
+					Values:  []path.StringOrPath{{Str: "q35"}},
 				},
 			}
 
@@ -326,18 +322,18 @@ var _ = Describe("Eval", func() {
 			rules := []Rule{
 				{
 					Name:        "disk bus",
-					Rule:        "enum",
-					Path:        "jsonpath::.spec.domain.devices.some.non.existing.path",
+					Rule:        EnumRule,
+					Path:        *path.NewOrPanic("jsonpath::.spec.domain.devices.some.non.existing.path"),
 					Message:     "testing",
-					Values:      []string{"sata"},
+					Values:      []path.StringOrPath{{Str: "sata"}},
 					JustWarning: true,
 				}, {
 					Name: "rule-2",
-					Rule: "integer",
-					Min:  0,
-					Max:  8,
+					Rule: IntegerRule,
+					Min:  &path.IntOrPath{Int: 0},
+					Max:  &path.IntOrPath{Int: 8},
 					// any legal path is fine
-					Path:    "jsonpath::.spec.domain.cpu.cores",
+					Path:    *path.NewOrPanic("jsonpath::.spec.domain.cpu.cores"),
 					Message: "enough cores",
 				},
 			}

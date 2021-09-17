@@ -16,7 +16,7 @@
  * Copyright 2019 Red Hat, Inc.
  */
 
-package validation
+package path
 
 import (
 	"math"

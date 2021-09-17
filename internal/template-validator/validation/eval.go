@@ -39,16 +39,6 @@ var (
 	ErrUnsatisfiedRule      = errors.New("rule is not satisfied")
 )
 
-func isValidRule(r string) bool {
-	validRules := []string{"integer", "string", "regex", "enum"}
-	for _, v := range validRules {
-		if r == v {
-			return true
-		}
-	}
-	return false
-}
-
 type Report struct {
 	Ref       *Rule
 	Skipped   bool   // because not valid, with `valid` defined as per spec
@@ -120,15 +110,16 @@ func needsCause(rr *Report) (bool, string) {
 }
 
 func (r *Result) ToStatusCauses() []metav1.StatusCause {
-	var causes []metav1.StatusCause
 	if !r.failed {
-		return causes
+		return nil
 	}
+
+	var causes []metav1.StatusCause
 	for _, rr := range r.Status {
 		if ok, message := needsCause(&rr); ok {
 			causes = append(causes, metav1.StatusCause{
 				Type:    metav1.CauseTypeFieldValueInvalid,
-				Field:   TrimJSONPath(rr.Ref.Path),
+				Field:   rr.Ref.Path.Expr(),
 				Message: fmt.Sprintf("%s: %s", rr.Ref.Message, message),
 			})
 		}
@@ -144,23 +135,15 @@ func NewEvaluator() *Evaluator {
 	return &Evaluator{Sink: ioutil.Discard}
 }
 
-func (ev *Evaluator) isRuleWellFormed(r *Rule, names map[string]int) (bool, error) {
-	names[r.Name] += 1
-	if names[r.Name] > 1 {
-		fmt.Fprintf(ev.Sink, "%s failed: duplicate name\n", r.Name)
-		return false, ErrDuplicateRuleName
+func validateRule(r *Rule) error {
+	if !r.Rule.IsValid() {
+		return ErrUnrecognizedRuleType
 	}
 
-	if !isValidRule(r.Rule) {
-		fmt.Fprintf(ev.Sink, "%s failed: invalid type\n", r.Name)
-		return false, ErrUnrecognizedRuleType
+	if r.Message == "" {
+		return ErrMissingRequiredKey
 	}
-
-	if r.Path == "" || r.Message == "" {
-		fmt.Fprintf(ev.Sink, "%s failed: missing keys\n", r.Name)
-		return false, ErrMissingRequiredKey
-	}
-	return true, nil
+	return nil
 }
 
 // Evaluate applies *all* the rules (greedy evaluation) to the given VM.
@@ -172,7 +155,7 @@ func (ev *Evaluator) isRuleWellFormed(r *Rule, names map[string]int) (bool, erro
 func (ev *Evaluator) Evaluate(rules []Rule, vm *k6tv1.VirtualMachine) *Result {
 	// We can argue that this stage is needed because the parsing layer is too poor/dumb
 	// still, we need to do what we need to do.
-	names := make(map[string]int)
+	uniqueNames := make(map[string]struct{})
 	result := Result{}
 
 	refVm := k6tobjs.NewDefaultVirtualMachine()
@@ -184,23 +167,21 @@ func (ev *Evaluator) Evaluate(rules []Rule, vm *k6tv1.VirtualMachine) *Result {
 		// to let the cluster admin quickly identify the error in the rules. Otherwise, it
 		// we simply skip the malformed rule, the error can go unnoticed.
 		// IOW, this is a policy decision
-		if ok, err := ev.isRuleWellFormed(r, names); !ok {
+		if _, ok := uniqueNames[r.Name]; ok {
+			fmt.Fprintf(ev.Sink, "%s failed: duplicate name\n", r.Name)
+			result.Fail(r, ErrDuplicateRuleName)
+			continue
+		}
+		uniqueNames[r.Name] = struct{}{}
+
+		if err := validateRule(r); err != nil {
+			fmt.Fprintf(ev.Sink, "%s failed: %v\n", r.Name, err)
 			result.Fail(r, err)
 			continue
 		}
 
 		// Specialize() may be costly, so we do this before.
-		ok, err := r.IsAppliableOn(vm)
-		if err != nil {
-			fmt.Fprintf(ev.Sink, "%s failed: not appliable: %v\n", r.Name, err)
-			if r.JustWarning {
-				result.Warn(r.Message, err)
-			} else {
-				result.Fail(r, err)
-			}
-			continue
-		}
-		if !ok {
+		if !r.IsAppliableOn(vm) {
 			// Legit case. Nothing to do or to complain.
 			fmt.Fprintf(ev.Sink, "%s SKIPPED: not appliable\n", r.Name)
 			result.Skip(r)

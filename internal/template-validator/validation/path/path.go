@@ -16,9 +16,10 @@
  * Copyright 2019 Red Hat, Inc.
  */
 
-package validation
+package path
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -42,11 +43,14 @@ func isJSONPath(s string) bool {
 }
 
 type Path struct {
-	jp      *jsonpath.JSONPath
-	results [][]reflect.Value
+	expr string
+	path *jsonpath.JSONPath
 }
 
-func TrimJSONPath(path string) string {
+var _ json.Marshaler = &Path{}
+var _ json.Unmarshaler = &Path{}
+
+func trimJSONPath(path string) string {
 	s := strings.TrimPrefix(path, JSONPathPrefix)
 	// we always need to interpret the user-supplied path as relative path
 	return strings.TrimPrefix(s, "$")
@@ -56,11 +60,11 @@ func NewJSONPathFromString(path string) (string, error) {
 	if !isJSONPath(path) {
 		return "", ErrInvalidJSONPath
 	}
-	expr := TrimJSONPath(path)
+	expr := trimJSONPath(path)
 	return fmt.Sprintf("{.spec.template%s}", expr), nil
 }
 
-func NewPath(expr string) (*Path, error) {
+func New(expr string) (*Path, error) {
 	var err error
 	pathExpr, err := NewJSONPathFromString(expr)
 	if err != nil {
@@ -72,30 +76,65 @@ func NewPath(expr string) (*Path, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Path{jp: jp}, nil
+	return &Path{
+		expr: trimJSONPath(expr),
+		path: jp,
+	}, nil
 }
 
-func (p *Path) Find(vm *k6tv1.VirtualMachine) error {
-	var err error
-	p.results, err = p.jp.FindResults(vm)
+func NewOrPanic(expr string) *Path {
+	path, err := New(expr)
 	if err != nil {
-		return ErrInvalidJSONPath
+		panic(err)
 	}
+	return path
+}
+
+func (p *Path) Expr() string {
+	return p.expr
+}
+
+func (p *Path) Find(vm *k6tv1.VirtualMachine) (Results, error) {
+	results, err := p.path.FindResults(vm)
+	if err != nil {
+		return nil, ErrInvalidJSONPath
+	}
+	return results, nil
+}
+
+func (p *Path) MarshalJSON() ([]byte, error) {
+	strVal := JSONPathPrefix + p.Expr()
+	return json.Marshal(strVal)
+}
+
+func (p *Path) UnmarshalJSON(bytes []byte) error {
+	var str string
+	err := json.Unmarshal(bytes, &str)
+	if err != nil {
+		return err
+	}
+	path, err := New(str)
+	if err != nil {
+		return err
+	}
+	*p = *path
 	return nil
 }
 
-func (p *Path) Len() int {
+type Results [][]reflect.Value
+
+func (r *Results) Len() int {
 	totalCount := 0
-	for _, result := range p.results {
+	for _, result := range *r {
 		totalCount += len(result)
 	}
 	return totalCount
 }
 
-func (p *Path) AsString() ([]string, error) {
+func (r *Results) AsString() ([]string, error) {
 	var ret []string
-	for i := range p.results {
-		res := p.results[i]
+	for i := range *r {
+		res := (*r)[i]
 		for j := range res {
 			obj := res[j].Interface()
 			strObj, ok := obj.(string)
@@ -109,10 +148,10 @@ func (p *Path) AsString() ([]string, error) {
 	return ret, nil
 }
 
-func (p *Path) AsInt64() ([]int64, error) {
+func (r *Results) AsInt64() ([]int64, error) {
 	var ret []int64
-	for i := range p.results {
-		res := p.results[i]
+	for i := range *r {
+		res := (*r)[i]
 		for j := range res {
 			obj := res[j].Interface()
 			if intObj, ok := toInt64(obj); ok {
