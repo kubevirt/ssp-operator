@@ -156,7 +156,7 @@ var _ = Describe("Create or update resource", func() {
 	})
 })
 
-func createOrUpdateTestResource(request *Request) (ResourceStatus, error) {
+func createOrUpdateTestResource(request *Request) (ReconcileResult, error) {
 	return CreateOrUpdate(request).
 		NamespacedResource(newTestResource(namespace)).
 		UpdateFunc(func(expected, found client.Object) {

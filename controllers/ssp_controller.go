@@ -166,14 +166,14 @@ func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	sspRequest.Logger.V(1).Info("CR status updated")
 
 	sspRequest.Logger.V(1).Info("Reconciling operands...")
-	statuses, err := reconcileOperands(sspRequest)
+	reconcileResults, err := reconcileOperands(sspRequest)
 	if err != nil {
 		return handleError(sspRequest, err)
 	}
 	sspRequest.Logger.V(1).Info("Operands reconciled")
 
 	sspRequest.Logger.V(1).Info("Updating CR status post reconciliation...")
-	err = updateStatus(sspRequest, statuses)
+	err = updateStatus(sspRequest, reconcileResults)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -342,7 +342,7 @@ func listExistingCRDKinds(sspRequest *common.Request) []string {
 	return foundKinds
 }
 
-func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, error) {
+func reconcileOperands(sspRequest *common.Request) ([]common.ReconcileResult, error) {
 	kinds := listExistingCRDKinds(sspRequest)
 
 	// Mark existing CRs as paused
@@ -352,18 +352,18 @@ func reconcileOperands(sspRequest *common.Request) ([]common.ResourceStatus, err
 	}
 
 	// Reconcile all operands
-	allStatuses := make([]common.ResourceStatus, 0, len(sspOperands))
+	allReconcileResults := make([]common.ReconcileResult, 0, len(sspOperands))
 	for _, operand := range sspOperands {
 		sspRequest.Logger.V(1).Info(fmt.Sprintf("Reconciling operand: %s", operand.Name()))
-		statuses, err := operand.Reconcile(sspRequest)
+		reconcileResults, err := operand.Reconcile(sspRequest)
 		if err != nil {
 			sspRequest.Logger.V(1).Info(fmt.Sprintf("Operand reconciliation failed: %s", err.Error()))
 			return nil, err
 		}
-		allStatuses = append(allStatuses, statuses...)
+		allReconcileResults = append(allReconcileResults, reconcileResults...)
 	}
 
-	return allStatuses, nil
+	return allReconcileResults, nil
 }
 
 func preUpdateStatus(request *common.Request) error {
@@ -411,19 +411,19 @@ func preUpdateStatus(request *common.Request) error {
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
-func updateStatus(request *common.Request, statuses []common.ResourceStatus) error {
-	notAvailable := make([]common.ResourceStatus, 0, len(statuses))
-	progressing := make([]common.ResourceStatus, 0, len(statuses))
-	degraded := make([]common.ResourceStatus, 0, len(statuses))
-	for _, status := range statuses {
-		if status.NotAvailable != nil {
-			notAvailable = append(notAvailable, status)
+func updateStatus(request *common.Request, reconcileResults []common.ReconcileResult) error {
+	notAvailable := make([]common.ReconcileResult, 0, len(reconcileResults))
+	progressing := make([]common.ReconcileResult, 0, len(reconcileResults))
+	degraded := make([]common.ReconcileResult, 0, len(reconcileResults))
+	for _, reconcileResult := range reconcileResults {
+		if reconcileResult.Status.NotAvailable != nil {
+			notAvailable = append(notAvailable, reconcileResult)
 		}
-		if status.Progressing != nil {
-			progressing = append(progressing, status)
+		if reconcileResult.Status.Progressing != nil {
+			progressing = append(progressing, reconcileResult)
 		}
-		if status.Degraded != nil {
-			degraded = append(degraded, status)
+		if reconcileResult.Status.Degraded != nil {
+			degraded = append(degraded, reconcileResult)
 		}
 	}
 
@@ -437,12 +437,12 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 			Message: "All SSP resources are available",
 		})
 	case 1:
-		status := notAvailable[0]
+		reconcileResult := notAvailable[0]
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionAvailable,
 			Status:  v1.ConditionFalse,
 			Reason:  "available",
-			Message: prefixResourceTypeAndName(*status.NotAvailable, status.Resource),
+			Message: prefixResourceTypeAndName(*reconcileResult.Status.NotAvailable, reconcileResult.Resource),
 		})
 	default:
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
@@ -462,12 +462,12 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 			Message: "No SSP resources are progressing",
 		})
 	case 1:
-		status := progressing[0]
+		reconcileResult := progressing[0]
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionProgressing,
 			Status:  v1.ConditionTrue,
 			Reason:  "progressing",
-			Message: prefixResourceTypeAndName(*status.Progressing, status.Resource),
+			Message: prefixResourceTypeAndName(*reconcileResult.Status.Progressing, reconcileResult.Resource),
 		})
 	default:
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
@@ -487,12 +487,12 @@ func updateStatus(request *common.Request, statuses []common.ResourceStatus) err
 			Message: "No SSP resources are degraded",
 		})
 	case 1:
-		status := degraded[0]
+		reconcileResult := degraded[0]
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionDegraded,
 			Status:  v1.ConditionTrue,
 			Reason:  "degraded",
-			Message: prefixResourceTypeAndName(*status.Degraded, status.Resource),
+			Message: prefixResourceTypeAndName(*reconcileResult.Status.Degraded, reconcileResult.Resource),
 		})
 	default:
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{

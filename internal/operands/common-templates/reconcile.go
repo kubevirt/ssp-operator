@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	templatev1 "github.com/openshift/api/template/v1"
+	"github.com/prometheus/client_golang/prometheus"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,12 +20,20 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
 	loadTemplatesOnce sync.Once
 	templatesBundle   []templatev1.Template
 	deployedTemplates = make(map[string]bool)
+)
+
+var (
+	CommonTemplatesRestored = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_restored_common_templates",
+		Help: "The total number of common templates restored by the operator back to their original state",
+	})
 )
 
 // Define RBAC rules needed by this operand:
@@ -73,7 +82,7 @@ func (c *commonTemplates) WatchTypes() []client.Object {
 	return nil
 }
 
-func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	funcs := []common.ReconcileFunc{
 		reconcileGoldenImagesNS,
 		reconcileViewRole,
@@ -106,9 +115,21 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ResourceS
 	}
 
 	funcs = append(funcs, oldTemplateFuncs...)
-	funcs = append(funcs, reconcileTemplatesFuncs(request)...)
+	results, err := common.CollectResourceStatus(request, funcs...)
+	if err != nil {
+		return nil, err
+	}
 
-	return common.CollectResourceStatus(request, funcs...)
+	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(request)...)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range reconcileTemplatesResults {
+		if r.OperationResult == controllerutil.OperationResultUpdated {
+			CommonTemplatesRestored.Inc()
+		}
+	}
+	return append(results, reconcileTemplatesResults...), nil
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) error {
@@ -133,14 +154,14 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 	return nil
 }
 
-func reconcileGoldenImagesNS(request *common.Request) (common.ResourceStatus, error) {
+func reconcileGoldenImagesNS(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newGoldenImagesNS(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }
 
-func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
+func reconcileViewRole(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newViewRole(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
@@ -152,7 +173,7 @@ func reconcileViewRole(request *common.Request) (common.ResourceStatus, error) {
 		Reconcile()
 }
 
-func reconcileViewRoleBinding(request *common.Request) (common.ResourceStatus, error) {
+func reconcileViewRoleBinding(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newViewRoleBinding(ssp.GoldenImagesNSname)).
 		WithAppLabels(operandName, operandComponent).
@@ -165,7 +186,7 @@ func reconcileViewRoleBinding(request *common.Request) (common.ResourceStatus, e
 		Reconcile()
 }
 
-func reconcileEditRole(request *common.Request) (common.ResourceStatus, error) {
+func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newEditRole()).
 		WithAppLabels(operandName, operandComponent).
@@ -211,7 +232,7 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 			continue
 		}
 
-		funcs = append(funcs, func(*common.Request) (common.ResourceStatus, error) {
+		funcs = append(funcs, func(*common.Request) (common.ReconcileResult, error) {
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
 				WithAppLabels(operandName, operandComponent).
@@ -239,7 +260,7 @@ func reconcileTemplatesFuncs(request *common.Request) []common.ReconcileFunc {
 	for i := range templatesBundle {
 		template := &templatesBundle[i]
 		template.ObjectMeta.Namespace = namespace
-		funcs = append(funcs, func(request *common.Request) (common.ResourceStatus, error) {
+		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
 				WithAppLabels(operandName, operandComponent).

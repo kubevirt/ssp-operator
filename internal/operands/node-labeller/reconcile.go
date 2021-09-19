@@ -60,8 +60,8 @@ func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
 }
 
 //Reconsile deletes all node-labeller component, because labeller is migrated into kubevirt core.
-func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
-	returnResults := make([]common.ResourceStatus, 0)
+func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
+	returnResults := make([]common.ReconcileResult, 0)
 	for _, obj := range []controllerutil.Object{
 		newClusterRole(),
 		newServiceAccount(request.Namespace),
@@ -74,9 +74,9 @@ func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ResourceSta
 
 		if err != nil && !errors.IsNotFound(err) {
 			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", obj.GetName(), err))
-			return []common.ResourceStatus{}, err
+			return []common.ReconcileResult{}, err
 		}
-		returnResults = append(returnResults, common.ResourceStatus{})
+		returnResults = append(returnResults, common.ReconcileResult{})
 	}
 	return returnResults, nil
 }
@@ -107,7 +107,7 @@ const (
 	operandComponent = common.AppComponentSchedule
 )
 
-func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
+func reconcileClusterRole(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRole()).
 		WithAppLabels(operandName, operandComponent).
@@ -117,14 +117,14 @@ func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error
 		Reconcile()
 }
 
-func reconcileServiceAccount(request *common.Request) (common.ResourceStatus, error) {
+func reconcileServiceAccount(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newServiceAccount(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }
 
-func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus, error) {
+func reconcileClusterRoleBinding(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRoleBinding(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
@@ -137,7 +137,7 @@ func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus
 		Reconcile()
 }
 
-func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) {
+func reconcileConfigMap(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newConfigMap(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
@@ -147,14 +147,14 @@ func reconcileConfigMap(request *common.Request) (common.ResourceStatus, error) 
 		Reconcile()
 }
 
-func reconcileDaemonSet(request *common.Request) (common.ResourceStatus, error) {
+func reconcileDaemonSet(request *common.Request) (common.ReconcileResult, error) {
 	daemonSet := newDaemonSet(request.Namespace)
 	status, err := createOrUpdateDaemonSet(request, daemonSet)
 
 	return status, err
 }
 
-func createOrUpdateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet) (common.ResourceStatus, error) {
+func createOrUpdateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(daemonSet).
 		WithAppLabels(operandName, operandComponent).
@@ -177,7 +177,7 @@ func createOrUpdateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet)
 		Reconcile()
 }
 
-func reconcileSecurityContextConstraint(request *common.Request) (common.ResourceStatus, error) {
+func reconcileSecurityContextConstraint(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newSecurityContextConstraint(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
