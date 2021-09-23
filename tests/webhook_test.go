@@ -157,14 +157,6 @@ var _ = Describe("Validation webhook", func() {
 			strategy.RevertToOriginalSspCr()
 		})
 
-		It("[test_id:6057] should fail to update commonTemplates.namespace", func() {
-			originalNs := foundSsp.Spec.CommonTemplates.Namespace
-			foundSsp.Spec.CommonTemplates.Namespace = originalNs + "-updated"
-			err := apiClient.Update(ctx, foundSsp)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("commonTemplates.namespace cannot be changed."))
-		})
-
 		Context("Placement API validation", func() {
 			It("[test_id:5990]should succeed with valid template-validator placement fields", func() {
 				foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement

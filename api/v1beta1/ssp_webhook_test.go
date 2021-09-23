@@ -119,7 +119,7 @@ var _ = Describe("SSP Validation", func() {
 		})
 	})
 
-	It("should not allow update of commonTemplates.namespace", func() {
+	It("should allow update of commonTemplates.namespace", func() {
 		oldSsp := &SSP{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-ssp",
@@ -136,8 +136,7 @@ var _ = Describe("SSP Validation", func() {
 		newSsp.Spec.CommonTemplates.Namespace = "new-ns"
 
 		err := newSsp.ValidateUpdate(oldSsp)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("commonTemplates.namespace cannot be changed."))
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("DataImportCronTemplates", func() {
