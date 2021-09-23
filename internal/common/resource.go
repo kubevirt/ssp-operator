@@ -13,16 +13,21 @@ import (
 type StatusMessage = *string
 
 type ResourceStatus struct {
-	Resource     client.Object
 	Progressing  StatusMessage
 	NotAvailable StatusMessage
 	Degraded     StatusMessage
 }
 
-type ReconcileFunc = func(*Request) (ResourceStatus, error)
+type ReconcileResult struct {
+	Status          ResourceStatus
+	Resource        client.Object
+	OperationResult controllerutil.OperationResult
+}
 
-func CollectResourceStatus(request *Request, funcs ...ReconcileFunc) ([]ResourceStatus, error) {
-	res := make([]ResourceStatus, 0, len(funcs))
+type ReconcileFunc = func(*Request) (ReconcileResult, error)
+
+func CollectResourceStatus(request *Request, funcs ...ReconcileFunc) ([]ReconcileResult, error) {
+	res := make([]ReconcileResult, 0, len(funcs))
 	for _, f := range funcs {
 		status, err := f(request)
 		if err != nil {
@@ -43,7 +48,7 @@ type ReconcileBuilder interface {
 	UpdateFunc(ResourceUpdateFunc) ReconcileBuilder
 	StatusFunc(ResourceStatusFunc) ReconcileBuilder
 
-	Reconcile() (ResourceStatus, error)
+	Reconcile() (ReconcileResult, error)
 }
 
 type reconcileBuilder struct {
@@ -90,7 +95,7 @@ func (r *reconcileBuilder) WithAppLabels(name string, component AppComponent) Re
 	return r
 }
 
-func (r *reconcileBuilder) Reconcile() (ResourceStatus, error) {
+func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	if r.addLabels {
 		AddAppLabels(r.request.Instance, r.operandName, r.operandComponent, r.resource)
 	}
@@ -119,10 +124,10 @@ func CreateOrUpdate(request *Request) ReconcileBuilder {
 	}
 }
 
-func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ResourceStatus, error) {
+func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ReconcileResult, error) {
 	err := setOwner(request, resource, isClusterRes)
 	if err != nil {
-		return ResourceStatus{}, err
+		return ReconcileResult{}, err
 	}
 
 	found := newEmptyResource(resource)
@@ -144,15 +149,14 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 	})
 	if err != nil {
 		request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
-		return ResourceStatus{}, err
+		return ReconcileResult{}, err
 	}
 
 	request.VersionCache.Add(found)
 	logOperation(res, found, request.Logger)
 
 	status := statusFunc(found)
-	status.Resource = resource
-	return status, nil
+	return ReconcileResult{status, resource, res}, nil
 }
 
 func setOwner(request *Request, resource client.Object, isClusterRes bool) error {

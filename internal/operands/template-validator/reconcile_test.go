@@ -141,7 +141,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("should report status", func() {
-		statuses, err := operand.Reconcile(&request)
+		reconcileResults, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Set status for deployment
@@ -154,19 +154,19 @@ var _ = Describe("Template validator operand", func() {
 			deployment.Status.UnavailableReplicas = replicas
 		})
 
-		statuses, err = operand.Reconcile(&request)
+		reconcileResults, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Only deployment should be progressing
-		for _, status := range statuses {
-			if _, ok := status.Resource.(*apps.Deployment); ok {
-				Expect(status.NotAvailable).ToNot(BeNil())
-				Expect(status.Progressing).ToNot(BeNil())
-				Expect(status.Degraded).ToNot(BeNil())
+		for _, reconcileResult := range reconcileResults {
+			if _, ok := reconcileResult.Resource.(*apps.Deployment); ok {
+				Expect(reconcileResult.Status.NotAvailable).ToNot(BeNil())
+				Expect(reconcileResult.Status.Progressing).ToNot(BeNil())
+				Expect(reconcileResult.Status.Degraded).ToNot(BeNil())
 			} else {
-				Expect(status.NotAvailable).To(BeNil())
-				Expect(status.Progressing).To(BeNil())
-				Expect(status.Degraded).To(BeNil())
+				Expect(reconcileResult.Status.NotAvailable).To(BeNil())
+				Expect(reconcileResult.Status.Progressing).To(BeNil())
+				Expect(reconcileResult.Status.Degraded).To(BeNil())
 			}
 		}
 
@@ -178,14 +178,14 @@ var _ = Describe("Template validator operand", func() {
 			deployment.Status.UnavailableReplicas = 0
 		})
 
-		statuses, err = operand.Reconcile(&request)
+		reconcileResults, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
 		// All resources should be available
-		for _, status := range statuses {
-			Expect(status.NotAvailable).To(BeNil())
-			Expect(status.Progressing).To(BeNil())
-			Expect(status.Degraded).To(BeNil())
+		for _, reconcileResult := range reconcileResults {
+			Expect(reconcileResult.Status.NotAvailable).To(BeNil())
+			Expect(reconcileResult.Status.Progressing).To(BeNil())
+			Expect(reconcileResult.Status.Degraded).To(BeNil())
 		}
 	})
 })

@@ -30,7 +30,7 @@ func (m *metrics) WatchClusterTypes() []client.Object {
 	return nil
 }
 
-func (m *metrics) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+func (m *metrics) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	return common.CollectResourceStatus(request,
 		reconcilePrometheusRule,
 	)
@@ -51,7 +51,7 @@ const (
 	operandComponent = common.AppComponentMonitoring
 )
 
-func reconcilePrometheusRule(request *common.Request) (common.ResourceStatus, error) {
+func reconcilePrometheusRule(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newPrometheusRule(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).

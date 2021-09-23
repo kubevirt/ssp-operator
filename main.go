@@ -28,6 +28,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -64,6 +65,7 @@ const (
 
 func runPrometheusServer(metricsAddr string) {
 	setupLog.Info("Starting Prometheus metrics endpoint server with TLS")
+	metrics.Registry.MustRegister(common_templates.CommonTemplatesRestored)
 	handler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{})
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)

@@ -14,7 +14,7 @@ type Operand interface {
 	WatchClusterTypes() []client.Object
 
 	// Reconcile creates and updates resources.
-	Reconcile(*common.Request) ([]common.ResourceStatus, error)
+	Reconcile(*common.Request) ([]common.ReconcileResult, error)
 
 	// Cleanup removes any created cluster resources.
 	// They don't use owner references, so the garbage collector will not remove them.

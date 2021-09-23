@@ -2,6 +2,7 @@ package template_validator
 
 import (
 	"fmt"
+
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -46,7 +47,7 @@ func (t *templateValidator) WatchClusterTypes() []client.Object {
 	}
 }
 
-func (t *templateValidator) Reconcile(request *common.Request) ([]common.ResourceStatus, error) {
+func (t *templateValidator) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	return common.CollectResourceStatus(request,
 		reconcileClusterRole,
 		reconcileServiceAccount,
@@ -83,7 +84,7 @@ const (
 	operandComponent = common.AppComponentTemplating
 )
 
-func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error) {
+func reconcileClusterRole(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRole()).
 		WithAppLabels(operandName, operandComponent).
@@ -93,14 +94,14 @@ func reconcileClusterRole(request *common.Request) (common.ResourceStatus, error
 		Reconcile()
 }
 
-func reconcileServiceAccount(request *common.Request) (common.ResourceStatus, error) {
+func reconcileServiceAccount(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newServiceAccount(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }
 
-func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus, error) {
+func reconcileClusterRoleBinding(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRoleBinding(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
@@ -113,7 +114,7 @@ func reconcileClusterRoleBinding(request *common.Request) (common.ResourceStatus
 		Reconcile()
 }
 
-func reconcileService(request *common.Request) (common.ResourceStatus, error) {
+func reconcileService(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newService(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
@@ -129,7 +130,7 @@ func reconcileService(request *common.Request) (common.ResourceStatus, error) {
 		Reconcile()
 }
 
-func reconcileDeployment(request *common.Request) (common.ResourceStatus, error) {
+func reconcileDeployment(request *common.Request) (common.ReconcileResult, error) {
 	validatorSpec := request.Instance.Spec.TemplateValidator
 	image := getTemplateValidatorImage()
 	if image == "" {
@@ -175,7 +176,7 @@ func addPlacementFields(deployment *apps.Deployment, nodePlacement *lifecycleapi
 	podSpec.Tolerations = nodePlacement.Tolerations
 }
 
-func reconcileValidatingWebhook(request *common.Request) (common.ResourceStatus, error) {
+func reconcileValidatingWebhook(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(newValidatingWebhook(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
