@@ -75,7 +75,7 @@ func (t *templateValidator) Cleanup(request *common.Request) error {
 
 var _ operands.Operand = &templateValidator{}
 
-func GetOperand() operands.Operand {
+func New() operands.Operand {
 	return &templateValidator{}
 }
 

@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strconv"
 
@@ -55,14 +56,9 @@ const (
 	finalizerName          = "ssp.kubevirt.io/finalizer"
 	oldFinalizerName       = "finalize.ssp.kubevirt.io"
 	defaultOperatorVersion = "devel"
-)
 
-var sspOperands = []operands.Operand{
-	metrics.GetOperand(),
-	template_validator.GetOperand(),
-	common_templates.GetOperand(),
-	node_labeller.GetOperand(),
-}
+	templateBundleDir = "data/common-templates-bundle/"
+)
 
 // List of legacy CRDs and their corresponding kinds
 var kvsspCRDs = map[string]string{
@@ -72,16 +68,43 @@ var kvsspCRDs = map[string]string{
 	"kubevirtnodelabellerbundles.ssp.kubevirt.io":    "KubevirtNodeLabellerBundle",
 }
 
-// SSPReconciler reconciles a SSP object
-type SSPReconciler struct {
-	client.Client
-	Log logr.Logger
-
-	LastSspSpec      ssp.SSPSpec
-	SubresourceCache common.VersionCache
+// sspReconciler reconciles a SSP object
+type sspReconciler struct {
+	client           client.Client
+	log              logr.Logger
+	operands         []operands.Operand
+	lastSspSpec      ssp.SSPSpec
+	subresourceCache common.VersionCache
 }
 
-var _ reconcile.Reconciler = &SSPReconciler{}
+func CreateAndSetupSspReconciler(mgr ctrl.Manager) error {
+	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
+	templatesBundle, err := common_templates.ReadTemplates(templatesFile)
+	if err != nil {
+		return err
+	}
+
+	sspOperands := []operands.Operand{
+		metrics.New(),
+		template_validator.New(),
+		common_templates.New(templatesBundle),
+		node_labeller.New(),
+	}
+	reconciler := &sspReconciler{
+		client:           mgr.GetClient(),
+		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
+		operands:         sspOperands,
+		subresourceCache: common.VersionCache{},
+	}
+
+	builder := ctrl.NewControllerManagedBy(mgr)
+	watchSspResource(builder)
+	watchClusterResources(builder, sspOperands)
+	watchNamespacedResources(builder, sspOperands)
+	return builder.Complete(reconciler)
+}
+
+var _ reconcile.Reconciler = &sspReconciler{}
 
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=get;update;patch
@@ -97,13 +120,13 @@ var _ reconcile.Reconciler = &SSPReconciler{}
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
-func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.Log.WithValues("ssp", req.NamespacedName)
+func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	reqLogger := r.log.WithValues("ssp", req.NamespacedName)
 	reqLogger.V(1).Info("Starting reconciliation...")
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
-	err := r.Get(ctx, req.NamespacedName, instance)
+	err := r.client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -119,11 +142,11 @@ func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	sspRequest := &common.Request{
 		Request:      req,
-		Client:       r,
+		Client:       r.client,
 		Context:      ctx,
 		Instance:     instance,
 		Logger:       reqLogger,
-		VersionCache: r.SubresourceCache,
+		VersionCache: r.subresourceCache,
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -139,7 +162,7 @@ func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	if isBeingDeleted(sspRequest.Instance) {
-		err := cleanup(sspRequest)
+		err := r.cleanup(sspRequest)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -154,7 +177,7 @@ func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		reqLogger.Info(fmt.Sprintf("Pausing SSP operator on resource: %v/%v", instance.Namespace, instance.Name))
 		instance.Status.Paused = true
 		instance.Status.ObservedGeneration = instance.Generation
-		err := r.Status().Update(ctx, instance)
+		err := r.client.Status().Update(ctx, instance)
 		return ctrl.Result{}, err
 	}
 
@@ -166,7 +189,7 @@ func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	sspRequest.Logger.V(1).Info("CR status updated")
 
 	sspRequest.Logger.V(1).Info("Reconciling operands...")
-	reconcileResults, err := reconcileOperands(sspRequest)
+	reconcileResults, err := r.reconcileOperands(sspRequest)
 	if err != nil {
 		return handleError(sspRequest, err)
 	}
@@ -182,16 +205,16 @@ func (r *SSPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	return ctrl.Result{}, nil
 }
 
-func (r *SSPReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
-	if !reflect.DeepEqual(r.LastSspSpec, sspObj.Spec) {
-		r.SubresourceCache = common.VersionCache{}
-		r.LastSspSpec = sspObj.Spec
+func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
+	if !reflect.DeepEqual(r.lastSspSpec, sspObj.Spec) {
+		r.subresourceCache = common.VersionCache{}
+		r.lastSspSpec = sspObj.Spec
 	}
 }
 
-func (r *SSPReconciler) clearCache() {
-	r.LastSspSpec = ssp.SSPSpec{}
-	r.SubresourceCache = common.VersionCache{}
+func (r *sspReconciler) clearCache() {
+	r.lastSspSpec = ssp.SSPSpec{}
+	r.subresourceCache = common.VersionCache{}
 }
 
 func getOperatorVersion() string {
@@ -255,17 +278,16 @@ func updateSspResource(request *common.Request) error {
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
-func cleanup(request *common.Request) error {
+func (r *sspReconciler) cleanup(request *common.Request) error {
 	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) ||
 		controllerutil.ContainsFinalizer(request.Instance, oldFinalizerName) {
-
 		request.Instance.Status.Phase = lifecycleapi.PhaseDeleting
 		request.Instance.Status.ObservedGeneration = request.Instance.Generation
 		err := request.Client.Status().Update(request.Context, request.Instance)
 		if err != nil {
 			return err
 		}
-		for _, operand := range sspOperands {
+		for _, operand := range r.operands {
 			err = operand.Cleanup(request)
 			if err != nil {
 				return err
@@ -342,7 +364,7 @@ func listExistingCRDKinds(sspRequest *common.Request) []string {
 	return foundKinds
 }
 
-func reconcileOperands(sspRequest *common.Request) ([]common.ReconcileResult, error) {
+func (r *sspReconciler) reconcileOperands(sspRequest *common.Request) ([]common.ReconcileResult, error) {
 	kinds := listExistingCRDKinds(sspRequest)
 
 	// Mark existing CRs as paused
@@ -352,8 +374,8 @@ func reconcileOperands(sspRequest *common.Request) ([]common.ReconcileResult, er
 	}
 
 	// Reconcile all operands
-	allReconcileResults := make([]common.ReconcileResult, 0, len(sspOperands))
-	for _, operand := range sspOperands {
+	allReconcileResults := make([]common.ReconcileResult, 0, len(r.operands))
+	for _, operand := range r.operands {
 		sspRequest.Logger.V(1).Info(fmt.Sprintf("Reconciling operand: %s", operand.Name()))
 		reconcileResults, err := operand.Reconcile(sspRequest)
 		if err != nil {
@@ -563,16 +585,6 @@ func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
 	return ctrl.Result{}, errParam
 }
 
-func (r *SSPReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.SubresourceCache = common.VersionCache{}
-
-	builder := ctrl.NewControllerManagedBy(mgr)
-	watchSspResource(builder)
-	watchClusterResources(builder)
-	watchNamespacedResources(builder)
-	return builder.Complete(r)
-}
-
 func watchSspResource(bldr *ctrl.Builder) {
 	// Predicate is used to only reconcile on these changes to the SSP resource:
 	// - any change in spec - checked with generation
@@ -596,17 +608,18 @@ func watchSspResource(bldr *ctrl.Builder) {
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
-func watchNamespacedResources(builder *ctrl.Builder) {
+func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Operand) {
 	watchResources(builder,
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &ssp.SSP{},
 		},
+		sspOperands,
 		operands.Operand.WatchTypes,
 	)
 }
 
-func watchClusterResources(builder *ctrl.Builder) {
+func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand) {
 	watchResources(builder,
 		&libhandler.EnqueueRequestForAnnotation{
 			Type: schema.GroupKind{
@@ -614,11 +627,12 @@ func watchClusterResources(builder *ctrl.Builder) {
 				Kind:  "SSP",
 			},
 		},
+		sspOperands,
 		operands.Operand.WatchClusterTypes,
 	)
 }
 
-func watchResources(builder *ctrl.Builder, handler handler.EventHandler, watchTypesFunc func(operands.Operand) []client.Object) {
+func watchResources(builder *ctrl.Builder, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []client.Object) {
 	watchedTypes := make(map[reflect.Type]struct{})
 	for _, operand := range sspOperands {
 		for _, t := range watchTypesFunc(operand) {

@@ -8,23 +8,21 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	templatev1 "github.com/openshift/api/template/v1"
+	libhandler "github.com/operator-framework/operator-lib/handler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	libhandler "github.com/operator-framework/operator-lib/handler"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"kubevirt.io/ssp-operator/internal/operands"
 )
 
-var (
-	log     = logf.Log.WithName("common-templates-operand")
-	operand = GetOperand()
-)
+var log = logf.Log.WithName("common-templates-operand")
 
 const (
 	namespace = "kubevirt"
@@ -41,6 +39,19 @@ func TestTemplates(t *testing.T) {
 }
 
 var _ = Describe("Common-Templates operand", func() {
+
+	var (
+		testTemplates []templatev1.Template
+		operand       operands.Operand
+	)
+
+	BeforeSuite(func() {
+		var err error
+		testTemplates, err = ReadTemplates("common-templates-test.yaml")
+		Expect(err).ToNot(HaveOccurred())
+
+		operand = New(testTemplates)
+	})
 
 	var request common.Request
 
@@ -75,6 +86,20 @@ var _ = Describe("Common-Templates operand", func() {
 		}
 	})
 
+	It("should correctly read templates", func() {
+		Expect(testTemplates).To(HaveLen(2))
+
+		templ1 := testTemplates[0]
+		Expect(templ1.Name).To(Equal("centos8-server-medium"))
+		Expect(templ1.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos8"))
+		Expect(templ1.Objects).To(HaveLen(1))
+
+		templ2 := testTemplates[1]
+		Expect(templ2.Name).To(Equal("windows10-desktop-medium"))
+		Expect(templ2.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
+		Expect(templ2.Objects).To(HaveLen(1))
+	})
+
 	It("should create golden-images namespace", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -83,8 +108,7 @@ var _ = Describe("Common-Templates operand", func() {
 	It("should create common-template resources", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(templatesBundle).ToNot(BeNil())
-		for _, template := range templatesBundle {
+		for _, template := range testTemplates {
 			template.Namespace = namespace
 			ExpectResourceExists(&template, request)
 		}

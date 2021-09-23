@@ -34,7 +34,7 @@ var _ = Describe("Template validator operand", func() {
 
 	var (
 		request common.Request
-		operand = GetOperand()
+		operand = New()
 	)
 
 	BeforeEach(func() {

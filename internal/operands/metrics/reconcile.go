@@ -42,7 +42,7 @@ func (m *metrics) Cleanup(*common.Request) error {
 
 var _ operands.Operand = &metrics{}
 
-func GetOperand() operands.Operand {
+func New() operands.Operand {
 	return &metrics{}
 }
 
