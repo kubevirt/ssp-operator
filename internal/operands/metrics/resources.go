@@ -61,6 +61,22 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							},
 						},
 						{
+							Record: "kubevirt_ssp_num_of_operator_reconciling_properly",
+							Expr:   intstr.FromString("sum(ssp_operator_reconciling_properly)"),
+						},
+						{
+							Alert: "SSPFailingToReconcile",
+							Expr:  intstr.FromString("(kubevirt_ssp_num_of_operator_reconciling_properly == 0) and (kubevirt_ssp_operator_up_total > 0)"),
+							For:   "5m",
+							Annotations: map[string]string{
+								"summary":     "The ssp-operator pod is up but failing to reconcile",
+								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPFailingToReconcile",
+							},
+							Labels: map[string]string{
+								"severity": "critical",
+							},
+						},
+						{
 							Record: "kubevirt_ssp_rejected_vms_total",
 							Expr:   intstr.FromString("sum(increase(total_rejected_vms{pod=~'virt-template-validator.*'}[1h]))"),
 						},
