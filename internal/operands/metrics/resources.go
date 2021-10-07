@@ -45,7 +45,7 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPOperatorDown",
 							},
 							Labels: map[string]string{
-								"severity": "Critical",
+								"severity": "critical",
 							},
 						},
 						{
@@ -57,7 +57,7 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPTemplateValidatorDown",
 							},
 							Labels: map[string]string{
-								"severity": "Critical",
+								"severity": "critical",
 							},
 						},
 						{
@@ -73,7 +73,7 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPHighRateRejectedVms",
 							},
 							Labels: map[string]string{
-								"severity": "Warn",
+								"severity": "warning",
 							},
 						},
 					},
