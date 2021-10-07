@@ -106,12 +106,18 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 	if err != nil {
 		return nil, err
 	}
+
+	upgradingNow := isUpgradingNow(request)
 	for _, r := range reconcileTemplatesResults {
-		if r.OperationResult == controllerutil.OperationResultUpdated {
+		if !upgradingNow && (r.OperationResult == controllerutil.OperationResultUpdated) {
 			CommonTemplatesRestored.Inc()
 		}
 	}
 	return append(results, reconcileTemplatesResults...), nil
+}
+
+func isUpgradingNow(request *common.Request) bool {
+	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) error {

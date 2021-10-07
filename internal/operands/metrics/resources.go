@@ -76,6 +76,22 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 								"severity": "Warn",
 							},
 						},
+						{
+							Record: "kubevirt_ssp_total_restored_common_templates",
+							Expr:   intstr.FromString("sum(increase(total_restored_common_templates{pod=~'ssp-operator.*'}[1h])) OR on() vector(0)"),
+						},
+						{
+							Alert: "SSPCommonTemplatesModificationReverted",
+							Expr:  intstr.FromString("kubevirt_ssp_total_restored_common_templates > 0"),
+							For:   "5m",
+							Annotations: map[string]string{
+								"summary":     "Common Templates manual modifications were reverted by the operator",
+								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPCommonTemplatesModificationReverted",
+							},
+							Labels: map[string]string{
+								"severity": "warning",
+							},
+						},
 					},
 				},
 			},

@@ -53,9 +53,8 @@ import (
 )
 
 const (
-	finalizerName          = "ssp.kubevirt.io/finalizer"
-	oldFinalizerName       = "finalize.ssp.kubevirt.io"
-	defaultOperatorVersion = "devel"
+	finalizerName    = "ssp.kubevirt.io/finalizer"
+	oldFinalizerName = "finalize.ssp.kubevirt.io"
 
 	templateBundleDir = "data/common-templates-bundle/"
 )
@@ -215,10 +214,6 @@ func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
 func (r *sspReconciler) clearCache() {
 	r.lastSspSpec = ssp.SSPSpec{}
 	r.subresourceCache = common.VersionCache{}
-}
-
-func getOperatorVersion() string {
-	return common.EnvOrDefault(common.OperatorVersionKey, defaultOperatorVersion)
 }
 
 func isPaused(object metav1.Object) bool {
@@ -389,7 +384,7 @@ func (r *sspReconciler) reconcileOperands(sspRequest *common.Request) ([]common.
 }
 
 func preUpdateStatus(request *common.Request) error {
-	operatorVersion := getOperatorVersion()
+	operatorVersion := common.GetOperatorVersion()
 
 	sspStatus := &request.Instance.Status
 	sspStatus.Phase = lifecycleapi.PhaseDeploying
@@ -528,7 +523,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 	sspStatus.ObservedGeneration = request.Instance.Generation
 	if len(notAvailable) == 0 && len(progressing) == 0 && len(degraded) == 0 {
 		sspStatus.Phase = lifecycleapi.PhaseDeployed
-		sspStatus.ObservedVersion = getOperatorVersion()
+		sspStatus.ObservedVersion = common.GetOperatorVersion()
 	} else {
 		sspStatus.Phase = lifecycleapi.PhaseDeploying
 	}
