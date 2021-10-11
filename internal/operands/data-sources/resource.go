@@ -43,6 +43,16 @@ func newViewRole(namespace string) *rbac.Role {
 				Verbs:     []string{"create"},
 			},
 			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"datasources"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"dataimportcrons"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
 				APIGroups: []string{core.GroupName},
 				Resources: []string{"namespaces"},
 				Verbs:     []string{"get", "list", "watch"},
@@ -102,6 +112,16 @@ func newEditRole() *rbac.ClusterRole {
 				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
 				Resources: []string{"datavolumes/source"},
 				Verbs:     []string{"create"},
+			},
+			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"datasources"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			},
+			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"dataimportcrons"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 			},
 		},
 	}

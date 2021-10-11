@@ -27,13 +27,15 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
+	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	"kubevirt.io/ssp-operator/internal/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
@@ -314,6 +316,7 @@ func setupApiClient() {
 	Expect(promv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(templatev1.Install(testScheme)).ToNot(HaveOccurred())
 	Expect(secv1.Install(testScheme)).ToNot(HaveOccurred())
+	Expect(cdiv1beta1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 
 	Expect(clientgoscheme.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1")).ToNot(HaveOccurred())

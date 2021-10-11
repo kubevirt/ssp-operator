@@ -2,12 +2,13 @@ package common
 
 import (
 	"context"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -48,7 +49,7 @@ var _ = Describe("Resource", func() {
 			Context: context.Background(),
 			Instance: &ssp.SSP{
 				TypeMeta: metav1.TypeMeta{
-					Kind:       "SSP",
+					Kind:       sspResourceKind,
 					APIVersion: ssp.GroupVersion.String(),
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -154,6 +155,28 @@ var _ = Describe("Resource", func() {
 			_, err := createOrUpdateTestResource(&request)
 			Expect(err).ToNot(HaveOccurred())
 			expectEqualResourceExists(newTestResource(namespace), &request)
+		})
+
+		It("should delete immutable resource on update", func() {
+			resource := newTestResource(namespace)
+			resource.Spec.Ports[0].Name = "changed-name"
+			resource.Annotations["test-annotation"] = "test-changed"
+			resource.Labels["test-label"] = "new-change"
+			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+			_, err := CreateOrUpdate(&request).
+				NamespacedResource(newTestResource(namespace)).
+				SetImmutable(true).
+				UpdateFunc(func(expected, found client.Object) {
+					found.(*v1.Service).Spec = expected.(*v1.Service).Spec
+				}).
+				Reconcile()
+
+			Expect(err).ToNot(HaveOccurred())
+
+			err = request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), resource)
+			Expect(err).To(HaveOccurred())
+			Expect(errors.IsNotFound(err)).To(BeTrue())
 		})
 	})
 
@@ -278,9 +301,4 @@ func expectEqualResourceExists(resource client.Object, request *Request) {
 	resource.SetOwnerReferences(found.GetOwnerReferences())
 
 	ExpectWithOffset(1, found).To(Equal(resource))
-}
-
-func TestCommon(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Common Suite")
 }

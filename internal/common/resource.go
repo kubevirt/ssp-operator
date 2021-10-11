@@ -1,12 +1,14 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
 	"github.com/go-logr/logr"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -54,6 +56,7 @@ type ReconcileBuilder interface {
 	WithAppLabels(name string, component AppComponent) ReconcileBuilder
 	UpdateFunc(ResourceUpdateFunc) ReconcileBuilder
 	StatusFunc(ResourceStatusFunc) ReconcileBuilder
+	SetImmutable(bool) ReconcileBuilder
 
 	Reconcile() (ReconcileResult, error)
 }
@@ -62,6 +65,7 @@ type reconcileBuilder struct {
 	request           *Request
 	resource          client.Object
 	isClusterResource bool
+	immutable         bool
 
 	addLabels        bool
 	operandName      string
@@ -109,6 +113,11 @@ func (r *reconcileBuilder) WithAppLabels(name string, component AppComponent) Re
 	return r
 }
 
+func (r *reconcileBuilder) SetImmutable(immutable bool) ReconcileBuilder {
+	r.immutable = immutable
+	return r
+}
+
 func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	if r.addLabels {
 		AddAppLabels(r.request.Instance, r.operandName, r.operandComponent, r.resource)
@@ -117,6 +126,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 		r.request,
 		r.resource,
 		r.isClusterResource,
+		r.immutable,
 		r.updateFunc,
 		r.statusFunc,
 	)
@@ -197,7 +207,7 @@ func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, e
 	return results, nil
 }
 
-func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ReconcileResult, error) {
+func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, isImmutable bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ReconcileResult, error) {
 	err := setOwner(request, resource, isClusterRes)
 	if err != nil {
 		return ReconcileResult{}, err
@@ -206,7 +216,7 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 	found := newEmptyResource(resource)
 	found.SetName(resource.GetName())
 	found.SetNamespace(resource.GetNamespace())
-	res, err := controllerutil.CreateOrUpdate(request.Context, request.Client, found, func() error {
+	mutateFn := func() error {
 		if !found.GetDeletionTimestamp().IsZero() {
 			// Skip update, because the resource is being deleted
 			return nil
@@ -224,12 +234,19 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 			updateResource(resource, found)
 		}
 		return nil
-	})
+	}
+
+	var res controllerutil.OperationResult
+	if isImmutable {
+		res, err = createOrDelete(request.Context, request.Client, found, mutateFn)
+	} else {
+		res, err = controllerutil.CreateOrUpdate(request.Context, request.Client, found, mutateFn)
+	}
+
 	if err != nil {
 		request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
 		return ReconcileResult{}, err
 	}
-
 	if !found.GetDeletionTimestamp().IsZero() {
 		request.VersionCache.RemoveObj(found)
 		return resourceDeletedResult(resource, res), nil
@@ -240,6 +257,53 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 
 	status := statusFunc(found)
 	return ReconcileResult{status, resource, res}, nil
+}
+
+// This function is mostly copied from controllerutil.CreateOrUpdate
+func createOrDelete(ctx context.Context, c client.Client, obj client.Object, f controllerutil.MutateFn) (controllerutil.OperationResult, error) {
+	key := client.ObjectKeyFromObject(obj)
+	if err := c.Get(ctx, key, obj); err != nil {
+		if !errors.IsNotFound(err) {
+			return controllerutil.OperationResultNone, err
+		}
+		if err := mutate(f, key, obj); err != nil {
+			return controllerutil.OperationResultNone, err
+		}
+		if err := c.Create(ctx, obj); err != nil {
+			return controllerutil.OperationResultNone, err
+		}
+		return controllerutil.OperationResultCreated, nil
+	}
+
+	existing := obj.DeepCopyObject()
+	if err := mutate(f, key, obj); err != nil {
+		return controllerutil.OperationResultNone, err
+	}
+
+	if equality.Semantic.DeepEqual(existing, obj) {
+		return controllerutil.OperationResultNone, nil
+	}
+
+	// If the objects are not equal, delete the existing object.
+	// It will be recreated in the next reconcile iteration
+
+	if err := c.Delete(ctx, obj); err != nil {
+		return controllerutil.OperationResultNone, err
+	}
+	// It is ok to return OperationResultUpdated when the resource was deleted,
+	// because it will be recreated in the next iteration.
+	return controllerutil.OperationResultUpdated, nil
+}
+
+// This function is a copy of controllerutil.mutate
+func mutate(f controllerutil.MutateFn, key client.ObjectKey, obj client.Object) error {
+	if err := f(); err != nil {
+		return err
+	}
+	if newKey := client.ObjectKeyFromObject(obj); key != newKey {
+		return fmt.Errorf("MutateFn cannot mutate object name and/or object namespace")
+	}
+	return nil
 }
 
 func setOwner(request *Request, resource client.Object, isClusterRes bool) error {
