@@ -119,13 +119,18 @@ var _ reconcile.Reconciler = &sspReconciler{}
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
-func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+	defer func() {
+		if err != nil {
+			common.SSPOperatorReconcilingProperly.Set(0)
+		}
+	}()
 	reqLogger := r.log.WithValues("ssp", req.NamespacedName)
 	reqLogger.V(1).Info("Starting reconciliation...")
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
-	err := r.client.Get(ctx, req.NamespacedName, instance)
+	err = r.client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -200,6 +205,12 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 	sspRequest.Logger.V(1).Info("CR status updated")
+
+	if sspRequest.Instance.Status.Phase == lifecycleapi.PhaseDeployed {
+		common.SSPOperatorReconcilingProperly.Set(1)
+	} else {
+		common.SSPOperatorReconcilingProperly.Set(0)
+	}
 
 	return ctrl.Result{}, nil
 }

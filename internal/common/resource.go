@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	libhandler "github.com/operator-framework/operator-lib/handler"
+	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -65,6 +66,13 @@ type reconcileBuilder struct {
 }
 
 var _ ReconcileBuilder = &reconcileBuilder{}
+
+var (
+	SSPOperatorReconcilingProperly = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ssp_operator_reconciling_properly",
+		Help: "Set to 1 if the reconcile process of all operands completes with no errors, and to 0 otherwise",
+	})
+)
 
 func (r *reconcileBuilder) NamespacedResource(resource client.Object) ReconcileBuilder {
 	r.resource = resource
