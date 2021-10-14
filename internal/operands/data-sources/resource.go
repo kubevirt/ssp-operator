@@ -1,4 +1,4 @@
-package common_templates
+package data_sources
 
 import (
 	core "k8s.io/api/core/v1"

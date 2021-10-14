@@ -11,7 +11,6 @@ import (
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	. "kubevirt.io/ssp-operator/internal/test-utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -20,6 +19,7 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
 )
 
 var log = logf.Log.WithName("common-templates-operand")
@@ -100,11 +100,6 @@ var _ = Describe("Common-Templates operand", func() {
 		Expect(templ2.Objects).To(HaveLen(1))
 	})
 
-	It("should create golden-images namespace", func() {
-		_, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newGoldenImagesNS(ssp.GoldenImagesNSname), request)
-	})
 	It("should create common-template resources", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -112,21 +107,6 @@ var _ = Describe("Common-Templates operand", func() {
 			template.Namespace = namespace
 			ExpectResourceExists(&template, request)
 		}
-	})
-	It("should create view role", func() {
-		_, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newViewRole(ssp.GoldenImagesNSname), request)
-	})
-	It("should create view role binding", func() {
-		_, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newViewRoleBinding(ssp.GoldenImagesNSname), request)
-	})
-	It("should create view role binding", func() {
-		_, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newEditRole(), request)
 	})
 
 	Context("old templates", func() {

@@ -3,6 +3,7 @@ package tests
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +30,7 @@ var _ = Describe("Cleanup", func() {
 		var allResourceTypes []client.Object
 		for _, f := range []func() []client.Object{
 			common_templates.WatchClusterTypes,
+			data_sources.WatchClusterTypes,
 			metrics.WatchTypes,
 			nodelabeller.WatchTypes,
 			nodelabeller.WatchClusterTypes,
