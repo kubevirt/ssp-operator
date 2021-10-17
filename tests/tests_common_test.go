@@ -111,6 +111,36 @@ func expectRecreateAfterDelete(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func expectMetricsIncreaseAfterRestore(res *testResource) {
+	restoredCountBefore := totalRestoredTemplatesCount()
+	expectRestoreAfterUpdate(res)
+	Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
+}
+
+func totalRestoredTemplatesCount() (sum int) {
+	pods := &core.PodList{}
+	err := apiClient.List(ctx, pods, client.MatchingLabels{"control-plane": "ssp-operator"})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(pods.Items).ToNot(BeEmpty())
+	operatorMetricsPort, err := metricsPort(*pods)
+	Expect(err).ToNot(HaveOccurred())
+	for _, sspOperator := range pods.Items {
+		sum += intMetricValue("total_restored_common_templates", operatorMetricsPort, &sspOperator)
+	}
+	return
+}
+
+func metricsPort(pods core.PodList) (uint16, error) {
+	pod := pods.Items[0]
+	ports := pod.Spec.Containers[0].Ports
+	for _, port := range ports {
+		if port.Name == "metrics" {
+			return uint16(port.ContainerPort), nil
+		}
+	}
+	return 0, fmt.Errorf("metrics port not found on ssp-operator pod: %v", pod)
+}
+
 func expectRestoreAfterUpdate(res *testResource) {
 	if res.UpdateFunc == nil || res.EqualsFunc == nil {
 		ginkgo.Fail("Update or Equals functions are not defined.")

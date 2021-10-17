@@ -254,6 +254,10 @@ var _ = Describe("Common templates", func() {
 			table.Entry("[test_id:5087]test template", &testTemplate),
 		)
 
+		It("[test_id: 7340] should increase metrics when restoring tamplate", func() {
+			expectMetricsIncreaseAfterRestore(&testTemplate)
+		})
+
 		Context("with pause", func() {
 			BeforeEach(func() {
 				strategy.SkipSspUpdateTestsIfNeeded()
