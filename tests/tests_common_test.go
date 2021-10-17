@@ -111,6 +111,53 @@ func expectRecreateAfterDelete(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func sspOperatorReconcilingProperly() (sum int) {
+	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
+	for _, sspOperator := range operatorPods {
+		sum += intMetricValue("ssp_operator_reconciling_properly", operatorMetricsPort, &sspOperator)
+	}
+	return
+}
+
+func totalRestoredTemplatesCount() (sum int) {
+	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
+	for _, sspOperator := range operatorPods {
+		sum += intMetricValue("total_restored_common_templates", operatorMetricsPort, &sspOperator)
+	}
+	return
+}
+
+func operatorPodsWithMetricsPort() ([]core.Pod, uint16) {
+	pods := &core.PodList{}
+	err := apiClient.List(ctx, pods, client.MatchingLabels{"control-plane": "ssp-operator"})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(pods.Items).ToNot(BeEmpty())
+	operatorMetricsPort, err := metricsPort(pods.Items)
+	Expect(err).ToNot(HaveOccurred())
+	return pods.Items, operatorMetricsPort
+}
+
+func metricsPort(pods []core.Pod) (uint16, error) {
+	pod := pods[0]
+	var container *core.Container
+	for _, c := range pod.Spec.Containers {
+		if c.Name == "manager" {
+			container = &c
+			break
+		}
+	}
+	if container == nil {
+		return 0, fmt.Errorf("manager container not found on ssp-operator pod: %v", pod)
+	}
+	ports := container.Ports
+	for _, port := range ports {
+		if port.Name == "metrics" {
+			return uint16(port.ContainerPort), nil
+		}
+	}
+	return 0, fmt.Errorf("metrics port not found on ssp-operator pod: %v", pod)
+}
+
 func expectRestoreAfterUpdate(res *testResource) {
 	if res.UpdateFunc == nil || res.EqualsFunc == nil {
 		ginkgo.Fail("Update or Equals functions are not defined.")
