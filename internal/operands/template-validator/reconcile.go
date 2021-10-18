@@ -7,7 +7,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -25,13 +24,7 @@ import (
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch
 // +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines,verbs=get;list;watch
 
-type templateValidator struct{}
-
-func (t *templateValidator) Name() string {
-	return operandName
-}
-
-func (t *templateValidator) WatchTypes() []client.Object {
+func WatchTypes() []client.Object {
 	return []client.Object{
 		&v1.ServiceAccount{},
 		&v1.Service{},
@@ -39,12 +32,26 @@ func (t *templateValidator) WatchTypes() []client.Object {
 	}
 }
 
-func (t *templateValidator) WatchClusterTypes() []client.Object {
+func WatchClusterTypes() []client.Object {
 	return []client.Object{
 		&rbac.ClusterRole{},
 		&rbac.ClusterRoleBinding{},
 		&admission.ValidatingWebhookConfiguration{},
 	}
+}
+
+type templateValidator struct{}
+
+func (t *templateValidator) Name() string {
+	return operandName
+}
+
+func (t *templateValidator) WatchTypes() []client.Object {
+	return WatchTypes()
+}
+
+func (t *templateValidator) WatchClusterTypes() []client.Object {
+	return WatchClusterTypes()
 }
 
 func (t *templateValidator) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
@@ -58,19 +65,12 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Reconci
 	)
 }
 
-func (t *templateValidator) Cleanup(request *common.Request) error {
-	for _, obj := range []client.Object{
+func (t *templateValidator) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
+	return common.DeleteAll(request,
 		newClusterRole(),
 		newClusterRoleBinding(request.Namespace),
 		newValidatingWebhook(request.Namespace),
-	} {
-		err := request.Client.Delete(request.Context, obj)
-		if err != nil && !errors.IsNotFound(err) {
-			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", obj.GetName(), err))
-			return err
-		}
-	}
-	return nil
+	)
 }
 
 var _ operands.Operand = &templateValidator{}

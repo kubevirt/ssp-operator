@@ -287,18 +287,52 @@ func updateSspResource(request *common.Request) error {
 func (r *sspReconciler) cleanup(request *common.Request) error {
 	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) ||
 		controllerutil.ContainsFinalizer(request.Instance, oldFinalizerName) {
-		request.Instance.Status.Phase = lifecycleapi.PhaseDeleting
-		request.Instance.Status.ObservedGeneration = request.Instance.Generation
+		sspStatus := &request.Instance.Status
+		sspStatus.Phase = lifecycleapi.PhaseDeleting
+		sspStatus.ObservedGeneration = request.Instance.Generation
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionAvailable,
+			Status:  v1.ConditionFalse,
+			Reason:  "available",
+			Message: "Deleting SSP resources",
+		})
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionProgressing,
+			Status:  v1.ConditionTrue,
+			Reason:  "progressing",
+			Message: "Deleting SSP resources",
+		})
+		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+			Type:    conditionsv1.ConditionDegraded,
+			Status:  v1.ConditionTrue,
+			Reason:  "degraded",
+			Message: "Deleting SSP resources",
+		})
+
 		err := request.Client.Status().Update(request.Context, request.Instance)
 		if err != nil {
 			return err
 		}
+
+		pendingCount := 0
 		for _, operand := range r.operands {
-			err = operand.Cleanup(request)
+			cleanupResults, err := operand.Cleanup(request)
 			if err != nil {
 				return err
 			}
+
+			for _, result := range cleanupResults {
+				if !result.Deleted {
+					pendingCount += 1
+				}
+			}
 		}
+
+		if pendingCount > 0 {
+			// Will retry cleanup on next reconciliation iteration
+			return nil
+		}
+
 		controllerutil.RemoveFinalizer(request.Instance, finalizerName)
 		controllerutil.RemoveFinalizer(request.Instance, oldFinalizerName)
 		err = request.Client.Update(request.Context, request.Instance)

@@ -11,6 +11,8 @@ import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"kubevirt.io/ssp-operator/internal/common"
 	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 )
@@ -103,7 +105,8 @@ var _ = Describe("Node Labeller", func() {
 		table.DescribeTable("deleted cluster resource", func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
-			Expect(errors.IsNotFound(err)).To(Equal(true))
+			Expect(err).To(HaveOccurred())
+			Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 		},
 			table.Entry("[test_id:6068]cluster role", &clusterRoleRes),
 			table.Entry("[test_id:6067]cluster role binding", &clusterRoleBindingRes),
@@ -112,7 +115,8 @@ var _ = Describe("Node Labeller", func() {
 
 		table.DescribeTable("deleted namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
-			Expect(errors.IsNotFound(err)).To(Equal(true))
+			Expect(err).To(HaveOccurred())
+			Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 		},
 			table.Entry("[test_id:6063]service account", &serviceAccountRes),
 			table.Entry("[test_id:6064]configMap", &configMapRes),

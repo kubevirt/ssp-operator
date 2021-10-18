@@ -27,7 +27,7 @@ const (
 	name      = "test-ssp"
 )
 
-var _ = Describe("Create or update resource", func() {
+var _ = Describe("Resource", func() {
 	var (
 		request Request
 	)
@@ -61,98 +61,172 @@ var _ = Describe("Create or update resource", func() {
 		}
 	})
 
-	It("should create resource", func() {
-		_, err := createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
-		expectEqualResourceExists(newTestResource(namespace), &request)
+	Context("CreateOrUpdate", func() {
+		It("should create resource", func() {
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
+			expectEqualResourceExists(newTestResource(namespace), &request)
+		})
+
+		It("should update resource", func() {
+			resource := newTestResource(namespace)
+			resource.Spec.Ports[0].Name = "changed-name"
+			resource.Annotations["test-annotation"] = "test-changed"
+			resource.Labels["test-label"] = "new-change"
+			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
+			expectEqualResourceExists(newTestResource(namespace), &request)
+		})
+
+		It("should set owner reference", func() {
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			key := client.ObjectKeyFromObject(newTestResource(namespace))
+
+			found := &v1.Service{}
+			Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
+
+			Expect(found.GetOwnerReferences()).To(HaveLen(1))
+			owner := found.GetOwnerReferences()[0]
+
+			Expect(owner.Kind).To(Equal("SSP"))
+		})
+
+		It("should set owner annotations", func() {
+			_, err := CreateOrUpdate(&request).
+				ClusterResource(newTestResource("")).
+				UpdateFunc(func(expected, found client.Object) {
+					found.(*v1.Service).Spec = expected.(*v1.Service).Spec
+				}).
+				Reconcile()
+
+			Expect(err).ToNot(HaveOccurred())
+
+			key := client.ObjectKeyFromObject(newTestResource(""))
+			found := &v1.Service{}
+			Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
+
+			Expect(found.GetAnnotations()).To(HaveKeyWithValue(libhandler.TypeAnnotation, "SSP.ssp.kubevirt.io"))
+			Expect(found.GetAnnotations()).To(HaveKey(libhandler.NamespacedNameAnnotation))
+		})
+
+		It("should not update resource with cached version", func() {
+			resource := newTestResource(namespace)
+			resource.Spec.Ports[0].Name = "changed-name"
+			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+			request.VersionCache.Add(resource)
+
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
+			expectEqualResourceExists(resource, &request)
+		})
+
+		It("should not update resource with cached generation", func() {
+			resource := newTestResource(namespace)
+			resource.Generation = 1
+			resource.Spec.Ports[0].Name = "changed-name"
+			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+			request.VersionCache.Add(resource)
+
+			resource.Spec.Ports[0].Name = "changed-name-2"
+			Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
+
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
+			expectEqualResourceExists(resource, &request)
+		})
+
+		It("should update resource with different version in cache", func() {
+			resource := newTestResource(namespace)
+			resource.Spec.Ports[0].Name = "changed-name"
+			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+			request.VersionCache.Add(resource)
+
+			resource.Spec.Ports[0].Name = "changed-name-2"
+			Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
+
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
+			expectEqualResourceExists(newTestResource(namespace), &request)
+		})
 	})
 
-	It("should update resource", func() {
-		resource := newTestResource(namespace)
-		resource.Spec.Ports[0].Name = "changed-name"
-		resource.Annotations["test-annotation"] = "test-changed"
-		resource.Labels["test-label"] = "new-change"
-		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+	Context("Cleanup", func() {
+		It("should succeed Cleanup, if no resource is present", func() {
+			nonexistingResource := newTestResource(namespace)
+			cleanupResult, err := Cleanup(&request, nonexistingResource)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleanupResult.Deleted).To(BeTrue())
+		})
 
-		_, err := createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
-		expectEqualResourceExists(newTestResource(namespace), &request)
-	})
+		It("should not delete, if the resource is not owned by SSP CR", func() {
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
 
-	It("should set owner reference", func() {
-		_, err := createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
+			resource := newTestResource(namespace)
+			err = request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), resource)
+			Expect(err).ToNot(HaveOccurred())
 
-		key := client.ObjectKeyFromObject(newTestResource(namespace))
+			resource.SetOwnerReferences(nil)
+			resource.SetAnnotations(nil)
 
-		found := &v1.Service{}
-		Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
+			err = request.Client.Update(request.Context, resource)
+			Expect(err).ToNot(HaveOccurred())
 
-		Expect(found.GetOwnerReferences()).To(HaveLen(1))
-		owner := found.GetOwnerReferences()[0]
+			cleanupResult, err := Cleanup(&request, resource)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleanupResult.Deleted).To(BeTrue())
 
-		Expect(owner.Kind).To(Equal("SSP"))
-	})
+			// Object should still exist
+			err = request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), resource)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resource.GetDeletionTimestamp().IsZero()).To(BeTrue(), "Deletion timestamp should not be set")
+		})
 
-	It("should set owner annotations", func() {
-		_, err := CreateOrUpdate(&request).
-			ClusterResource(newTestResource("")).
-			UpdateFunc(func(expected, found client.Object) {
-				found.(*v1.Service).Spec = expected.(*v1.Service).Spec
-			}).
-			Reconcile()
+		It("should not delete if resource is already being deleted", func() {
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
 
-		Expect(err).ToNot(HaveOccurred())
+			resource := newTestResource(namespace)
+			err = request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), resource)
+			Expect(err).ToNot(HaveOccurred())
 
-		key := client.ObjectKeyFromObject(newTestResource(""))
-		found := &v1.Service{}
-		Expect(request.Client.Get(request.Context, key, found)).ToNot(HaveOccurred())
+			resource.Finalizers = append(resource.Finalizers, "testfinalizer")
 
-		Expect(found.GetAnnotations()).To(HaveKeyWithValue(libhandler.TypeAnnotation, "SSP.ssp.kubevirt.io"))
-		Expect(found.GetAnnotations()).To(HaveKey(libhandler.NamespacedNameAnnotation))
-	})
+			err = request.Client.Update(request.Context, resource)
+			Expect(err).ToNot(HaveOccurred())
 
-	It("should not update resource with cached version", func() {
-		resource := newTestResource(namespace)
-		resource.Spec.Ports[0].Name = "changed-name"
-		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+			err = request.Client.Delete(request.Context, resource)
+			Expect(err).ToNot(HaveOccurred())
 
-		request.VersionCache.Add(resource)
+			cleanupResult, err := Cleanup(&request, resource)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleanupResult.Deleted).To(BeFalse())
 
-		_, err := createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
-		expectEqualResourceExists(resource, &request)
-	})
+			err = request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), resource)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-	It("should not update resource with cached generation", func() {
-		resource := newTestResource(namespace)
-		resource.Generation = 1
-		resource.Spec.Ports[0].Name = "changed-name"
-		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+		It("should delete resource", func() {
+			_, err := createOrUpdateTestResource(&request)
+			Expect(err).ToNot(HaveOccurred())
 
-		request.VersionCache.Add(resource)
+			resource := newTestResource(namespace)
+			cleanupResult, err := Cleanup(&request, resource)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleanupResult.Deleted).To(BeFalse())
 
-		resource.Spec.Ports[0].Name = "changed-name-2"
-		Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
-
-		_, err := createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
-		expectEqualResourceExists(resource, &request)
-	})
-
-	It("should update resource with different version in cache", func() {
-		resource := newTestResource(namespace)
-		resource.Spec.Ports[0].Name = "changed-name"
-		Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
-
-		request.VersionCache.Add(resource)
-
-		resource.Spec.Ports[0].Name = "changed-name-2"
-		Expect(request.Client.Update(request.Context, resource)).ToNot(HaveOccurred())
-
-		_, err := createOrUpdateTestResource(&request)
-		Expect(err).ToNot(HaveOccurred())
-		expectEqualResourceExists(newTestResource(namespace), &request)
+			// Deleting second time will make sure that the resource does not exist
+			cleanupResult, err = Cleanup(&request, resource)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cleanupResult.Deleted).To(BeTrue())
+		})
 	})
 })
 
