@@ -117,17 +117,30 @@ func expectMetricsIncreaseAfterRestore(res *testResource) {
 	Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
 }
 
+func sspOperatorReconcilingProperly() (sum int) {
+	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
+	for _, sspOperator := range operatorPods.Items {
+		sum += intMetricValue("ssp_operator_reconciling_properly", operatorMetricsPort, &sspOperator)
+	}
+	return
+}
+
 func totalRestoredTemplatesCount() (sum int) {
+	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
+	for _, sspOperator := range operatorPods.Items {
+		sum += intMetricValue("total_restored_common_templates", operatorMetricsPort, &sspOperator)
+	}
+	return
+}
+
+func operatorPodsWithMetricsPort() (core.PodList, uint16) {
 	pods := &core.PodList{}
 	err := apiClient.List(ctx, pods, client.MatchingLabels{"control-plane": "ssp-operator"})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pods.Items).ToNot(BeEmpty())
 	operatorMetricsPort, err := metricsPort(*pods)
 	Expect(err).ToNot(HaveOccurred())
-	for _, sspOperator := range pods.Items {
-		sum += intMetricValue("total_restored_common_templates", operatorMetricsPort, &sspOperator)
-	}
-	return
+	return *pods, operatorMetricsPort
 }
 
 func metricsPort(pods core.PodList) (uint16, error) {

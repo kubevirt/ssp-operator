@@ -15,8 +15,9 @@ import (
 )
 
 var regexpForMetrics = map[string]*regexp.Regexp{
-	"total_rejected_vms":              regexp.MustCompile(`total_rejected_vms ([0-9]+)`),
-	"total_restored_common_templates": regexp.MustCompile(`total_restored_common_templates ([0-9]+)`),
+	"total_rejected_vms":                regexp.MustCompile(`total_rejected_vms ([0-9]+)`),
+	"total_restored_common_templates":   regexp.MustCompile(`total_restored_common_templates ([0-9]+)`),
+	"ssp_operator_reconciling_properly": regexp.MustCompile(`ssp_operator_reconciling_properly ([0-9]+)`),
 }
 
 func intMetricValue(metricName string, metricsPort uint16, pod *v1.Pod) int {
