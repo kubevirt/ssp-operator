@@ -50,6 +50,16 @@ func init() {
 	utilruntime.Must(templatev1.Install(common.Scheme))
 }
 
+func WatchClusterTypes() []client.Object {
+	return []client.Object{
+		&rbac.ClusterRole{},
+		&rbac.Role{},
+		&rbac.RoleBinding{},
+		&core.Namespace{},
+		&templatev1.Template{},
+	}
+}
+
 type commonTemplates struct {
 	templatesBundle []templatev1.Template
 }
@@ -70,13 +80,7 @@ const (
 )
 
 func (c *commonTemplates) WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&rbac.ClusterRole{},
-		&rbac.Role{},
-		&rbac.RoleBinding{},
-		&core.Namespace{},
-		&templatev1.Template{},
-	}
+	return WatchClusterTypes()
 }
 
 func (c *commonTemplates) WatchTypes() []client.Object {
@@ -120,7 +124,7 @@ func isUpgradingNow(request *common.Request) bool {
 	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
 }
 
-func (c *commonTemplates) Cleanup(request *common.Request) error {
+func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	objects := []client.Object{
 		newGoldenImagesNS(ssp.GoldenImagesNSname),
 		newViewRole(ssp.GoldenImagesNSname),
@@ -132,14 +136,8 @@ func (c *commonTemplates) Cleanup(request *common.Request) error {
 		c.templatesBundle[index].ObjectMeta.Namespace = namespace
 		objects = append(objects, &c.templatesBundle[index])
 	}
-	for _, obj := range objects {
-		err := request.Client.Delete(request.Context, obj)
-		if err != nil && !errors.IsNotFound(err) {
-			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", obj.GetName(), err))
-			return err
-		}
-	}
-	return nil
+
+	return common.DeleteAll(request, objects...)
 }
 
 func reconcileGoldenImagesNS(request *common.Request) (common.ReconcileResult, error) {

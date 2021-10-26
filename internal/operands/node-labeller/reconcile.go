@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -37,13 +36,7 @@ func init() {
 	utilruntime.Must(secv1.Install(common.Scheme))
 }
 
-type nodeLabeller struct{}
-
-func (nl *nodeLabeller) Name() string {
-	return operandName
-}
-
-func (nl *nodeLabeller) WatchTypes() []client.Object {
+func WatchTypes() []client.Object {
 	return []client.Object{
 		&v1.ServiceAccount{},
 		&v1.ConfigMap{},
@@ -51,7 +44,7 @@ func (nl *nodeLabeller) WatchTypes() []client.Object {
 	}
 }
 
-func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
+func WatchClusterTypes() []client.Object {
 	return []client.Object{
 		&rbac.ClusterRole{},
 		&rbac.ClusterRoleBinding{},
@@ -59,10 +52,26 @@ func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
 	}
 }
 
+type nodeLabeller struct{}
+
+func (nl *nodeLabeller) Name() string {
+	return operandName
+}
+
+func (nl *nodeLabeller) WatchTypes() []client.Object {
+	return WatchTypes()
+}
+
+func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
+	return WatchClusterTypes()
+}
+
 //Reconsile deletes all node-labeller component, because labeller is migrated into kubevirt core.
 func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
+	// Not using common.DeleteAll(), because these resources
+	// do not have correct owner annotations.
 	returnResults := make([]common.ReconcileResult, 0)
-	for _, obj := range []controllerutil.Object{
+	for _, obj := range []client.Object{
 		newClusterRole(),
 		newServiceAccount(request.Namespace),
 		newConfigMap(request.Namespace),
@@ -81,7 +90,8 @@ func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ReconcileRe
 	return returnResults, nil
 }
 
-func (nl *nodeLabeller) Cleanup(request *common.Request) error {
+func (nl *nodeLabeller) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
+	var result []common.CleanupResult
 	for _, obj := range []client.Object{
 		newClusterRole(),
 		newClusterRoleBinding(request.Namespace),
@@ -90,10 +100,14 @@ func (nl *nodeLabeller) Cleanup(request *common.Request) error {
 		err := request.Client.Delete(request.Context, obj)
 		if err != nil && !errors.IsNotFound(err) {
 			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", obj.GetName(), err))
-			return err
+			return nil, err
 		}
+		result = append(result, common.CleanupResult{
+			Resource: obj,
+			Deleted:  true,
+		})
 	}
-	return nil
+	return result, nil
 }
 
 var _ operands.Operand = &nodeLabeller{}

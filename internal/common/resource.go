@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -23,6 +24,11 @@ type ReconcileResult struct {
 	Status          ResourceStatus
 	Resource        client.Object
 	OperationResult controllerutil.OperationResult
+}
+
+type CleanupResult struct {
+	Resource client.Object
+	Deleted  bool
 }
 
 type ReconcileFunc = func(*Request) (ReconcileResult, error)
@@ -132,6 +138,65 @@ func CreateOrUpdate(request *Request) ReconcileBuilder {
 	}
 }
 
+func Cleanup(request *Request, resource client.Object) (CleanupResult, error) {
+	found := newEmptyResource(resource)
+	err := request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), found)
+	if errors.IsNotFound(err) {
+		return CleanupResult{
+			Resource: resource,
+			Deleted:  true,
+		}, nil
+	}
+	if err != nil {
+		return CleanupResult{}, err
+	}
+
+	isOwned, err := isResourceOwned(request, resource, found)
+	if err != nil {
+		return CleanupResult{}, err
+	}
+
+	if !isOwned {
+		// The found resource is not own by this SSP resource.
+		// The owned resource was deleted and a new one created with the same name
+		return CleanupResult{
+			Resource: resource,
+			Deleted:  true,
+		}, nil
+	}
+
+	if found.GetDeletionTimestamp().IsZero() {
+		err = request.Client.Delete(request.Context, found)
+		if errors.IsNotFound(err) {
+			return CleanupResult{
+				Resource: resource,
+				Deleted:  true,
+			}, nil
+		}
+		if err != nil {
+			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", resource.GetName(), err))
+			return CleanupResult{}, err
+		}
+	}
+
+	return CleanupResult{
+		Resource: resource,
+		Deleted:  false,
+	}, nil
+}
+
+func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, error) {
+	results := []CleanupResult{}
+	for _, obj := range resources {
+		result, err := Cleanup(request, obj)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result)
+	}
+	return results, nil
+}
+
 func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ReconcileResult, error) {
 	err := setOwner(request, resource, isClusterRes)
 	if err != nil {
@@ -142,6 +207,11 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 	found.SetName(resource.GetName())
 	found.SetNamespace(resource.GetNamespace())
 	res, err := controllerutil.CreateOrUpdate(request.Context, request.Client, found, func() error {
+		if !found.GetDeletionTimestamp().IsZero() {
+			// Skip update, because the resource is being deleted
+			return nil
+		}
+
 		// We expect users will not add any other owner references,
 		// if that is not correct, this code needs to be changed.
 		found.SetOwnerReferences(resource.GetOwnerReferences())
@@ -158,6 +228,11 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 	if err != nil {
 		request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
 		return ReconcileResult{}, err
+	}
+
+	if !found.GetDeletionTimestamp().IsZero() {
+		request.VersionCache.RemoveObj(found)
+		return resourceDeletedResult(resource, res), nil
 	}
 
 	request.VersionCache.Add(found)
@@ -216,5 +291,47 @@ func logOperation(result controllerutil.OperationResult, resource client.Object,
 		logger.Info(fmt.Sprintf("Updated %s resource: %s",
 			resource.GetObjectKind().GroupVersionKind().Kind,
 			resource.GetName()))
+	}
+}
+
+func isResourceOwned(request *Request, expectedObj, foundObj client.Object) (bool, error) {
+	if expectedObj.GetNamespace() == request.Instance.GetNamespace() {
+		expectedObj.SetOwnerReferences(nil)
+		err := controllerutil.SetControllerReference(request.Instance, expectedObj, request.Client.Scheme())
+		if err != nil {
+			return false, err
+		}
+	}
+
+	err := libhandler.SetOwnerAnnotations(request.Instance, expectedObj)
+	if err != nil {
+		return false, err
+	}
+
+	for _, reference := range foundObj.GetOwnerReferences() {
+		if reflect.DeepEqual(reference, expectedObj.GetOwnerReferences()[0]) {
+			return true, nil
+		}
+	}
+	if foundObj.GetAnnotations() != nil {
+		if foundObj.GetAnnotations()[libhandler.TypeAnnotation] == expectedObj.GetAnnotations()[libhandler.TypeAnnotation] &&
+			foundObj.GetAnnotations()[libhandler.NamespacedNameAnnotation] == expectedObj.GetAnnotations()[libhandler.NamespacedNameAnnotation] {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func resourceDeletedResult(resource client.Object, res controllerutil.OperationResult) ReconcileResult {
+	message := "Resource is being deleted."
+	return ReconcileResult{
+		Status: ResourceStatus{
+			Progressing:  &message,
+			NotAvailable: &message,
+			Degraded:     &message,
+		},
+		Resource:        resource,
+		OperationResult: res,
 	}
 }

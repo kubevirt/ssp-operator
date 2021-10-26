@@ -18,7 +18,7 @@ type Operand interface {
 
 	// Cleanup removes any created cluster resources.
 	// They don't use owner references, so the garbage collector will not remove them.
-	Cleanup(*common.Request) error
+	Cleanup(*common.Request) ([]common.CleanupResult, error)
 
 	// Name returns the name of the operand
 	Name() string

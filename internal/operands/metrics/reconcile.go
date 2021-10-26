@@ -16,6 +16,10 @@ func init() {
 	utilruntime.Must(promv1.AddToScheme(common.Scheme))
 }
 
+func WatchTypes() []client.Object {
+	return []client.Object{&promv1.PrometheusRule{}}
+}
+
 type metrics struct{}
 
 func (m *metrics) Name() string {
@@ -23,7 +27,7 @@ func (m *metrics) Name() string {
 }
 
 func (m *metrics) WatchTypes() []client.Object {
-	return []client.Object{&promv1.PrometheusRule{}}
+	return WatchTypes()
 }
 
 func (m *metrics) WatchClusterTypes() []client.Object {
@@ -36,8 +40,8 @@ func (m *metrics) Reconcile(request *common.Request) ([]common.ReconcileResult, 
 	)
 }
 
-func (m *metrics) Cleanup(*common.Request) error {
-	return nil
+func (m *metrics) Cleanup(*common.Request) ([]common.CleanupResult, error) {
+	return nil, nil
 }
 
 var _ operands.Operand = &metrics{}

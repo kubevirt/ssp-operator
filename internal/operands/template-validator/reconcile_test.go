@@ -133,7 +133,8 @@ var _ = Describe("Template validator operand", func() {
 		ExpectResourceExists(newClusterRoleBinding(namespace), request)
 		ExpectResourceExists(newValidatingWebhook(namespace), request)
 
-		Expect(operand.Cleanup(&request)).ToNot(HaveOccurred())
+		_, err = operand.Cleanup(&request)
+		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceNotExists(newClusterRole(), request)
 		ExpectResourceNotExists(newClusterRoleBinding(namespace), request)
