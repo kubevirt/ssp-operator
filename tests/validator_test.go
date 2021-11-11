@@ -196,6 +196,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("[test_id:4913] should successfully start template-validator pod", func() {
+		strategy.SkipUnlessHighlyAvailableTopologyMode()
 		labels := map[string]string{"kubevirt.io": "virt-template-validator"}
 		Eventually(func() int {
 			pods := core.PodList{}
@@ -232,6 +233,7 @@ var _ = Describe("Template validator operand", func() {
 
 		deployment := &apps.Deployment{}
 		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
+		strategy.SkipUnlessHighlyAvailableTopologyMode()
 		Expect(deployment.Status.AvailableReplicas).To(Equal(int32(strategy.GetValidatorReplicas())), "deployment available replicas")
 	})
 

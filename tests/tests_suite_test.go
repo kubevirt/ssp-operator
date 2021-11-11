@@ -12,9 +12,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	ginkgo_reporters "github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
+	osconfv1 "github.com/openshift/api/config/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,12 +32,11 @@ import (
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
@@ -45,12 +46,14 @@ const (
 	envSkipCleanupAfterTests = "SKIP_CLEANUP_AFTER_TESTS"
 	envTimeout               = "TIMEOUT_MINUTES"
 	envShortTimeout          = "SHORT_TIMEOUT_MINUTES"
+	envTopologyMode          = "TOPOLOGY_MODE"
 )
 
 var (
 	tenSecondTimeout = 10 * time.Second
 	shortTimeout     = 1 * time.Minute
 	timeout          = 10 * time.Minute
+	topologyMode     = osconfv1.HighlyAvailableTopologyMode
 	testScheme       *runtime.Scheme
 )
 
@@ -68,6 +71,8 @@ type TestSuiteStrategy interface {
 
 	RevertToOriginalSspCr()
 	SkipSspUpdateTestsIfNeeded()
+	SkipUnlessHighlyAvailableTopologyMode()
+	SkipUnlessSingleReplicaTopologyMode()
 }
 
 type newSspStrategy struct {
@@ -173,6 +178,18 @@ func (s *newSspStrategy) SkipSspUpdateTestsIfNeeded() {
 	// Do not skip SSP update tests in this strategy
 }
 
+func (s *newSspStrategy) SkipUnlessSingleReplicaTopologyMode() {
+	if topologyMode != osconfv1.SingleReplicaTopologyMode {
+		Skip("Tests that are specific for SingleReplicaTopologyMode are disabled", 1)
+	}
+}
+
+func (s *newSspStrategy) SkipUnlessHighlyAvailableTopologyMode() {
+	if topologyMode != osconfv1.HighlyAvailableTopologyMode {
+		Skip("Tests that are specific for HighlyAvailableTopologyMode are disabled", 1)
+	}
+}
+
 type existingSspStrategy struct {
 	Name      string
 	Namespace string
@@ -262,6 +279,18 @@ func (s *existingSspStrategy) sspModificationDisabled() bool {
 	return getBoolEnv(envSkipUpdateSspTests)
 }
 
+func (s *existingSspStrategy) SkipUnlessSingleReplicaTopologyMode() {
+	if topologyMode != osconfv1.SingleReplicaTopologyMode {
+		Skip("Tests that are specific for HighlyAvailableTopologyMode are disabled", 1)
+	}
+}
+
+func (s *existingSspStrategy) SkipUnlessHighlyAvailableTopologyMode() {
+	if topologyMode != osconfv1.HighlyAvailableTopologyMode {
+		Skip("Tests that are specific for SingleReplicaTopologyMode are disabled", 1)
+	}
+}
+
 var (
 	apiClient          client.Client
 	coreClient         *kubernetes.Clientset
@@ -293,6 +322,13 @@ var _ = BeforeSuite(func() {
 		shortTimeout = time.Duration(envShortTimeout) * time.Minute
 		fmt.Println(fmt.Sprintf("short timeout set to %d minutes", envShortTimeout))
 	}
+
+	envTopologyMode, set := getTopologyModeEnv(envTopologyMode)
+	if set {
+		topologyMode = envTopologyMode
+		fmt.Println(fmt.Sprintf("TopologyMode set to %s", envTopologyMode))
+	}
+
 	testScheme = runtime.NewScheme()
 	setupApiClient()
 	strategy.Init()
@@ -352,6 +388,13 @@ func getSsp() *sspv1beta1.SSP {
 	return foundSsp
 }
 
+func getTemplateValidatorDeployment() *apps.Deployment {
+	key := client.ObjectKey{Name: "virt-template-validator", Namespace: strategy.GetNamespace()}
+	deployment := &apps.Deployment{}
+	Expect(apiClient.Get(ctx, key, deployment)).ToNot(HaveOccurred())
+	return deployment
+}
+
 func waitUntilDeployed() {
 	if deploymentTimedOut {
 		Fail("Timed out waiting for SSP to be in phase Deployed.")
@@ -399,6 +442,17 @@ func getIntEnv(envName string) (int, bool) {
 		}
 		return int(val), true
 	}
+}
+
+// getTopologyModeEnv returns ("", false) if an env var is not set or (X, true) if it is set
+func getTopologyModeEnv(envName string) (osconfv1.TopologyMode, bool) {
+	envVal := os.Getenv(envName)
+	if envVal == string(osconfv1.SingleReplicaTopologyMode) {
+		return osconfv1.SingleReplicaTopologyMode, true
+	} else if envVal == string(osconfv1.HighlyAvailableTopologyMode) {
+		return osconfv1.HighlyAvailableTopologyMode, true
+	}
+	return "", false
 }
 
 func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {

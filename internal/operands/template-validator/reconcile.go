@@ -140,7 +140,11 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 	if image == "" {
 		panic("Cannot reconcile without valid image name")
 	}
-	deployment := newDeployment(request.Namespace, *validatorSpec.Replicas, image)
+	numberOfReplicas := *validatorSpec.Replicas
+	if request.IsSingleReplicaTopologyMode() && (numberOfReplicas > 1) {
+		numberOfReplicas = 1
+	}
+	deployment := newDeployment(request.Namespace, numberOfReplicas, image)
 	addPlacementFields(deployment, validatorSpec.Placement)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(deployment).
@@ -151,14 +155,14 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 		StatusFunc(func(res client.Object) common.ResourceStatus {
 			dep := res.(*apps.Deployment)
 			status := common.ResourceStatus{}
-			if *validatorSpec.Replicas > 0 && dep.Status.AvailableReplicas == 0 {
+			if numberOfReplicas > 0 && dep.Status.AvailableReplicas == 0 {
 				msg := fmt.Sprintf("No validator pods are running. Expected: %d", dep.Status.Replicas)
 				status.NotAvailable = &msg
 			}
-			if dep.Status.AvailableReplicas != *validatorSpec.Replicas {
+			if dep.Status.AvailableReplicas != numberOfReplicas {
 				msg := fmt.Sprintf(
 					"Not all template validator pods are running. Expected: %d, running: %d",
-					*validatorSpec.Replicas,
+					numberOfReplicas,
 					dep.Status.AvailableReplicas,
 				)
 				status.Progressing = &msg
