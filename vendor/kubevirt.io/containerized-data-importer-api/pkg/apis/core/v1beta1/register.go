@@ -5,7 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"kubevirt.io/containerized-data-importer/pkg/apis/core"
+	"kubevirt.io/containerized-data-importer-api/pkg/apis/core"
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -42,6 +42,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CDIList{},
 		&StorageProfile{},
 		&StorageProfileList{},
+		&DataSource{},
+		&DataSourceList{},
+		&DataImportCron{},
+		&DataImportCronList{},
 		&ObjectTransfer{},
 		&ObjectTransferList{},
 	)
