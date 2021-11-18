@@ -1,10 +1,10 @@
-package common_templates
+package data_sources
 
 import (
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	cdiv1beta1 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1"
+	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 )
 
 const (
@@ -41,6 +41,16 @@ func newViewRole(namespace string) *rbac.Role {
 				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
 				Resources: []string{"datavolumes/source"},
 				Verbs:     []string{"create"},
+			},
+			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"datasources"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"dataimportcrons"},
+				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
 				APIGroups: []string{core.GroupName},
@@ -102,6 +112,16 @@ func newEditRole() *rbac.ClusterRole {
 				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
 				Resources: []string{"datavolumes/source"},
 				Verbs:     []string{"create"},
+			},
+			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"datasources"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			},
+			{
+				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
+				Resources: []string{"dataimportcrons"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 			},
 		},
 	}

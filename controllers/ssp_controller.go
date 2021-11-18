@@ -47,6 +47,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	node_labeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
@@ -87,6 +88,7 @@ func CreateAndSetupSspReconciler(mgr ctrl.Manager) error {
 		metrics.New(),
 		template_validator.New(),
 		common_templates.New(templatesBundle),
+		data_sources.New(),
 		node_labeller.New(),
 	}
 	reconciler := &sspReconciler{

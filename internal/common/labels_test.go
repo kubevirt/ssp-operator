@@ -18,7 +18,7 @@ var _ = Describe("AddAppLabels", func() {
 		request = Request{
 			Instance: &ssp.SSP{
 				TypeMeta: metav1.TypeMeta{
-					Kind:       "SSP",
+					Kind:       sspResourceKind,
 					APIVersion: ssp.GroupVersion.String(),
 				},
 				ObjectMeta: metav1.ObjectMeta{

@@ -9,19 +9,16 @@ import (
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/prometheus/client_golang/prometheus"
-	core "k8s.io/api/core/v1"
-	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
@@ -36,15 +33,7 @@ var (
 )
 
 // Define RBAC rules needed by this operand:
-// +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
-
-// RBAC for created roles
-// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims/status,verbs=get;list;watch
-// +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datavolumes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datavolumes/source,verbs=create
 
 func init() {
 	utilruntime.Must(templatev1.Install(common.Scheme))
@@ -52,10 +41,6 @@ func init() {
 
 func WatchClusterTypes() []client.Object {
 	return []client.Object{
-		&rbac.ClusterRole{},
-		&rbac.Role{},
-		&rbac.RoleBinding{},
-		&core.Namespace{},
 		&templatev1.Template{},
 	}
 }
@@ -88,20 +73,12 @@ func (c *commonTemplates) WatchTypes() []client.Object {
 }
 
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	funcs := []common.ReconcileFunc{
-		reconcileGoldenImagesNS,
-		reconcileViewRole,
-		reconcileViewRoleBinding,
-		reconcileEditRole,
-	}
-
 	oldTemplateFuncs, err := reconcileOlderTemplates(request)
 	if err != nil {
 		return nil, err
 	}
 
-	funcs = append(funcs, oldTemplateFuncs...)
-	results, err := common.CollectResourceStatus(request, funcs...)
+	results, err := common.CollectResourceStatus(request, oldTemplateFuncs...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,12 +102,7 @@ func isUpgradingNow(request *common.Request) bool {
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	objects := []client.Object{
-		newGoldenImagesNS(ssp.GoldenImagesNSname),
-		newViewRole(ssp.GoldenImagesNSname),
-		newViewRoleBinding(ssp.GoldenImagesNSname),
-		newEditRole(),
-	}
+	objects := []client.Object{}
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
 	for index := range c.templatesBundle {
 		c.templatesBundle[index].ObjectMeta.Namespace = namespace
@@ -140,49 +112,6 @@ func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResu
 	return common.DeleteAll(request, objects...)
 }
 
-func reconcileGoldenImagesNS(request *common.Request) (common.ReconcileResult, error) {
-	return common.CreateOrUpdate(request).
-		ClusterResource(newGoldenImagesNS(ssp.GoldenImagesNSname)).
-		WithAppLabels(operandName, operandComponent).
-		Reconcile()
-}
-
-func reconcileViewRole(request *common.Request) (common.ReconcileResult, error) {
-	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRole(ssp.GoldenImagesNSname)).
-		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRole := foundRes.(*rbac.Role)
-			newRole := newRes.(*rbac.Role)
-			foundRole.Rules = newRole.Rules
-		}).
-		Reconcile()
-}
-
-func reconcileViewRoleBinding(request *common.Request) (common.ReconcileResult, error) {
-	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRoleBinding(ssp.GoldenImagesNSname)).
-		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			newBinding := newRes.(*rbac.RoleBinding)
-			foundBinding := foundRes.(*rbac.RoleBinding)
-			foundBinding.Subjects = newBinding.Subjects
-			foundBinding.RoleRef = newBinding.RoleRef
-		}).
-		Reconcile()
-}
-
-func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) {
-	return common.CreateOrUpdate(request).
-		ClusterResource(newEditRole()).
-		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			newRole := newRes.(*rbac.ClusterRole)
-			foundRole := foundRes.(*rbac.ClusterRole)
-			foundRole.Rules = newRole.Rules
-		}).
-		Reconcile()
-}
 func getOldTemplatesLabelSelector() labels.Selector {
 	baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{TemplateTypeLabelBaseValue})
 	if err != nil {
