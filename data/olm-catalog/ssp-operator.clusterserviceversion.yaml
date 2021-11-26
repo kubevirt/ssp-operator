@@ -367,7 +367,7 @@ spec:
               labels:
                 control-plane: ssp-operator
                 name: ssp-operator
-                prometheus.kubevirt.io: ""
+                prometheus.kubevirt.io: "true"
             spec:
               containers:
               - args:

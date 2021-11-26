@@ -122,7 +122,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	trueVal := true
 
 	podLabels := commonLabels()
-	podLabels[PrometheusLabel] = ""
+	podLabels[PrometheusLabel] = "true"
 	podLabels["name"] = DeploymentName
 
 	return &apps.Deployment{
