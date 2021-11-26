@@ -28,7 +28,7 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 		metrics.New(),
 		template_validator.New(),
 		common_templates.New(templatesBundle.Templates),
-		data_sources.New(),
+		data_sources.New(templatesBundle.DataSources),
 		node_labeller.New(),
 	}
 

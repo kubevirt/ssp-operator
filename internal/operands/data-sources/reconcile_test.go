@@ -35,7 +35,7 @@ var _ = Describe("Data-Sources operand", func() {
 	)
 
 	BeforeEach(func() {
-		operand = New()
+		operand = New(getDataSources())
 
 		client := fake.NewFakeClientWithScheme(common.Scheme)
 		request = common.Request{
@@ -89,6 +89,56 @@ var _ = Describe("Data-Sources operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 		ExpectResourceExists(newEditRole(), request)
+	})
+
+	It("should create DataSources", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		for _, ds := range getDataSources() {
+			ExpectResourceExists(&ds, request)
+		}
+	})
+
+	It("should revert non-managed DataSource", func() {
+		ds := getDataSources()[0]
+
+		dsCopy := ds.DeepCopy()
+		dsCopy.Spec.Source.PVC.Name = "modified-pvc-name"
+		Expect(request.Client.Create(request.Context, dsCopy)).To(Succeed())
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		foundDs := &cdiv1beta1.DataSource{}
+		Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(dsCopy), foundDs)).To(Succeed())
+
+		Expect(foundDs.Spec).To(Equal(ds.Spec))
+	})
+
+	It("should not revert managed DataSource", func() {
+		ds := getDataSources()[0]
+
+		ds.Spec.Source.PVC.Name = "modified-pvc-name"
+		Expect(request.Client.Create(request.Context, &ds)).To(Succeed())
+
+		cronTemplate := ssp.DataImportCronTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ds.Name,
+			},
+			Spec: cdiv1beta1.DataImportCronSpec{
+				ManagedDataSource: ds.Name,
+			},
+		}
+		request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		foundDs := &cdiv1beta1.DataSource{}
+		Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&ds), foundDs)).To(Succeed())
+
+		Expect(foundDs.Spec.Source.PVC.Name).To(Equal(ds.Spec.Source.PVC.Name))
 	})
 
 	Context("DataImportCrons", func() {
@@ -162,6 +212,39 @@ var _ = Describe("Data-Sources operand", func() {
 		})
 	})
 })
+
+func getDataSources() []cdiv1beta1.DataSource {
+	const name1 = "centos8"
+	const name2 = "win10"
+
+	return []cdiv1beta1.DataSource{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name1,
+			Namespace: ssp.GoldenImagesNSname,
+		},
+		Spec: cdiv1beta1.DataSourceSpec{
+			Source: cdiv1beta1.DataSourceSource{
+				PVC: &cdiv1beta1.DataVolumeSourcePVC{
+					Name:      name1,
+					Namespace: ssp.GoldenImagesNSname,
+				},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name2,
+			Namespace: ssp.GoldenImagesNSname,
+		},
+		Spec: cdiv1beta1.DataSourceSpec{
+			Source: cdiv1beta1.DataSourceSource{
+				PVC: &cdiv1beta1.DataVolumeSourcePVC{
+					Name:      name2,
+					Namespace: ssp.GoldenImagesNSname,
+				},
+			},
+		},
+	}}
+}
 
 func TestDataSources(t *testing.T) {
 	RegisterFailHandler(Fail)

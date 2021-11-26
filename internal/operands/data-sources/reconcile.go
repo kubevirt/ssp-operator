@@ -18,6 +18,7 @@ import (
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datasources,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=dataimportcrons,verbs=get;list;watch;create;update;patch;delete
 
 // RBAC for created roles
@@ -43,16 +44,21 @@ func WatchClusterTypes() []client.Object {
 		&rbac.Role{},
 		&rbac.RoleBinding{},
 		&core.Namespace{},
+		&cdiv1beta1.DataSource{},
 		&cdiv1beta1.DataImportCron{},
 	}
 }
 
-type dataSources struct{}
+type dataSources struct {
+	sources []cdiv1beta1.DataSource
+}
 
 var _ operands.Operand = &dataSources{}
 
-func New() operands.Operand {
-	return &dataSources{}
+func New(sources []cdiv1beta1.DataSource) operands.Operand {
+	return &dataSources{
+		sources: sources,
+	}
 }
 
 func (d *dataSources) Name() string {
@@ -83,6 +89,8 @@ func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResu
 		reconcileEditRole,
 	}
 
+	funcs = append(funcs, reconcileDataSources(d.sources, request.Instance.Spec.CommonTemplates.DataImportCronTemplates)...)
+
 	dataImportCronFuncs, err := reconcileDataImportCrons(request)
 	if err != nil {
 		return nil, err
@@ -98,6 +106,12 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 		newViewRole(ssp.GoldenImagesNSname),
 		newViewRoleBinding(ssp.GoldenImagesNSname),
 		newEditRole(),
+	}
+
+	for i := range d.sources {
+		ds := d.sources[i]
+		ds.Namespace = ssp.GoldenImagesNSname
+		objects = append(objects, &ds)
 	}
 
 	ownedCrons, err := listAllOwnedDataImportCrons(request)
@@ -153,6 +167,41 @@ func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) 
 			foundRole.Rules = newRole.Rules
 		}).
 		Reconcile()
+}
+
+func reconcileDataSources(dataSources []cdiv1beta1.DataSource, crons []ssp.DataImportCronTemplate) []common.ReconcileFunc {
+	managedDataSources := map[string]struct{}{}
+	for i := range crons {
+		managedDataSources[crons[i].Spec.ManagedDataSource] = struct{}{}
+	}
+
+	funcs := make([]common.ReconcileFunc, 0, len(dataSources))
+	for i := range dataSources {
+		dataSource := dataSources[i] // Make a local copy
+		_, isManaged := managedDataSources[dataSource.Name]
+		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
+			dataSource.Namespace = ssp.GoldenImagesNSname
+			return common.CreateOrUpdate(request).
+				ClusterResource(&dataSource).
+				WithAppLabels(operandName, operandComponent).
+				UpdateFunc(func(newRes, foundRes client.Object) {
+					newDataSource := newRes.(*cdiv1beta1.DataSource)
+					foundDataSource := foundRes.(*cdiv1beta1.DataSource)
+
+					if isManaged {
+						// The source.pvc is set by a DataImportCron,
+						// and the operator must not overwrite it
+						if foundDataSource.Spec.Source.PVC != nil {
+							newDataSource.Spec.Source.PVC = foundDataSource.Spec.Source.PVC
+						}
+					}
+
+					foundDataSource.Spec = newDataSource.Spec
+				}).
+				Reconcile()
+		})
+	}
+	return funcs
 }
 
 func reconcileDataImportCrons(request *common.Request) ([]common.ReconcileFunc, error) {

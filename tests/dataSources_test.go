@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,6 +24,9 @@ import (
 )
 
 var _ = Describe("DataSources", func() {
+	// The name must be one of the DataSources needed by common templates
+	const dataSourceName = "fedora"
+
 	var (
 		expectedLabels map[string]string
 
@@ -30,6 +34,7 @@ var _ = Describe("DataSources", func() {
 		viewRoleBinding testResource
 		editClusterRole testResource
 		goldenImageNS   testResource
+		dataSource      testResource
 	)
 
 	BeforeEach(func() {
@@ -76,6 +81,18 @@ var _ = Describe("DataSources", func() {
 			ExpectedLabels: expectedLabels,
 			Namespace:      "",
 		}
+		dataSource = testResource{
+			Name:           dataSourceName,
+			Namespace:      ssp.GoldenImagesNSname,
+			Resource:       &cdiv1beta1.DataSource{},
+			ExpectedLabels: expectedLabels,
+			UpdateFunc: func(ds *cdiv1beta1.DataSource) {
+				ds.Spec.Source.PVC.Name = "testing-non-existing-name"
+			},
+			EqualsFunc: func(old, new *cdiv1beta1.DataSource) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
+		}
 
 		waitUntilDeployed()
 	})
@@ -97,6 +114,7 @@ var _ = Describe("DataSources", func() {
 		},
 			table.Entry("[test_id:4777]view role", &viewRole),
 			table.Entry("[test_id:4772]view role binding", &viewRoleBinding),
+			table.Entry("[test_id:TODO]data source", &dataSource),
 		)
 
 		table.DescribeTable("should set app labels", expectAppLabels,
@@ -104,6 +122,7 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:6216] golden images namespace", &goldenImageNS),
 			table.Entry("[test_id:6217] view role", &viewRole),
 			table.Entry("[test_id:6218] view role binding", &viewRoleBinding),
+			table.Entry("[test_id:TODO] data source", &dataSource),
 		)
 	})
 
@@ -112,6 +131,7 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:5315]edit cluster role", &editClusterRole),
 			table.Entry("[test_id:5316]view role", &viewRole),
 			table.Entry("[test_id:5317]view role binding", &viewRoleBinding),
+			table.Entry("[test_id:TODO]data source", &dataSource),
 		)
 
 		Context("with pause", func() {
@@ -127,6 +147,7 @@ var _ = Describe("DataSources", func() {
 				table.Entry("[test_id:5388]view role", &viewRole),
 				table.Entry("[test_id:5389]view role binding", &viewRoleBinding),
 				table.Entry("[test_id:5393]edit cluster role", &editClusterRole),
+				table.Entry("[test_id:TODO]data source", &dataSource),
 			)
 		})
 
@@ -135,6 +156,7 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:6211] golden images namespace", &goldenImageNS),
 			table.Entry("[test_id:6212] view role", &viewRole),
 			table.Entry("[test_id:6213] view role binding", &viewRoleBinding),
+			table.Entry("[test_id:TODO] data source", &dataSource),
 		)
 	})
 
@@ -144,6 +166,7 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:4842]view role binding", &viewRoleBinding),
 			table.Entry("[test_id:4771]edit cluster role", &editClusterRole),
 			table.Entry("[test_id:4770]golden image NS", &goldenImageNS),
+			table.Entry("[test_id:TODO]data source", &dataSource),
 		)
 	})
 
@@ -637,7 +660,7 @@ var _ = Describe("DataSources", func() {
 				},
 				Spec: cdiv1beta1.DataImportCronSpec{
 					Schedule:          cronSchedule,
-					ManagedDataSource: "test-data-import-cron",
+					ManagedDataSource: dataSourceName,
 					Template: cdiv1beta1.DataVolume{
 						Spec: cdiv1beta1.DataVolumeSpec{
 							Source: &cdiv1beta1.DataVolumeSource{
@@ -647,11 +670,11 @@ var _ = Describe("DataSources", func() {
 							},
 							PVC: &core.PersistentVolumeClaimSpec{
 								AccessModes: []core.PersistentVolumeAccessMode{
-									core.ReadWriteMany,
+									core.ReadWriteOnce,
 								},
 								Resources: core.ResourceRequirements{
 									Requests: core.ResourceList{
-										core.ResourceStorage: resource.MustParse("16Mi"),
+										core.ResourceStorage: resource.MustParse("128Mi"),
 									},
 								},
 							},
@@ -719,6 +742,40 @@ var _ = Describe("DataSources", func() {
 			} else {
 				Expect(cron.GetDeletionTimestamp().IsZero()).To(BeFalse(), "DataImportCron is not being deleted")
 			}
+		})
+
+		It("[test_id:TODO] should restore DataSource if DataImportCron removed from SSP CR", func() {
+			// Wait until DataImportCron imports PVC and changes data source
+			Eventually(func() bool {
+				cron := &cdiv1beta1.DataImportCron{}
+				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
+
+				return cron.Status.LastImportTimestamp.IsZero()
+			}, timeout, time.Second).Should(BeFalse())
+
+			managedDataSource := &cdiv1beta1.DataSource{}
+			Expect(apiClient.Get(ctx, dataSource.GetKey(), managedDataSource)).To(Succeed())
+
+			// Remove the DataImportCron
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+			})
+			waitUntilDeployed()
+
+			// Check if the DataSource has been reverted
+			revertedDataSource := &cdiv1beta1.DataSource{}
+			Expect(apiClient.Get(ctx, dataSource.GetKey(), revertedDataSource)).To(Succeed())
+
+			Expect(revertedDataSource).ToNot(EqualResource(&dataSource, managedDataSource))
+
+			// Delete the DataSource and let the operator recreate it
+			Expect(apiClient.Delete(ctx, revertedDataSource.DeepCopy())).To(Succeed())
+			waitUntilDeployed()
+
+			recreatedDataSource := &cdiv1beta1.DataSource{}
+			Expect(apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)).To(Succeed())
+
+			Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
 		})
 
 		Context("with DataImportCron cleanup", func() {
