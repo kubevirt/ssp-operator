@@ -43,19 +43,13 @@ var _ = Describe("Common-Templates operand", func() {
 	var (
 		testTemplates []templatev1.Template
 		operand       operands.Operand
+		request       common.Request
 	)
 
-	BeforeSuite(func() {
-		var err error
-		testTemplates, err = ReadTemplates("common-templates-test.yaml")
-		Expect(err).ToNot(HaveOccurred())
-
-		operand = New(testTemplates)
-	})
-
-	var request common.Request
-
 	BeforeEach(func() {
+		testTemplates = getTestTemplates()
+		operand = New(testTemplates)
+
 		client := fake.NewFakeClientWithScheme(common.Scheme)
 		request = common.Request{
 			Request: reconcile.Request{
@@ -84,20 +78,6 @@ var _ = Describe("Common-Templates operand", func() {
 			Logger:       log,
 			VersionCache: common.VersionCache{},
 		}
-	})
-
-	It("should correctly read templates", func() {
-		Expect(testTemplates).To(HaveLen(2))
-
-		templ1 := testTemplates[0]
-		Expect(templ1.Name).To(Equal("centos8-server-medium"))
-		Expect(templ1.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos8"))
-		Expect(templ1.Objects).To(HaveLen(1))
-
-		templ2 := testTemplates[1]
-		Expect(templ2.Name).To(Equal("windows10-desktop-medium"))
-		Expect(templ2.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
-		Expect(templ2.Objects).To(HaveLen(1))
 	})
 
 	It("should create common-template resources", func() {
@@ -218,3 +198,29 @@ var _ = Describe("Common-Templates operand", func() {
 		})
 	})
 })
+
+func getTestTemplates() []templatev1.Template {
+	return []templatev1.Template{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "centos8-server-medium",
+			Labels: map[string]string{
+				TemplateTypeLabel:                      TemplateTypeLabelBaseValue,
+				TemplateVersionLabel:                   "v0.16.2",
+				TemplateOsLabelPrefix + "centos8":      "true",
+				TemplateFlavorLabelPrefix + "medium":   "true",
+				TemplateWorkloadLabelPrefix + "server": "true",
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "windows10-desktop-medium",
+			Labels: map[string]string{
+				TemplateTypeLabel:                       TemplateTypeLabelBaseValue,
+				TemplateVersionLabel:                    "v0.16.2",
+				TemplateOsLabelPrefix + "win10":         "true",
+				TemplateFlavorLabelPrefix + "medium":    "true",
+				TemplateWorkloadLabelPrefix + "desktop": "true",
+			},
+		},
+	}}
+}
