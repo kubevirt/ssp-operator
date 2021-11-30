@@ -99,7 +99,7 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 						{
 							Alert: "SSPCommonTemplatesModificationReverted",
 							Expr:  intstr.FromString("kubevirt_ssp_total_restored_common_templates > 0"),
-							For:   "5m",
+							For:   "0m",
 							Annotations: map[string]string{
 								"summary":     "Common Templates manual modifications were reverted by the operator",
 								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPCommonTemplatesModificationReverted",
