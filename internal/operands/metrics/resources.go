@@ -6,7 +6,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const PrometheusRuleName = "prometheus-k8s-rules-cnv"
+const (
+	PrometheusRuleName       = "prometheus-k8s-rules-cnv"
+	runbookURLBasePath       = "http://kubevirt.io/monitoring/runbooks/"
+	severityAlertLabelKey    = "severity"
+	partOfAlertLabelKey      = "kubernetes_operator_part_of"
+	partOfAlertLabelValue    = "kubevirt"
+	componentAlertLabelKey   = "kubernetes_operator_component"
+	componentAlertLabelValue = "ssp-operator"
+)
 
 func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 	return &promv1.PrometheusRule{
@@ -42,10 +50,12 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							For:   "5m",
 							Annotations: map[string]string{
 								"summary":     "All SSP operator pods are down.",
-								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPOperatorDown",
+								"runbook_url": runbookURLBasePath + "SSPOperatorDown",
 							},
 							Labels: map[string]string{
-								"severity": "critical",
+								severityAlertLabelKey:  "critical",
+								partOfAlertLabelKey:    partOfAlertLabelValue,
+								componentAlertLabelKey: componentAlertLabelValue,
 							},
 						},
 						{
@@ -54,10 +64,12 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							For:   "5m",
 							Annotations: map[string]string{
 								"summary":     "All Template Validator pods are down.",
-								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPTemplateValidatorDown",
+								"runbook_url": runbookURLBasePath + "SSPTemplateValidatorDown",
 							},
 							Labels: map[string]string{
-								"severity": "critical",
+								severityAlertLabelKey:  "critical",
+								partOfAlertLabelKey:    partOfAlertLabelValue,
+								componentAlertLabelKey: componentAlertLabelValue,
 							},
 						},
 						{
@@ -70,10 +82,12 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							For:   "5m",
 							Annotations: map[string]string{
 								"summary":     "The ssp-operator pod is up but failing to reconcile",
-								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPFailingToReconcile",
+								"runbook_url": runbookURLBasePath + "SSPFailingToReconcile",
 							},
 							Labels: map[string]string{
-								"severity": "critical",
+								severityAlertLabelKey:  "critical",
+								partOfAlertLabelKey:    partOfAlertLabelValue,
+								componentAlertLabelKey: componentAlertLabelValue,
 							},
 						},
 						{
@@ -86,10 +100,12 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							For:   "5m",
 							Annotations: map[string]string{
 								"summary":     "High rate of rejected Vms",
-								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPHighRateRejectedVms",
+								"runbook_url": runbookURLBasePath + "SSPHighRateRejectedVms",
 							},
 							Labels: map[string]string{
-								"severity": "warning",
+								severityAlertLabelKey:  "warning",
+								partOfAlertLabelKey:    partOfAlertLabelValue,
+								componentAlertLabelKey: componentAlertLabelValue,
 							},
 						},
 						{
@@ -102,10 +118,12 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 							For:   "5m",
 							Annotations: map[string]string{
 								"summary":     "Common Templates manual modifications were reverted by the operator",
-								"runbook_url": "https://kubevirt.io/monitoring/runbooks/SSPCommonTemplatesModificationReverted",
+								"runbook_url": runbookURLBasePath + "SSPCommonTemplatesModificationReverted",
 							},
 							Labels: map[string]string{
-								"severity": "warning",
+								severityAlertLabelKey:  "warning",
+								partOfAlertLabelKey:    partOfAlertLabelValue,
+								componentAlertLabelKey: componentAlertLabelValue,
 							},
 						},
 					},
