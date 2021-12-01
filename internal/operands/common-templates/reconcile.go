@@ -72,6 +72,10 @@ func (c *commonTemplates) WatchTypes() []client.Object {
 	return nil
 }
 
+func (c *commonTemplates) RequiredCrds() []string {
+	return nil
+}
+
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	oldTemplateFuncs, err := reconcileOlderTemplates(request)
 	if err != nil {

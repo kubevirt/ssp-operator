@@ -121,7 +121,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = controllers.CreateAndSetupSspReconciler(mgr); err != nil {
+	if err = controllers.CreateAndSetupReconciler(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SSP")
 		os.Exit(1)
 	}

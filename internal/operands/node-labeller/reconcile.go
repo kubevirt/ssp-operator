@@ -66,6 +66,10 @@ func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
 	return WatchClusterTypes()
 }
 
+func (nl *nodeLabeller) RequiredCrds() []string {
+	return nil
+}
+
 //Reconsile deletes all node-labeller component, because labeller is migrated into kubevirt core.
 func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	// Not using common.DeleteAll(), because these resources
