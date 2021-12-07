@@ -692,7 +692,7 @@ var _ = Describe("DataSources", func() {
 			expectRecreateAfterDelete(&dataImportCron)
 		})
 
-		It("[test_id:TODO] should update DataImportCron if updated in SSP CR", func() {
+		It("[test_id:7712] should update DataImportCron if updated in SSP CR", func() {
 			updateSsp(func(foundSsp *ssp.SSP) {
 				foundSsp.Spec.CommonTemplates.DataImportCronTemplates[0].
 					Spec.Template.Spec.PVC.Resources.Requests[core.ResourceStorage] = resource.MustParse("32Mi")
