@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"strconv"
 
@@ -46,11 +45,6 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
-	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	node_labeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
-	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
 const (
@@ -77,32 +71,13 @@ type sspReconciler struct {
 	subresourceCache common.VersionCache
 }
 
-func CreateAndSetupSspReconciler(mgr ctrl.Manager) error {
-	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
-	templatesBundle, err := common_templates.ReadTemplates(templatesFile)
-	if err != nil {
-		return err
-	}
-
-	sspOperands := []operands.Operand{
-		metrics.New(),
-		template_validator.New(),
-		common_templates.New(templatesBundle),
-		data_sources.New(),
-		node_labeller.New(),
-	}
-	reconciler := &sspReconciler{
-		client:           mgr.GetClient(),
+func NewSspReconciler(client client.Client, operands []operands.Operand) *sspReconciler {
+	return &sspReconciler{
+		client:           client,
 		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
-		operands:         sspOperands,
+		operands:         operands,
 		subresourceCache: common.VersionCache{},
 	}
-
-	builder := ctrl.NewControllerManagedBy(mgr)
-	watchSspResource(builder)
-	watchClusterResources(builder, sspOperands)
-	watchNamespacedResources(builder, sspOperands)
-	return builder.Complete(reconciler)
 }
 
 var _ reconcile.Reconciler = &sspReconciler{}
@@ -115,6 +90,14 @@ var _ reconcile.Reconciler = &sspReconciler{}
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtmetricsaggregations,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
+
+func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
+	builder := ctrl.NewControllerManagedBy(mgr)
+	watchSspResource(builder)
+	watchClusterResources(builder, r.operands)
+	watchNamespacedResources(builder, r.operands)
+	return builder.Complete(r)
+}
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

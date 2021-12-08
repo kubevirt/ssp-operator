@@ -34,6 +34,10 @@ func (m *metrics) WatchClusterTypes() []client.Object {
 	return nil
 }
 
+func (m *metrics) RequiredCrds() []string {
+	return []string{"prometheusrules.monitoring.coreos.com"}
+}
+
 func (m *metrics) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	return common.CollectResourceStatus(request,
 		reconcilePrometheusRule,

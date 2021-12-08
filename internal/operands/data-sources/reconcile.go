@@ -67,6 +67,14 @@ func (d *dataSources) WatchClusterTypes() []client.Object {
 	return WatchClusterTypes()
 }
 
+func (d *dataSources) RequiredCrds() []string {
+	return []string{
+		"datavolumes.cdi.kubevirt.io",
+		"datasources.cdi.kubevirt.io",
+		"dataimportcrons.cdi.kubevirt.io",
+	}
+}
+
 func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	funcs := []common.ReconcileFunc{
 		reconcileGoldenImagesNS,
