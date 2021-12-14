@@ -46,9 +46,10 @@ const (
 )
 
 var (
-	shortTimeout = 1 * time.Minute
-	timeout      = 10 * time.Minute
-	testScheme   *runtime.Scheme
+	tenSecondTimeout = 10 * time.Second
+	shortTimeout     = 1 * time.Minute
+	timeout          = 10 * time.Minute
+	testScheme       *runtime.Scheme
 )
 
 type TestSuiteStrategy interface {
