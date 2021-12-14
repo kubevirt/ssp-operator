@@ -21,7 +21,7 @@ package kubevirtobjs
 import (
 	"reflect"
 
-	k6tv1 "kubevirt.io/client-go/api/v1"
+	k6tv1 "kubevirt.io/client-go/apis/core/v1"
 )
 
 const (

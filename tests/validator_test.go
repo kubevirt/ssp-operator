@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-	kubevirtv1 "kubevirt.io/client-go/api/v1"
+	kubevirtv1 "kubevirt.io/client-go/apis/core/v1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -940,7 +940,7 @@ func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 		},
 	}
 
-	codec := serializer.NewCodecFactory(kubevirtv1.Scheme).LegacyCodec(kubevirtv1.GroupVersion)
+	codec := serializer.NewCodecFactory(testScheme).LegacyCodec(kubevirtv1.GroupVersion)
 	template.Objects = append(template.Objects,
 		runtime.RawExtension{
 			Raw: []byte(runtime.EncodeOrDie(codec, &kubevirtv1.VirtualMachine{
@@ -986,8 +986,10 @@ func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 								{
 									Name: "rootdisk",
 									VolumeSource: kubevirtv1.VolumeSource{
-										PersistentVolumeClaim: &core.PersistentVolumeClaimVolumeSource{
-											ClaimName: "${PVCNAME}",
+										PersistentVolumeClaim: &kubevirtv1.PersistentVolumeClaimVolumeSource{
+											PersistentVolumeClaimVolumeSource: core.PersistentVolumeClaimVolumeSource{
+												ClaimName: "${PVCNAME}",
+											},
 										},
 									},
 								},

@@ -165,6 +165,14 @@ func (CPU) SwaggerDoc() map[string]string {
 		"dedicatedCpuPlacement": "DedicatedCPUPlacement requests the scheduler to place the VirtualMachineInstance on a node\nwith enough dedicated pCPUs and pin the vCPUs to it.\n+optional",
 		"numa":                  "NUMA allows specifying settings for the guest NUMA topology\n+optional",
 		"isolateEmulatorThread": "IsolateEmulatorThread requests one more dedicated pCPU to be allocated for the VMI to place\nthe emulator thread on it.\n+optional",
+		"realtime":              "Realtime instructs the virt-launcher to tune the VMI for lower latency, optional for real time workloads\n+optional",
+	}
+}
+
+func (Realtime) SwaggerDoc() map[string]string {
+	return map[string]string{
+		"":     "Realtime holds the tuning knobs specific for realtime workloads.\n+k8s:openapi-gen=true",
+		"mask": "Mask defines the vcpu mask expression that defines which vcpus are used for realtime. Format matches libvirt's expressions.\nExample: \"0-3,^1\",\"0,2,3\",\"2-3\"\n+optional",
 	}
 }
 
@@ -240,6 +248,13 @@ func (Devices) SwaggerDoc() map[string]string {
 		"gpus":                       "Whether to attach a GPU device to the vmi.\n+optional\n+listType=atomic",
 		"filesystems":                "Filesystems describes filesystem which is connected to the vmi.\n+optional\n+listType=atomic",
 		"hostDevices":                "Whether to attach a host device to the vmi.\n+optional\n+listType=atomic",
+		"clientPassthrough":          "To configure and access client devices such as redirecting USB\n+optional",
+	}
+}
+
+func (ClientPassthroughDevices) SwaggerDoc() map[string]string {
+	return map[string]string{
+		"": "Represent a subset of client devices that can be accessed by VMI. At the\nmoment only, USB devices using Usbredir's library and tooling. Another fit\nwould be a smartcard with libcacard.\n\nThe struct is currently empty as there is no imediate request for\nuser-facing APIs. This structure simply turns on USB redirection of\nUsbClientPassthroughMaxNumberOf devices.\n\n+k8s:openapi-gen=true",
 	}
 }
 
@@ -387,8 +402,16 @@ func (HotplugVolumeSource) SwaggerDoc() map[string]string {
 
 func (DataVolumeSource) SwaggerDoc() map[string]string {
 	return map[string]string{
-		"":     "+k8s:openapi-gen=true",
-		"name": "Name represents the name of the DataVolume in the same namespace",
+		"":             "+k8s:openapi-gen=true",
+		"name":         "Name represents the name of the DataVolume in the same namespace",
+		"hotpluggable": "Hotpluggable indicates whether the volume can be hotplugged and hotunplugged.\n+optional",
+	}
+}
+
+func (PersistentVolumeClaimVolumeSource) SwaggerDoc() map[string]string {
+	return map[string]string{
+		"":             "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace.\nDirectly attached to the vmi via qemu.\nMore info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims\n\n+k8s:openapi-gen=true",
+		"hotpluggable": "Hotpluggable indicates whether the volume can be hotplugged and hotunplugged.\n+optional",
 	}
 }
 

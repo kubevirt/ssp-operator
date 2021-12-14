@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/pointer"
-	kubevirtv1 "kubevirt.io/client-go/api/v1"
+	kubevirtv1 "kubevirt.io/client-go/apis/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"

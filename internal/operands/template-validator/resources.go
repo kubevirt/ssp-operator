@@ -12,7 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-	kubevirt "kubevirt.io/client-go/api/v1"
+	kubevirt "kubevirt.io/client-go/apis/core"
+	kubevirtv1 "kubevirt.io/client-go/apis/core/v1"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
@@ -209,7 +210,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 	sideEffectsNone := admission.SideEffectClassNone
 
 	var vmRules []admission.RuleWithOperations
-	for _, version := range kubevirt.ApiSupportedWebhookVersions {
+	for _, version := range kubevirtv1.ApiSupportedWebhookVersions {
 		vmRules = append(vmRules, admission.RuleWithOperations{
 			Operations: []admission.OperationType{
 				admission.Create, admission.Update,

@@ -18,7 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/rand"
-	kubevirtv1 "kubevirt.io/client-go/api/v1"
+	kubevirtv1 "kubevirt.io/client-go/apis/core/v1"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 

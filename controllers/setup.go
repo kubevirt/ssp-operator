@@ -5,19 +5,21 @@ import (
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"path/filepath"
 
+	"sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	"kubevirt.io/ssp-operator/internal/operands"
 	"kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	"kubevirt.io/ssp-operator/internal/operands/template-validator"
-	"sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 )
 
 func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
-	templatesBundle, err := common_templates.ReadTemplates(templatesFile)
+	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
 	if err != nil {
 		return err
 	}
@@ -25,8 +27,8 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 	sspOperands := []operands.Operand{
 		metrics.New(),
 		template_validator.New(),
-		common_templates.New(templatesBundle),
-		data_sources.New(),
+		common_templates.New(templatesBundle.Templates),
+		data_sources.New(templatesBundle.DataSources),
 		node_labeller.New(),
 	}
 

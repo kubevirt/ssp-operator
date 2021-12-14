@@ -1,10 +1,7 @@
 package common_templates
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"strings"
 
 	templatev1 "github.com/openshift/api/template/v1"
@@ -13,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -194,26 +190,4 @@ func reconcileTemplatesFuncs(templatesBundle []templatev1.Template) []common.Rec
 		})
 	}
 	return funcs
-}
-
-func ReadTemplates(filename string) ([]templatev1.Template, error) {
-	var bundle []templatev1.Template
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(file), 1024)
-	for {
-		template := templatev1.Template{}
-		err = decoder.Decode(&template)
-		if err == io.EOF {
-			return bundle, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		if template.Name != "" {
-			bundle = append(bundle, template)
-		}
-	}
 }
