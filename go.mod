@@ -26,7 +26,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20210709001253-0e1f9d693477
-	kubevirt.io/client-go v0.43.0
+	kubevirt.io/client-go v0.47.1
 	kubevirt.io/containerized-data-importer-api v1.41.1
 	kubevirt.io/controller-lifecycle-operator-sdk v0.2.1
 	kubevirt.io/qe-tools v0.1.7
@@ -34,7 +34,6 @@ require (
 )
 
 replace (
-	github.com/go-kit/kit => github.com/go-kit/kit v0.3.0
 	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20210713130143-be21c6cb1bea // release-4.8

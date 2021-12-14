@@ -20,9 +20,9 @@
 package v1
 
 //go:generate swagger-doc
-//go:generate deepcopy-gen -i . --go-header-file ../../../../../../hack/boilerplate/boilerplate.go.txt
-//go:generate defaulter-gen -i . --go-header-file ../../../../../../hack/boilerplate/boilerplate.go.txt
-//go:generate openapi-gen -i kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1,k8s.io/apimachinery/pkg/util/intstr,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/runtime,k8s.io/api/core/v1,kubevirt.io/client-go/api/v1,github.com/openshift/api/operator/v1 --output-package=kubevirt.io/kubevirt/staging/src/kubevirt.io/client-go/api/v1  --go-header-file ../../../../../../hack/boilerplate/boilerplate.go.txt
+//go:generate deepcopy-gen -i . --go-header-file ../../../../../../../hack/boilerplate/boilerplate.go.txt
+//go:generate defaulter-gen -i . --go-header-file ../../../../../../../hack/boilerplate/boilerplate.go.txt
+//go:generate openapi-gen -i kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1,k8s.io/apimachinery/pkg/util/intstr,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/runtime,k8s.io/api/core/v1,kubevirt.io/client-go/apis/core/v1,github.com/openshift/api/operator/v1 --output-package=kubevirt.io/kubevirt/staging/src/kubevirt.io/client-go/apis/core/v1  --go-header-file ../../../../../../../hack/boilerplate/boilerplate.go.txt
 
 /*
  ATTENTION: Rerun code generators when comments on structs or fields are modified.
@@ -208,6 +208,8 @@ type VirtualMachineInstanceStatus struct {
 	MigrationState *VirtualMachineInstanceMigrationState `json:"migrationState,omitempty"`
 	// Represents the method using which the vmi can be migrated: live migration or block migration
 	MigrationMethod VirtualMachineInstanceMigrationMethod `json:"migrationMethod,omitempty"`
+	// This represents the migration transport
+	MigrationTransport VirtualMachineInstanceMigrationTransport `json:"migrationTransport,omitempty"`
 	// The Quality of Service (QOS) classification assigned to the virtual machine instance based on resource requirements
 	// See PodQOSClass type for available QOS classes
 	// More info: https://git.k8s.io/community/contributors/design-proposals/node/resource-qos.md
@@ -238,6 +240,34 @@ type VirtualMachineInstanceStatus struct {
 
 	// +optional
 	TopologyHints *TopologyHints `json:"topologyHints,omitempty"`
+
+	//VirtualMachineRevisionName is used to get the vm revision of the vmi when doing
+	// an online vm snapshot
+	// +optional
+	VirtualMachineRevisionName string `json:"virtualMachineRevisionName,omitempty"`
+}
+
+// PersistentVolumeClaimInfo contains the relavant information virt-handler needs cached about a PVC
+// +k8s:openapi-gen=true
+type PersistentVolumeClaimInfo struct {
+	// AccessModes contains the desired access modes the volume should have.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	// +listType=atomic
+	// +optional
+	AccessModes []k8sv1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
+
+	// VolumeMode defines what type of volume is required by the claim.
+	// Value of Filesystem is implied when not included in claim spec.
+	// +optional
+	VolumeMode *k8sv1.PersistentVolumeMode `json:"volumeMode,omitempty"`
+
+	// Capacity represents the capacity set on the corresponding PVC spec
+	// +optional
+	Capacity k8sv1.ResourceList `json:"capacity,omitempty"`
+
+	// Preallocated indicates if the PVC's storage is preallocated or not
+	// +optional
+	Preallocated bool `json:"preallocated,omitempty"`
 }
 
 // VolumeStatus represents information about the status of volumes attached to the VirtualMachineInstance.
@@ -253,8 +283,12 @@ type VolumeStatus struct {
 	Reason string `json:"reason,omitempty"`
 	// Message is a detailed message about the current hotplug volume phase
 	Message string `json:"message,omitempty"`
+	// PersistentVolumeClaimInfo is information about the PVC that handler requires during start flow
+	PersistentVolumeClaimInfo *PersistentVolumeClaimInfo `json:"persistentVolumeClaimInfo,omitempty"`
 	// If the volume is hotplug, this will contain the hotplug status.
 	HotplugVolume *HotplugVolumeStatus `json:"hotplugVolume,omitempty"`
+	// Represents the size of the volume
+	Size int64 `json:"size,omitempty"`
 }
 
 // HotplugVolumeStatus represents the hotplug status of the volume
@@ -337,6 +371,11 @@ func (v *VirtualMachineInstance) IsCPUDedicated() bool {
 	return v.Spec.Domain.CPU != nil && v.Spec.Domain.CPU.DedicatedCPUPlacement
 }
 
+func (v *VirtualMachineInstance) IsBootloaderEFI() bool {
+	return v.Spec.Domain.Firmware != nil && v.Spec.Domain.Firmware.Bootloader != nil &&
+		v.Spec.Domain.Firmware.Bootloader.EFI != nil
+}
+
 // WantsToHaveQOSGuaranteed checks if cpu and memoyr limits and requests are identical on the VMI.
 // This is the indicator that people want a VMI with QOS of guaranteed
 func (v *VirtualMachineInstance) WantsToHaveQOSGuaranteed() bool {
@@ -350,6 +389,10 @@ func (v *VirtualMachineInstance) ShouldStartPaused() bool {
 	return v.Spec.StartStrategy != nil && *v.Spec.StartStrategy == StartStrategyPaused
 }
 
+func (v *VirtualMachineInstance) IsRealtimeEnabled() bool {
+	return v.Spec.Domain.CPU != nil && v.Spec.Domain.CPU.Realtime != nil
+}
+
 //
 // +k8s:openapi-gen=true
 type VirtualMachineInstanceConditionType string
@@ -360,7 +403,7 @@ const (
 	// and some actions are taken to provision the PVCs for the DataVolumes
 	VirtualMachineInstanceProvisioning VirtualMachineInstanceConditionType = "Provisioning"
 
-	// VMIReady means the pod is able to service requests and should be added to the
+	// Ready means the VMI is able to service requests and should be added to the
 	// load balancing pools of all matching services.
 	VirtualMachineInstanceReady VirtualMachineInstanceConditionType = "Ready"
 
@@ -395,8 +438,17 @@ const (
 )
 
 const (
-	// PodTerminatingReason indicates on the PodReady condition on the VMI if the underlying pod is terminating
+	// PodTerminatingReason indicates on the Ready condition on the VMI if the underlying pod is terminating
 	PodTerminatingReason = "PodTerminating"
+
+	// PodNotExistsReason indicates on the Ready condition on the VMI if the underlying pod does not exist
+	PodNotExistsReason = "PodNotExists"
+
+	// PodConditionMissingReason indicates on the Ready condition on the VMI if the underlying pod does not report a Ready condition
+	PodConditionMissingReason = "PodConditionMissing"
+
+	// GuestNotRunningReason indicates on the Ready condition on the VMI if the underlying guest VM is not running
+	GuestNotRunningReason = "GuestNotRunning"
 )
 
 // +k8s:openapi-gen=true
@@ -516,6 +568,8 @@ type VirtualMachineInstanceMigrationState struct {
 	TargetNode string `json:"targetNode,omitempty"`
 	// The target pod that the VMI is moving to
 	TargetPod string `json:"targetPod,omitempty"`
+	// The UID of the target attachment pod for hotplug volumes
+	TargetAttachmentPodUID types.UID `json:"targetAttachmentPodUID,omitempty"`
 	// The source node that the VMI originated on
 	SourceNode string `json:"sourceNode,omitempty"`
 	// Indicates the migration completed
@@ -554,6 +608,15 @@ const (
 	MigrationPreCopy MigrationMode = "PreCopy"
 	// MigrationPostCopy means the VMI migrations that is currently running is in post copy mode
 	MigrationPostCopy MigrationMode = "PostCopy"
+)
+
+//
+// +k8s:openapi-gen=true
+type VirtualMachineInstanceMigrationTransport string
+
+const (
+	// MigrationTransportUnix means that the VMI will be migrated using the unix URI
+	MigrationTransportUnix VirtualMachineInstanceMigrationTransport = "Unix"
 )
 
 //
@@ -611,6 +674,8 @@ const (
 	FuncTestForceLauncherMigrationFailureAnnotation string = "kubevirt.io/func-test-force-launcher-migration-failure"
 	// Used by functional tests to prevent virt launcher from finishing the target pod preparation.
 	FuncTestBlockLauncherPrepareMigrationTargetAnnotation string = "kubevirt.io/func-test-block-migration-target-preparation"
+	// Used by functional tests to simulate virt-launcher crash looping
+	FuncTestLauncherFailFastAnnotation string = "kubevirt.io/func-test-virt-launcher-fail-fast"
 	// This label is used to match virtual machine instance IDs with pods.
 	// Similar to kubevirt.io/domain. Used on Pod.
 	// Internal use only.
@@ -681,7 +746,10 @@ const (
 	// This label indicates the object is a part of the install strategy retrieval process.
 	InstallStrategyLabel = "kubevirt.io/install-strategy"
 
-	VirtualMachineInstanceFinalizer          string = "foregroundDeleteVirtualMachine"
+	// Set by VMI controller to ensure VMIs are processed during deletion
+	VirtualMachineInstanceFinalizer string = "foregroundDeleteVirtualMachine"
+	// Set By VM controller on VMIs to ensure VMIs are processed by VM controller during deletion
+	VirtualMachineControllerFinalizer        string = "kubevirt.io/virtualMachineControllerFinalize"
 	VirtualMachineInstanceMigrationFinalizer string = "kubevirt.io/migrationJobFinalize"
 	CPUManager                               string = "cpumanager"
 	// This annotation is used to inject ignition data
@@ -709,6 +777,18 @@ const (
 	MemfdMemoryBackend         string = "kubevirt.io/memfd"
 
 	MigrationSelectorLabel = "kubevirt.io/vmi-name"
+
+	// This annotation represents vmi running nonroot implementation
+	NonRootVMIAnnotation = "kubevirt.io/nonroot"
+
+	// This annotation is to keep virt launcher container alive when an VMI encounters a failure for debugging purpose
+	KeepLauncherAfterFailureAnnotation string = "kubevirt.io/keep-launcher-alive-after-failure"
+
+	// MigrationTransportUnixAnnotation means that the VMI will be migrated using the unix URI
+	MigrationTransportUnixAnnotation string = "kubevirt.io/migrationTransportUnix"
+
+	// RealtimeLabel marks the node as capable of running realtime workloads
+	RealtimeLabel string = "kubevirt.io/realtime"
 )
 
 func NewVMI(name string, uid types.UID) *VirtualMachineInstance {
@@ -1145,6 +1225,9 @@ type VirtualMachineSpec struct {
 	// mutually exclusive with Running
 	RunStrategy *VirtualMachineRunStrategy `json:"runStrategy,omitempty" optional:"true"`
 
+	// FlavorMatcher references a flavor that is used to fill fields in Template
+	Flavor *FlavorMatcher `json:"flavor,omitempty" optional:"true"`
+
 	// Template is the direct specification of VirtualMachineInstance
 	Template *VirtualMachineInstanceTemplateSpec `json:"template"`
 
@@ -1187,13 +1270,41 @@ const (
 	// VirtualMachineStatusTerminating indicates that the virtual machine is in the process of deletion,
 	// as well as its associated resources (VirtualMachineInstance, DataVolumes, …).
 	VirtualMachineStatusTerminating VirtualMachinePrintableStatus = "Terminating"
+	// VirtualMachineStatusCrashLoopBackOff indicates that the virtual machine is currently in a crash loop waiting to be retried.
+	VirtualMachineStatusCrashLoopBackOff VirtualMachinePrintableStatus = "CrashLoopBackOff"
 	// VirtualMachineStatusMigrating indicates that the virtual machine is in the process of being migrated
 	// to another host.
 	VirtualMachineStatusMigrating VirtualMachinePrintableStatus = "Migrating"
 	// VirtualMachineStatusUnknown indicates that the state of the virtual machine could not be obtained,
 	// typically due to an error in communicating with the host on which it's running.
 	VirtualMachineStatusUnknown VirtualMachinePrintableStatus = "Unknown"
+	// VirtualMachineStatusUnschedulable indicates that an error has occurred while scheduling the virtual machine,
+	// e.g. due to unsatisfiable resource requests or unsatisfiable scheduling constraints.
+	VirtualMachineStatusUnschedulable VirtualMachinePrintableStatus = "ErrorUnschedulable"
+	// VirtualMachineStatusErrImagePull indicates that an error has occured while pulling an image for
+	// a containerDisk VM volume.
+	VirtualMachineStatusErrImagePull VirtualMachinePrintableStatus = "ErrImagePull"
+	// VirtualMachineStatusImagePullBackOff indicates that an error has occured while pulling an image for
+	// a containerDisk VM volume, and that kubelet is backing off before retrying.
+	VirtualMachineStatusImagePullBackOff VirtualMachinePrintableStatus = "ImagePullBackOff"
+	// VirtualMachineStatusPvcNotFound indicates that the virtual machine references a PVC volume which doesn't exist.
+	VirtualMachineStatusPvcNotFound VirtualMachinePrintableStatus = "ErrorPvcNotFound"
+	// VirtualMachineStatusDataVolumeNotFound indicates that the virtual machine references a DataVolume volume which doesn't exist.
+	VirtualMachineStatusDataVolumeNotFound VirtualMachinePrintableStatus = "ErrorDataVolumeNotFound"
+	// VirtualMachineStatusDataVolumeError indicates that an error has been reported by one of the DataVolumes
+	// referenced by the virtual machines.
+	VirtualMachineStatusDataVolumeError VirtualMachinePrintableStatus = "DataVolumeError"
 )
+
+// VirtualMachineStartFailure tracks VMIs which failed to transition successfully
+// to running using the VM status
+//
+// +k8s:openapi-gen=true
+type VirtualMachineStartFailure struct {
+	ConsecutiveFailCount int          `json:"consecutiveFailCount,omitempty"`
+	LastFailedVMIUID     types.UID    `json:"lastFailedVMIUID,omitempty"`
+	RetryAfterTimestamp  *metav1.Time `json:"retryAfterTimestamp,omitempty"`
+}
 
 // VirtualMachineStatus represents the status returned by the
 // controller to describe how the VirtualMachine is doing
@@ -1202,6 +1313,8 @@ const (
 type VirtualMachineStatus struct {
 	// SnapshotInProgress is the name of the VirtualMachineSnapshot currently executing
 	SnapshotInProgress *string `json:"snapshotInProgress,omitempty"`
+	// RestoreInProgress is the name of the VirtualMachineRestore currently executing
+	RestoreInProgress *string `json:"restoreInProgress,omitempty"`
 	// Created indicates if the virtual machine is created in the cluster
 	Created bool `json:"created,omitempty"`
 	// Ready indicates if the virtual machine is running and ready
@@ -1221,6 +1334,12 @@ type VirtualMachineStatus struct {
 	// VolumeSnapshotStatuses indicates a list of statuses whether snapshotting is
 	// supported by each volume.
 	VolumeSnapshotStatuses []VolumeSnapshotStatus `json:"volumeSnapshotStatuses,omitempty" optional:"true"`
+
+	// StartFailure tracks consecutive VMI startup failures for the purposes of
+	// crash loop backoffs
+	// +nullable
+	// +optional
+	StartFailure *VirtualMachineStartFailure `json:"startFailure,omitempty" optional:"true"`
 }
 
 // +k8s:openapi-gen=true
@@ -1343,6 +1462,9 @@ type Handler struct {
 	// If the guest agent is not available, this probe will fail.
 	// +optional
 	Exec *k8sv1.ExecAction `json:"exec,omitempty" protobuf:"bytes,1,opt,name=exec"`
+	// GuestAgentPing contacts the qemu-guest-agent for availability checks.
+	// +optional
+	GuestAgentPing *GuestAgentPing `json:"guestAgentPing,omitempty"`
 	// HTTPGet specifies the http request to perform.
 	// +optional
 	HTTPGet *k8sv1.HTTPGetAction `json:"httpGet,omitempty"`
@@ -1814,6 +1936,12 @@ type VirtualMachineInstanceFileSystem struct {
 	TotalBytes     int    `json:"totalBytes"`
 }
 
+// FreezeUnfreezeTimeout represent the time unfreeze will be triggered if guest was not unfrozen by unfreeze command
+// +k8s:openapi-gen=true
+type FreezeUnfreezeTimeout struct {
+	UnfreezeTimeout *metav1.Duration `json:"unfreezeTimeout"`
+}
+
 // AddVolumeOptions is provided when dynamically hot plugging a volume and disk
 // +k8s:openapi-gen=true
 type AddVolumeOptions struct {
@@ -1835,6 +1963,37 @@ type RemoveVolumeOptions struct {
 	Name string `json:"name"`
 }
 
+// +k8s:openapi-gen=true
+type TokenBucketRateLimiter struct {
+	// QPS indicates the maximum QPS to the apiserver from this client.
+	// If it's zero, the component default will be used
+	QPS float32 `json:"qps"`
+
+	// Maximum burst for throttle.
+	// If it's zero, the component default will be used
+	Burst int `json:"burst"`
+}
+
+// +k8s:openapi-gen=true
+type RateLimiter struct {
+	TokenBucketRateLimiter *TokenBucketRateLimiter `json:"tokenBucketRateLimiter,omitempty"`
+}
+
+// RESTClientConfiguration allows configuring certain aspects of the k8s rest client.
+// +k8s:openapi-gen=true
+type RESTClientConfiguration struct {
+	//RateLimiter allows selecting and configuring different rate limiters for the k8s client.
+	RateLimiter *RateLimiter `json:"rateLimiter,omitempty"`
+}
+
+// ReloadableComponentConfiguration holds all generic k8s configuration options which can
+// be reloaded by components without requiring a restart.
+// +k8s:openapi-gen=true
+type ReloadableComponentConfiguration struct {
+	//RestClient can be used to tune certain aspects of the k8s client in use.
+	RestClient *RESTClientConfiguration `json:"restClient,omitempty"`
+}
+
 // KubeVirtConfiguration holds all kubevirt configurations
 // +k8s:openapi-gen=true
 type KubeVirtConfiguration struct {
@@ -1848,13 +2007,20 @@ type KubeVirtConfiguration struct {
 	NetworkConfiguration   *NetworkConfiguration   `json:"network,omitempty"`
 	OVMFPath               string                  `json:"ovmfPath,omitempty"`
 	SELinuxLauncherType    string                  `json:"selinuxLauncherType,omitempty"`
+	DefaultRuntimeClass    string                  `json:"defaultRuntimeClass,omitempty"`
 	SMBIOSConfig           *SMBiosConfiguration    `json:"smbios,omitempty"`
 	// deprecated
-	SupportedGuestAgentVersions []string              `json:"supportedGuestAgentVersions,omitempty"`
-	MemBalloonStatsPeriod       *uint32               `json:"memBalloonStatsPeriod,omitempty"`
-	PermittedHostDevices        *PermittedHostDevices `json:"permittedHostDevices,omitempty"`
-	MinCPUModel                 string                `json:"minCPUModel,omitempty"`
-	ObsoleteCPUModels           map[string]bool       `json:"obsoleteCPUModels,omitempty"`
+	SupportedGuestAgentVersions    []string                          `json:"supportedGuestAgentVersions,omitempty"`
+	MemBalloonStatsPeriod          *uint32                           `json:"memBalloonStatsPeriod,omitempty"`
+	PermittedHostDevices           *PermittedHostDevices             `json:"permittedHostDevices,omitempty"`
+	MediatedDevicesConfiguration   *MediatedDevicesConfiguration     `json:"mediatedDevicesConfiguration,omitempty"`
+	MinCPUModel                    string                            `json:"minCPUModel,omitempty"`
+	ObsoleteCPUModels              map[string]bool                   `json:"obsoleteCPUModels,omitempty"`
+	VirtualMachineInstancesPerNode *int                              `json:"virtualMachineInstancesPerNode,omitempty"`
+	APIConfiguration               *ReloadableComponentConfiguration `json:"apiConfiguration,omitempty"`
+	WebhookConfiguration           *ReloadableComponentConfiguration `json:"webhookConfiguration,omitempty"`
+	ControllerConfiguration        *ReloadableComponentConfiguration `json:"controllerConfiguration,omitempty"`
+	HandlerConfiguration           *ReloadableComponentConfiguration `json:"handlerConfiguration,omitempty"`
 }
 
 //
@@ -1882,6 +2048,12 @@ type MigrationConfiguration struct {
 	DisableTLS                        *bool              `json:"disableTLS,omitempty"`
 }
 
+// DiskVerification holds container disks verification limits
+// +k8s:openapi-gen=true
+type DiskVerification struct {
+	MemoryLimit *resource.Quantity `json:"memoryLimit"`
+}
+
 // DeveloperConfiguration holds developer options
 // +k8s:openapi-gen=true
 type DeveloperConfiguration struct {
@@ -1890,12 +2062,15 @@ type DeveloperConfiguration struct {
 	MinimumReservePVCBytes uint64            `json:"minimumReservePVCBytes,omitempty"`
 	MemoryOvercommit       int               `json:"memoryOvercommit,omitempty"`
 	NodeSelectors          map[string]string `json:"nodeSelectors,omitempty"`
-	UseEmulation           bool              `json:"useEmulation,omitempty"`
-	CPUAllocationRatio     int               `json:"cpuAllocationRatio,omitempty"`
+	// UseEmulation can be set to true to allow fallback to software emulation
+	// in case hardware-assisted emulation is not available.
+	UseEmulation       bool `json:"useEmulation,omitempty"`
+	CPUAllocationRatio int  `json:"cpuAllocationRatio,omitempty"`
 	// Allow overriding the automatically determined minimum TSC frequency of the cluster
 	// and fixate the minimum to this frequency.
-	MinimumClusterTSCFrequency *int64        `json:"minimumClusterTSCFrequency,omitempty"`
-	LogVerbosity               *LogVerbosity `json:"logVerbosity,omitempty"`
+	MinimumClusterTSCFrequency *int64            `json:"minimumClusterTSCFrequency,omitempty"`
+	DiskVerification           *DiskVerification `json:"diskVerification,omitempty"`
+	LogVerbosity               *LogVerbosity     `json:"logVerbosity,omitempty"`
 }
 
 // LogVerbosity sets log verbosity level of  various components
@@ -1922,7 +2097,7 @@ type PermittedHostDevices struct {
 // PciHostDevice represents a host PCI device allowed for passthrough
 // +k8s:openapi-gen=true
 type PciHostDevice struct {
-	// The vendor_id:product_id tupple of the PCI device
+	// The vendor_id:product_id tuple of the PCI device
 	PCIVendorSelector string `json:"pciVendorSelector"`
 	// The name of the resource that is representing the device. Exposed by
 	// a device plugin and requested by VMs. Typically of the form
@@ -1943,10 +2118,58 @@ type MediatedHostDevice struct {
 	ExternalResourceProvider bool   `json:"externalResourceProvider,omitempty"`
 }
 
+// MediatedDevicesConfiguration holds inforamtion about MDEV types to be defined, if available
+// +k8s:openapi-gen=true
+type MediatedDevicesConfiguration struct {
+	// +listType=atomic
+	MediatedDevicesTypes []string `json:"mediatedDevicesTypes,omitempty"`
+}
+
 // NetworkConfiguration holds network options
 // +k8s:openapi-gen=true
 type NetworkConfiguration struct {
 	NetworkInterface                  string `json:"defaultNetworkInterface,omitempty"`
 	PermitSlirpInterface              *bool  `json:"permitSlirpInterface,omitempty"`
 	PermitBridgeInterfaceOnPodNetwork *bool  `json:"permitBridgeInterfaceOnPodNetwork,omitempty"`
+}
+
+// GuestAgentPing configures the guest-agent based ping probe
+// +k8s:openapi-gen=true
+type GuestAgentPing struct {
+}
+
+// +k8s:openapi-gen=true
+type ProfilerResult struct {
+	PprofData map[string][]byte `json:"pprofData,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type ClusterProfilerResults struct {
+	ComponentResults map[string]ProfilerResult `json:"componentResults"`
+	Continue         string                    `json:"continue,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type ClusterProfilerRequest struct {
+	LabelSelector string `json:"labelSelector,omitempty"`
+	Continue      string `json:"continue,omitempty"`
+	PageSize      int64  `json:"pageSize"`
+}
+
+// FlavorMatcher references a flavor that is used to fill fields in the VMI template.
+// +k8s:openapi-gen=true
+type FlavorMatcher struct {
+	// Name is the name of the VirtualMachineFlavor or VirtualMachineClusterFlavor
+	Name string `json:"name"`
+
+	// Kind specifies which flavor resource is referenced.
+	// Allowed values are: "VirtualMachineFlavor" and "VirtualMachineClusterFlavor".
+	// If not specified, "VirtualMachineClusterFlavor" is used by default.
+	//
+	// +optional
+	Kind string `json:"kind,omitempty"`
+
+	// Profile is the name of a custom profile in the flavor. If left empty, the default profile is used.
+	// +optional
+	Profile string `json:"profile,omitempty"`
 }

@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	kubevirtv1 "kubevirt.io/client-go/api/v1"
+	kubevirtv1 "kubevirt.io/client-go/apis/core/v1"
 
 	k6tobjs "kubevirt.io/ssp-operator/internal/template-validator/kubevirtjobs"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
