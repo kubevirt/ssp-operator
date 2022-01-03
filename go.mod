@@ -27,7 +27,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20210709001253-0e1f9d693477
 	kubevirt.io/client-go v0.47.1
-	kubevirt.io/containerized-data-importer-api v1.41.1
+	kubevirt.io/containerized-data-importer-api v1.42.1
 	kubevirt.io/controller-lifecycle-operator-sdk v0.2.1
 	kubevirt.io/qe-tools v0.1.7
 	sigs.k8s.io/controller-runtime v0.9.3
