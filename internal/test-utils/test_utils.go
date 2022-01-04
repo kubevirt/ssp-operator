@@ -10,12 +10,12 @@ import (
 
 func ExpectResourceExists(resource client.Object, request common.Request) {
 	key := client.ObjectKeyFromObject(resource)
-	Expect(request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
+	ExpectWithOffset(1, request.Client.Get(request.Context, key, resource)).ToNot(HaveOccurred())
 }
 
 func ExpectResourceNotExists(resource client.Object, request common.Request) {
 	key := client.ObjectKeyFromObject(resource)
 	err := request.Client.Get(request.Context, key, resource)
-	Expect(err).To(HaveOccurred())
-	Expect(errors.IsNotFound(err)).To(BeTrue())
+	ExpectWithOffset(1, err).To(HaveOccurred())
+	ExpectWithOffset(1, errors.IsNotFound(err)).To(BeTrue())
 }

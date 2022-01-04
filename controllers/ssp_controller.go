@@ -66,6 +66,7 @@ var kvsspCRDs = map[string]string{
 // sspReconciler reconciles a SSP object
 type sspReconciler struct {
 	client           client.Client
+	uncachedReader   client.Reader
 	log              logr.Logger
 	operands         []operands.Operand
 	lastSspSpec      ssp.SSPSpec
@@ -73,9 +74,10 @@ type sspReconciler struct {
 	topologyMode     osconfv1.TopologyMode
 }
 
-func NewSspReconciler(client client.Client, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand) *sspReconciler {
+func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand) *sspReconciler {
 	return &sspReconciler{
 		client:           client,
+		uncachedReader:   uncachedReader,
 		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
 		operands:         operands,
 		subresourceCache: common.VersionCache{},
@@ -134,13 +136,14 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	r.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
-		Request:      req,
-		Client:       r.client,
-		Context:      ctx,
-		Instance:     instance,
-		Logger:       reqLogger,
-		VersionCache: r.subresourceCache,
-		TopologyMode: r.topologyMode,
+		Request:        req,
+		Client:         r.client,
+		UncachedReader: r.uncachedReader,
+		Context:        ctx,
+		Instance:       instance,
+		Logger:         reqLogger,
+		VersionCache:   r.subresourceCache,
+		TopologyMode:   r.topologyMode,
 	}
 
 	if !isInitialized(sspRequest.Instance) {

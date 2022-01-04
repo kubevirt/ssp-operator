@@ -50,7 +50,7 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 		return err
 	}
 
-	reconciler := NewSspReconciler(mgr.GetClient(), infrastructureTopology, sspOperands)
+	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands)
 
 	if requiredCrdsExist(requiredCrds, crdList.Items) {
 		// No need to start CRD controller
