@@ -20,7 +20,7 @@ var _ = Describe("Template bundle", func() {
 
 	It("should correctly read templates", func() {
 		templates := testBundle.Templates
-		Expect(templates).To(HaveLen(2))
+		Expect(templates).To(HaveLen(3))
 
 		templ1 := templates[0]
 		Expect(templ1.Name).To(Equal("centos8-server-medium"))
@@ -31,6 +31,11 @@ var _ = Describe("Template bundle", func() {
 		Expect(templ2.Name).To(Equal("windows10-desktop-medium"))
 		Expect(templ2.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
 		Expect(templ2.Objects).To(HaveLen(1))
+
+		templ3 := templates[2]
+		Expect(templ3.Name).To(Equal("rhel8-saphana-tiny"))
+		Expect(templ3.Annotations).To(HaveKey("name.os.template.kubevirt.io/rhel8.4"))
+		Expect(templ3.Objects).To(HaveLen(1))
 	})
 
 	It("should create DataSources", func() {
