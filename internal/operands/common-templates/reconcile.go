@@ -105,12 +105,45 @@ func isUpgradingNow(request *common.Request) bool {
 func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	objects := []client.Object{}
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
+
+	deprecatedTemplates, err := getDeprecatedTemplates(request)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, obj := range deprecatedTemplates.Items {
+		obj.ObjectMeta.Namespace = namespace
+		objects = append(objects, &obj)
+	}
+
 	for index := range c.templatesBundle {
 		c.templatesBundle[index].ObjectMeta.Namespace = namespace
 		objects = append(objects, &c.templatesBundle[index])
 	}
 
 	return common.DeleteAll(request, objects...)
+}
+
+func getDeprecatedTemplates(request *common.Request) (*templatev1.TemplateList, error) {
+	deprecatedTemplates := &templatev1.TemplateList{}
+	err := request.Client.List(request.Context, deprecatedTemplates, &client.ListOptions{
+		LabelSelector: getDeprecatedTemplatesLabelSelector(),
+		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,
+	})
+
+	// There might not be any templates (in case of a fresh deployment), so a NotFound error is accepted
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+	return deprecatedTemplates, nil
+}
+
+func getDeprecatedTemplatesLabelSelector() labels.Selector {
+	deprecatedRequirement, err := labels.NewRequirement(TemplateDeprecatedAnnotation, selection.Equals, []string{"true"})
+	if err != nil {
+		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateDeprecatedAnnotation, "true"))
+	}
+	return labels.NewSelector().Add(*deprecatedRequirement)
 }
 
 func getOldTemplatesLabelSelector() labels.Selector {
@@ -162,6 +195,7 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 							delete(foundTemplate.Labels, key)
 						}
 					}
+					foundTemplate.Labels[TemplateDeprecatedAnnotation] = "true"
 				}).
 				Reconcile()
 		})

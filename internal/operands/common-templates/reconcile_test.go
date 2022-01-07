@@ -202,7 +202,7 @@ var _ = Describe("Common-Templates operand", func() {
 func getTestTemplates() []templatev1.Template {
 	return []templatev1.Template{{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "centos8-server-medium",
+			Name: "centos-stream8-server-medium",
 			Labels: map[string]string{
 				TemplateTypeLabel:                      TemplateTypeLabelBaseValue,
 				TemplateVersionLabel:                   "v0.16.2",
