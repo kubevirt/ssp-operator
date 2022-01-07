@@ -23,8 +23,8 @@ var _ = Describe("Template bundle", func() {
 		Expect(templates).To(HaveLen(3))
 
 		templ1 := templates[0]
-		Expect(templ1.Name).To(Equal("centos8-server-medium"))
-		Expect(templ1.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos8"))
+		Expect(templ1.Name).To(Equal("centos-stream8-server-medium"))
+		Expect(templ1.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
 		Expect(templ1.Objects).To(HaveLen(1))
 
 		templ2 := templates[1]
@@ -43,9 +43,9 @@ var _ = Describe("Template bundle", func() {
 		Expect(dataSources).To(HaveLen(2))
 
 		ds1 := dataSources[0]
-		Expect(ds1.Name).To(Equal("centos8"))
+		Expect(ds1.Name).To(Equal("centos-stream8"))
 		Expect(ds1.Namespace).To(Equal("kubevirt-os-images"))
-		Expect(ds1.Spec.Source.PVC.Name).To(Equal("centos8"))
+		Expect(ds1.Spec.Source.PVC.Name).To(Equal("centos-stream8"))
 		Expect(ds1.Spec.Source.PVC.Namespace).To(Equal("kubevirt-os-images"))
 
 		ds2 := dataSources[1]
