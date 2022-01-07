@@ -2,13 +2,14 @@ package template_bundle
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	kubevirtv1 "kubevirt.io/client-go/apis/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 )
 
@@ -57,36 +58,24 @@ func readTemplates(filename string) ([]templatev1.Template, error) {
 }
 
 func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSource, error) {
-	const dataSourceName = "SRC_PVC_NAME"
-	const dataSourceNamespace = "SRC_PVC_NAMESPACE"
-
 	var dataSources []cdiv1beta1.DataSource
 	for i := range templates {
 		template := &templates[i]
 
-		vm := &kubevirtv1.VirtualMachine{}
-		err := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(template.Objects[0].Raw), 1024).Decode(vm)
+		usesDataSources, err := vmTemplateUsesSourceRef(template)
 		if err != nil {
 			return nil, err
-		}
-
-		usesDataSources := false
-		for _, volumeTemplate := range vm.Spec.DataVolumeTemplates {
-			if volumeTemplate.Spec.SourceRef != nil {
-				usesDataSources = true
-				break
-			}
 		}
 		if !usesDataSources {
 			continue
 		}
 
-		name, exists := findParameterValue(dataSourceName, template)
+		name, exists := findDataSourceName(template)
 		if !exists {
 			continue
 		}
 
-		namespace, exists := findParameterValue(dataSourceNamespace, template)
+		namespace, exists := findDataSourceNamespace(template)
 		if !exists {
 			continue
 		}
@@ -95,6 +84,65 @@ func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSourc
 	}
 
 	return dataSources, nil
+}
+
+func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
+	vmUnstructured := &unstructured.Unstructured{}
+	err := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(template.Objects[0].Raw), 1024).Decode(vmUnstructured)
+	if err != nil {
+		return false, err
+	}
+
+	isVm := vmUnstructured.GetAPIVersion() == "kubevirt.io/v1" &&
+		vmUnstructured.GetKind() == "VirtualMachine"
+	if !isVm {
+		return false, fmt.Errorf("template %s contains unexpected object: %s, %s", template.Name, vmUnstructured.GetAPIVersion(), vmUnstructured.GetKind())
+	}
+
+	dataVolumes, found, err := unstructured.NestedSlice(vmUnstructured.UnstructuredContent(),
+		"spec", "dataVolumeTemplates")
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+
+	for _, volumeTemplate := range dataVolumes {
+		volumeObj := volumeTemplate.(map[string]interface{})
+		val, exists, err := unstructured.NestedFieldNoCopy(volumeObj,
+			"spec", "sourceRef")
+		if err != nil {
+			return false, err
+		}
+		if exists && val != nil {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func findDataSourceName(template *templatev1.Template) (string, bool) {
+	const dataSourceNameOld = "SRC_PVC_NAME"
+	const dataSourceName = "DATA_SOURCE_NAME"
+
+	name, exists := findParameterValue(dataSourceName, template)
+	if exists {
+		return name, true
+	}
+	return findParameterValue(dataSourceNameOld, template)
+}
+
+func findDataSourceNamespace(template *templatev1.Template) (string, bool) {
+	const dataSourceNamespaceOld = "SRC_PVC_NAMESPACE"
+	const dataSourceNamespace = "DATA_SOURCE_NAMESPACE"
+
+	name, exists := findParameterValue(dataSourceNamespace, template)
+	if exists {
+		return name, true
+	}
+	return findParameterValue(dataSourceNamespaceOld, template)
 }
 
 func findParameterValue(name string, template *templatev1.Template) (string, bool) {
