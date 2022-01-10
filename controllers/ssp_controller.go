@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	osconfv1 "github.com/openshift/api/config/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -69,14 +70,16 @@ type sspReconciler struct {
 	operands         []operands.Operand
 	lastSspSpec      ssp.SSPSpec
 	subresourceCache common.VersionCache
+	topologyMode     osconfv1.TopologyMode
 }
 
-func NewSspReconciler(client client.Client, operands []operands.Operand) *sspReconciler {
+func NewSspReconciler(client client.Client, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand) *sspReconciler {
 	return &sspReconciler{
 		client:           client,
 		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
 		operands:         operands,
 		subresourceCache: common.VersionCache{},
+		topologyMode:     infrastructureTopology,
 	}
 }
 
@@ -85,6 +88,7 @@ var _ reconcile.Reconciler = &sspReconciler{}
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/finalizers,verbs=update
+// +kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtcommontemplatesbundles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtmetricsaggregations,verbs=get;list;watch;create;update;patch;delete
@@ -136,6 +140,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		Instance:     instance,
 		Logger:       reqLogger,
 		VersionCache: r.subresourceCache,
+		TopologyMode: r.topologyMode,
 	}
 
 	if !isInitialized(sspRequest.Instance) {

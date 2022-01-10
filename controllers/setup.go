@@ -2,19 +2,20 @@ package controllers
 
 import (
 	"context"
-	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"path/filepath"
 
-	"sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
+	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	"kubevirt.io/ssp-operator/internal/operands/common-templates"
-	"kubevirt.io/ssp-operator/internal/operands/data-sources"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	"kubevirt.io/ssp-operator/internal/operands/node-labeller"
-	"kubevirt.io/ssp-operator/internal/operands/template-validator"
+	node_labeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
+	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
+	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
@@ -44,7 +45,12 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 		return err
 	}
 
-	reconciler := NewSspReconciler(mgr.GetClient(), sspOperands)
+	infrastructureTopology, err := common.GetInfrastructureTopology(mgr.GetAPIReader())
+	if err != nil {
+		return err
+	}
+
+	reconciler := NewSspReconciler(mgr.GetClient(), infrastructureTopology, sspOperands)
 
 	if requiredCrdsExist(requiredCrds, crdList.Items) {
 		// No need to start CRD controller
