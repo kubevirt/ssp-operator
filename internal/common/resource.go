@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 
@@ -126,15 +125,50 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	if r.addLabels {
 		AddAppLabels(r.request.Instance, r.operandName, r.operandComponent, r.resource)
 	}
-	return createOrUpdate(
-		r.request,
-		r.resource,
-		r.isClusterResource,
-		r.immutableSpec,
-		r.updateFunc,
-		r.statusFunc,
-		r.specGetter,
-	)
+
+	err := setOwner(r.request, r.resource, r.isClusterResource)
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+
+	found := newEmptyResource(r.resource)
+	found.SetName(r.resource.GetName())
+	found.SetNamespace(r.resource.GetNamespace())
+	mutateFn := func() error {
+		if !found.GetDeletionTimestamp().IsZero() {
+			// Skip update, because the resource is being deleted
+			return nil
+		}
+
+		// We expect users will not add any other owner references,
+		// if that is not correct, this code needs to be changed.
+		found.SetOwnerReferences(r.resource.GetOwnerReferences())
+
+		updateLabels(r.resource, found)
+		updateAnnotations(r.resource, found)
+		if !r.request.VersionCache.Contains(found) {
+			// The generation was updated by other cluster components,
+			// operator needs to update the resource
+			r.updateFunc(r.resource, found)
+		}
+		return nil
+	}
+
+	res, err := r.createOrUpdateWithImmutableSpec(found, mutateFn)
+	if err != nil {
+		r.request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
+		return ReconcileResult{}, err
+	}
+	if !found.GetDeletionTimestamp().IsZero() {
+		r.request.VersionCache.RemoveObj(found)
+		return resourceDeletedResult(r.resource, res), nil
+	}
+
+	r.request.VersionCache.Add(found)
+	logOperation(res, found, r.request.Logger)
+
+	status := r.statusFunc(found)
+	return ReconcileResult{status, r.resource, res}, nil
 }
 
 func CreateOrUpdate(request *Request) ReconcileBuilder {
@@ -217,69 +251,17 @@ func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, e
 	return results, nil
 }
 
-func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, isImmutable bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc, specGetter ResourceSpecGetter) (ReconcileResult, error) {
-	err := setOwner(request, resource, isClusterRes)
-	if err != nil {
-		return ReconcileResult{}, err
-	}
-
-	found := newEmptyResource(resource)
-	found.SetName(resource.GetName())
-	found.SetNamespace(resource.GetNamespace())
-	mutateFn := func() error {
-		if !found.GetDeletionTimestamp().IsZero() {
-			// Skip update, because the resource is being deleted
-			return nil
-		}
-
-		// We expect users will not add any other owner references,
-		// if that is not correct, this code needs to be changed.
-		found.SetOwnerReferences(resource.GetOwnerReferences())
-
-		updateLabels(resource, found)
-		updateAnnotations(resource, found)
-		if !request.VersionCache.Contains(found) {
-			// The generation was updated by other cluster components,
-			// operator needs to update the resource
-			updateResource(resource, found)
-		}
-		return nil
-	}
-
-	var res controllerutil.OperationResult
-	if isImmutable {
-		res, err = createOrUpdateWithImmutableSpec(request.Context, request.Client, found, mutateFn, specGetter)
-	} else {
-		res, err = controllerutil.CreateOrUpdate(request.Context, request.Client, found, mutateFn)
-	}
-
-	if err != nil {
-		request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
-		return ReconcileResult{}, err
-	}
-	if !found.GetDeletionTimestamp().IsZero() {
-		request.VersionCache.RemoveObj(found)
-		return resourceDeletedResult(resource, res), nil
-	}
-
-	request.VersionCache.Add(found)
-	logOperation(res, found, request.Logger)
-
-	status := statusFunc(found)
-	return ReconcileResult{status, resource, res}, nil
-}
-
-// This function is mostly copied from controllerutil.CreateOrUpdate
-func createOrUpdateWithImmutableSpec(ctx context.Context, c client.Client, obj client.Object, f controllerutil.MutateFn, specGetter ResourceSpecGetter) (controllerutil.OperationResult, error) {
+// This function was initially copied from controllerutil.CreateOrUpdate
+func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f controllerutil.MutateFn) (controllerutil.OperationResult, error) {
 	key := client.ObjectKeyFromObject(obj)
-	if err := c.Get(ctx, key, obj); err != nil {
+	if err := r.request.Client.Get(r.request.Context, key, obj); err != nil {
 		if !errors.IsNotFound(err) {
 			return controllerutil.OperationResultNone, err
 		}
 		if err := mutate(f, key, obj); err != nil {
 			return controllerutil.OperationResultNone, err
 		}
-		if err := c.Create(ctx, obj); err != nil {
+		if err := r.request.Client.Create(r.request.Context, obj); err != nil {
 			return controllerutil.OperationResultNone, err
 		}
 		return controllerutil.OperationResultCreated, nil
@@ -294,10 +276,9 @@ func createOrUpdateWithImmutableSpec(ctx context.Context, c client.Client, obj c
 		return controllerutil.OperationResultNone, nil
 	}
 
-	if !equality.Semantic.DeepEqual(specGetter(existing.(client.Object)), specGetter(obj)) {
-		// If the specs are not equal, delete the existing object.
-		// It will be recreated in the next reconcile iteration
-		if err := c.Delete(ctx, obj); err != nil {
+	// If the resource is immutable and specs are not equal, delete it.
+	if r.immutableSpec && !equality.Semantic.DeepEqual(r.specGetter(existing.(client.Object)), r.specGetter(obj)) {
+		if err := r.request.Client.Delete(r.request.Context, obj); err != nil {
 			return controllerutil.OperationResultNone, err
 		}
 		// It is ok to return OperationResultUpdated when the resource was deleted,
@@ -305,7 +286,7 @@ func createOrUpdateWithImmutableSpec(ctx context.Context, c client.Client, obj c
 		return controllerutil.OperationResultUpdated, nil
 	}
 
-	if err := c.Update(ctx, obj); err != nil {
+	if err := r.request.Client.Update(r.request.Context, obj); err != nil {
 		return controllerutil.OperationResultNone, err
 	}
 	return controllerutil.OperationResultUpdated, nil
