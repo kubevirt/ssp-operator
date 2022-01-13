@@ -157,18 +157,18 @@ var _ = Describe("Resource", func() {
 			expectEqualResourceExists(newTestResource(namespace), &request)
 		})
 
-		It("should delete immutable resource on update", func() {
+		It("should delete immutable resource on spec update", func() {
 			resource := newTestResource(namespace)
 			resource.Spec.Ports[0].Name = "changed-name"
-			resource.Annotations["test-annotation"] = "test-changed"
-			resource.Labels["test-label"] = "new-change"
 			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
 
 			_, err := CreateOrUpdate(&request).
 				NamespacedResource(newTestResource(namespace)).
-				SetImmutable(true).
 				UpdateFunc(func(expected, found client.Object) {
 					found.(*v1.Service).Spec = expected.(*v1.Service).Spec
+				}).
+				ImmutableSpec(func(resource client.Object) interface{} {
+					return resource.(*v1.Service).Spec
 				}).
 				Reconcile()
 
@@ -177,6 +177,26 @@ var _ = Describe("Resource", func() {
 			err = request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), resource)
 			Expect(err).To(HaveOccurred())
 			Expect(errors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("should not delete immutable resource on metadata update", func() {
+			resource := newTestResource(namespace)
+			resource.Annotations["test-annotation"] = "test-changed"
+			resource.Labels["test-label"] = "new-change"
+			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+			_, err := CreateOrUpdate(&request).
+				NamespacedResource(newTestResource(namespace)).
+				UpdateFunc(func(expected, found client.Object) {
+					found.(*v1.Service).Spec = expected.(*v1.Service).Spec
+				}).
+				ImmutableSpec(func(resource client.Object) interface{} {
+					return resource.(*v1.Service).Spec
+				}).
+				Reconcile()
+
+			Expect(err).ToNot(HaveOccurred())
+			expectEqualResourceExists(newTestResource(namespace), &request)
 		})
 	})
 

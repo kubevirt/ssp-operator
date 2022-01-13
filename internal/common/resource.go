@@ -49,6 +49,7 @@ func CollectResourceStatus(request *Request, funcs ...ReconcileFunc) ([]Reconcil
 
 type ResourceUpdateFunc = func(expected, found client.Object)
 type ResourceStatusFunc = func(resource client.Object) ResourceStatus
+type ResourceSpecGetter = func(resource client.Object) interface{}
 
 type ReconcileBuilder interface {
 	NamespacedResource(client.Object) ReconcileBuilder
@@ -56,7 +57,7 @@ type ReconcileBuilder interface {
 	WithAppLabels(name string, component AppComponent) ReconcileBuilder
 	UpdateFunc(ResourceUpdateFunc) ReconcileBuilder
 	StatusFunc(ResourceStatusFunc) ReconcileBuilder
-	SetImmutable(bool) ReconcileBuilder
+	ImmutableSpec(getter ResourceSpecGetter) ReconcileBuilder
 
 	Reconcile() (ReconcileResult, error)
 }
@@ -65,7 +66,6 @@ type reconcileBuilder struct {
 	request           *Request
 	resource          client.Object
 	isClusterResource bool
-	immutable         bool
 
 	addLabels        bool
 	operandName      string
@@ -73,6 +73,9 @@ type reconcileBuilder struct {
 
 	updateFunc ResourceUpdateFunc
 	statusFunc ResourceStatusFunc
+
+	immutableSpec bool
+	specGetter    ResourceSpecGetter
 }
 
 var _ ReconcileBuilder = &reconcileBuilder{}
@@ -113,8 +116,9 @@ func (r *reconcileBuilder) WithAppLabels(name string, component AppComponent) Re
 	return r
 }
 
-func (r *reconcileBuilder) SetImmutable(immutable bool) ReconcileBuilder {
-	r.immutable = immutable
+func (r *reconcileBuilder) ImmutableSpec(specGetter ResourceSpecGetter) ReconcileBuilder {
+	r.immutableSpec = true
+	r.specGetter = specGetter
 	return r
 }
 
@@ -126,9 +130,10 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 		r.request,
 		r.resource,
 		r.isClusterResource,
-		r.immutable,
+		r.immutableSpec,
 		r.updateFunc,
 		r.statusFunc,
+		r.specGetter,
 	)
 }
 
@@ -144,6 +149,11 @@ func CreateOrUpdate(request *Request) ReconcileBuilder {
 		},
 		statusFunc: func(_ client.Object) ResourceStatus {
 			return ResourceStatus{}
+		},
+
+		immutableSpec: false,
+		specGetter: func(_ client.Object) interface{} {
+			return nil
 		},
 	}
 }
@@ -207,7 +217,7 @@ func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, e
 	return results, nil
 }
 
-func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, isImmutable bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ReconcileResult, error) {
+func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, isImmutable bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc, specGetter ResourceSpecGetter) (ReconcileResult, error) {
 	err := setOwner(request, resource, isClusterRes)
 	if err != nil {
 		return ReconcileResult{}, err
@@ -238,7 +248,7 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 
 	var res controllerutil.OperationResult
 	if isImmutable {
-		res, err = createOrDelete(request.Context, request.Client, found, mutateFn)
+		res, err = createOrUpdateWithImmutableSpec(request.Context, request.Client, found, mutateFn, specGetter)
 	} else {
 		res, err = controllerutil.CreateOrUpdate(request.Context, request.Client, found, mutateFn)
 	}
@@ -260,7 +270,7 @@ func createOrUpdate(request *Request, resource client.Object, isClusterRes bool,
 }
 
 // This function is mostly copied from controllerutil.CreateOrUpdate
-func createOrDelete(ctx context.Context, c client.Client, obj client.Object, f controllerutil.MutateFn) (controllerutil.OperationResult, error) {
+func createOrUpdateWithImmutableSpec(ctx context.Context, c client.Client, obj client.Object, f controllerutil.MutateFn, specGetter ResourceSpecGetter) (controllerutil.OperationResult, error) {
 	key := client.ObjectKeyFromObject(obj)
 	if err := c.Get(ctx, key, obj); err != nil {
 		if !errors.IsNotFound(err) {
@@ -284,14 +294,20 @@ func createOrDelete(ctx context.Context, c client.Client, obj client.Object, f c
 		return controllerutil.OperationResultNone, nil
 	}
 
-	// If the objects are not equal, delete the existing object.
-	// It will be recreated in the next reconcile iteration
+	if !equality.Semantic.DeepEqual(specGetter(existing.(client.Object)), specGetter(obj)) {
+		// If the specs are not equal, delete the existing object.
+		// It will be recreated in the next reconcile iteration
+		if err := c.Delete(ctx, obj); err != nil {
+			return controllerutil.OperationResultNone, err
+		}
+		// It is ok to return OperationResultUpdated when the resource was deleted,
+		// because it will be recreated in the next iteration.
+		return controllerutil.OperationResultUpdated, nil
+	}
 
-	if err := c.Delete(ctx, obj); err != nil {
+	if err := c.Update(ctx, obj); err != nil {
 		return controllerutil.OperationResultNone, err
 	}
-	// It is ok to return OperationResultUpdated when the resource was deleted,
-	// because it will be recreated in the next iteration.
 	return controllerutil.OperationResultUpdated, nil
 }
 

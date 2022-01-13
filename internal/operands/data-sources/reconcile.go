@@ -218,10 +218,12 @@ func reconcileDataImportCrons(request *common.Request) ([]common.ReconcileFunc, 
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			return common.CreateOrUpdate(request).
 				ClusterResource(&cron).
-				SetImmutable(true).
 				WithAppLabels(operandName, operandComponent).
 				UpdateFunc(func(newRes, foundRes client.Object) {
 					foundRes.(*cdiv1beta1.DataImportCron).Spec = newRes.(*cdiv1beta1.DataImportCron).Spec
+				}).
+				ImmutableSpec(func(resource client.Object) interface{} {
+					return resource.(*cdiv1beta1.DataImportCron).Spec
 				}).
 				Reconcile()
 		})
