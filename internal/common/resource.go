@@ -13,6 +13,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+type OperationResult string
+
+const (
+	OperationResultNone    OperationResult = "unchanged"
+	OperationResultCreated OperationResult = "created"
+	OperationResultUpdated OperationResult = "updated"
+	OperationResultDeleted OperationResult = "deleted"
+)
+
 type StatusMessage = *string
 
 type ResourceStatus struct {
@@ -24,7 +33,7 @@ type ResourceStatus struct {
 type ReconcileResult struct {
 	Status          ResourceStatus
 	Resource        client.Object
-	OperationResult controllerutil.OperationResult
+	OperationResult OperationResult
 }
 
 type CleanupResult struct {
@@ -159,7 +168,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 		r.request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
 		return ReconcileResult{}, err
 	}
-	if !found.GetDeletionTimestamp().IsZero() {
+	if res == OperationResultDeleted || !found.GetDeletionTimestamp().IsZero() {
 		r.request.VersionCache.RemoveObj(found)
 		return resourceDeletedResult(r.resource, res), nil
 	}
@@ -252,44 +261,43 @@ func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, e
 }
 
 // This function was initially copied from controllerutil.CreateOrUpdate
-func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f controllerutil.MutateFn) (controllerutil.OperationResult, error) {
+func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f controllerutil.MutateFn) (OperationResult, error) {
 	key := client.ObjectKeyFromObject(obj)
 	if err := r.request.Client.Get(r.request.Context, key, obj); err != nil {
 		if !errors.IsNotFound(err) {
-			return controllerutil.OperationResultNone, err
+			return OperationResultNone, err
 		}
 		if err := mutate(f, key, obj); err != nil {
-			return controllerutil.OperationResultNone, err
+			return OperationResultNone, err
 		}
 		if err := r.request.Client.Create(r.request.Context, obj); err != nil {
-			return controllerutil.OperationResultNone, err
+			return OperationResultNone, err
 		}
-		return controllerutil.OperationResultCreated, nil
+		return OperationResultCreated, nil
 	}
 
 	existing := obj.DeepCopyObject()
 	if err := mutate(f, key, obj); err != nil {
-		return controllerutil.OperationResultNone, err
+		return OperationResultNone, err
 	}
 
 	if equality.Semantic.DeepEqual(existing, obj) {
-		return controllerutil.OperationResultNone, nil
+		return OperationResultNone, nil
 	}
 
 	// If the resource is immutable and specs are not equal, delete it.
+	// It will be recreated in the next iteration.
 	if r.immutableSpec && !equality.Semantic.DeepEqual(r.specGetter(existing.(client.Object)), r.specGetter(obj)) {
 		if err := r.request.Client.Delete(r.request.Context, obj); err != nil {
-			return controllerutil.OperationResultNone, err
+			return OperationResultNone, err
 		}
-		// It is ok to return OperationResultUpdated when the resource was deleted,
-		// because it will be recreated in the next iteration.
-		return controllerutil.OperationResultUpdated, nil
+		return OperationResultDeleted, nil
 	}
 
 	if err := r.request.Client.Update(r.request.Context, obj); err != nil {
-		return controllerutil.OperationResultNone, err
+		return OperationResultNone, err
 	}
-	return controllerutil.OperationResultUpdated, nil
+	return OperationResultUpdated, nil
 }
 
 // This function is a copy of controllerutil.mutate
@@ -343,13 +351,18 @@ func updateStringMap(expected, found map[string]string) {
 	}
 }
 
-func logOperation(result controllerutil.OperationResult, resource client.Object, logger logr.Logger) {
-	if result == controllerutil.OperationResultCreated {
+func logOperation(result OperationResult, resource client.Object, logger logr.Logger) {
+	switch result {
+	case OperationResultCreated:
 		logger.Info(fmt.Sprintf("Created %s resource: %s",
 			resource.GetObjectKind().GroupVersionKind().Kind,
 			resource.GetName()))
-	} else if result == controllerutil.OperationResultUpdated {
+	case OperationResultUpdated:
 		logger.Info(fmt.Sprintf("Updated %s resource: %s",
+			resource.GetObjectKind().GroupVersionKind().Kind,
+			resource.GetName()))
+	case OperationResultDeleted:
+		logger.Info(fmt.Sprintf("Deleted %s resource: %s",
 			resource.GetObjectKind().GroupVersionKind().Kind,
 			resource.GetName()))
 	}
@@ -384,7 +397,7 @@ func isResourceOwned(request *Request, expectedObj, foundObj client.Object) (boo
 	return false, nil
 }
 
-func resourceDeletedResult(resource client.Object, res controllerutil.OperationResult) ReconcileResult {
+func resourceDeletedResult(resource client.Object, res OperationResult) ReconcileResult {
 	message := "Resource is being deleted."
 	return ReconcileResult{
 		Status: ResourceStatus{
