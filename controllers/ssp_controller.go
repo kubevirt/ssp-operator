@@ -283,19 +283,19 @@ func (r *sspReconciler) cleanup(request *common.Request) error {
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionAvailable,
 			Status:  v1.ConditionFalse,
-			Reason:  "available",
+			Reason:  "Available",
 			Message: "Deleting SSP resources",
 		})
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionProgressing,
 			Status:  v1.ConditionTrue,
-			Reason:  "progressing",
+			Reason:  "Progressing",
 			Message: "Deleting SSP resources",
 		})
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionDegraded,
 			Status:  v1.ConditionTrue,
-			Reason:  "degraded",
+			Reason:  "Degraded",
 			Message: "Deleting SSP resources",
 		})
 
@@ -437,7 +437,7 @@ func preUpdateStatus(request *common.Request) error {
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionAvailable,
 			Status:  v1.ConditionFalse,
-			Reason:  "available",
+			Reason:  "Available",
 			Message: "Reconciling SSP resources",
 		})
 	}
@@ -446,7 +446,7 @@ func preUpdateStatus(request *common.Request) error {
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionProgressing,
 			Status:  v1.ConditionTrue,
-			Reason:  "progressing",
+			Reason:  "Progressing",
 			Message: "Reconciling SSP resources",
 		})
 	}
@@ -455,7 +455,7 @@ func preUpdateStatus(request *common.Request) error {
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionDegraded,
 			Status:  v1.ConditionTrue,
-			Reason:  "degraded",
+			Reason:  "Degraded",
 			Message: "Reconciling SSP resources",
 		})
 	}
@@ -485,7 +485,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionAvailable,
 			Status:  v1.ConditionTrue,
-			Reason:  "available",
+			Reason:  "Available",
 			Message: "All SSP resources are available",
 		})
 	case 1:
@@ -493,14 +493,14 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionAvailable,
 			Status:  v1.ConditionFalse,
-			Reason:  "available",
+			Reason:  "Available",
 			Message: prefixResourceTypeAndName(*reconcileResult.Status.NotAvailable, reconcileResult.Resource),
 		})
 	default:
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionAvailable,
 			Status:  v1.ConditionFalse,
-			Reason:  "available",
+			Reason:  "Available",
 			Message: fmt.Sprintf("%d SSP resources are not available", len(notAvailable)),
 		})
 	}
@@ -510,7 +510,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionProgressing,
 			Status:  v1.ConditionFalse,
-			Reason:  "progressing",
+			Reason:  "Progressing",
 			Message: "No SSP resources are progressing",
 		})
 	case 1:
@@ -518,14 +518,14 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionProgressing,
 			Status:  v1.ConditionTrue,
-			Reason:  "progressing",
+			Reason:  "Progressing",
 			Message: prefixResourceTypeAndName(*reconcileResult.Status.Progressing, reconcileResult.Resource),
 		})
 	default:
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionProgressing,
 			Status:  v1.ConditionTrue,
-			Reason:  "progressing",
+			Reason:  "Progressing",
 			Message: fmt.Sprintf("%d SSP resources are progressing", len(progressing)),
 		})
 	}
@@ -535,7 +535,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionDegraded,
 			Status:  v1.ConditionFalse,
-			Reason:  "degraded",
+			Reason:  "Degraded",
 			Message: "No SSP resources are degraded",
 		})
 	case 1:
@@ -543,14 +543,14 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionDegraded,
 			Status:  v1.ConditionTrue,
-			Reason:  "degraded",
+			Reason:  "Degraded",
 			Message: prefixResourceTypeAndName(*reconcileResult.Status.Degraded, reconcileResult.Resource),
 		})
 	default:
 		conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 			Type:    conditionsv1.ConditionDegraded,
 			Status:  v1.ConditionTrue,
-			Reason:  "degraded",
+			Reason:  "Degraded",
 			Message: fmt.Sprintf("%d SSP resources are degraded", len(degraded)),
 		})
 	}
@@ -592,19 +592,19 @@ func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
 	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 		Type:    conditionsv1.ConditionAvailable,
 		Status:  v1.ConditionFalse,
-		Reason:  "available",
+		Reason:  "Available",
 		Message: errorMsg,
 	})
 	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 		Type:    conditionsv1.ConditionProgressing,
 		Status:  v1.ConditionTrue,
-		Reason:  "progressing",
+		Reason:  "Progressing",
 		Message: errorMsg,
 	})
 	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 		Type:    conditionsv1.ConditionDegraded,
 		Status:  v1.ConditionTrue,
-		Reason:  "degraded",
+		Reason:  "Degraded",
 		Message: errorMsg,
 	})
 	err := request.Client.Status().Update(request.Context, request.Instance)
