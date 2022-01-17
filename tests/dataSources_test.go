@@ -641,8 +641,7 @@ var _ = Describe("DataSources", func() {
 		})
 	})
 
-	// TODO: add back when https://bugzilla.redhat.com/show_bug.cgi?id=2035008 is fixed
-	PContext("DataImportCron", func() {
+	Context("DataImportCron", func() {
 		const cronSchedule = "* * * * *"
 		var registryURL = "docker://quay.io/kubevirt/cirros-container-disk-demo"
 
