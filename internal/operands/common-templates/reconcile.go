@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -90,7 +89,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 
 	upgradingNow := isUpgradingNow(request)
 	for _, r := range reconcileTemplatesResults {
-		if !upgradingNow && (r.OperationResult == controllerutil.OperationResultUpdated) {
+		if !upgradingNow && (r.OperationResult == common.OperationResultUpdated) {
 			request.Logger.V(1).Info(fmt.Sprintf("Changes reverted in common template: %s", r.Resource.GetName()))
 			CommonTemplatesRestored.Inc()
 		}

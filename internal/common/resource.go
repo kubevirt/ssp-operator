@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 
@@ -12,6 +11,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+)
+
+type OperationResult string
+
+const (
+	OperationResultNone    OperationResult = "unchanged"
+	OperationResultCreated OperationResult = "created"
+	OperationResultUpdated OperationResult = "updated"
+	OperationResultDeleted OperationResult = "deleted"
 )
 
 type StatusMessage = *string
@@ -25,7 +33,7 @@ type ResourceStatus struct {
 type ReconcileResult struct {
 	Status          ResourceStatus
 	Resource        client.Object
-	OperationResult controllerutil.OperationResult
+	OperationResult OperationResult
 }
 
 type CleanupResult struct {
@@ -49,6 +57,7 @@ func CollectResourceStatus(request *Request, funcs ...ReconcileFunc) ([]Reconcil
 
 type ResourceUpdateFunc = func(expected, found client.Object)
 type ResourceStatusFunc = func(resource client.Object) ResourceStatus
+type ResourceSpecGetter = func(resource client.Object) interface{}
 
 type ReconcileBuilder interface {
 	NamespacedResource(client.Object) ReconcileBuilder
@@ -56,7 +65,7 @@ type ReconcileBuilder interface {
 	WithAppLabels(name string, component AppComponent) ReconcileBuilder
 	UpdateFunc(ResourceUpdateFunc) ReconcileBuilder
 	StatusFunc(ResourceStatusFunc) ReconcileBuilder
-	SetImmutable(bool) ReconcileBuilder
+	ImmutableSpec(getter ResourceSpecGetter) ReconcileBuilder
 
 	Reconcile() (ReconcileResult, error)
 }
@@ -65,7 +74,6 @@ type reconcileBuilder struct {
 	request           *Request
 	resource          client.Object
 	isClusterResource bool
-	immutable         bool
 
 	addLabels        bool
 	operandName      string
@@ -73,6 +81,9 @@ type reconcileBuilder struct {
 
 	updateFunc ResourceUpdateFunc
 	statusFunc ResourceStatusFunc
+
+	immutableSpec bool
+	specGetter    ResourceSpecGetter
 }
 
 var _ ReconcileBuilder = &reconcileBuilder{}
@@ -113,8 +124,9 @@ func (r *reconcileBuilder) WithAppLabels(name string, component AppComponent) Re
 	return r
 }
 
-func (r *reconcileBuilder) SetImmutable(immutable bool) ReconcileBuilder {
-	r.immutable = immutable
+func (r *reconcileBuilder) ImmutableSpec(specGetter ResourceSpecGetter) ReconcileBuilder {
+	r.immutableSpec = true
+	r.specGetter = specGetter
 	return r
 }
 
@@ -122,14 +134,50 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	if r.addLabels {
 		AddAppLabels(r.request.Instance, r.operandName, r.operandComponent, r.resource)
 	}
-	return createOrUpdate(
-		r.request,
-		r.resource,
-		r.isClusterResource,
-		r.immutable,
-		r.updateFunc,
-		r.statusFunc,
-	)
+
+	err := setOwner(r.request, r.resource, r.isClusterResource)
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+
+	found := newEmptyResource(r.resource)
+	found.SetName(r.resource.GetName())
+	found.SetNamespace(r.resource.GetNamespace())
+	mutateFn := func() error {
+		if !found.GetDeletionTimestamp().IsZero() {
+			// Skip update, because the resource is being deleted
+			return nil
+		}
+
+		// We expect users will not add any other owner references,
+		// if that is not correct, this code needs to be changed.
+		found.SetOwnerReferences(r.resource.GetOwnerReferences())
+
+		updateLabels(r.resource, found)
+		updateAnnotations(r.resource, found)
+		if !r.request.VersionCache.Contains(found) {
+			// The generation was updated by other cluster components,
+			// operator needs to update the resource
+			r.updateFunc(r.resource, found)
+		}
+		return nil
+	}
+
+	res, err := r.createOrUpdateWithImmutableSpec(found, mutateFn)
+	if err != nil {
+		r.request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
+		return ReconcileResult{}, err
+	}
+	if res == OperationResultDeleted || !found.GetDeletionTimestamp().IsZero() {
+		r.request.VersionCache.RemoveObj(found)
+		return resourceDeletedResult(r.resource, res), nil
+	}
+
+	r.request.VersionCache.Add(found)
+	logOperation(res, found, r.request.Logger)
+
+	status := r.statusFunc(found)
+	return ReconcileResult{status, r.resource, res}, nil
 }
 
 func CreateOrUpdate(request *Request) ReconcileBuilder {
@@ -144,6 +192,11 @@ func CreateOrUpdate(request *Request) ReconcileBuilder {
 		},
 		statusFunc: func(_ client.Object) ResourceStatus {
 			return ResourceStatus{}
+		},
+
+		immutableSpec: false,
+		specGetter: func(_ client.Object) interface{} {
+			return nil
 		},
 	}
 }
@@ -207,92 +260,44 @@ func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, e
 	return results, nil
 }
 
-func createOrUpdate(request *Request, resource client.Object, isClusterRes bool, isImmutable bool, updateResource ResourceUpdateFunc, statusFunc ResourceStatusFunc) (ReconcileResult, error) {
-	err := setOwner(request, resource, isClusterRes)
-	if err != nil {
-		return ReconcileResult{}, err
-	}
-
-	found := newEmptyResource(resource)
-	found.SetName(resource.GetName())
-	found.SetNamespace(resource.GetNamespace())
-	mutateFn := func() error {
-		if !found.GetDeletionTimestamp().IsZero() {
-			// Skip update, because the resource is being deleted
-			return nil
-		}
-
-		// We expect users will not add any other owner references,
-		// if that is not correct, this code needs to be changed.
-		found.SetOwnerReferences(resource.GetOwnerReferences())
-
-		updateLabels(resource, found)
-		updateAnnotations(resource, found)
-		if !request.VersionCache.Contains(found) {
-			// The generation was updated by other cluster components,
-			// operator needs to update the resource
-			updateResource(resource, found)
-		}
-		return nil
-	}
-
-	var res controllerutil.OperationResult
-	if isImmutable {
-		res, err = createOrDelete(request.Context, request.Client, found, mutateFn)
-	} else {
-		res, err = controllerutil.CreateOrUpdate(request.Context, request.Client, found, mutateFn)
-	}
-
-	if err != nil {
-		request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
-		return ReconcileResult{}, err
-	}
-	if !found.GetDeletionTimestamp().IsZero() {
-		request.VersionCache.RemoveObj(found)
-		return resourceDeletedResult(resource, res), nil
-	}
-
-	request.VersionCache.Add(found)
-	logOperation(res, found, request.Logger)
-
-	status := statusFunc(found)
-	return ReconcileResult{status, resource, res}, nil
-}
-
-// This function is mostly copied from controllerutil.CreateOrUpdate
-func createOrDelete(ctx context.Context, c client.Client, obj client.Object, f controllerutil.MutateFn) (controllerutil.OperationResult, error) {
+// This function was initially copied from controllerutil.CreateOrUpdate
+func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f controllerutil.MutateFn) (OperationResult, error) {
 	key := client.ObjectKeyFromObject(obj)
-	if err := c.Get(ctx, key, obj); err != nil {
+	if err := r.request.Client.Get(r.request.Context, key, obj); err != nil {
 		if !errors.IsNotFound(err) {
-			return controllerutil.OperationResultNone, err
+			return OperationResultNone, err
 		}
 		if err := mutate(f, key, obj); err != nil {
-			return controllerutil.OperationResultNone, err
+			return OperationResultNone, err
 		}
-		if err := c.Create(ctx, obj); err != nil {
-			return controllerutil.OperationResultNone, err
+		if err := r.request.Client.Create(r.request.Context, obj); err != nil {
+			return OperationResultNone, err
 		}
-		return controllerutil.OperationResultCreated, nil
+		return OperationResultCreated, nil
 	}
 
 	existing := obj.DeepCopyObject()
 	if err := mutate(f, key, obj); err != nil {
-		return controllerutil.OperationResultNone, err
+		return OperationResultNone, err
 	}
 
 	if equality.Semantic.DeepEqual(existing, obj) {
-		return controllerutil.OperationResultNone, nil
+		return OperationResultNone, nil
 	}
 
-	// If the objects are not equal, delete the existing object.
-	// It will be recreated in the next reconcile iteration
-
-	if err := c.Delete(ctx, obj); err != nil {
-		return controllerutil.OperationResultNone, err
+	// If the resource is immutable and specs are not equal, delete it.
+	// It will be recreated in the next iteration.
+	if r.immutableSpec && !equality.Semantic.DeepEqual(r.specGetter(existing.(client.Object)), r.specGetter(obj)) {
+		if err := r.request.Client.Delete(r.request.Context, obj); err != nil {
+			return OperationResultNone, err
+		}
+		return OperationResultDeleted, nil
 	}
-	// It is ok to return OperationResultUpdated when the resource was deleted,
-	// because it will be recreated in the next iteration.
-	return controllerutil.OperationResultUpdated, nil
+
+	if err := r.request.Client.Update(r.request.Context, obj); err != nil {
+		return OperationResultNone, err
+	}
+	return OperationResultUpdated, nil
 }
 
 // This function is a copy of controllerutil.mutate
@@ -346,13 +351,18 @@ func updateStringMap(expected, found map[string]string) {
 	}
 }
 
-func logOperation(result controllerutil.OperationResult, resource client.Object, logger logr.Logger) {
-	if result == controllerutil.OperationResultCreated {
+func logOperation(result OperationResult, resource client.Object, logger logr.Logger) {
+	switch result {
+	case OperationResultCreated:
 		logger.Info(fmt.Sprintf("Created %s resource: %s",
 			resource.GetObjectKind().GroupVersionKind().Kind,
 			resource.GetName()))
-	} else if result == controllerutil.OperationResultUpdated {
+	case OperationResultUpdated:
 		logger.Info(fmt.Sprintf("Updated %s resource: %s",
+			resource.GetObjectKind().GroupVersionKind().Kind,
+			resource.GetName()))
+	case OperationResultDeleted:
+		logger.Info(fmt.Sprintf("Deleted %s resource: %s",
 			resource.GetObjectKind().GroupVersionKind().Kind,
 			resource.GetName()))
 	}
@@ -387,7 +397,7 @@ func isResourceOwned(request *Request, expectedObj, foundObj client.Object) (boo
 	return false, nil
 }
 
-func resourceDeletedResult(resource client.Object, res controllerutil.OperationResult) ReconcileResult {
+func resourceDeletedResult(resource client.Object, res OperationResult) ReconcileResult {
 	message := "Resource is being deleted."
 	return ReconcileResult{
 		Status: ResourceStatus{
