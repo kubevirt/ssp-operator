@@ -220,3 +220,10 @@ bundle-build:
 .PHONY: release
 release: container-build container-push build-template-validator-container push-template-validator-container bundle build-functests
 	cp ./tests.test _out/tests.test
+
+generate-doc: build-docgen
+	_out/metricsdocs > docs/metrics.md
+
+build-docgen:
+	go build -ldflags="-s -w" -o _out/metricsdocs ./tools/metricsdocs
+
