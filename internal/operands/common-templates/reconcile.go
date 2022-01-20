@@ -12,12 +12,9 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	semver "github.com/blang/semver/v4"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-)
-
-var (
-	deployedTemplates = make(map[string]bool)
 )
 
 var (
@@ -41,13 +38,18 @@ func WatchClusterTypes() []client.Object {
 }
 
 type commonTemplates struct {
-	templatesBundle []templatev1.Template
+	templatesBundle   []templatev1.Template
+	deployedTemplates map[string]bool
 }
 
 var _ operands.Operand = &commonTemplates{}
 
 func New(templates []templatev1.Template) operands.Operand {
-	return &commonTemplates{templatesBundle: templates}
+	deployedTemplates := make(map[string]bool)
+	for _, t := range templates {
+		deployedTemplates[t.Name] = true
+	}
+	return &commonTemplates{templatesBundle: templates, deployedTemplates: deployedTemplates}
 }
 
 func (c *commonTemplates) Name() string {
@@ -72,7 +74,7 @@ func (c *commonTemplates) RequiredCrds() []string {
 }
 
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	oldTemplateFuncs, err := reconcileOlderTemplates(request)
+	oldTemplateFuncs, err := c.reconcileOlderTemplates(request)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +162,7 @@ func getOldTemplatesLabelSelector() labels.Selector {
 	return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
 }
 
-func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
+func (c *commonTemplates) reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
 	existingTemplates := &templatev1.TemplateList{}
 	err := request.Client.List(request.Context, existingTemplates, &client.ListOptions{
 		LabelSelector: getOldTemplatesLabelSelector(),
@@ -172,12 +174,26 @@ func reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, e
 		return nil, err
 	}
 
+	templatesVersion, err := semver.ParseTolerant(Version)
+	if err != nil {
+		return nil, err
+	}
+
 	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates.Items))
 	for i := range existingTemplates.Items {
 		template := &existingTemplates.Items[i]
 
-		if _, ok := deployedTemplates[template.Name]; ok {
+		if _, ok := c.deployedTemplates[template.Name]; ok {
 			continue
+		}
+
+		// if template has higher version than is defined in ssp operator, keep it as it is. If parsing
+		// of template version fails, continue with adding deprecated label
+		if template.Labels[TemplateVersionLabel] != "" {
+			v, err := semver.ParseTolerant(template.Labels[TemplateVersionLabel])
+			if err == nil && templatesVersion.Compare(v) == -1 {
+				continue
+			}
 		}
 
 		funcs = append(funcs, func(*common.Request) (common.ReconcileResult, error) {

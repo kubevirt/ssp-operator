@@ -31,6 +31,7 @@ const (
 	testOsLabel       = TemplateOsLabelPrefix + "some-os"
 	testFlavorLabel   = TemplateFlavorLabelPrefix + "test"
 	testWorkflowLabel = TemplateWorkloadLabelPrefix + "server"
+	futureVersion     = "v999.999.999"
 )
 
 func TestTemplates(t *testing.T) {
@@ -91,7 +92,7 @@ var _ = Describe("Common-Templates operand", func() {
 
 	Context("old templates", func() {
 		var (
-			parentTpl, oldTpl *templatev1.Template
+			parentTpl, oldTpl, newerTemplate *templatev1.Template
 		)
 
 		BeforeEach(func() {
@@ -132,11 +133,36 @@ var _ = Describe("Common-Templates operand", func() {
 
 			err := request.Client.Create(request.Context, oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
+
+			newerTemplate = &templatev1.Template{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-tpl-newer",
+					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
+					Labels: map[string]string{
+						TemplateVersionLabel: futureVersion,
+						TemplateTypeLabel:    TemplateTypeLabelBaseValue,
+						testOsLabel:          "true",
+						testFlavorLabel:      "true",
+						testWorkflowLabel:    "true",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: parentTpl.APIVersion,
+						Kind:       parentTpl.Kind,
+						UID:        parentTpl.UID,
+						Name:       parentTpl.Name,
+					}},
+				},
+			}
+
+			err = request.Client.Create(request.Context, newerTemplate)
+			Expect(err).ToNot(HaveOccurred(), "creation of newer template failed")
 		})
 
 		AfterEach(func() {
-			Expect(request.Client.Delete(request.Context, oldTpl)).ToNot(HaveOccurred(), "deletion of parent tempalte failed")
+			Expect(request.Client.Delete(request.Context, oldTpl)).ToNot(HaveOccurred(), "deletion of old tempalte failed")
 			Expect(request.Client.Delete(request.Context, parentTpl)).ToNot(HaveOccurred(), "deletion of parent tempalte failed")
+			Expect(request.Client.Delete(request.Context, newerTemplate)).ToNot(HaveOccurred(), "deletion of newer tempalte failed")
 		})
 
 		It("should replace ownerReferences with owner annotations for older templates", func() {
@@ -155,7 +181,7 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(updatedTpl.GetAnnotations()[libhandler.NamespacedNameAnnotation]).ToNot(Equal(""), "owner name annotation is empty for an older template")
 			Expect(updatedTpl.GetAnnotations()[libhandler.TypeAnnotation]).ToNot(Equal(""), "owner type annotation is empty for an older template")
 		})
-		It("should remove labels from old templates", func() {
+		It("should remove labels from old templates but keep future template untouched", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
 
@@ -170,6 +196,18 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(TemplateTypeLabelBaseValue), TemplateTypeLabel+" should equal base")
 			Expect(updatedTpl.Labels[TemplateVersionLabel]).To(Equal("not-latest"), TemplateVersionLabel+" should equal not-latest")
 			Expect(updatedTpl.Annotations[TemplateDeprecatedAnnotation]).To(Equal("true"), TemplateDeprecatedAnnotation+" should not be empty")
+
+			key = client.ObjectKeyFromObject(newerTemplate)
+			newerTpl := &templatev1.Template{}
+			err = request.Client.Get(request.Context, key, newerTpl)
+			Expect(err).ToNot(HaveOccurred(), "failed fetching newer template")
+
+			Expect(newerTpl.Labels[testOsLabel]).To(Equal("true"), TemplateOsLabelPrefix+" should not be empty")
+			Expect(newerTpl.Labels[testFlavorLabel]).To(Equal("true"), TemplateFlavorLabelPrefix+" should not be empty")
+			Expect(newerTpl.Labels[testWorkflowLabel]).To(Equal("true"), TemplateWorkloadLabelPrefix+" should not be empty")
+			Expect(newerTpl.Labels[TemplateTypeLabel]).To(Equal("base"), TemplateTypeLabel+" should equal base")
+			Expect(newerTpl.Labels[TemplateVersionLabel]).To(Equal(futureVersion), TemplateVersionLabel+" should equal "+futureVersion)
+			Expect(newerTpl.Annotations[TemplateDeprecatedAnnotation]).To(Equal(""), TemplateDeprecatedAnnotation+" should be empty")
 		})
 		It("should not remove labels from latest templates", func() {
 			_, err := operand.Reconcile(&request)
