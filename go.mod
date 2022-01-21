@@ -38,8 +38,8 @@ require (
 replace (
 	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
-	github.com/openshift/api => github.com/openshift/api v0.0.0-20210713130143-be21c6cb1bea // release-4.8
-	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142 // release-4.8
+	github.com/openshift/api => github.com/openshift/api v0.0.0-20211028023115-7224b732cc14 // release-4.9
+	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20210831095141-e19a065e79f7 // release-4.9
 	github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a
 	k8s.io/client-go => k8s.io/client-go v0.22.6
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.6
