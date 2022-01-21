@@ -8,6 +8,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
 	github.com/openshift/api v0.0.0
@@ -26,7 +27,8 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20210709001253-0e1f9d693477
-	kubevirt.io/client-go v0.47.1
+	kubevirt.io/api v0.49.0
+	kubevirt.io/client-go v0.49.0
 	kubevirt.io/containerized-data-importer-api v1.42.1
 	kubevirt.io/controller-lifecycle-operator-sdk v0.2.1
 	kubevirt.io/qe-tools v0.1.7

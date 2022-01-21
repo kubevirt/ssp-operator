@@ -105,7 +105,8 @@ github.com/moby/spdystream
 github.com/moby/spdystream/spdy
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 github.com/modern-go/concurrent
-# github.com/modern-go/reflect2 v1.0.1
+# github.com/modern-go/reflect2 v1.0.2
+## explicit
 github.com/modern-go/reflect2
 # github.com/nxadm/tail v1.4.8
 github.com/nxadm/tail
@@ -568,15 +569,15 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# kubevirt.io/client-go v0.47.1
+# kubevirt.io/api v0.49.0
 ## explicit
-kubevirt.io/client-go/apis/core
-kubevirt.io/client-go/apis/core/v1
+kubevirt.io/api/core
+kubevirt.io/api/core/v1
+# kubevirt.io/client-go v0.49.0
+## explicit
+kubevirt.io/client-go/api
 kubevirt.io/client-go/log
 kubevirt.io/client-go/version
-# kubevirt.io/containerized-data-importer v1.36.0
-kubevirt.io/containerized-data-importer/pkg/apis/core
-kubevirt.io/containerized-data-importer/pkg/apis/core/v1beta1
 # kubevirt.io/containerized-data-importer-api v1.42.1
 ## explicit
 kubevirt.io/containerized-data-importer-api/pkg/apis/core

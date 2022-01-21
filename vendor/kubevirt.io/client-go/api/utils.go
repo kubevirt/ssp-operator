@@ -17,28 +17,30 @@
  *
  */
 
-package v1
+package api
 
 import (
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1 "kubevirt.io/api/core/v1"
 )
 
 // This is meant for testing
-func NewMinimalVMI(name string) *VirtualMachineInstance {
+func NewMinimalVMI(name string) *v1.VirtualMachineInstance {
 	return NewMinimalVMIWithNS(k8sv1.NamespaceDefault, name)
 }
 
 // This is meant for testing
-func NewMinimalVMIWithNS(namespace, name string) *VirtualMachineInstance {
-	vmi := NewVMIReferenceFromNameWithNS(namespace, name)
-	vmi.Spec = VirtualMachineInstanceSpec{Domain: DomainSpec{}}
+func NewMinimalVMIWithNS(namespace, name string) *v1.VirtualMachineInstance {
+	vmi := v1.NewVMIReferenceFromNameWithNS(namespace, name)
+	vmi.Spec = v1.VirtualMachineInstanceSpec{Domain: v1.DomainSpec{}}
 	vmi.Spec.Domain.Resources.Requests = k8sv1.ResourceList{
 		k8sv1.ResourceMemory: resource.MustParse("8192Ki"),
 	}
 	vmi.TypeMeta = k8smetav1.TypeMeta{
-		APIVersion: GroupVersion.String(),
+		APIVersion: v1.GroupVersion.String(),
 		Kind:       "VirtualMachineInstance",
 	}
 	return vmi

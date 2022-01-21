@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	kubevirtv1 "kubevirt.io/client-go/apis/core/v1"
+	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
