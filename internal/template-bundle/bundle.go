@@ -58,6 +58,8 @@ func readTemplates(filename string) ([]templatev1.Template, error) {
 }
 
 func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSource, error) {
+	uniqueNames := map[string]struct{}{}
+
 	var dataSources []cdiv1beta1.DataSource
 	for i := range templates {
 		template := &templates[i]
@@ -80,7 +82,11 @@ func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSourc
 			continue
 		}
 
-		dataSources = append(dataSources, createDataSource(name, namespace))
+		namespacedName := namespace + "/" + name
+		if _, duplicateName := uniqueNames[namespacedName]; !duplicateName {
+			dataSources = append(dataSources, createDataSource(name, namespace))
+			uniqueNames[namespacedName] = struct{}{}
+		}
 	}
 
 	return dataSources, nil

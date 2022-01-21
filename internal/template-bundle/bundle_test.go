@@ -20,22 +20,32 @@ var _ = Describe("Template bundle", func() {
 
 	It("should correctly read templates", func() {
 		templates := testBundle.Templates
-		Expect(templates).To(HaveLen(3))
+		Expect(templates).To(HaveLen(4))
 
-		templ1 := templates[0]
-		Expect(templ1.Name).To(Equal("centos-stream8-server-medium"))
-		Expect(templ1.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
-		Expect(templ1.Objects).To(HaveLen(1))
-
-		templ2 := templates[1]
-		Expect(templ2.Name).To(Equal("windows10-desktop-medium"))
-		Expect(templ2.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
-		Expect(templ2.Objects).To(HaveLen(1))
-
-		templ3 := templates[2]
-		Expect(templ3.Name).To(Equal("rhel8-saphana-tiny"))
-		Expect(templ3.Annotations).To(HaveKey("name.os.template.kubevirt.io/rhel8.4"))
-		Expect(templ3.Objects).To(HaveLen(1))
+		{
+			templ := templates[0]
+			Expect(templ.Name).To(Equal("centos-stream8-server-medium"))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := templates[1]
+			Expect(templ.Name).To(Equal("centos-stream8-desktop-large"))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := templates[2]
+			Expect(templ.Name).To(Equal("windows10-desktop-medium"))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := templates[3]
+			Expect(templ.Name).To(Equal("rhel8-saphana-tiny"))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/rhel8.4"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
 	})
 
 	It("should create DataSources", func() {

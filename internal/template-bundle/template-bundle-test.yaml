@@ -132,6 +132,142 @@ parameters:
     generate: expression
     name: CLOUD_USER_PASSWORD
 ---
+# Source: dist/templates/centos-stream8-desktop-large.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream8-desktop-large
+  annotations:
+    openshift.io/display-name: "CentOS Stream 8 VM"
+    description: >-
+      Template for CentOS Stream 8 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream8: CentOS Stream 8 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream8: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.19.1"
+objects:
+  - apiVersion: kubevirt.io/v1
+    kind: VirtualMachine
+    metadata:
+      name: ${NAME}
+      labels:
+        vm.kubevirt.io/template: centos-stream8-desktop-large
+        vm.kubevirt.io/template.version: "v0.19.1"
+        vm.kubevirt.io/template.revision: "1"
+        app: ${NAME}
+      annotations:
+        vm.kubevirt.io/validations: |
+          [
+            {
+              "name": "minimal-required-memory",
+              "path": "jsonpath::.spec.domain.resources.requests.memory",
+              "rule": "integer",
+              "message": "This VM requires more memory.",
+              "min": 1610612736
+            }
+          ]
+    spec:
+      dataVolumeTemplates:
+        - apiVersion: cdi.kubevirt.io/v1beta1
+          kind: DataVolume
+          metadata:
+            name: ${NAME}
+          spec:
+            storage:
+              resources:
+                requests:
+                  storage: 30Gi
+            sourceRef:
+              kind: DataSource
+              name: ${SRC_PVC_NAME}
+              namespace: ${SRC_PVC_NAMESPACE}
+      running: false
+      template:
+        metadata:
+          annotations:
+            vm.kubevirt.io/os: "centos-stream8"
+            vm.kubevirt.io/workload: "desktop"
+            vm.kubevirt.io/flavor: "large"
+          labels:
+            kubevirt.io/domain: ${NAME}
+            kubevirt.io/size: large
+        spec:
+          domain:
+            cpu:
+              sockets: 2
+              cores: 1
+              threads: 1
+            resources:
+              requests:
+                memory: 8Gi
+            devices:
+              rng: {}
+              networkInterfaceMultiqueue: true
+              inputs:
+                - type: tablet
+                  bus: virtio
+                  name: tablet
+              disks:
+                - disk:
+                    bus: virtio
+                  name: ${NAME}
+                - disk:
+                    bus: virtio
+                  name: cloudinitdisk
+              interfaces:
+                - masquerade: {}
+                  name: default
+          terminationGracePeriodSeconds: 180
+          networks:
+            - name: default
+              pod: {}
+          volumes:
+            - dataVolume:
+                name: ${NAME}
+              name: ${NAME}
+            - cloudInitNoCloud:
+                userData: |-
+                  #cloud-config
+                  user: centos
+                  password: ${CLOUD_USER_PASSWORD}
+                  chpasswd: { expire: False }
+              name: cloudinitdisk
+parameters:
+  - description: VM name
+    from: 'centos-stream8-[a-z0-9]{16}'
+    generate: expression
+    name: NAME
+  - name: SRC_PVC_NAME
+    description: Name of the DataSource to clone
+    value: 'centos-stream8'
+  - name: SRC_PVC_NAMESPACE
+    description: Namespace of the DataSource
+    value: kubevirt-os-images
+  - description: Randomized password for the cloud-init user centos
+    from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+    generate: expression
+    name: CLOUD_USER_PASSWORD
+---
 # Source: dist/templates/windows10-desktop-medium.yaml
 apiVersion: template.openshift.io/v1
 kind: Template
