@@ -9,7 +9,7 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubevirt "kubevirt.io/client-go/apis/core/v1"
+	kubevirt "kubevirt.io/api/core/v1"
 )
 
 // GetAdmissionReview
