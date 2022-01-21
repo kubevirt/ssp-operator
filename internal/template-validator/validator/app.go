@@ -13,7 +13,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/log"
-	kubevirtVersion "kubevirt.io/client-go/version"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/service"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
@@ -45,14 +44,8 @@ func (app *App) AddFlags() {
 	flag.BoolVarP(&app.versionOnly, "version", "V", false, "show version and exit")
 }
 
-func (app *App) KubevirtVersion() string {
-	info := kubevirtVersion.Get()
-	return fmt.Sprintf("%s %s %s", info.GitVersion, info.GitCommit, info.BuildDate)
-}
-
 func (app *App) Run() {
 	log.Log.Infof("%s %s (revision: %s) starting", version.COMPONENT, version.VERSION, version.REVISION)
-	log.Log.Infof("%s using kubevirt client-go (%s)", version.COMPONENT, app.KubevirtVersion())
 	if app.versionOnly {
 		return
 	}

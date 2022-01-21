@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/rand"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-	kubevirtclientv1 "kubevirt.io/client-go/api"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -345,7 +344,7 @@ func GetCertFromSecret(secretName, namespace string) (string, error) {
 }
 
 func NewRandomVMIWithBridgeInterface(namespace string) *kubevirtv1.VirtualMachineInstance {
-	vmi := kubevirtclientv1.NewMinimalVMIWithNS(namespace, fmt.Sprintf("testvmi-%v", rand.String(10)))
+	vmi := NewMinimalVMIWithNS(namespace, fmt.Sprintf("testvmi-%v", rand.String(10)))
 	vmi.Spec.Domain.Resources.Requests = core.ResourceList{
 		core.ResourceMemory: resource.MustParse("64M"),
 	}
@@ -362,6 +361,19 @@ func NewRandomVMIWithBridgeInterface(namespace string) *kubevirtv1.VirtualMachin
 		},
 	}
 	vmi.Spec.Networks = []kubevirtv1.Network{*kubevirtv1.DefaultPodNetwork()}
+	return vmi
+}
+
+func NewMinimalVMIWithNS(namespace, name string) *kubevirtv1.VirtualMachineInstance {
+	vmi := kubevirtv1.NewVMIReferenceFromNameWithNS(namespace, name)
+	vmi.Spec = kubevirtv1.VirtualMachineInstanceSpec{Domain: kubevirtv1.DomainSpec{}}
+	vmi.Spec.Domain.Resources.Requests = core.ResourceList{
+		core.ResourceMemory: resource.MustParse("8192Ki"),
+	}
+	vmi.TypeMeta = metav1.TypeMeta{
+		APIVersion: kubevirtv1.GroupVersion.String(),
+		Kind:       "VirtualMachineInstance",
+	}
 	return vmi
 }
 
