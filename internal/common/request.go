@@ -13,12 +13,13 @@ import (
 
 type Request struct {
 	reconcile.Request
-	Client       client.Client
-	Context      context.Context
-	Instance     *ssp.SSP
-	Logger       logr.Logger
-	VersionCache VersionCache
-	TopologyMode osconfv1.TopologyMode
+	Client         client.Client
+	UncachedReader client.Reader
+	Context        context.Context
+	Instance       *ssp.SSP
+	Logger         logr.Logger
+	VersionCache   VersionCache
+	TopologyMode   osconfv1.TopologyMode
 }
 
 func (r *Request) IsSingleReplicaTopologyMode() bool {

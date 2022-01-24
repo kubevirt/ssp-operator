@@ -114,7 +114,6 @@ var _ = Describe("DataSources", func() {
 		},
 			table.Entry("[test_id:4777]view role", &viewRole),
 			table.Entry("[test_id:4772]view role binding", &viewRoleBinding),
-			table.Entry("[test_id:TODO]data source", &dataSource),
 		)
 
 		table.DescribeTable("should set app labels", expectAppLabels,
@@ -122,7 +121,6 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:6216] golden images namespace", &goldenImageNS),
 			table.Entry("[test_id:6217] view role", &viewRole),
 			table.Entry("[test_id:6218] view role binding", &viewRoleBinding),
-			table.Entry("[test_id:TODO] data source", &dataSource),
 		)
 	})
 
@@ -131,7 +129,6 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:5315]edit cluster role", &editClusterRole),
 			table.Entry("[test_id:5316]view role", &viewRole),
 			table.Entry("[test_id:5317]view role binding", &viewRoleBinding),
-			table.Entry("[test_id:TODO]data source", &dataSource),
 		)
 
 		Context("with pause", func() {
@@ -147,7 +144,6 @@ var _ = Describe("DataSources", func() {
 				table.Entry("[test_id:5388]view role", &viewRole),
 				table.Entry("[test_id:5389]view role binding", &viewRoleBinding),
 				table.Entry("[test_id:5393]edit cluster role", &editClusterRole),
-				table.Entry("[test_id:TODO]data source", &dataSource),
 			)
 		})
 
@@ -156,7 +152,6 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:6211] golden images namespace", &goldenImageNS),
 			table.Entry("[test_id:6212] view role", &viewRole),
 			table.Entry("[test_id:6213] view role binding", &viewRoleBinding),
-			table.Entry("[test_id:TODO] data source", &dataSource),
 		)
 	})
 
@@ -166,7 +161,6 @@ var _ = Describe("DataSources", func() {
 			table.Entry("[test_id:4842]view role binding", &viewRoleBinding),
 			table.Entry("[test_id:4771]edit cluster role", &editClusterRole),
 			table.Entry("[test_id:4770]golden image NS", &goldenImageNS),
-			table.Entry("[test_id:TODO]data source", &dataSource),
 		)
 	})
 
@@ -641,7 +635,49 @@ var _ = Describe("DataSources", func() {
 		})
 	})
 
-	Context("DataImportCron", func() {
+	Context("without DataImportCron templates", func() {
+		BeforeEach(func() {
+			strategy.SkipSspUpdateTestsIfNeeded()
+
+			// Removing any existing DataImportCron templates.
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+			})
+			waitUntilDeployed()
+		})
+
+		It("[test_id:8105] should create DataSource", func() {
+			Expect(apiClient.Get(ctx, dataSource.GetKey(), dataSource.NewResource())).To(Succeed())
+		})
+
+		It("[test_id:8106] should set app labels on DataSource", func() {
+			expectAppLabels(&dataSource)
+		})
+
+		It("[test_id:8107] should restore modified DataSource", func() {
+			expectRestoreAfterUpdate(&dataSource)
+		})
+
+		Context("with pause", func() {
+			JustAfterEach(func() {
+				unpauseSsp()
+			})
+
+			It("[test_id:8108] should restore modified DataSource with pause", func() {
+				expectRestoreAfterUpdateWithPause(&dataSource)
+			})
+		})
+
+		It("[test_id:8115] should restore app labels on DataSource", func() {
+			expectAppLabelsRestoreAfterUpdate(&dataSource)
+		})
+
+		It("[test_id:8109] should recreate DataSource after delete", func() {
+			expectRecreateAfterDelete(&dataSource)
+		})
+	})
+
+	Context("with DataImportCron template", func() {
 		const cronSchedule = "* * * * *"
 		var registryURL = "docker://quay.io/kubevirt/cirros-container-disk-demo"
 
@@ -653,6 +689,12 @@ var _ = Describe("DataSources", func() {
 
 		BeforeEach(func() {
 			strategy.SkipSspUpdateTestsIfNeeded()
+
+			// Removing any existing DataImportCron templates.
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+			})
+			waitUntilDeployed()
 
 			cronTemplate = ssp.DataImportCronTemplate{
 				ObjectMeta: metav1.ObjectMeta{
@@ -683,14 +725,6 @@ var _ = Describe("DataSources", func() {
 				},
 			}
 
-			updateSsp(func(foundSsp *ssp.SSP) {
-				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
-					cronTemplate,
-				)
-			})
-
-			waitUntilDeployed()
-
 			dataImportCron = testResource{
 				Name:           cronTemplate.Name,
 				Namespace:      ssp.GoldenImagesNSname,
@@ -699,83 +733,215 @@ var _ = Describe("DataSources", func() {
 			}
 		})
 
-		AfterEach(func() {
-			strategy.RevertToOriginalSspCr()
-		})
+		Context("without existing PVC", func() {
+			BeforeEach(func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+						cronTemplate,
+					)
+				})
 
-		It("[test_id:7469] should create DataImportCron", func() {
-			Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron not created")
-		})
-
-		It("[test_id:7467] should set app labels on DataImportCron", func() {
-			expectAppLabels(&dataImportCron)
-		})
-
-		It("[test_id:7458] should recreate DataImportCron after delete", func() {
-			expectRecreateAfterDelete(&dataImportCron)
-		})
-
-		It("[test_id:7712] should update DataImportCron if updated in SSP CR", func() {
-			updateSsp(func(foundSsp *ssp.SSP) {
-				foundSsp.Spec.CommonTemplates.DataImportCronTemplates[0].
-					Spec.Template.Spec.PVC.Resources.Requests[core.ResourceStorage] = resource.MustParse("32Mi")
+				waitUntilDeployed()
 			})
 
-			waitUntilDeployed()
-
-			cron := &cdiv1beta1.DataImportCron{}
-			Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
-			Expect(cron.Spec.Template.Spec.PVC.Resources.Requests).To(HaveKeyWithValue(core.ResourceStorage, resource.MustParse("32Mi")))
-		})
-
-		It("[test_id:7455] should remove DataImportCron if removed from SSP CR", func() {
-			updateSsp(func(foundSsp *ssp.SSP) {
-				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+			AfterEach(func() {
+				strategy.RevertToOriginalSspCr()
 			})
 
-			waitUntilDeployed()
+			It("[test_id:7469] should create DataImportCron", func() {
+				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron not created")
+			})
 
-			cron := &cdiv1beta1.DataImportCron{}
-			err := apiClient.Get(ctx, dataImportCron.GetKey(), cron)
-			if err != nil {
-				Expect(errors.IsNotFound(err)).To(BeTrue(), "Expected error to be: IsNotFound")
-			} else {
-				Expect(cron.GetDeletionTimestamp().IsZero()).To(BeFalse(), "DataImportCron is not being deleted")
-			}
-		})
+			It("[test_id:7467] should set app labels on DataImportCron", func() {
+				expectAppLabels(&dataImportCron)
+			})
 
-		It("[test_id:TODO] should restore DataSource if DataImportCron removed from SSP CR", func() {
-			// Wait until DataImportCron imports PVC and changes data source
-			Eventually(func() bool {
+			It("[test_id:7458] should recreate DataImportCron after delete", func() {
+				expectRecreateAfterDelete(&dataImportCron)
+			})
+
+			It("[test_id:7712] should update DataImportCron if updated in SSP CR", func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates[0].
+						Spec.Template.Spec.PVC.Resources.Requests[core.ResourceStorage] = resource.MustParse("32Mi")
+				})
+
+				waitUntilDeployed()
+
 				cron := &cdiv1beta1.DataImportCron{}
 				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
-
-				return cron.Status.LastImportTimestamp.IsZero()
-			}, timeout, time.Second).Should(BeFalse())
-
-			managedDataSource := &cdiv1beta1.DataSource{}
-			Expect(apiClient.Get(ctx, dataSource.GetKey(), managedDataSource)).To(Succeed())
-
-			// Remove the DataImportCron
-			updateSsp(func(foundSsp *ssp.SSP) {
-				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+				Expect(cron.Spec.Template.Spec.PVC.Resources.Requests).To(HaveKeyWithValue(core.ResourceStorage, resource.MustParse("32Mi")))
 			})
-			waitUntilDeployed()
 
-			// Check if the DataSource has been reverted
-			revertedDataSource := &cdiv1beta1.DataSource{}
-			Expect(apiClient.Get(ctx, dataSource.GetKey(), revertedDataSource)).To(Succeed())
+			It("[test_id:7455] should remove DataImportCron if removed from SSP CR", func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+				})
 
-			Expect(revertedDataSource).ToNot(EqualResource(&dataSource, managedDataSource))
+				waitUntilDeployed()
 
-			// Delete the DataSource and let the operator recreate it
-			Expect(apiClient.Delete(ctx, revertedDataSource.DeepCopy())).To(Succeed())
-			waitUntilDeployed()
+				cron := &cdiv1beta1.DataImportCron{}
+				err := apiClient.Get(ctx, dataImportCron.GetKey(), cron)
+				if err != nil {
+					Expect(errors.IsNotFound(err)).To(BeTrue(), "Expected error to be: IsNotFound")
+				} else {
+					Expect(cron.GetDeletionTimestamp().IsZero()).To(BeFalse(), "DataImportCron is not being deleted")
+				}
+			})
 
-			recreatedDataSource := &cdiv1beta1.DataSource{}
-			Expect(apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)).To(Succeed())
+			It("[test_id:8111] DataSource should not be owned by SSP", func() {
+				ds := dataSource.NewResource()
+				Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 
-			Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
+				Expect(hasOwnerAnnotations(ds.GetAnnotations())).To(BeFalse(), "DataSource should not have SSP owner annotations.")
+			})
+
+			It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
+				// Wait until DataImportCron imports PVC and changes data source
+				Eventually(func() bool {
+					cron := &cdiv1beta1.DataImportCron{}
+					Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
+
+					return cron.Status.LastImportTimestamp.IsZero()
+				}, timeout, time.Second).Should(BeFalse())
+
+				managedDataSource := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, dataSource.GetKey(), managedDataSource)).To(Succeed())
+
+				// Remove the DataImportCron
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+				})
+				waitUntilDeployed()
+
+				// Check if the DataSource has been reverted
+				revertedDataSource := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, dataSource.GetKey(), revertedDataSource)).To(Succeed())
+
+				Expect(revertedDataSource).ToNot(EqualResource(&dataSource, managedDataSource))
+
+				// Delete the DataSource and let the operator recreate it
+				Expect(apiClient.Delete(ctx, revertedDataSource.DeepCopy())).To(Succeed())
+				waitUntilDeployed()
+
+				recreatedDataSource := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)).To(Succeed())
+
+				Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
+			})
+		})
+
+		Context("with existing PVC", func() {
+			var (
+				dataVolume *cdiv1beta1.DataVolume
+			)
+
+			BeforeEach(func() {
+				dataVolume = &cdiv1beta1.DataVolume{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      dataSourceName,
+						Namespace: ssp.GoldenImagesNSname,
+					},
+					Spec: cdiv1beta1.DataVolumeSpec{
+						Source: &cdiv1beta1.DataVolumeSource{
+							Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+								URL: &registryURL,
+							},
+						},
+						PVC: &core.PersistentVolumeClaimSpec{
+							AccessModes: []core.PersistentVolumeAccessMode{
+								core.ReadWriteOnce,
+							},
+							Resources: core.ResourceRequirements{
+								Requests: core.ResourceList{
+									core.ResourceStorage: resource.MustParse("128Mi"),
+								},
+							},
+						},
+					},
+				}
+				Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
+
+				Eventually(func() error {
+					return apiClient.Get(ctx, client.ObjectKey{
+						Name:      dataVolume.GetName(),
+						Namespace: dataVolume.GetNamespace(),
+					}, &core.PersistentVolumeClaim{})
+				}, shortTimeout, time.Second).Should(Succeed())
+
+				Eventually(func() bool {
+					foundDs := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), foundDs)).To(Succeed())
+
+					readyCond := getDataSourceReadyCondition(foundDs)
+					return readyCond != nil && readyCond.Status == core.ConditionTrue
+				}, shortTimeout, time.Second).Should(BeTrue(), "DataSource should have Ready condition true")
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+						cronTemplate,
+					)
+				})
+
+				waitUntilDeployed()
+			})
+
+			AfterEach(func() {
+				strategy.RevertToOriginalSspCr()
+				err := apiClient.Delete(ctx, dataVolume)
+				if !errors.IsNotFound(err) {
+					Expect(err).ToNot(HaveOccurred(), "Failed to delete data volume")
+				}
+				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+			})
+
+			It("[test_id:8110] should not create DataImportCron", func() {
+				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+				Expect(err).To(HaveOccurred())
+				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
+			})
+
+			It("[test_id:8114] should not create DataImportCron if DataSource is deleted", func() {
+				ds := dataSource.NewResource()
+				ds.SetName(dataSource.Name)
+				ds.SetNamespace(dataSource.Namespace)
+
+				Expect(apiClient.Delete(ctx, ds)).To(Succeed())
+
+				waitUntilDeployed()
+
+				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+				Expect(err).To(HaveOccurred())
+				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
+			})
+
+			It("[test_id:8113] should create DataImportCron if PVC is deleted", func() {
+				Expect(apiClient.Delete(ctx, dataVolume)).To(Succeed())
+				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+
+				waitUntilDeployed()
+
+				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed())
+			})
+
+			It("[test_id:8116] should create DataImportCron if specific label is added to DataSource", func() {
+				const label = "cdi.kubevirt.io/dataImportCron"
+				Eventually(func() error {
+					ds := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+
+					if ds.GetLabels() == nil {
+						ds.SetLabels(map[string]string{})
+					}
+					ds.GetLabels()[label] = "test-value"
+
+					return apiClient.Update(ctx, ds)
+				}, shortTimeout, time.Second).Should(Succeed())
+
+				waitUntilDeployed()
+
+				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed())
+			})
 		})
 
 		Context("with DataImportCron cleanup", func() {
@@ -832,3 +998,13 @@ var _ = Describe("DataSources", func() {
 		})
 	})
 })
+
+func getDataSourceReadyCondition(dataSource *cdiv1beta1.DataSource) *cdiv1beta1.DataSourceCondition {
+	for i := range dataSource.Status.Conditions {
+		condition := &dataSource.Status.Conditions[i]
+		if condition.Type == cdiv1beta1.DataSourceReady {
+			return condition
+		}
+	}
+	return nil
+}

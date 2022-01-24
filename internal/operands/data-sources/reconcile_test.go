@@ -7,6 +7,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
@@ -30,12 +32,16 @@ const (
 
 var _ = Describe("Data-Sources operand", func() {
 	var (
+		testDataSources []cdiv1beta1.DataSource
+
 		operand operands.Operand
 		request common.Request
 	)
 
 	BeforeEach(func() {
-		operand = New(getDataSources())
+		testDataSources = getDataSources()
+
+		operand = New(testDataSources)
 
 		client := fake.NewFakeClientWithScheme(common.Scheme)
 		request = common.Request{
@@ -45,8 +51,9 @@ var _ = Describe("Data-Sources operand", func() {
 					Name:      name,
 				},
 			},
-			Client:  client,
-			Context: context.Background(),
+			Client:         client,
+			UncachedReader: client,
+			Context:        context.Background(),
 			Instance: &ssp.SSP{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "SSP",
@@ -95,100 +102,143 @@ var _ = Describe("Data-Sources operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		for _, ds := range getDataSources() {
+		for _, ds := range testDataSources {
 			ExpectResourceExists(&ds, request)
 		}
 	})
 
-	It("should revert non-managed DataSource", func() {
-		ds := getDataSources()[0]
+	Context("with DataImportCron template", func() {
+		var (
+			cronTemplate ssp.DataImportCronTemplate
+		)
 
-		dsCopy := ds.DeepCopy()
-		dsCopy.Spec.Source.PVC.Name = "modified-pvc-name"
-		Expect(request.Client.Create(request.Context, dsCopy)).To(Succeed())
-
-		_, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred())
-
-		foundDs := &cdiv1beta1.DataSource{}
-		Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(dsCopy), foundDs)).To(Succeed())
-
-		Expect(foundDs.Spec).To(Equal(ds.Spec))
-	})
-
-	It("should not revert managed DataSource", func() {
-		ds := getDataSources()[0]
-
-		ds.Spec.Source.PVC.Name = "modified-pvc-name"
-		Expect(request.Client.Create(request.Context, &ds)).To(Succeed())
-
-		cronTemplate := ssp.DataImportCronTemplate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: ds.Name,
-			},
-			Spec: cdiv1beta1.DataImportCronSpec{
-				ManagedDataSource: ds.Name,
-			},
-		}
-		request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
-
-		_, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred())
-
-		foundDs := &cdiv1beta1.DataSource{}
-		Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&ds), foundDs)).To(Succeed())
-
-		Expect(foundDs.Spec.Source.PVC.Name).To(Equal(ds.Spec.Source.PVC.Name))
-	})
-
-	Context("DataImportCrons", func() {
-		It("should create DataImportCron", func() {
-			cronTemplate := ssp.DataImportCronTemplate{
+		BeforeEach(func() {
+			dataSourceName := testDataSources[0].GetName()
+			cronTemplate = ssp.DataImportCronTemplate{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "fedora",
+					Name: dataSourceName,
 				},
 				Spec: cdiv1beta1.DataImportCronSpec{
-					ManagedDataSource: "test-source",
+					ManagedDataSource: dataSourceName,
 				},
 			}
 
 			request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
-
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
-
-			createdDataImportCron := cdiv1beta1.DataImportCron{}
-			err = request.Client.Get(request.Context, client.ObjectKey{
-				Name:      cronTemplate.GetName(),
-				Namespace: ssp.GoldenImagesNSname,
-			}, &createdDataImportCron)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(createdDataImportCron.Spec).To(Equal(cronTemplate.Spec))
 		})
 
-		It("should remove DataImportCron if removed from SSP CR", func() {
-			cronTemplate := ssp.DataImportCronTemplate{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-cron",
-				},
-				Spec: cdiv1beta1.DataImportCronSpec{},
-			}
+		Context("without existing PVC", func() {
+			It("should create DataImportCron", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
 
-			request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				createdDataImportCron := cdiv1beta1.DataImportCron{}
+				err = request.Client.Get(request.Context, client.ObjectKey{
+					Name:      cronTemplate.GetName(),
+					Namespace: ssp.GoldenImagesNSname,
+				}, &createdDataImportCron)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(createdDataImportCron.Spec).To(Equal(cronTemplate.Spec))
+			})
 
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
+			It("should not create DataSource", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
 
-			cron := cronTemplate.AsDataImportCron()
-			cron.Namespace = ssp.GoldenImagesNSname
-			ExpectResourceExists(&cron, request)
+				ExpectResourceNotExists(&testDataSources[0], request)
+			})
 
-			request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+			It("should remove DataImportCron if template removed from SSP CR", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
 
-			_, err = operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
+				cron := cronTemplate.AsDataImportCron()
+				cron.Namespace = ssp.GoldenImagesNSname
+				ExpectResourceExists(&cron, request)
 
-			ExpectResourceNotExists(&cron, request)
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				ExpectResourceNotExists(&cron, request)
+			})
+
+			It("should restore DataSource if DataImportCron template is removed", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cron := cronTemplate.AsDataImportCron()
+				cron.Namespace = ssp.GoldenImagesNSname
+				ExpectResourceExists(&cron, request)
+
+				ExpectResourceNotExists(&testDataSources[0], request)
+
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				ExpectResourceNotExists(&cron, request)
+				ExpectResourceExists(&testDataSources[0], request)
+			})
+		})
+
+		Context("with existing PVC", func() {
+			var (
+				pvc *v1.PersistentVolumeClaim
+			)
+
+			BeforeEach(func() {
+				pvc = &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDataSources[0].Spec.Source.PVC.Name,
+						Namespace: testDataSources[0].Spec.Source.PVC.Namespace,
+					},
+					Spec: v1.PersistentVolumeClaimSpec{},
+				}
+
+				Expect(request.Client.Create(request.Context, pvc)).To(Succeed())
+			})
+
+			AfterEach(func() {
+				err := request.Client.Delete(request.Context, pvc)
+				if err != nil && !errors.IsNotFound(err) {
+					Expect(err).ToNot(HaveOccurred())
+				}
+			})
+
+			It("should not create DataImportCron", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cron := cronTemplate.AsDataImportCron()
+				cron.Namespace = ssp.GoldenImagesNSname
+				ExpectResourceNotExists(&cron, request)
+			})
+
+			It("should create DataImportCron if specific label is added to DataSource", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cron := cronTemplate.AsDataImportCron()
+				cron.Namespace = ssp.GoldenImagesNSname
+				ExpectResourceNotExists(&cron, request)
+
+				foundDs := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), foundDs)).To(Succeed())
+
+				if foundDs.GetLabels() == nil {
+					foundDs.SetLabels(map[string]string{})
+				}
+				const label = "cdi.kubevirt.io/dataImportCron"
+				foundDs.GetLabels()[label] = ""
+
+				Expect(request.Client.Update(request.Context, foundDs)).To(Succeed())
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				ExpectResourceExists(&cron, request)
+			})
 		})
 
 		It("should keep DataImportCron, if not owned by SSP CR", func() {

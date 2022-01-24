@@ -36,6 +36,12 @@ type ReconcileResult struct {
 	OperationResult OperationResult
 }
 
+func (r *ReconcileResult) IsSuccess() bool {
+	return r.Status.Progressing == nil &&
+		r.Status.NotAvailable == nil &&
+		r.Status.Degraded == nil
+}
+
 type CleanupResult struct {
 	Resource client.Object
 	Deleted  bool
@@ -170,7 +176,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	}
 	if res == OperationResultDeleted || !found.GetDeletionTimestamp().IsZero() {
 		r.request.VersionCache.RemoveObj(found)
-		return resourceDeletedResult(r.resource, res), nil
+		return ResourceDeletedResult(r.resource, res), nil
 	}
 
 	r.request.VersionCache.Add(found)
@@ -397,7 +403,7 @@ func isResourceOwned(request *Request, expectedObj, foundObj client.Object) (boo
 	return false, nil
 }
 
-func resourceDeletedResult(resource client.Object, res OperationResult) ReconcileResult {
+func ResourceDeletedResult(resource client.Object, res OperationResult) ReconcileResult {
 	message := "Resource is being deleted."
 	return ReconcileResult{
 		Status: ResourceStatus{
