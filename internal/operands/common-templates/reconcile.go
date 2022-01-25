@@ -92,7 +92,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 	upgradingNow := isUpgradingNow(request)
 	for _, r := range reconcileTemplatesResults {
 		if !upgradingNow && (r.OperationResult == common.OperationResultUpdated) {
-			request.Logger.V(1).Info(fmt.Sprintf("Changes reverted in common template: %s", r.Resource.GetName()))
+			request.Logger.Info(fmt.Sprintf("Changes reverted in common template: %s", r.Resource.GetName()))
 			CommonTemplatesRestored.Inc()
 		}
 	}

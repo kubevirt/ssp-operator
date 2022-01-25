@@ -171,7 +171,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 
 	res, err := r.createOrUpdateWithImmutableSpec(found, mutateFn)
 	if err != nil {
-		r.request.Logger.V(1).Info(fmt.Sprintf("Resource create/update failed: %v", err))
+		r.request.Logger.Info(fmt.Sprintf("Resource create/update failed: %v", err))
 		return ReconcileResult{}, err
 	}
 	if res == OperationResultDeleted || !found.GetDeletionTimestamp().IsZero() {
