@@ -185,7 +185,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	}
 	sspRequest.Logger.V(1).Info("CR status updated")
 
-	sspRequest.Logger.V(1).Info("Reconciling operands...")
+	sspRequest.Logger.Info("Reconciling operands...")
 	reconcileResults, err := r.reconcileOperands(sspRequest)
 	if err != nil {
 		return handleError(sspRequest, err)
@@ -197,7 +197,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	sspRequest.Logger.V(1).Info("CR status updated")
+	sspRequest.Logger.Info("CR status updated")
 
 	if sspRequest.Instance.Status.Phase == lifecycleapi.PhaseDeployed {
 		common.SSPOperatorReconcilingProperly.Set(1)
@@ -412,7 +412,7 @@ func (r *sspReconciler) reconcileOperands(sspRequest *common.Request) ([]common.
 		sspRequest.Logger.V(1).Info(fmt.Sprintf("Reconciling operand: %s", operand.Name()))
 		reconcileResults, err := operand.Reconcile(sspRequest)
 		if err != nil {
-			sspRequest.Logger.V(1).Info(fmt.Sprintf("Operand reconciliation failed: %s", err.Error()))
+			sspRequest.Logger.Info(fmt.Sprintf("Operand reconciliation failed: %s", err.Error()))
 			return nil, err
 		}
 		allReconcileResults = append(allReconcileResults, reconcileResults...)
