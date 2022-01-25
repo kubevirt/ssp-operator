@@ -10,7 +10,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.14.0
+	github.com/onsi/gomega v1.15.0
 	github.com/openshift/api v0.0.0
 	github.com/openshift/custom-resource-status v1.1.0
 	github.com/operator-framework/api v0.9.2
@@ -32,7 +32,7 @@ require (
 	kubevirt.io/containerized-data-importer-api v1.42.1
 	kubevirt.io/controller-lifecycle-operator-sdk v0.2.1
 	kubevirt.io/qe-tools v0.1.7
-	sigs.k8s.io/controller-runtime v0.9.3
+	sigs.k8s.io/controller-runtime v0.10.3
 )
 
 replace (
