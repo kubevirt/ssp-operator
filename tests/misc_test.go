@@ -22,6 +22,7 @@ import (
 var _ = Describe("Observed generation", func() {
 	BeforeEach(func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
+		waitUntilDeployed()
 	})
 
 	AfterEach(func() {
