@@ -31,6 +31,7 @@ require (
 	kubevirt.io/containerized-data-importer-api v1.42.1
 	kubevirt.io/controller-lifecycle-operator-sdk v0.2.3
 	kubevirt.io/qe-tools v0.1.7
+	kubevirt.io/ssp-operator/api v0.0.0
 	sigs.k8s.io/controller-runtime v0.10.3
 )
 
@@ -41,4 +42,6 @@ replace (
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20210831095141-e19a065e79f7 // release-4.9
 	k8s.io/client-go => k8s.io/client-go v0.22.6
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.6
+
+	kubevirt.io/ssp-operator/api => ./api
 )

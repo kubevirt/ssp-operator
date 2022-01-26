@@ -564,6 +564,9 @@ kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api
 ## explicit
 kubevirt.io/qe-tools/pkg/ginkgo-reporters
 kubevirt.io/qe-tools/pkg/polarion-xml
+# kubevirt.io/ssp-operator/api v0.0.0 => ./api
+## explicit
+kubevirt.io/ssp-operator/api/v1beta1
 # sigs.k8s.io/controller-runtime v0.10.3
 ## explicit
 sigs.k8s.io/controller-runtime
@@ -620,3 +623,4 @@ sigs.k8s.io/yaml
 # github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20210831095141-e19a065e79f7
 # k8s.io/client-go => k8s.io/client-go v0.22.6
 # k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.6
+# kubevirt.io/ssp-operator/api => ./api

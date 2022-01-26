@@ -43,7 +43,7 @@ VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDATOR_IMG_TAG}
 
 CRD_OPTIONS ?= "crd:preserveUnknownFields=false,generateEmbeddedObjectMeta=true"
 
-SRC_PATHS = ./api/... ./controllers/... ./internal/... ./hack/... ./webhooks/...
+SRC_PATHS = ./controllers/... ./internal/... ./hack/... ./webhooks/...
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -110,7 +110,7 @@ undeploy:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook paths="$(SRC_PATHS)" output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook paths="./api/... $(SRC_PATHS)" output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
 fmt:
@@ -120,13 +120,19 @@ fmt:
 vet:
 	go vet ./...
 
+# Update vendor modules
+.PHONY:vendor
+vendor:
+	go mod vendor
+	go mod tidy
+
 # Validate that this repository does not contain offensive language
 validate-no-offensive-lang:
 	./hack/validate-no-offensive-lang.sh
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="$(SRC_PATHS)"
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/... $(SRC_PATHS)"
 
 # Build the container image
 container-build: unittest bundle
@@ -200,7 +206,6 @@ endef
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
 bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
-	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	./bin/csv-generator --csv-version $(VERSION) --namespace kubevirt --operator-image $(IMG) --operator-version $(VERSION) \
