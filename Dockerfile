@@ -23,6 +23,7 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 COPY internal/ internal/
+COPY webhooks/ webhooks/
 
 COPY hack/boilerplate.go.txt hack/boilerplate.go.txt
 COPY hack/csv-generator.go hack/csv-generator.go

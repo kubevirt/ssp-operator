@@ -14,37 +14,46 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
+	"github.com/onsi/ginkgo/extensions/table"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 )
 
 var _ = Describe("SSP Validation", func() {
 	var (
 		client  client.Client
 		objects = make([]runtime.Object, 0)
+
+		validator admission.CustomValidator
+		ctx       context.Context
 	)
 
 	JustBeforeEach(func() {
 		scheme := runtime.NewScheme()
 		// add our own scheme
-		SchemeBuilder.AddToScheme(scheme)
+		sspv1beta1.SchemeBuilder.AddToScheme(scheme)
 		// add more schemes
 		v1.AddToScheme(scheme)
 
 		client = fake.NewFakeClientWithScheme(scheme, objects...)
-		setClientForWebhook(client)
+
+		validator = newSspValidator(client)
+		ctx = context.Background()
 	})
 
 	Context("creating SSP CR", func() {
@@ -68,14 +77,14 @@ var _ = Describe("SSP Validation", func() {
 		Context("when one is already present", func() {
 			BeforeEach(func() {
 				// add an SSP CR to fake client
-				objects = append(objects, &SSP{
+				objects = append(objects, &sspv1beta1.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:            "test-ssp",
 						Namespace:       "test-ns",
 						ResourceVersion: "1",
 					},
-					Spec: SSPSpec{
-						CommonTemplates: CommonTemplates{
+					Spec: sspv1beta1.SSPSpec{
+						CommonTemplates: sspv1beta1.CommonTemplates{
 							Namespace: templatesNamespace,
 						},
 					},
@@ -83,18 +92,18 @@ var _ = Describe("SSP Validation", func() {
 			})
 
 			It("should be rejected", func() {
-				ssp := SSP{
+				ssp := &sspv1beta1.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-ssp2",
 						Namespace: "test-ns2",
 					},
-					Spec: SSPSpec{
-						CommonTemplates: CommonTemplates{
+					Spec: sspv1beta1.SSPSpec{
+						CommonTemplates: sspv1beta1.CommonTemplates{
 							Namespace: templatesNamespace,
 						},
 					},
 				}
-				err := ssp.ValidateCreate()
+				err := validator.ValidateCreate(ctx, ssp)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp"))
 			})
@@ -102,31 +111,31 @@ var _ = Describe("SSP Validation", func() {
 
 		It("should fail if template namespace does not exist", func() {
 			const nonexistingNamespace = "nonexisting-namespace"
-			ssp := &SSP{
+			ssp := &sspv1beta1.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
 					Namespace: "test-ns",
 				},
-				Spec: SSPSpec{
-					CommonTemplates: CommonTemplates{
+				Spec: sspv1beta1.SSPSpec{
+					CommonTemplates: sspv1beta1.CommonTemplates{
 						Namespace: nonexistingNamespace,
 					},
 				},
 			}
-			err := ssp.ValidateCreate()
+			err := validator.ValidateCreate(ctx, ssp)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("creation failed, the configured namespace for common templates does not exist: " + nonexistingNamespace))
 		})
 	})
 
 	It("should allow update of commonTemplates.namespace", func() {
-		oldSsp := &SSP{
+		oldSsp := &sspv1beta1.SSP{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-ssp",
 				Namespace: "test-ns",
 			},
-			Spec: SSPSpec{
-				CommonTemplates: CommonTemplates{
+			Spec: sspv1beta1.SSPSpec{
+				CommonTemplates: sspv1beta1.CommonTemplates{
 					Namespace: "old-ns",
 				},
 			},
@@ -135,7 +144,7 @@ var _ = Describe("SSP Validation", func() {
 		newSsp := oldSsp.DeepCopy()
 		newSsp.Spec.CommonTemplates.Namespace = "new-ns"
 
-		err := newSsp.ValidateUpdate(oldSsp)
+		err := validator.ValidateUpdate(ctx, oldSsp, newSsp)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -159,15 +168,15 @@ var _ = Describe("SSP Validation", func() {
 
 		table.DescribeTable("validate dataImportCronTemplates", func(namespace, name string, shouldFail bool) {
 
-			oldSSP := &SSP{
+			oldSSP := &sspv1beta1.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
 					Namespace: "test-ns",
 				},
-				Spec: SSPSpec{
-					CommonTemplates: CommonTemplates{
+				Spec: sspv1beta1.SSPSpec{
+					CommonTemplates: sspv1beta1.CommonTemplates{
 						Namespace: templatesNamespace,
-						DataImportCronTemplates: []DataImportCronTemplate{
+						DataImportCronTemplates: []sspv1beta1.DataImportCronTemplate{
 							{
 								ObjectMeta: metav1.ObjectMeta{
 									Name:      name,
@@ -182,16 +191,16 @@ var _ = Describe("SSP Validation", func() {
 			newSSP := oldSSP.DeepCopy()
 
 			By("validating create")
-			err := newSSP.ValidateCreate()
+			err := validator.ValidateCreate(ctx, newSSP)
 			checkExpectedError(err, shouldFail)
 
 			By("validating update")
-			err = newSSP.ValidateUpdate(oldSSP)
+			err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
 			checkExpectedError(err, shouldFail)
 		},
 			table.Entry("no namepsace provided", "", "test-name", false),
-			table.Entry("no name provided", GoldenImagesNSname, "", true),
-			table.Entry("golden image namespace provided", GoldenImagesNSname, "test-name", false),
+			table.Entry("no name provided", sspv1beta1.GoldenImagesNSname, "", true),
+			table.Entry("golden image namespace provided", sspv1beta1.GoldenImagesNSname, "test-name", false),
 			table.Entry("invalid namespace provided", "invalid-namespace", "test-name", true),
 		)
 
@@ -206,7 +215,7 @@ func checkExpectedError(err error, shouldFail bool) {
 	}
 }
 
-func TestAPI(t *testing.T) {
+func TestWebhook(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "API Suite")
 }
