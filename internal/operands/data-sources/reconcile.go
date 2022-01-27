@@ -273,6 +273,8 @@ const (
 	unmanagedDataSource dataSourceState = "unmanagedDataSource"
 )
 
+const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
+
 func dataSourceManaged(dataSource *cdiv1beta1.DataSource, cronByDataSourceName map[string]*ssp.DataImportCronTemplate, request *common.Request) (dataSourceState, error) {
 	_, cronExists := cronByDataSourceName[dataSource.GetName()]
 	if !cronExists {
@@ -305,8 +307,7 @@ func dataSourceManaged(dataSource *cdiv1beta1.DataSource, cronByDataSourceName m
 		return "", err
 	}
 
-	const dicLabel = "cdi.kubevirt.io/dataImportCron"
-	if _, labelExists := foundDataSource.GetLabels()[dicLabel]; labelExists {
+	if _, labelExists := foundDataSource.GetLabels()[dataImportCronLabel]; labelExists {
 		var isOwnedBySsp = common.CheckOwnerAnnotation(foundDataSource, request.Instance)
 		if isOwnedBySsp {
 			// This case happens when the label is added to a DataSource with existing PVC
@@ -410,6 +411,10 @@ func reconcileDataSource(dataSource *cdiv1beta1.DataSource, request *common.Requ
 		ClusterResource(dataSource).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
+			// Remove the dataImportCronLabel to signal that
+			// this DataSource is not managed by a DataImportCron.
+			delete(foundRes.GetLabels(), dataImportCronLabel)
+
 			foundRes.(*cdiv1beta1.DataSource).Spec = newRes.(*cdiv1beta1.DataSource).Spec
 		}).
 		Reconcile()
