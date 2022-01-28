@@ -679,11 +679,15 @@ var _ = Describe("DataSources", func() {
 
 	Context("with DataImportCron template", func() {
 		const cronSchedule = "* * * * *"
-		var registryURL = "docker://quay.io/kubevirt/cirros-container-disk-demo"
 
 		var (
-			cronTemplate ssp.DataImportCronTemplate
+			registryURL       = "docker://quay.io/kubevirt/cirros-container-disk-demo"
+			pullMethod        = cdiv1beta1.RegistryPullNode
+			commonAnnotations = map[string]string{
+				"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+			}
 
+			cronTemplate   ssp.DataImportCronTemplate
 			dataImportCron testResource
 		)
 
@@ -698,7 +702,8 @@ var _ = Describe("DataSources", func() {
 
 			cronTemplate = ssp.DataImportCronTemplate{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-data-import-cron",
+					Name:        "test-data-import-cron",
+					Annotations: commonAnnotations,
 				},
 				Spec: cdiv1beta1.DataImportCronSpec{
 					Schedule:          cronSchedule,
@@ -707,13 +712,11 @@ var _ = Describe("DataSources", func() {
 						Spec: cdiv1beta1.DataVolumeSpec{
 							Source: &cdiv1beta1.DataVolumeSource{
 								Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-									URL: &registryURL,
+									URL:        &registryURL,
+									PullMethod: &pullMethod,
 								},
 							},
-							PVC: &core.PersistentVolumeClaimSpec{
-								AccessModes: []core.PersistentVolumeAccessMode{
-									core.ReadWriteOnce,
-								},
+							Storage: &cdiv1beta1.StorageSpec{
 								Resources: core.ResourceRequirements{
 									Requests: core.ResourceList{
 										core.ResourceStorage: resource.MustParse("128Mi"),
@@ -763,14 +766,14 @@ var _ = Describe("DataSources", func() {
 			It("[test_id:7712] should update DataImportCron if updated in SSP CR", func() {
 				updateSsp(func(foundSsp *ssp.SSP) {
 					foundSsp.Spec.CommonTemplates.DataImportCronTemplates[0].
-						Spec.Template.Spec.PVC.Resources.Requests[core.ResourceStorage] = resource.MustParse("32Mi")
+						Spec.Template.Spec.Storage.Resources.Requests[core.ResourceStorage] = resource.MustParse("32Mi")
 				})
 
 				waitUntilDeployed()
 
 				cron := &cdiv1beta1.DataImportCron{}
 				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
-				Expect(cron.Spec.Template.Spec.PVC.Resources.Requests).To(HaveKeyWithValue(core.ResourceStorage, resource.MustParse("32Mi")))
+				Expect(cron.Spec.Template.Spec.Storage.Resources.Requests).To(HaveKeyWithValue(core.ResourceStorage, resource.MustParse("32Mi")))
 			})
 
 			It("[test_id:7455] should remove DataImportCron if removed from SSP CR", func() {
@@ -803,7 +806,7 @@ var _ = Describe("DataSources", func() {
 					Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
 
 					return cron.Status.LastImportTimestamp.IsZero()
-				}, timeout, time.Second).Should(BeFalse())
+				}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
 
 				managedDataSource := &cdiv1beta1.DataSource{}
 				Expect(apiClient.Get(ctx, dataSource.GetKey(), managedDataSource)).To(Succeed())
@@ -839,19 +842,18 @@ var _ = Describe("DataSources", func() {
 			BeforeEach(func() {
 				dataVolume = &cdiv1beta1.DataVolume{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      dataSourceName,
-						Namespace: ssp.GoldenImagesNSname,
+						Name:        dataSourceName,
+						Namespace:   ssp.GoldenImagesNSname,
+						Annotations: commonAnnotations,
 					},
 					Spec: cdiv1beta1.DataVolumeSpec{
 						Source: &cdiv1beta1.DataVolumeSource{
 							Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-								URL: &registryURL,
+								URL:        &registryURL,
+								PullMethod: &pullMethod,
 							},
 						},
-						PVC: &core.PersistentVolumeClaimSpec{
-							AccessModes: []core.PersistentVolumeAccessMode{
-								core.ReadWriteOnce,
-							},
+						Storage: &cdiv1beta1.StorageSpec{
 							Resources: core.ResourceRequirements{
 								Requests: core.ResourceList{
 									core.ResourceStorage: resource.MustParse("128Mi"),
@@ -862,12 +864,11 @@ var _ = Describe("DataSources", func() {
 				}
 				Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
 
-				Eventually(func() error {
-					return apiClient.Get(ctx, client.ObjectKey{
-						Name:      dataVolume.GetName(),
-						Namespace: dataVolume.GetNamespace(),
-					}, &core.PersistentVolumeClaim{})
-				}, shortTimeout, time.Second).Should(Succeed())
+				Eventually(func() cdiv1beta1.DataVolumePhase {
+					foundDv := &cdiv1beta1.DataVolume{}
+					Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)).To(Succeed())
+					return foundDv.Status.Phase
+				}, timeout, time.Second).Should(Equal(cdiv1beta1.Succeeded), "DataVolume should successfully import.")
 
 				Eventually(func() bool {
 					foundDs := &cdiv1beta1.DataSource{}
@@ -962,6 +963,7 @@ var _ = Describe("DataSources", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						GenerateName: "test-not-in-ssp",
 						Namespace:    ssp.GoldenImagesNSname,
+						Annotations:  commonAnnotations,
 					},
 					Spec: cdiv1beta1.DataImportCronSpec{
 						Schedule:          cronSchedule,
@@ -970,16 +972,14 @@ var _ = Describe("DataSources", func() {
 							Spec: cdiv1beta1.DataVolumeSpec{
 								Source: &cdiv1beta1.DataVolumeSource{
 									Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-										URL: &registryURL,
+										URL:        &registryURL,
+										PullMethod: &pullMethod,
 									},
 								},
-								PVC: &core.PersistentVolumeClaimSpec{
-									AccessModes: []core.PersistentVolumeAccessMode{
-										core.ReadWriteMany,
-									},
+								Storage: &cdiv1beta1.StorageSpec{
 									Resources: core.ResourceRequirements{
 										Requests: core.ResourceList{
-											core.ResourceStorage: resource.MustParse("16Mi"),
+											core.ResourceStorage: resource.MustParse("128Mi"),
 										},
 									},
 								},
