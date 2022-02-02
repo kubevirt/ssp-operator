@@ -646,6 +646,10 @@ var _ = Describe("DataSources", func() {
 			waitUntilDeployed()
 		})
 
+		AfterEach(func() {
+			strategy.RevertToOriginalSspCr()
+		})
+
 		It("[test_id:8105] should create DataSource", func() {
 			Expect(apiClient.Get(ctx, dataSource.GetKey(), dataSource.NewResource())).To(Succeed())
 		})
@@ -736,6 +740,10 @@ var _ = Describe("DataSources", func() {
 			}
 		})
 
+		AfterEach(func() {
+			strategy.RevertToOriginalSspCr()
+		})
+
 		Context("without existing PVC", func() {
 			BeforeEach(func() {
 				updateSsp(func(foundSsp *ssp.SSP) {
@@ -745,10 +753,6 @@ var _ = Describe("DataSources", func() {
 				})
 
 				waitUntilDeployed()
-			})
-
-			AfterEach(func() {
-				strategy.RevertToOriginalSspCr()
 			})
 
 			It("[test_id:7469] should create DataImportCron", func() {
@@ -825,10 +829,11 @@ var _ = Describe("DataSources", func() {
 
 				// Delete the DataSource and let the operator recreate it
 				Expect(apiClient.Delete(ctx, revertedDataSource.DeepCopy())).To(Succeed())
-				waitUntilDeployed()
 
 				recreatedDataSource := &cdiv1beta1.DataSource{}
-				Expect(apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)).To(Succeed())
+				Eventually(func() error {
+					return apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)
+				}, shortTimeout, time.Second).Should(Succeed())
 
 				Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
 			})
@@ -888,7 +893,6 @@ var _ = Describe("DataSources", func() {
 			})
 
 			AfterEach(func() {
-				strategy.RevertToOriginalSspCr()
 				err := apiClient.Delete(ctx, dataVolume)
 				if !errors.IsNotFound(err) {
 					Expect(err).ToNot(HaveOccurred(), "Failed to delete data volume")
@@ -909,7 +913,10 @@ var _ = Describe("DataSources", func() {
 
 				Expect(apiClient.Delete(ctx, ds)).To(Succeed())
 
-				waitUntilDeployed()
+				// Wait until DataSource is recreated.
+				Eventually(func() error {
+					return apiClient.Get(ctx, dataSource.GetKey(), dataSource.NewResource())
+				}, shortTimeout, time.Second).Should(Succeed())
 
 				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 				Expect(err).To(HaveOccurred())
@@ -917,15 +924,23 @@ var _ = Describe("DataSources", func() {
 			})
 
 			It("[test_id:8113] should create DataImportCron if PVC is deleted", func() {
+				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+				Expect(err).To(HaveOccurred())
+				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
+
 				Expect(apiClient.Delete(ctx, dataVolume)).To(Succeed())
 				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
 
-				waitUntilDeployed()
-
-				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed())
+				Eventually(func() error {
+					return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+				}, shortTimeout, time.Second).Should(Succeed())
 			})
 
 			It("[test_id:8116] should create DataImportCron if specific label is added to DataSource", func() {
+				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+				Expect(err).To(HaveOccurred())
+				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
+
 				const label = "cdi.kubevirt.io/dataImportCron"
 				Eventually(func() error {
 					ds := &cdiv1beta1.DataSource{}
@@ -939,9 +954,9 @@ var _ = Describe("DataSources", func() {
 					return apiClient.Update(ctx, ds)
 				}, shortTimeout, time.Second).Should(Succeed())
 
-				waitUntilDeployed()
-
-				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed())
+				Eventually(func() error {
+					return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+				}, shortTimeout, time.Second).Should(Succeed())
 			})
 		})
 
@@ -990,6 +1005,13 @@ var _ = Describe("DataSources", func() {
 
 				Expect(apiClient.Create(ctx, cron)).To(Succeed())
 
+				// Trigger reconciliation by adding an annotation to SSP.
+				updateSsp(func(foundSsp *ssp.SSP) {
+					if foundSsp.Annotations == nil {
+						foundSsp.Annotations = map[string]string{}
+					}
+					foundSsp.Annotations["ssp-trigger-reconcile"] = "true"
+				})
 				waitUntilDeployed()
 
 				err := apiClient.Get(ctx, client.ObjectKeyFromObject(cron), &cdiv1beta1.DataImportCron{})
