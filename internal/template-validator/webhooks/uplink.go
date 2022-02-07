@@ -5,7 +5,7 @@ import (
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/client-go/tools/cache"
-	k6tv1 "kubevirt.io/client-go/apis/core/v1"
+	k6tv1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"

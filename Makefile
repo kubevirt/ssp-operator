@@ -43,6 +43,8 @@ VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDATOR_IMG_TAG}
 
 CRD_OPTIONS ?= "crd:preserveUnknownFields=false,generateEmbeddedObjectMeta=true"
 
+SRC_PATHS = ./api/... ./controllers/... ./internal/... ./hack/...
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -64,7 +66,7 @@ endif
 all: manager
 
 unittest: generate fmt vet manifests
-	go test -v -coverprofile cover.out ./api/... ./controllers/... ./internal/... ./hack/...
+	go test -v -coverprofile cover.out $(SRC_PATHS)
 
 build-functests:
 	go test -c ./tests
@@ -108,7 +110,7 @@ undeploy:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook paths="$(SRC_PATHS)" output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
 fmt:
@@ -124,7 +126,7 @@ validate-no-offensive-lang:
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="$(SRC_PATHS)"
 
 # Build the container image
 container-build: unittest bundle

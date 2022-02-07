@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k6tv1 "kubevirt.io/client-go/apis/core/v1"
+	k6tv1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation"
