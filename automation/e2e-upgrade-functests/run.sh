@@ -41,7 +41,6 @@ metadata:
   name: ${SSP_TEMPLATES_NAMESPACE}
 EOF
 
-# TODO - in a future release, this script should use the CR template from the latest released version
 sed -e "s/%%_SSP_NAME_%%/${SSP_NAME}/g" \
     -e "s/%%_SSP_NAMESPACE_%%/${SSP_NAMESPACE}/g" \
     -e "s/%%_COMMON_TEMPLATES_NAMESPACE_%%/${SSP_TEMPLATES_NAMESPACE}/g" \
