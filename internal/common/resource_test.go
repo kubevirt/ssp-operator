@@ -157,6 +157,25 @@ var _ = Describe("Resource", func() {
 			expectEqualResourceExists(newTestResource(namespace), &request)
 		})
 
+		It("should update resource when AlwaysCallUpdateFunc is set", func() {
+			resource := newTestResource(namespace)
+			resource.Spec.Ports[0].Name = "changed-name"
+			Expect(request.Client.Create(request.Context, resource)).ToNot(HaveOccurred())
+
+			request.VersionCache.Add(resource)
+
+			_, err := CreateOrUpdate(&request).
+				NamespacedResource(newTestResource(namespace)).
+				Options(ReconcileOptions{AlwaysCallUpdateFunc: true}).
+				UpdateFunc(func(expected, found client.Object) {
+					found.(*v1.Service).Spec = expected.(*v1.Service).Spec
+				}).
+				Reconcile()
+
+			Expect(err).ToNot(HaveOccurred())
+			expectEqualResourceExists(newTestResource(namespace), &request)
+		})
+
 		It("should delete immutable resource on spec update", func() {
 			resource := newTestResource(namespace)
 			resource.Spec.Ports[0].Name = "changed-name"

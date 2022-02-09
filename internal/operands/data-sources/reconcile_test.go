@@ -140,13 +140,6 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(createdDataImportCron.Spec).To(Equal(cronTemplate.Spec))
 			})
 
-			It("should not create DataSource", func() {
-				_, err := operand.Reconcile(&request)
-				Expect(err).ToNot(HaveOccurred())
-
-				ExpectResourceNotExists(&testDataSources[0], request)
-			})
-
 			It("should remove DataImportCron if template removed from SSP CR", func() {
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
@@ -171,14 +164,23 @@ var _ = Describe("Data-Sources operand", func() {
 				cron.Namespace = ssp.GoldenImagesNSname
 				ExpectResourceExists(&cron, request)
 
-				ExpectResourceNotExists(&testDataSources[0], request)
+				// Update DataSource to simulate CDI
+				ds := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				ds.Spec.Source.PVC.Name = "test"
+				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
 
 				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
 				_, err = operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
-
 				ExpectResourceNotExists(&cron, request)
-				ExpectResourceExists(&testDataSources[0], request)
+
+				// Test that DataSource was restored
+				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				Expect(ds.Spec).To(Equal(testDataSources[0].Spec))
 			})
 		})
 
