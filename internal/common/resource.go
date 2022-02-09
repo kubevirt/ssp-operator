@@ -65,6 +65,13 @@ type ResourceUpdateFunc = func(expected, found client.Object)
 type ResourceStatusFunc = func(resource client.Object) ResourceStatus
 type ResourceSpecGetter = func(resource client.Object) interface{}
 
+type ReconcileOptions struct {
+	// AlwaysCallUpdateFunc specifies if the UpdateFunc should be called
+	// on changes that don't increase the .metadata.generation field.
+	// For example, labels and annotations.
+	AlwaysCallUpdateFunc bool
+}
+
 type ReconcileBuilder interface {
 	NamespacedResource(client.Object) ReconcileBuilder
 	ClusterResource(client.Object) ReconcileBuilder
@@ -72,6 +79,8 @@ type ReconcileBuilder interface {
 	UpdateFunc(ResourceUpdateFunc) ReconcileBuilder
 	StatusFunc(ResourceStatusFunc) ReconcileBuilder
 	ImmutableSpec(getter ResourceSpecGetter) ReconcileBuilder
+
+	Options(options ReconcileOptions) ReconcileBuilder
 
 	Reconcile() (ReconcileResult, error)
 }
@@ -90,6 +99,8 @@ type reconcileBuilder struct {
 
 	immutableSpec bool
 	specGetter    ResourceSpecGetter
+
+	options ReconcileOptions
 }
 
 var _ ReconcileBuilder = &reconcileBuilder{}
@@ -136,6 +147,11 @@ func (r *reconcileBuilder) ImmutableSpec(specGetter ResourceSpecGetter) Reconcil
 	return r
 }
 
+func (r *reconcileBuilder) Options(options ReconcileOptions) ReconcileBuilder {
+	r.options = options
+	return r
+}
+
 func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	if r.addLabels {
 		AddAppLabels(r.request.Instance, r.operandName, r.operandComponent, r.resource)
@@ -161,7 +177,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 
 		updateLabels(r.resource, found)
 		updateAnnotations(r.resource, found)
-		if !r.request.VersionCache.Contains(found) {
+		if r.options.AlwaysCallUpdateFunc || !r.request.VersionCache.Contains(found) {
 			// The generation was updated by other cluster components,
 			// operator needs to update the resource
 			r.updateFunc(r.resource, found)

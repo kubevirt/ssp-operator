@@ -3,7 +3,6 @@ package data_sources
 import (
 	"fmt"
 
-	"github.com/operator-framework/operator-lib/handler"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -82,6 +81,12 @@ func (d *dataSources) RequiredCrds() []string {
 	}
 }
 
+type dataSourceInfo struct {
+	dataSource         *cdiv1beta1.DataSource
+	autoUpdateEnabled  bool
+	dataImportCronName string
+}
+
 func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	funcs := []common.ReconcileFunc{
 		reconcileGoldenImagesNS,
@@ -90,14 +95,12 @@ func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResu
 		reconcileEditRole,
 	}
 
-	dsAndCrons, err := d.getManagedDataSourcesAndCrons(request)
+	dsAndCrons, err := d.getDataSourcesAndCrons(request)
 	if err != nil {
 		return nil, err
 	}
 
-	dsFuncs, err := reconcileDataSources(dsAndCrons.managedDataSources,
-		dsAndCrons.transitioningDataSources,
-		request)
+	dsFuncs, err := reconcileDataSources(dsAndCrons.dataSourceInfos, request)
 	if err != nil {
 		return nil, err
 	}
@@ -214,12 +217,11 @@ func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) 
 }
 
 type dataSourcesAndCrons struct {
-	managedDataSources       []cdiv1beta1.DataSource
-	transitioningDataSources []cdiv1beta1.DataSource
-	dataImportCrons          []cdiv1beta1.DataImportCron
+	dataSourceInfos []dataSourceInfo
+	dataImportCrons []cdiv1beta1.DataImportCron
 }
 
-func (d *dataSources) getManagedDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
+func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
 	cronTemplates := request.Instance.Spec.CommonTemplates.DataImportCronTemplates
 	cronByDataSourceName := make(map[string]*ssp.DataImportCronTemplate, len(cronTemplates))
 	for i := range cronTemplates {
@@ -227,155 +229,130 @@ func (d *dataSources) getManagedDataSourcesAndCrons(request *common.Request) (da
 		cronByDataSourceName[cron.Spec.ManagedDataSource] = cron
 	}
 
-	// DataSources managed by the SSP operator
-	var managedDataSources []cdiv1beta1.DataSource
-	var transitioningDataSources []cdiv1beta1.DataSource
-	for _, dataSource := range d.sources {
+	var dataSourceInfos []dataSourceInfo
+	for i := range d.sources {
+		dataSource := d.sources[i] // Make a copy
 		dataSource.Namespace = ssp.GoldenImagesNSname
-		managedState, err := dataSourceManaged(&dataSource, cronByDataSourceName, request)
+		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(&dataSource, cronByDataSourceName, request)
 		if err != nil {
 			return dataSourcesAndCrons{}, err
 		}
-		switch managedState {
-		case managedDataSource:
-			managedDataSources = append(managedDataSources, dataSource)
-		case transitioningDataSource:
-			transitioningDataSources = append(transitioningDataSources, dataSource)
+
+		var dicName string
+		if dic, ok := cronByDataSourceName[dataSource.GetName()]; ok {
+			dicName = dic.GetName()
+		}
+
+		dataSourceInfos = append(dataSourceInfos, dataSourceInfo{
+			dataSource:         &dataSource,
+			autoUpdateEnabled:  autoUpdateEnabled,
+			dataImportCronName: dicName,
+		})
+	}
+
+	for i := range dataSourceInfos {
+		if !dataSourceInfos[i].autoUpdateEnabled {
+			delete(cronByDataSourceName, dataSourceInfos[i].dataSource.GetName())
 		}
 	}
 
-	for i := range managedDataSources {
-		delete(cronByDataSourceName, managedDataSources[i].GetName())
-	}
-
-	managedDataImportCrons := make([]cdiv1beta1.DataImportCron, 0, len(cronByDataSourceName))
+	dataImportCrons := make([]cdiv1beta1.DataImportCron, 0, len(cronByDataSourceName))
 	for _, cronTemplate := range cronByDataSourceName {
-		managedDataImportCrons = append(managedDataImportCrons, cronTemplate.AsDataImportCron())
+		dataImportCrons = append(dataImportCrons, cronTemplate.AsDataImportCron())
 	}
 
 	return dataSourcesAndCrons{
-		managedDataSources:       managedDataSources,
-		transitioningDataSources: transitioningDataSources,
-		dataImportCrons:          managedDataImportCrons,
+		dataSourceInfos: dataSourceInfos,
+		dataImportCrons: dataImportCrons,
 	}, nil
 }
 
-type dataSourceState string
-
-const (
-	// DataSource is managed by SSP operator
-	managedDataSource dataSourceState = "managedDataSource"
-
-	// DataSource is transitioning to not managed by SSP
-	transitioningDataSource dataSourceState = "transitioningDataSource"
-
-	// DataSource is not managed by SSP
-	unmanagedDataSource dataSourceState = "unmanagedDataSource"
-)
-
 const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
 
-func dataSourceManaged(dataSource *cdiv1beta1.DataSource, cronByDataSourceName map[string]*ssp.DataImportCronTemplate, request *common.Request) (dataSourceState, error) {
+func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSourceName map[string]*ssp.DataImportCronTemplate, request *common.Request) (bool, error) {
 	_, cronExists := cronByDataSourceName[dataSource.GetName()]
 	if !cronExists {
-		// If DataImportCron does not exist for this DataSource, SSP needs to reconcile it.
-		return managedDataSource, nil
+		// If DataImportCron does not exist for this DataSource, auto-update is disabled.
+		return false, nil
 	}
 
 	// Check existing data source. The Get call uses cache.
 	foundDataSource := &cdiv1beta1.DataSource{}
 	err := request.Client.Get(request.Context, client.ObjectKeyFromObject(dataSource), foundDataSource)
 	if errors.IsNotFound(err) {
-		// Checking if PVC exists. This is an unchanged API call, but it is only called when DataSource
-		// does not exist, and there is a small number of DataSources reconciled by this operator.
-		err := request.UncachedReader.Get(request.Context, client.ObjectKey{
-			Name:      dataSource.Spec.Source.PVC.Name,
-			Namespace: dataSource.Spec.Source.PVC.Namespace,
-		}, &core.PersistentVolumeClaim{})
-		if errors.IsNotFound(err) {
-			// Referenced PVC does not exist. DataSource will be managed by DataImportCron.
-			return unmanagedDataSource, nil
-		}
+		pvcExists, err := checkIfPvcExists(dataSource, request)
 		if err != nil {
-			return "", err
+			return false, err
 		}
 
-		// PVC referenced by this DataSource exists. DataSource is managed by SSP operator.
-		return managedDataSource, nil
+		// If PVC exists, DataSource does not use auto-update.
+		// Otherwise, DataSource uses auto-update.
+		return !pvcExists, nil
 	}
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
-	if _, labelExists := foundDataSource.GetLabels()[dataImportCronLabel]; labelExists {
-		var isOwnedBySsp = common.CheckOwnerAnnotation(foundDataSource, request.Instance)
-		if isOwnedBySsp {
-			// This case happens when the label is added to a DataSource with existing PVC
-			return transitioningDataSource, nil
-		}
-		// This DataSource is managed by a DataImportCron
-		return unmanagedDataSource, nil
+	if _, foundDsUsesAutoUpdate := foundDataSource.GetLabels()[dataImportCronLabel]; foundDsUsesAutoUpdate {
+		// Found DS is labeled to use auto-update.
+		return true, nil
 	}
 
 	dsReadyCondition := getDataSourceReadyCondition(foundDataSource)
-	if dsReadyCondition != nil && dsReadyCondition.Status != core.ConditionTrue {
-		// DataSource is currently not managed by a DataImportCron,
-		// but it does not refer to an existing PVC. DataImportCron will manage it.
-		return transitioningDataSource, nil
+	// It makes sense to check the ready condition only if the found DataSource spec
+	// points to the golden image PVC, not to auto-update PVC.
+	if dsReadyCondition != nil && foundDataSource.Spec.Source.PVC == dataSource.Spec.Source.PVC {
+		// Auto-update will ony be enabled if the DataSource does not refer to an existing PVC.
+		return dsReadyCondition.Status != core.ConditionTrue, nil
 	}
 
-	// DataSource is currently not managed by a DataImportCron,
-	// and it refers to an existing PVC. SSP will manage it.
-	return managedDataSource, nil
+	// In case found DataSource spec is different from expected spec, we need to check if PVC exists.
+	pvcExists, err := checkIfPvcExists(dataSource, request)
+	if err != nil {
+		return false, err
+	}
+	// If PVC exists, DataSource does not use auto-update. Otherwise, DataSource uses auto-update.
+	return !pvcExists, nil
 }
 
-func reconcileDataSources(managedDataSources []cdiv1beta1.DataSource, transitioningDataSources []cdiv1beta1.DataSource, request *common.Request) ([]common.ReconcileFunc, error) {
+func checkIfPvcExists(dataSource *cdiv1beta1.DataSource, request *common.Request) (bool, error) {
+	if dataSource.Spec.Source.PVC == nil {
+		return false, nil
+	}
+
+	// This is an unchanged API call, but it is only called when DataSource does not exist,
+	// and there is a small number of DataSources reconciled by this operator.
+	err := request.UncachedReader.Get(request.Context, client.ObjectKey{
+		Name:      dataSource.Spec.Source.PVC.Name,
+		Namespace: dataSource.Spec.Source.PVC.Namespace,
+	}, &core.PersistentVolumeClaim{})
+	if errors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func reconcileDataSources(dataSourceInfos []dataSourceInfo, request *common.Request) ([]common.ReconcileFunc, error) {
 	ownedDataSources, err := listAllOwnedDataSources(request)
 	if err != nil {
 		return nil, err
 	}
 
-	dsNames := make(map[string]struct{}, len(managedDataSources)+len(transitioningDataSources))
-
+	dsNames := make(map[string]struct{}, len(dataSourceInfos))
 	var funcs []common.ReconcileFunc
-	for i := range managedDataSources {
-		dataSource := managedDataSources[i] // Make a local copy
+	for i := range dataSourceInfos {
+		dsInfo := dataSourceInfos[i] // Make a local copy
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			return reconcileDataSource(&dataSource, request)
+			return reconcileDataSource(dsInfo, request)
 		})
-		dsNames[dataSource.GetName()] = struct{}{}
+		dsNames[dsInfo.dataSource.GetName()] = struct{}{}
 	}
 
-	for i := range transitioningDataSources {
-		dataSource := transitioningDataSources[i] // Make a local copy
-		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			foundDataSource := &cdiv1beta1.DataSource{}
-			err := request.Client.Get(request.Context, client.ObjectKeyFromObject(&dataSource), foundDataSource)
-			if err != nil && !errors.IsNotFound(err) {
-				return common.ReconcileResult{}, err
-			}
-
-			result := common.ReconcileResult{
-				Resource:        &dataSource,
-				OperationResult: common.OperationResultNone,
-			}
-
-			if common.CheckOwnerAnnotation(foundDataSource, request.Instance) {
-				delete(foundDataSource.GetAnnotations(), handler.TypeAnnotation)
-				delete(foundDataSource.GetAnnotations(), handler.NamespacedNameAnnotation)
-				err := request.Client.Update(request.Context, foundDataSource)
-				if err != nil && !errors.IsNotFound(err) {
-					return common.ReconcileResult{}, err
-				}
-				result.OperationResult = common.OperationResultUpdated
-			}
-
-			return result, nil
-		})
-		dsNames[dataSource.GetName()] = struct{}{}
-	}
-
-	// Remove owned DataSources that are not in the 'managedDataSources' or 'transitioningDataSources'
+	// Remove owned DataSources that are not in the 'dataSourceInfos'
 	for i := range ownedDataSources {
 		if _, isUsed := dsNames[ownedDataSources[i].GetName()]; isUsed {
 			continue
@@ -406,16 +383,26 @@ func reconcileDataSources(managedDataSources []cdiv1beta1.DataSource, transition
 	return funcs, nil
 }
 
-func reconcileDataSource(dataSource *cdiv1beta1.DataSource, request *common.Request) (common.ReconcileResult, error) {
+func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(dataSource).
+		ClusterResource(dsInfo.dataSource).
 		WithAppLabels(operandName, operandComponent).
+		Options(common.ReconcileOptions{AlwaysCallUpdateFunc: true}).
 		UpdateFunc(func(newRes, foundRes client.Object) {
-			// Remove the dataImportCronLabel to signal that
-			// this DataSource is not managed by a DataImportCron.
-			delete(foundRes.GetLabels(), dataImportCronLabel)
+			if dsInfo.autoUpdateEnabled {
+				if foundRes.GetLabels() == nil {
+					foundRes.SetLabels(make(map[string]string))
+				}
+				foundRes.GetLabels()[dataImportCronLabel] = dsInfo.dataImportCronName
+			} else {
+				delete(foundRes.GetLabels(), dataImportCronLabel)
+			}
 
-			foundRes.(*cdiv1beta1.DataSource).Spec = newRes.(*cdiv1beta1.DataSource).Spec
+			foundDs := foundRes.(*cdiv1beta1.DataSource)
+			newDs := newRes.(*cdiv1beta1.DataSource)
+			if !dsInfo.autoUpdateEnabled || foundDs.Spec.Source.PVC == nil {
+				foundDs.Spec.Source.PVC = newDs.Spec.Source.PVC
+			}
 		}).
 		Reconcile()
 }
