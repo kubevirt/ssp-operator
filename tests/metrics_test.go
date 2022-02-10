@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"net/http"
 	"reflect"
 
 	. "github.com/onsi/ginkgo"
@@ -65,6 +66,25 @@ var _ = Describe("Metrics", func() {
 
 		It("[test_id:5790]restores modified app labels", func() {
 			expectAppLabelsRestoreAfterUpdate(&prometheusRuleRes)
+		})
+	})
+
+	Context("alerts", func() {
+		It("[test_id:7851]should have available runbook URLs", func() {
+			promRule := &promv1.PrometheusRule{}
+			Expect(apiClient.Get(ctx, prometheusRuleRes.GetKey(), promRule)).To(Succeed())
+			for _, group := range promRule.Spec.Groups {
+				for _, rule := range group.Rules {
+					if len(rule.Alert) > 0 {
+						Expect(rule.Annotations).ToNot(BeNil())
+						url, ok := rule.Annotations["runbook_url"]
+						Expect(ok).To(BeTrue())
+						resp, err := http.Head(url)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(resp.StatusCode).Should(Equal(http.StatusOK))
+					}
+				}
+			}
 		})
 	})
 })
