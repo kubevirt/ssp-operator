@@ -2,9 +2,10 @@ package template_validator
 
 import (
 	"context"
+	"testing"
+
 	"github.com/onsi/ginkgo/extensions/table"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -86,6 +87,7 @@ var _ = Describe("Template validator operand", func() {
 		ExpectResourceExists(newService(namespace), request)
 		ExpectResourceExists(newDeployment(namespace, replicas, "test-img"), request)
 		ExpectResourceExists(newValidatingWebhook(namespace), request)
+		ExpectResourceExists(newPrometheusService(namespace), request)
 	})
 
 	It("should not update webhook CA bundle", func() {

@@ -31,6 +31,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: ${SSP_NAMESPACE}
+  labels:
+    openshift.io/cluster-monitoring: "true"
 EOF
 
 oc apply -f - <<EOF
@@ -53,5 +55,6 @@ export IMG=${CI_OPERATOR_IMG}
 export SKIP_CLEANUP_AFTER_TESTS="true"
 export TEST_EXISTING_CR_NAME="${SSP_NAME}"
 export TEST_EXISTING_CR_NAMESPACE="${SSP_NAMESPACE}"
+export IS_UPGRADE_LANE="true"
 
 make deploy functest

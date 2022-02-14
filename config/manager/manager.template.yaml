@@ -16,7 +16,7 @@ spec:
       labels:
         control-plane: ssp-operator
         name: ssp-operator
-        prometheus.kubevirt.io: "true"
+        prometheus.ssp.kubevirt.io: "true"
     spec:
       serviceAccountName: ssp-operator
       priorityClassName: system-cluster-critical

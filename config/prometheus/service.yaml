@@ -1,0 +1,22 @@
+apiVersion: v1                                                                                                                                                                       
+kind: Service                                                                                                                                                                        
+metadata:                                                                                                                                                                             
+  labels:
+    prometheus.ssp.kubevirt.io: "true"
+  name: ssp-operator-metrics
+  namespace: kubevirt
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: metrics
+    port: 443
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    prometheus.ssp.kubevirt.io: "true"
+    name: ssp-operator
+  sessionAffinity: None
+  type: ClusterIP

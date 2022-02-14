@@ -3,7 +3,6 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -25,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
@@ -102,67 +100,70 @@ var _ = Describe("SSPOperatorReconcilingProperly metric", func() {
 	)
 
 	AfterEach(func() {
-		Eventually(func() error {
-			deployment := &apps.Deployment{}
-			err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
-			if err != nil {
-				return err
-			}
-			// remove the finalizer so everything can go back to normal
-			controllerutil.RemoveFinalizer(deployment, finalizerName)
-			return apiClient.Update(ctx, deployment)
-		}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
+		removeFinalizer(deploymentRes, finalizerName)
 		strategy.RevertToOriginalSspCr()
 		waitUntilDeployed()
 	})
 
 	BeforeEach(func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
-		expectedLabels := expectedLabelsFor("template-validator", common.AppComponentTemplating)
-		deploymentRes = testResource{
-			Name:           validator.DeploymentName,
-			Namespace:      strategy.GetNamespace(),
-			Resource:       &apps.Deployment{},
-			ExpectedLabels: expectedLabels,
-			UpdateFunc: func(deployment *apps.Deployment) {
-				deployment.Spec.Replicas = pointer.Int32Ptr(0)
-			},
-			EqualsFunc: func(old *apps.Deployment, new *apps.Deployment) bool {
-				return reflect.DeepEqual(old.Spec, new.Spec)
-			},
-		}
+		deploymentRes = testDeploymentResource()
 
 		waitUntilDeployed()
 	})
 
 	It("[test_id:7369] should set SSPOperatorReconcilingProperly metrics to 0 on failing to reconcile", func() {
 		// add a finalizer to the validator deployment, do that it can't be deleted
-		Eventually(func() error {
-			deployment := &apps.Deployment{}
-			err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
-			if err != nil {
-				return err
-			}
-			controllerutil.AddFinalizer(deployment, finalizerName)
-			return apiClient.Update(ctx, deployment)
-		}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
-
+		addFinalizer(deploymentRes, finalizerName)
 		// send a request to delete the validator deployment
-		deployment := &apps.Deployment{}
-		deployment.Name = deploymentRes.Name
-		deployment.Namespace = deploymentRes.Namespace
-		Expect(apiClient.Delete(ctx, deployment)).ToNot(HaveOccurred())
-		// try to change the number of validator pods
-		var newValidatorReplicas int32 = 3
-		updateSsp(func(foundSsp *sspv1beta1.SSP) {
-			foundSsp.Spec.TemplateValidator.Replicas = &newValidatorReplicas
-		})
-		// the reconcile cycle should now be failing, so the ssp_operator_reconciling_properly metric should be 0
-		Eventually(func() int {
-			return sspOperatorReconcilingProperly()
-		}, shortTimeout, time.Second).Should(Equal(0))
+		deleteDeployment(deploymentRes)
+		validateSspIsFailingToReconcileMetric()
 	})
 })
+
+func removeFinalizer(deploymentRes testResource, finalizerName string) {
+	Eventually(func() error {
+		deployment := &apps.Deployment{}
+		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		if err != nil {
+			return err
+		}
+		// remove the finalizer so everything can go back to normal
+		controllerutil.RemoveFinalizer(deployment, finalizerName)
+		return apiClient.Update(ctx, deployment)
+	}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
+}
+
+func addFinalizer(deploymentRes testResource, finalizerName string) {
+	Eventually(func() error {
+		deployment := &apps.Deployment{}
+		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		if err != nil {
+			return err
+		}
+		controllerutil.AddFinalizer(deployment, finalizerName)
+		return apiClient.Update(ctx, deployment)
+	}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
+}
+
+func deleteDeployment(deploymentRes testResource) {
+	deployment := &apps.Deployment{}
+	deployment.Name = deploymentRes.Name
+	deployment.Namespace = deploymentRes.Namespace
+	Expect(apiClient.Delete(ctx, deployment)).ToNot(HaveOccurred())
+}
+
+func validateSspIsFailingToReconcileMetric() {
+	// try to change the number of validator pods
+	var newValidatorReplicas int32 = 3
+	updateSsp(func(foundSsp *sspv1beta1.SSP) {
+		foundSsp.Spec.TemplateValidator.Replicas = &newValidatorReplicas
+	})
+	// the reconcile cycle should now be failing, so the ssp_operator_reconciling_properly metric should be 0
+	Eventually(func() int {
+		return sspOperatorReconcilingProperlyCount()
+	}, shortTimeout, time.Second).Should(Equal(0))
+}
 
 var _ = Describe("SCC annotation", func() {
 	const (

@@ -32,7 +32,23 @@ import (
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	"kubevirt.io/ssp-operator/internal/template-validator/labels"
 )
+
+func testDeploymentResource() testResource {
+	return testResource{
+		Name:           validator.DeploymentName,
+		Namespace:      strategy.GetNamespace(),
+		Resource:       &apps.Deployment{},
+		ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
+		UpdateFunc: func(deployment *apps.Deployment) {
+			deployment.Spec.Replicas = pointer.Int32Ptr(0)
+		},
+		EqualsFunc: func(old *apps.Deployment, new *apps.Deployment) bool {
+			return reflect.DeepEqual(old.Spec, new.Spec)
+		},
+	}
+}
 
 var _ = Describe("Template validator operand", func() {
 	var (
@@ -41,6 +57,7 @@ var _ = Describe("Template validator operand", func() {
 		webhookConfigRes      testResource
 		serviceAccountRes     testResource
 		serviceRes            testResource
+		serviceMetricsRes     testResource
 		deploymentRes         testResource
 
 		replicas int32 = 2
@@ -101,18 +118,20 @@ var _ = Describe("Template validator operand", func() {
 				return reflect.DeepEqual(old.Spec, new.Spec)
 			},
 		}
-		deploymentRes = testResource{
-			Name:           validator.DeploymentName,
+		serviceMetricsRes = testResource{
+			Name:           validator.MetricsServiceName,
 			Namespace:      strategy.GetNamespace(),
-			Resource:       &apps.Deployment{},
-			ExpectedLabels: expectedLabels,
-			UpdateFunc: func(deployment *apps.Deployment) {
-				deployment.Spec.Replicas = pointer.Int32Ptr(0)
+			Resource:       &core.Service{},
+			ExpectedLabels: validator.PrometheusServiceLabels(),
+			UpdateFunc: func(service *core.Service) {
+				service.Spec.Ports[0].Port = 443
+				service.Spec.Ports[0].TargetPort = intstr.FromInt(8443)
 			},
-			EqualsFunc: func(old *apps.Deployment, new *apps.Deployment) bool {
+			EqualsFunc: func(old *core.Service, new *core.Service) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)
 			},
 		}
+		deploymentRes = testDeploymentResource()
 
 		waitUntilDeployed()
 	})
@@ -135,6 +154,7 @@ var _ = Describe("Template validator operand", func() {
 		},
 			table.Entry("[test_id:4910] service account", &serviceAccountRes),
 			table.Entry("[test_id:4911] service", &serviceRes),
+			table.Entry("[test_id:8366] metrics service", &serviceMetricsRes),
 			table.Entry("[test_id:4912] deployment", &deploymentRes),
 		)
 
@@ -144,6 +164,7 @@ var _ = Describe("Template validator operand", func() {
 			table.Entry("[test_id:5826]validating webhook configuration", &webhookConfigRes),
 			table.Entry("[test_id:6201]service account", &serviceAccountRes),
 			table.Entry("[test_id:5827]service", &serviceRes),
+			table.Entry("[test_id:8367]metrics service", &serviceMetricsRes),
 			table.Entry("[test_id:5828]deployment", &deploymentRes),
 		)
 	})
@@ -155,6 +176,7 @@ var _ = Describe("Template validator operand", func() {
 			table.Entry("[test_id:4918] validating webhook configuration", &webhookConfigRes),
 			table.Entry("[test_id:4920] service account", &serviceAccountRes),
 			table.Entry("[test_id:4922] service", &serviceRes),
+			table.Entry("[test_id:8370] metrics service", &serviceMetricsRes),
 			table.Entry("[test_id:4924] deployment", &deploymentRes),
 		)
 	})
@@ -165,6 +187,7 @@ var _ = Describe("Template validator operand", func() {
 			table.Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes),
 			table.Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes),
 			table.Entry("[test_id:4923] service", &serviceRes),
+			table.Entry("[test_id:8371] metrics service", &serviceMetricsRes),
 			table.Entry("[test_id:4925] deployment", &deploymentRes),
 		)
 
@@ -182,6 +205,7 @@ var _ = Describe("Template validator operand", func() {
 				table.Entry("[test_id:5535] cluster role binding", &clusterRoleBindingRes),
 				table.Entry("[test_id:5536] validating webhook configuration", &webhookConfigRes),
 				table.Entry("[test_id:5538] service", &serviceRes),
+				table.Entry("[test_id:8368] metrics service", &serviceMetricsRes),
 				table.Entry("[test_id:5539] deployment", &deploymentRes),
 			)
 		})
@@ -191,6 +215,7 @@ var _ = Describe("Template validator operand", func() {
 			table.Entry("[test_id:6206] cluster role binding", &clusterRoleBindingRes),
 			table.Entry("[test_id:6207] validating webhook configuration", &webhookConfigRes),
 			table.Entry("[test_id:6208] service", &serviceRes),
+			table.Entry("[test_id:8369] metrics service", &serviceMetricsRes),
 			table.Entry("[test_id:6209] deployment", &deploymentRes),
 		)
 	})
@@ -449,19 +474,10 @@ var _ = Describe("Template validator webhooks", func() {
 			eventuallyFailToCreateVm(vm)
 		})
 
-		It("[test_id:7060]vm rejected metrics increses by one when vm is rejected", func() {
-			rejectedCountBefore := totalRejectedVmsMetricsValue()
+		It("[test_id:7060]vm rejected metrics increases by one when vm is rejected", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
-			// set value unfulfilling validation
-			vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
-			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
-				TemplateNameAnnotation:      template.Name,
-				TemplateNamespaceAnnotation: template.Namespace,
-			}
-			eventuallyFailToCreateVm(vm)
-			Expect(totalRejectedVmsMetricsValue() - rejectedCountBefore).To(Equal(1))
+			failVmCreationToIncreaseRejectedVmsMetrics(template)
 		})
 
 		It("[test_id:5586]test with template optional rules unfulfilled", func() {
@@ -893,6 +909,25 @@ func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 		}
 		return errors.ReasonForError(err), nil
 	}, shortTimeout).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
+}
+
+func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
+	rejectedCountBefore := totalRejectedVmsMetricsValue()
+	vmi := NewRandomVMIWithBridgeInterface(strategy.GetNamespace())
+	// set values that will fail validation
+	vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
+	vm := NewVirtualMachine(vmi)
+	vm.ObjectMeta.Annotations = map[string]string{
+		labels.AnnotationTemplateNameKey:      template.Name,
+		labels.AnnotationTemplateNamespaceKey: template.Namespace,
+	}
+	eventuallyFailToCreateVm(vm)
+	Expect(totalRejectedVmsMetricsValue() - rejectedCountBefore).To(Equal(1))
+	err := apiClient.Delete(ctx, vm)
+	if !errors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
+	}
+	waitForDeletion(client.ObjectKeyFromObject(vm), vm)
 }
 
 func totalRejectedVmsMetricsValue() (sum int) {
