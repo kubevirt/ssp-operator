@@ -27,6 +27,8 @@ var _ = Describe("DataSources", func() {
 	// The name must be one of the DataSources needed by common templates
 	const dataSourceName = "fedora"
 
+	const cdiLabel = "cdi.kubevirt.io/dataImportCron"
+
 	var (
 		expectedLabels map[string]string
 
@@ -679,10 +681,55 @@ var _ = Describe("DataSources", func() {
 		It("[test_id:8109] should recreate DataSource after delete", func() {
 			expectRecreateAfterDelete(&dataSource)
 		})
+
+		Context("with added CDI label", func() {
+			BeforeEach(func() {
+				Eventually(func() error {
+					ds := &cdiv1beta1.DataSource{}
+					err := apiClient.Get(ctx, dataSource.GetKey(), ds)
+					if err != nil {
+						return err
+					}
+
+					if ds.GetLabels() == nil {
+						ds.SetLabels(make(map[string]string))
+					}
+					ds.GetLabels()[cdiLabel] = "test-value"
+
+					return apiClient.Update(ctx, ds)
+				}, shortTimeout, time.Second).Should(Succeed())
+			})
+
+			AfterEach(func() {
+				Eventually(func() error {
+					ds := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					delete(ds.GetLabels(), cdiLabel)
+					return apiClient.Update(ctx, ds)
+				}, shortTimeout, time.Second).Should(Succeed())
+			})
+
+			It("[test_id:TODO] should remove CDI label from DataSource", func() {
+				// Wait until it is removed
+				Eventually(func() (bool, error) {
+					ds := &cdiv1beta1.DataSource{}
+					err := apiClient.Get(ctx, dataSource.GetKey(), ds)
+					if err != nil {
+						return false, err
+					}
+
+					_, labelExists := ds.GetLabels()[cdiLabel]
+					return labelExists, nil
+				}, shortTimeout, time.Second).Should(BeFalse(), "Label '"+cdiLabel+"' should not be on DataSource")
+			})
+		})
+
 	})
 
 	Context("with DataImportCron template", func() {
 		const cronSchedule = "* * * * *"
+
+		const cronName = "test-data-import-cron"
 
 		var (
 			registryURL       = "docker://quay.io/kubevirt/cirros-container-disk-demo"
@@ -706,7 +753,7 @@ var _ = Describe("DataSources", func() {
 
 			cronTemplate = ssp.DataImportCronTemplate{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "test-data-import-cron",
+					Name:        cronName,
 					Annotations: commonAnnotations,
 				},
 				Spec: cdiv1beta1.DataImportCronSpec{
@@ -796,11 +843,12 @@ var _ = Describe("DataSources", func() {
 				}
 			})
 
-			It("[test_id:8111] DataSource should not be owned by SSP", func() {
-				ds := dataSource.NewResource()
-				Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
-
-				Expect(hasOwnerAnnotations(ds.GetAnnotations())).To(BeFalse(), "DataSource should not have SSP owner annotations.")
+			It("[test_id:TODO] DataSource should have CDI label", func() {
+				Eventually(func() map[string]string {
+					ds := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					return ds.GetLabels()
+				}, shortTimeout, time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
 
 			It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
@@ -836,6 +884,22 @@ var _ = Describe("DataSources", func() {
 				}, shortTimeout, time.Second).Should(Succeed())
 
 				Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
+			})
+
+			It("[test_id:TODO] should restore CDI label on DataSource, if user removes it", func() {
+				Eventually(func() error {
+					ds := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					delete(ds.GetLabels(), cdiLabel)
+					return apiClient.Update(ctx, ds)
+				}, shortTimeout, time.Second).Should(Succeed())
+
+				// Eventually the label should be added back
+				Eventually(func() map[string]string {
+					ds := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					return ds.GetLabels()
+				}, shortTimeout, time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
 		})
 
@@ -936,27 +1000,86 @@ var _ = Describe("DataSources", func() {
 				}, shortTimeout, time.Second).Should(Succeed())
 			})
 
-			It("[test_id:8116] should create DataImportCron if specific label is added to DataSource", func() {
-				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
-				Expect(err).To(HaveOccurred())
-				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
+			Context("with CDI label on DataSource", func() {
+				BeforeEach(func() {
+					Eventually(func() error {
+						ds := &cdiv1beta1.DataSource{}
+						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 
-				const label = "cdi.kubevirt.io/dataImportCron"
-				Eventually(func() error {
-					ds := &cdiv1beta1.DataSource{}
-					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						if ds.GetLabels() == nil {
+							ds.SetLabels(map[string]string{})
+						}
+						ds.GetLabels()[cdiLabel] = "test-value"
 
-					if ds.GetLabels() == nil {
-						ds.SetLabels(map[string]string{})
-					}
-					ds.GetLabels()[label] = "test-value"
+						return apiClient.Update(ctx, ds)
+					}, shortTimeout, time.Second).Should(Succeed())
+				})
 
-					return apiClient.Update(ctx, ds)
-				}, shortTimeout, time.Second).Should(Succeed())
+				AfterEach(func() {
+					Eventually(func() error {
+						ds := &cdiv1beta1.DataSource{}
+						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						delete(ds.GetLabels(), cdiLabel)
+						return apiClient.Update(ctx, ds)
+					}, shortTimeout, time.Second).Should(Succeed())
+				})
 
-				Eventually(func() error {
-					return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
-				}, shortTimeout, time.Second).Should(Succeed())
+				It("[test_id:8116] should create DataImportCron", func() {
+					Eventually(func() error {
+						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+					}, shortTimeout, time.Second).Should(Succeed())
+				})
+
+				It("[test_id:TODO] should delete DataImportCron, when CDI label is removed from DataSource", func() {
+					Eventually(func() error {
+						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+					}, shortTimeout, time.Second).Should(Succeed())
+
+					waitUntilDeployed()
+
+					Eventually(func() error {
+						ds := &cdiv1beta1.DataSource{}
+						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						delete(ds.GetLabels(), cdiLabel)
+						return apiClient.Update(ctx, ds)
+					}, shortTimeout, time.Second).Should(Succeed())
+
+					Eventually(func() metav1.StatusReason {
+						err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+						return errors.ReasonForError(err)
+					}, timeout, time.Second).Should(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
+				})
+
+				It("[test_id:TODO] should restore DataSource, when CDI label is removed", func() {
+					// Wait until DataImportCron imports PVC and changes data source
+					Eventually(func() (bool, error) {
+						cron := &cdiv1beta1.DataImportCron{}
+						err := apiClient.Get(ctx, dataImportCron.GetKey(), cron)
+						if err != nil {
+							return false, err
+						}
+						return cron.Status.LastImportTimestamp.IsZero(), nil
+					}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
+
+					// Get DataSource with spec pointing to new PVC
+					autoUpdateDataSource := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), autoUpdateDataSource)).To(Succeed())
+
+					// Remove label
+					Eventually(func() error {
+						ds := &cdiv1beta1.DataSource{}
+						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						delete(ds.GetLabels(), cdiLabel)
+						return apiClient.Update(ctx, ds)
+					}, shortTimeout, time.Second).Should(Succeed())
+
+					// Wait until DataSource is reverted
+					Eventually(func() client.Object {
+						ds := &cdiv1beta1.DataSource{}
+						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
+						return ds
+					}, shortTimeout, time.Second).ShouldNot(EqualResource(&dataSource, autoUpdateDataSource))
+				})
 			})
 		})
 
