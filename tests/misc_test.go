@@ -123,8 +123,6 @@ var _ = Describe("SSPOperatorReconcilingProperly metric", func() {
 	})
 
 	It("[test_id:7369] should set SSPOperatorReconcilingProperly metrics to 0 on failing to reconcile", func() {
-		foundSsp := getSsp()
-		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed), "SSP should be in phase Deployed")
 		// add a finalizer to the validator deployment, do that it can't be deleted
 		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
 		controllerutil.AddFinalizer(deployment, finalizerName)
