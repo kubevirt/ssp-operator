@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package webhooks
 
 import (
 	"context"
@@ -24,37 +24,42 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 )
 
-// log is for logging in this package.
 var ssplog = logf.Log.WithName("ssp-resource")
-var clt client.Client
 
-func (r *SSP) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	clt = mgr.GetClient()
+func Setup(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&sspv1beta1.SSP{}).
+		WithValidator(newSspValidator(mgr.GetClient())).
 		Complete()
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta1-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta1,name=validation.ssp.kubevirt.io,admissionReviewVersions={v1,v1beta1},sideEffects=None
 
-var _ webhook.Validator = &SSP{}
+type sspValidator struct {
+	apiClient client.Client
+}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *SSP) ValidateCreate() error {
-	var ssps SSPList
+var _ admission.CustomValidator = &sspValidator{}
+
+func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+	ssp := obj.(*sspv1beta1.SSP)
+
+	var ssps sspv1beta1.SSPList
 
 	// Check if no other SSP resources are present in the cluster
-	ssplog.Info("validate create", "name", r.Name)
-	err := clt.List(context.TODO(), &ssps, &client.ListOptions{})
+	ssplog.Info("validate create", "name", ssp.Name)
+	err := s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
 	}
@@ -63,54 +68,49 @@ func (r *SSP) ValidateCreate() error {
 	}
 
 	// Check if the common templates namespace exists
-	namespaceName := r.Spec.CommonTemplates.Namespace
+	namespaceName := ssp.Spec.CommonTemplates.Namespace
 	var namespace v1.Namespace
-	err = clt.Get(context.TODO(), client.ObjectKey{Name: namespaceName}, &namespace)
+	err = s.apiClient.Get(ctx, client.ObjectKey{Name: namespaceName}, &namespace)
 	if err != nil {
 		return fmt.Errorf("creation failed, the configured namespace for common templates does not exist: %v", namespaceName)
 	}
 
-	if err = validatePlacement(r); err != nil {
+	if err = s.validatePlacement(ctx, ssp); err != nil {
 		return errors.Wrap(err, "placement api validation error")
 	}
 
-	if err := validateDataImportCronTemplates(r); err != nil {
+	if err := validateDataImportCronTemplates(ssp); err != nil {
 		return errors.Wrap(err, "dataImportCronTemplates validation error")
 	}
 
 	return nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *SSP) ValidateUpdate(old runtime.Object) error {
-	ssplog.Info("validate update", "name", r.Name)
+func (s *sspValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+	newSsp := newObj.(*sspv1beta1.SSP)
 
-	if err := validatePlacement(r); err != nil {
+	ssplog.Info("validate update", "name", newSsp.Name)
+
+	if err := s.validatePlacement(ctx, newSsp); err != nil {
 		return errors.Wrap(err, "placement api validation error")
 	}
 
-	if err := validateDataImportCronTemplates(r); err != nil {
+	if err := validateDataImportCronTemplates(newSsp); err != nil {
 		return errors.Wrap(err, "dataImportCronTemplates validation error")
 	}
 
 	return nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *SSP) ValidateDelete() error {
+func (s *sspValidator) ValidateDelete(ctx context.Context, obj runtime.Object) error {
 	return nil
 }
 
-// Forces the value of clt, to be used in unit tests
-func setClientForWebhook(c client.Client) {
-	clt = c
+func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta1.SSP) error {
+	return s.validateOperandPlacement(ctx, ssp.Namespace, ssp.Spec.TemplateValidator.Placement)
 }
 
-func validatePlacement(ssp *SSP) error {
-	return validateOperandPlacement(ssp.Namespace, ssp.Spec.TemplateValidator.Placement)
-}
-
-func validateOperandPlacement(namespace string, placement *api.NodePlacement) error {
+func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace string, placement *api.NodePlacement) error {
 	if placement == nil {
 		return nil
 	}
@@ -158,18 +158,22 @@ func validateOperandPlacement(namespace string, placement *api.NodePlacement) er
 		},
 	}
 
-	return clt.Create(context.TODO(), deployment, &client.CreateOptions{DryRun: []string{metav1.DryRunAll}})
+	return s.apiClient.Create(ctx, deployment, &client.CreateOptions{DryRun: []string{metav1.DryRunAll}})
 }
 
 // TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation
-func validateDataImportCronTemplates(r *SSP) error {
-	for _, cron := range r.Spec.CommonTemplates.DataImportCronTemplates {
+func validateDataImportCronTemplates(ssp *sspv1beta1.SSP) error {
+	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
 		if cron.Name == "" {
 			return fmt.Errorf("missing name in DataImportCronTemplate")
 		}
-		if len(cron.Namespace) > 0 && cron.Namespace != GoldenImagesNSname {
-			return fmt.Errorf("invalid namespace in DataImportCronTemplate %s: must be empty or %s", cron.Name, GoldenImagesNSname)
+		if len(cron.Namespace) > 0 && cron.Namespace != sspv1beta1.GoldenImagesNSname {
+			return fmt.Errorf("invalid namespace in DataImportCronTemplate %s: must be empty or %s", cron.Name, sspv1beta1.GoldenImagesNSname)
 		}
 	}
 	return nil
+}
+
+func newSspValidator(clt client.Client) *sspValidator {
+	return &sspValidator{apiClient: clt}
 }

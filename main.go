@@ -27,16 +27,16 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/webhooks"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -123,7 +123,7 @@ func main() {
 		os.Exit(1)
 	}
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = (&sspv1beta1.SSP{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = webhooks.Setup(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "SSP")
 			os.Exit(1)
 		}
