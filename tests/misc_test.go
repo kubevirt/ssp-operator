@@ -88,13 +88,16 @@ var _ = Describe("Observed generation", func() {
 var _ = Describe("SSPOperatorReconcilingProperly metric", func() {
 	var (
 		deploymentRes testResource
-		deployment    = &apps.Deployment{}
 		finalizerName = "ssp.kubernetes.io/temp-protection"
 	)
 
 	AfterEach(func() {
 		Eventually(func() error {
-			Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
+			deployment := &apps.Deployment{}
+			err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+			if err != nil {
+				return err
+			}
 			// remove the finalizer so everything can go back to normal
 			controllerutil.RemoveFinalizer(deployment, finalizerName)
 			return apiClient.Update(ctx, deployment)
@@ -124,10 +127,20 @@ var _ = Describe("SSPOperatorReconcilingProperly metric", func() {
 
 	It("[test_id:7369] should set SSPOperatorReconcilingProperly metrics to 0 on failing to reconcile", func() {
 		// add a finalizer to the validator deployment, do that it can't be deleted
-		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
-		controllerutil.AddFinalizer(deployment, finalizerName)
-		Expect(apiClient.Update(ctx, deployment)).ToNot(HaveOccurred())
+		Eventually(func() error {
+			deployment := &apps.Deployment{}
+			err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+			if err != nil {
+				return err
+			}
+			controllerutil.AddFinalizer(deployment, finalizerName)
+			return apiClient.Update(ctx, deployment)
+		}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
+
 		// send a request to delete the validator deployment
+		deployment := &apps.Deployment{}
+		deployment.Name = deploymentRes.Name
+		deployment.Namespace = deploymentRes.Namespace
 		Expect(apiClient.Delete(ctx, deployment)).ToNot(HaveOccurred())
 		// try to change the number of validator pods
 		var newValidatorReplicas int32 = 3
