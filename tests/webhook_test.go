@@ -74,10 +74,10 @@ var _ = Describe("Validation webhook", func() {
 				Namespace: foundSsp.GetNamespace(),
 			}
 
-			err := apiClient.Create(ctx, ssp2)
+			err := apiClient.Create(ctx, ssp2, client.DryRunAll)
 			if err == nil {
-				apiClient.Delete(ctx, ssp2)
 				Fail("Second SSP resource created.")
+				return
 			}
 			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
 				"creation failed, an SSP CR already exists in namespace %v: %v",
@@ -113,7 +113,7 @@ var _ = Describe("Validation webhook", func() {
 			It("[test_id:6056] should fail to create SSP CR with invalid commonTemplates.namespace", func() {
 				newSsp.Spec.CommonTemplates.Namespace = "nonexisting-templates-namespace"
 
-				err := apiClient.Create(ctx, newSsp)
+				err := apiClient.Create(ctx, newSsp, client.DryRunAll)
 				if err == nil {
 					Fail("SSP CR with invalid commonTemplates.namespace created.")
 					return
@@ -128,14 +128,14 @@ var _ = Describe("Validation webhook", func() {
 				It("[test_id:5988]should succeed with valid template-validator placement fields", func() {
 					newSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
 
-					Expect(apiClient.Create(ctx, newSsp)).ToNot(HaveOccurred(),
+					Expect(apiClient.Create(ctx, newSsp, client.DryRunAll)).ToNot(HaveOccurred(),
 						"failed to create SSP CR with valid template-validator placement fields")
 				})
 
 				It("[test_id:5987]should fail with invalid template-validator placement fields", func() {
 					newSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
 
-					Expect(apiClient.Create(ctx, newSsp)).To(HaveOccurred(),
+					Expect(apiClient.Create(ctx, newSsp, client.DryRunAll)).To(HaveOccurred(),
 						"created SSP CR with invalid template-validator placement fields")
 				})
 			})
@@ -160,13 +160,13 @@ var _ = Describe("Validation webhook", func() {
 		Context("Placement API validation", func() {
 			It("[test_id:5990]should succeed with valid template-validator placement fields", func() {
 				foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
-				Expect(apiClient.Update(ctx, foundSsp)).ToNot(HaveOccurred(),
+				Expect(apiClient.Update(ctx, foundSsp, client.DryRunAll)).ToNot(HaveOccurred(),
 					"failed to update SSP CR with valid template-validator placement fields")
 			})
 
 			It("[test_id:5989]should fail with invalid template-validator placement fields", func() {
 				foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
-				Expect(apiClient.Update(ctx, foundSsp)).To(HaveOccurred(),
+				Expect(apiClient.Update(ctx, foundSsp, client.DryRunAll)).To(HaveOccurred(),
 					"SSP CR updated with invalid template-validator placement fields")
 			})
 		})

@@ -271,7 +271,7 @@ func Cleanup(request *Request, resource client.Object) (CleanupResult, error) {
 }
 
 func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, error) {
-	results := []CleanupResult{}
+	var results []CleanupResult
 	for _, obj := range resources {
 		result, err := Cleanup(request, obj)
 		if err != nil {

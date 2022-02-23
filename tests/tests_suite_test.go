@@ -529,7 +529,7 @@ func triggerReconciliation() {
 }
 
 func TestFunctional(t *testing.T) {
-	reporters := []Reporter{}
+	var reporters []Reporter
 
 	if qe_reporters.JunitOutput != "" {
 		reporters = append(reporters, ginkgo_reporters.NewJUnitReporter(qe_reporters.JunitOutput))

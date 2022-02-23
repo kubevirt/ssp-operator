@@ -12,7 +12,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	semver "github.com/blang/semver/v4"
+	"github.com/blang/semver/v4"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
@@ -104,7 +104,7 @@ func isUpgradingNow(request *common.Request) bool {
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	objects := []client.Object{}
+	var objects []client.Object
 	namespace := request.Instance.Spec.CommonTemplates.Namespace
 
 	deprecatedTemplates, err := getDeprecatedTemplates(request)
