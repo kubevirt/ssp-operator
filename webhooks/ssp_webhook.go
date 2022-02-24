@@ -86,7 +86,7 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 	return nil
 }
 
-func (s *sspValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) error {
 	newSsp := newObj.(*sspv1beta1.SSP)
 
 	ssplog.Info("validate update", "name", newSsp.Name)
@@ -102,7 +102,7 @@ func (s *sspValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtim
 	return nil
 }
 
-func (s *sspValidator) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) error {
 	return nil
 }
 

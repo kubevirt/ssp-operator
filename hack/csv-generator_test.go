@@ -10,12 +10,9 @@ import (
 	csvv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"kubevirt.io/ssp-operator/internal/common"
 )
-
-var log = logf.Log.WithName("csv_generator")
 
 var _ = Describe("csv generator", func() {
 	flags := generatorFlags{

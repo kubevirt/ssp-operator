@@ -104,7 +104,7 @@ func runGenerator() error {
 	}
 
 	if f.removeCerts {
-		removeCerts(f, &csv)
+		removeCerts(&csv)
 	}
 
 	relatedImages, err := buildRelatedImages(f)
@@ -216,7 +216,7 @@ func updateContainerEnvVars(flags generatorFlags, container v1.Container) []v1.E
 	return updatedVariables
 }
 
-func removeCerts(flags generatorFlags, csv *csvv1.ClusterServiceVersion) {
+func removeCerts(csv *csvv1.ClusterServiceVersion) {
 	// Remove the certs mount from the manager container
 	templateSpec := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec
 	for i, container := range templateSpec.Containers {

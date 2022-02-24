@@ -278,13 +278,6 @@ func isStatusDeployed(obj *v1beta1.SSP) bool {
 		degraded.Status == core.ConditionFalse
 }
 
-func getResourceKey(obj client.Object) client.ObjectKey {
-	return client.ObjectKey{
-		Namespace: obj.GetNamespace(),
-		Name:      obj.GetName(),
-	}
-}
-
 func expectUserCan(sars *authv1.SubjectAccessReviewSpec) {
 	Eventually(func() bool {
 		sar, err := coreClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authv1.SubjectAccessReview{
@@ -329,18 +322,6 @@ func GetRunningPodsByLabel(label, labelType, namespace string) (*core.PodList, e
 		return nil, fmt.Errorf("failed to find pod with the label %s", label)
 	}
 	return pods, nil
-}
-
-func GetCertFromSecret(secretName, namespace string) (string, error) {
-	secret := core.Secret{}
-	err := apiClient.Get(ctx, client.ObjectKey{Name: secretName, Namespace: namespace}, &secret)
-	if err != nil {
-		return "", err
-	}
-	if rawBundle, ok := secret.Data["tls.crt"]; ok {
-		return string(rawBundle), nil
-	}
-	return "", nil
 }
 
 func NewRandomVMIWithBridgeInterface(namespace string) *kubevirtv1.VirtualMachineInstance {

@@ -138,7 +138,7 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 		return nil, err
 	}
 
-	results := []common.CleanupResult{}
+	var results []common.CleanupResult
 	allDataImportCronsDeleted := true
 	for i := range ownedCrons {
 		result, err := common.Cleanup(request, &ownedCrons[i])
@@ -156,7 +156,7 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 		return results, nil
 	}
 
-	objects := []client.Object{}
+	var objects []client.Object
 	for i := range d.sources {
 		ds := d.sources[i]
 		ds.Namespace = ssp.GoldenImagesNSname

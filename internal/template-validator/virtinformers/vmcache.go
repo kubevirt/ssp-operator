@@ -214,7 +214,7 @@ func (v *vmCache) GetByKey(key string) (item interface{}, exists bool, err error
 	return res, exists, nil
 }
 
-func (v *vmCache) Replace(list []interface{}, resourceVersion string) error {
+func (v *vmCache) Replace(list []interface{}, _ string) error {
 	newStore := make(map[string]VmCacheValue, len(list))
 	newVmsForTemplate := templateMap{}
 	for _, obj := range list {

@@ -19,5 +19,5 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
 	utilruntime.Must(extv1.AddToScheme(Scheme))
 	utilruntime.Must(sspv1beta1.AddToScheme(Scheme))
-	utilruntime.Must(osconfv1.AddToScheme(Scheme))
+	utilruntime.Must(osconfv1.Install(Scheme))
 }

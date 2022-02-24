@@ -163,9 +163,9 @@ func (ev *Evaluator) Evaluate(rules []Rule, vm *k6tv1.VirtualMachine) *Result {
 	for i := range rules {
 		r := &rules[i]
 
-		// we reject let all validation fail if a rule is not well formed (e.g. syntax error)
-		// to let the cluster admin quickly identify the error in the rules. Otherwise, it
-		// we simply skip the malformed rule, the error can go unnoticed.
+		// we reject let all validation fail if a rule is not well-formed (e.g. syntax error)
+		// to let the cluster admin quickly identify the error in the rules.
+		// Otherwise, if we simply skip the malformed rule, the error can go unnoticed.
 		// IOW, this is a policy decision
 		if _, ok := uniqueNames[r.Name]; ok {
 			fmt.Fprintf(ev.Sink, "%s failed: duplicate name\n", r.Name)
