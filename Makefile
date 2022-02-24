@@ -43,7 +43,8 @@ VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDATOR_IMG_TAG}
 
 CRD_OPTIONS ?= "crd:preserveUnknownFields=false,generateEmbeddedObjectMeta=true"
 
-SRC_PATHS = ./controllers/... ./internal/... ./hack/... ./webhooks/...
+SRC_PATHS_TESTS = ./controllers/... ./internal/... ./hack/... ./webhooks/...
+SRC_PATHS_CONTROLLER_GEN = {./controllers/..., ./internal/..., ./hack/..., ./webhooks/...}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -66,7 +67,8 @@ endif
 all: manager
 
 unittest: generate fmt vet manifests
-	go test -v -coverprofile cover.out $(SRC_PATHS)
+	go test -v -coverprofile cover.out $(SRC_PATHS_TESTS)
+	cd api && go test -v ./...
 
 build-functests:
 	go test -c ./tests
@@ -110,7 +112,8 @@ undeploy:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook paths="./api/... $(SRC_PATHS)" output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook "paths=$(SRC_PATHS_CONTROLLER_GEN)" output:crd:artifacts:config=config/crd/bases
+	cd api && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook "paths=./..." output:crd:artifacts:config=../config/crd/bases
 
 # Run go fmt against code
 fmt:
@@ -132,7 +135,8 @@ validate-no-offensive-lang:
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/... $(SRC_PATHS)"
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" "paths=$(SRC_PATHS_CONTROLLER_GEN)"
+	cd api && $(CONTROLLER_GEN) object:headerFile="../hack/boilerplate.go.txt" "paths=./..."
 
 # Build the container image
 container-build: unittest bundle
