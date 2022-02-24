@@ -128,9 +128,10 @@ The following environment variables control how functional tests are run:
 ### Changing API
 
 When the API definition in `api/v1beta1` is changed,
-the generated code and CRDs need to be regenerated:
+the generated code and CRDs need to be regenerated, 
+and API submodule has to be updated.
 ```shell
-make generate manifests
+make vendor generate manifests
 ```
 
 ### Pausing the operator
