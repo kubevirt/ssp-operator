@@ -386,7 +386,6 @@ func reconcileDataSources(dataSourceInfos []dataSourceInfo, request *common.Requ
 func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		ClusterResource(dsInfo.dataSource).
-		WithAppLabels(operandName, operandComponent).
 		Options(common.ReconcileOptions{AlwaysCallUpdateFunc: true}).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			if dsInfo.autoUpdateEnabled {
@@ -395,6 +394,8 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 				}
 				foundRes.GetLabels()[dataImportCronLabel] = dsInfo.dataImportCronName
 			} else {
+				// Only set app labels if DIC does not exist
+				common.AddAppLabels(request.Instance, operandName, operandComponent, foundRes)
 				delete(foundRes.GetLabels(), dataImportCronLabel)
 			}
 
