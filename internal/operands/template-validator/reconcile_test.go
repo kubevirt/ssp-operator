@@ -2,6 +2,8 @@ package template_validator
 
 import (
 	"context"
+	"github.com/onsi/ginkgo/extensions/table"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -63,6 +65,9 @@ var _ = Describe("Template validator operand", func() {
 				Spec: ssp.SSPSpec{
 					TemplateValidator: ssp.TemplateValidator{
 						Replicas: pointer.Int32Ptr(replicas),
+						Placement: &lifecycleapi.NodePlacement{
+							Affinity: &core.Affinity{},
+						},
 					},
 				},
 			},
@@ -188,6 +193,206 @@ var _ = Describe("Template validator operand", func() {
 			Expect(reconcileResult.Status.Progressing).To(BeNil())
 			Expect(reconcileResult.Status.Degraded).To(BeNil())
 		}
+	})
+
+	Context("should create correct deployment affinity", func() {
+
+		const kubernetesHostnameTopologyKey = "kubernetes.io/hostname"
+
+		nodeAffinity := &core.NodeAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []core.PreferredSchedulingTerm{
+				{
+					Weight: 1,
+					Preference: core.NodeSelectorTerm{
+						MatchExpressions: []core.NodeSelectorRequirement{
+							{
+								Key:      "prefNodeAffinityKey",
+								Operator: core.NodeSelectorOpIn,
+								Values:   []string{"true"},
+							},
+						},
+					},
+				},
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: &core.NodeSelector{
+				NodeSelectorTerms: []core.NodeSelectorTerm{
+					{
+						MatchExpressions: []core.NodeSelectorRequirement{
+							{
+								Key:      "reqNodeAffinityKey",
+								Operator: core.NodeSelectorOpIn,
+								Values:   []string{"true"},
+							},
+						},
+					},
+				},
+			},
+		}
+		podAffinity := &core.PodAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []core.WeightedPodAffinityTerm{
+				{
+					Weight: 1,
+					PodAffinityTerm: core.PodAffinityTerm{
+						LabelSelector: &meta.LabelSelector{
+							MatchExpressions: []meta.LabelSelectorRequirement{
+								{
+									Key:      "prefPodAffinityKey",
+									Operator: meta.LabelSelectorOpIn,
+									Values:   []string{"true"},
+								},
+							},
+						},
+						TopologyKey: kubernetesHostnameTopologyKey,
+					},
+				},
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: []core.PodAffinityTerm{
+				{
+					LabelSelector: &meta.LabelSelector{
+						MatchExpressions: []meta.LabelSelectorRequirement{
+							{
+								Key:      "reqPodAffinityKey",
+								Operator: meta.LabelSelectorOpIn,
+								Values:   []string{"true"},
+							},
+						},
+					},
+					TopologyKey: kubernetesHostnameTopologyKey,
+				},
+			},
+		}
+		antiAffinity := &core.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []core.WeightedPodAffinityTerm{
+				{
+					Weight: 1,
+					PodAffinityTerm: core.PodAffinityTerm{
+						LabelSelector: &meta.LabelSelector{
+							MatchExpressions: []meta.LabelSelectorRequirement{
+								{
+									Key:      "prefAntiAffinityKey",
+									Operator: meta.LabelSelectorOpIn,
+									Values:   []string{"true"},
+								},
+							},
+						},
+						TopologyKey: kubernetesHostnameTopologyKey,
+					},
+				},
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: []core.PodAffinityTerm{
+				{
+					LabelSelector: &meta.LabelSelector{
+						MatchExpressions: []meta.LabelSelectorRequirement{
+							{
+								Key:      "reqAntiAffinityKey",
+								Operator: meta.LabelSelectorOpIn,
+								Values:   []string{"true"},
+							},
+						},
+					},
+					TopologyKey: kubernetesHostnameTopologyKey,
+				},
+			},
+		}
+		defaultPodAntiAffinity := &core.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []core.WeightedPodAffinityTerm{
+				{
+					Weight: 1,
+					PodAffinityTerm: core.PodAffinityTerm{
+						LabelSelector: &meta.LabelSelector{
+							MatchExpressions: []meta.LabelSelectorRequirement{
+								{
+									Key:      "kubevirt.io",
+									Operator: meta.LabelSelectorOpIn,
+									Values:   []string{"virt-template-validator"},
+								},
+							},
+						},
+						TopologyKey: kubernetesHostnameTopologyKey,
+					},
+				},
+			},
+		}
+		mergedPodAntiAffinity := &core.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []core.WeightedPodAffinityTerm{
+				{
+					Weight: 1,
+					PodAffinityTerm: core.PodAffinityTerm{
+						LabelSelector: &meta.LabelSelector{
+							MatchExpressions: []meta.LabelSelectorRequirement{
+								{
+									Key:      "kubevirt.io",
+									Operator: meta.LabelSelectorOpIn,
+									Values:   []string{"virt-template-validator"},
+								},
+							},
+						},
+						TopologyKey: kubernetesHostnameTopologyKey,
+					},
+				},
+				{
+					Weight: 1,
+					PodAffinityTerm: core.PodAffinityTerm{
+						LabelSelector: &meta.LabelSelector{
+							MatchExpressions: []meta.LabelSelectorRequirement{
+								{
+									Key:      "prefAntiAffinityKey",
+									Operator: meta.LabelSelectorOpIn,
+									Values:   []string{"true"},
+								},
+							},
+						},
+						TopologyKey: kubernetesHostnameTopologyKey,
+					},
+				},
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: []core.PodAffinityTerm{
+				{
+					LabelSelector: &meta.LabelSelector{
+						MatchExpressions: []meta.LabelSelectorRequirement{
+							{
+								Key:      "reqAntiAffinityKey",
+								Operator: meta.LabelSelectorOpIn,
+								Values:   []string{"true"},
+							},
+						},
+					},
+					TopologyKey: kubernetesHostnameTopologyKey,
+				},
+			},
+		}
+
+		var setPodAntiAffinity = func(request *common.Request) {
+			request.Instance.Spec.TemplateValidator.Placement.Affinity.PodAntiAffinity = antiAffinity
+		}
+		var setPodAffinity = func(request *common.Request) {
+			request.Instance.Spec.TemplateValidator.Placement.Affinity.PodAffinity = podAffinity
+		}
+		var setNodeAffinity = func(request *common.Request) {
+			request.Instance.Spec.TemplateValidator.Placement.Affinity.NodeAffinity = nodeAffinity
+		}
+
+		table.DescribeTable("with different configuration", func(requestAdjustFunctions []func(*common.Request), expectedNodeAffinity *core.NodeAffinity, expectedPodAffinity *core.PodAffinity, expectedPodAntiAffinity *core.PodAntiAffinity) {
+			for _, f := range requestAdjustFunctions {
+				f(&request)
+			}
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+			deployment := &apps.Deployment{}
+			key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
+			Expect(request.Client.Get(request.Context, key, deployment)).To(Succeed())
+			Expect(deployment.Spec.Template.Spec.Affinity.NodeAffinity).To(Equal(expectedNodeAffinity))
+			Expect(deployment.Spec.Template.Spec.Affinity.PodAffinity).To(Equal(expectedPodAffinity))
+			Expect(deployment.Spec.Template.Spec.Affinity.PodAntiAffinity).To(Equal(expectedPodAntiAffinity))
+		},
+			table.Entry("with specific nodeAffinity", []func(*common.Request){setNodeAffinity}, nodeAffinity, nil, defaultPodAntiAffinity),
+			table.Entry("with specific podAffinity", []func(*common.Request){setPodAffinity}, nil, podAffinity, defaultPodAntiAffinity),
+			table.Entry("with specific podAntiAffinity", []func(*common.Request){setPodAntiAffinity}, nil, nil, mergedPodAntiAffinity),
+			table.Entry("with specific nodeAffinity and podAffinity", []func(*common.Request){setNodeAffinity, setPodAffinity}, nodeAffinity, podAffinity, defaultPodAntiAffinity),
+			table.Entry("with specific nodeAffinity and podAntiAffinity", []func(*common.Request){setNodeAffinity, setPodAntiAffinity}, nodeAffinity, nil, mergedPodAntiAffinity),
+			table.Entry("with specific podAffinity and podAntiAffinity", []func(*common.Request){setPodAffinity, setPodAntiAffinity}, nil, podAffinity, mergedPodAntiAffinity),
+			table.Entry("with specific nodeAffinity, podAffinity and podAntiAffinity", []func(*common.Request){setNodeAffinity, setPodAffinity, setPodAntiAffinity}, nodeAffinity, podAffinity, mergedPodAntiAffinity),
+		)
 	})
 })
 

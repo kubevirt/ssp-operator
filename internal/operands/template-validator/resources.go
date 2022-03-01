@@ -2,7 +2,6 @@ package template_validator
 
 import (
 	"fmt"
-
 	templatev1 "github.com/openshift/api/template/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -21,18 +20,19 @@ import (
 )
 
 const (
-	ContainerPort          = 8443
-	MetricsPort            = 8443
-	KubevirtIo             = "kubevirt.io"
-	SecretName             = "virt-template-validator-certs"
-	VirtTemplateValidator  = "virt-template-validator"
-	ClusterRoleName        = "template:view"
-	ClusterRoleBindingName = "template-validator"
-	WebhookName            = VirtTemplateValidator
-	ServiceAccountName     = "template-validator"
-	ServiceName            = VirtTemplateValidator
-	DeploymentName         = VirtTemplateValidator
-	PrometheusLabel        = "prometheus.kubevirt.io"
+	ContainerPort                 = 8443
+	MetricsPort                   = 8443
+	KubevirtIo                    = "kubevirt.io"
+	SecretName                    = "virt-template-validator-certs"
+	VirtTemplateValidator         = "virt-template-validator"
+	ClusterRoleName               = "template:view"
+	ClusterRoleBindingName        = "template-validator"
+	WebhookName                   = VirtTemplateValidator
+	ServiceAccountName            = "template-validator"
+	ServiceName                   = VirtTemplateValidator
+	DeploymentName                = VirtTemplateValidator
+	PrometheusLabel               = "prometheus.kubevirt.io"
+	kubernetesHostnameTopologyKey = "kubernetes.io/hostname"
 )
 
 func commonLabels() map[string]string {
@@ -117,6 +117,28 @@ func newService(namespace string) *core.Service {
 	}
 }
 
+func newPodAntiAffinity(key, topologyKey string, operator metav1.LabelSelectorOperator, values []string) *core.PodAntiAffinity {
+	return &core.PodAntiAffinity{
+		PreferredDuringSchedulingIgnoredDuringExecution: []core.WeightedPodAffinityTerm{
+			{
+				Weight: 1,
+				PodAffinityTerm: core.PodAffinityTerm{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      key,
+								Operator: operator,
+								Values:   values,
+							},
+						},
+					},
+					TopologyKey: topologyKey,
+				},
+			},
+		},
+	}
+}
+
 func newDeployment(namespace string, replicas int32, image string) *apps.Deployment {
 	const volumeName = "tls"
 	const certMountPath = "/etc/webhook/certs"
@@ -125,6 +147,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	podLabels := commonLabels()
 	podLabels[PrometheusLabel] = "true"
 	podLabels["name"] = DeploymentName
+	podAntiAffinity := newPodAntiAffinity(KubevirtIo, kubernetesHostnameTopologyKey, metav1.LabelSelectorOpIn, []string{VirtTemplateValidator})
 
 	return &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -199,6 +222,9 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							},
 						},
 					}},
+					Affinity: &core.Affinity{
+						PodAntiAffinity: podAntiAffinity,
+					},
 				},
 			},
 		},
