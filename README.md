@@ -13,6 +13,19 @@ The operator deploys and manages resources needed by these four components:
 
 The `ssp-operator` requires an Openshift cluster to run properly.
 
+### Requirements
+
+The following resource types and CRDs are needed by `ssp-operator`:
+
+| Resource type / CRD                                | Needed by                                                         |
+| -------------------------------------------------- | ----------------------------------------------------------------- |
+| `dataimportcrons.cdi.kubevirt.io`                  | `data-sources` operand (Kind `DataImportCron`)                    |
+| `datavolumes.cdi.kubevirt.io/v1beta1`              | `data-sources` operand (Kind `DataVolume` and `DataVolumeSource`) |
+| `datasources.cdi.kubevirt.io/v1beta1`              | `data-sources` operand (Kind `DataSource`)                        |
+| `prometheusrules.monitoring.coreos.com`            | `metrics` operand (Kind `PrometheusRule`)                         |
+| `securitycontextconstraints.security.openshift.io` | `node-labeller` operand (Kind `SecurityContextConstraints`)       |
+| `template.openshift.io/v1`                         | `common-templates` operand (Kind `Template`)                      |
+
 ### Using HCO
 
 The [Hyperconverged Cluster Operator](https://github.com/kubevirt/hyperconverged-cluster-operator) automatically installs the SSP operator when deploying.
@@ -48,7 +61,7 @@ To upload the image to the default repository run:
 make container-push
 ```
 
-The repository and image name and tag can be changed 
+The repository and image name and tag can be changed
 with these variables:
 ```shell
 export IMG_REPOSITORY=<registry>/<image_name> # for example: export IMG_REPOSITORY=quay.io/kubevirt/ssp-operator
@@ -84,63 +97,18 @@ You should also edit the deployment to pull the image you want, for example you 
 ```shell
 oc set env deployment/ssp-operator VALIDATOR_IMAGE=$VALIDATOR_IMG
 ```
-## Development
 
-### Running locally
+## Pausing the operator
 
-The operator can run locally on the developer's machine.
-It will watch the cluster configured in a file pointed to by the `$KUBECONFIG`.
-```shell
-make install                    # Install CRDs to the cluster
-make run ENABLE_WEBHOOKS=false  # Start the operator locally
-```
-
-When running locally, the validating webhooks that check the SSP CR
-are disabled. It is up to the developer to use correct SSP CRs.
-
-The CRDs can be removed using:
-```shell
-make uninstall 
-```
-
-### Testing
-
-To run unit tests, use this command:
-```shell
-make unittest
-```
-
-The functional tests can be run using command:
-```shell
-make functest
-```
-
-The following environment variables control how functional tests are run:
-- `TEST_EXISTING_CR_NAME` and `TEST_EXISTING_CR_NAMESPACE` - Can be used 
-  to set an existing SSP CR to be used during the tests.
-  The CR will be modified, deleted and recreated during testing.
-- `SKIP_UPDATE_SSP_TESTS` - Skips tests that need to modify or delete
-  the SSP CR. This is useful if the CR is owned by another operator.
-- `SKIP_CLEANUP_AFTER_TESTS` - Do not remove created resources when 
-  the tests are finished.
-- `TIMEOUT_MINUTES` and `SHORT_TIMEOUT_MINUTES` - Can be used to increase the timeouts used.
-
-### Changing API
-
-When the API definition in `api/v1beta1` is changed,
-the generated code and CRDs need to be regenerated, 
-and API submodule has to be updated.
-```shell
-make vendor generate manifests
-```
-
-### Pausing the operator
-
-The reconciliation can be paused by adding the following 
-annotation to the `SSP` reosurce:
+The reconciliation can be paused by adding the following
+annotation to the `SSP` resource:
 ```yaml
 kubevirt.io/operator.paused: "true"
 ```
 The operator will not react to any changes to the `SSP` resource
-or any of the watched resources. If a paused `SSP` resource is deleted, 
+or any of the watched resources. If a paused `SSP` resource is deleted,
 the operator will still cleanup all the dependent resources.
+
+## Development
+
+See [docs/development.md](docs/development.md)
