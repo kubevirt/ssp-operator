@@ -1,18 +1,28 @@
 package tests
 
 import (
+	"encoding/json"
+	"fmt"
 	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/onsi/ginkgo/extensions/table"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
+	kubevirtv1 "kubevirt.io/api/core/v1"
+	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -190,3 +200,171 @@ var _ = Describe("SCC annotation", func() {
 		}
 	})
 })
+
+var _ = Describe("RHEL VM creation", func() {
+	const (
+		rhel8Image = "docker://registry.redhat.io/rhel8/rhel-guest-image"
+		rhel9Image = "docker://registry.redhat.io/rhel9-beta/rhel-guest-image"
+	)
+
+	var (
+		vm *kubevirtv1.VirtualMachine
+	)
+
+	AfterEach(func() {
+		if vm != nil {
+			err := apiClient.Delete(ctx, vm)
+			expectSuccessOrNotFound(err)
+			waitForDeletion(client.ObjectKeyFromObject(vm), &kubevirtv1.VirtualMachine{})
+			vm = nil
+		}
+	})
+
+	JustAfterEach(func() {
+		if vm == nil {
+			return
+		}
+
+		logObject(client.ObjectKeyFromObject(vm), &kubevirtv1.VirtualMachine{})
+
+		dvName := vm.Spec.DataVolumeTemplates[0].Name
+		logObject(client.ObjectKey{
+			Name:      dvName,
+			Namespace: vm.GetNamespace(),
+		}, &cdiv1beta1.DataVolume{})
+
+		logObject(client.ObjectKey{
+			Name:      dvName,
+			Namespace: vm.GetNamespace(),
+		}, &core.PersistentVolumeClaim{})
+	})
+
+	table.DescribeTable("should be able to start VM", func(imageUrl string) {
+		const diskName = "disk0"
+		const sshPort = 22
+
+		var always = kubevirtv1.RunStrategyAlways
+		var terminateGracePeriod int64 = 0
+		var pullMethodNode = cdiv1beta1.RegistryPullNode
+		var vmName = "test-vm-" + rand.String(5)
+
+		vm = &kubevirtv1.VirtualMachine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      vmName,
+				Namespace: strategy.GetNamespace(),
+			},
+			Spec: kubevirtv1.VirtualMachineSpec{
+				RunStrategy: &always,
+				Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
+					Spec: kubevirtv1.VirtualMachineInstanceSpec{
+						Domain: kubevirtv1.DomainSpec{
+							Resources: kubevirtv1.ResourceRequirements{
+								Requests: core.ResourceList{
+									core.ResourceMemory: resource.MustParse("2Gi"),
+								},
+							},
+							CPU: &kubevirtv1.CPU{Sockets: 1, Cores: 1, Threads: 1},
+							Devices: kubevirtv1.Devices{
+								Rng: &kubevirtv1.Rng{},
+								Interfaces: []kubevirtv1.Interface{{
+									Name: "default",
+									InterfaceBindingMethod: kubevirtv1.InterfaceBindingMethod{
+										Masquerade: &kubevirtv1.InterfaceMasquerade{},
+									},
+								}},
+								Disks: []kubevirtv1.Disk{{
+									Name: diskName,
+									DiskDevice: kubevirtv1.DiskDevice{
+										Disk: &kubevirtv1.DiskTarget{Bus: "virtio"},
+									},
+								}},
+								NetworkInterfaceMultiQueue: pointer.BoolPtr(true),
+							},
+						},
+						TerminationGracePeriodSeconds: &terminateGracePeriod,
+						Networks:                      []kubevirtv1.Network{*kubevirtv1.DefaultPodNetwork()},
+						Volumes: []kubevirtv1.Volume{{
+							Name: diskName,
+							VolumeSource: kubevirtv1.VolumeSource{
+								DataVolume: &kubevirtv1.DataVolumeSource{
+									Name: vmName,
+								},
+							},
+						}},
+						ReadinessProbe: &kubevirtv1.Probe{
+							Handler: kubevirtv1.Handler{
+								TCPSocket: &core.TCPSocketAction{
+									Port: intstr.FromInt(sshPort),
+								},
+							},
+							InitialDelaySeconds: 5,
+							TimeoutSeconds:      1,
+							PeriodSeconds:       5,
+						},
+					},
+				},
+				DataVolumeTemplates: []kubevirtv1.DataVolumeTemplateSpec{{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: vmName,
+					},
+					Spec: cdiv1beta1.DataVolumeSpec{
+						Source: &cdiv1beta1.DataVolumeSource{
+							Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+								URL:        &imageUrl,
+								PullMethod: &pullMethodNode,
+							},
+						},
+						Storage: &cdiv1beta1.StorageSpec{
+							Resources: core.ResourceRequirements{
+								Requests: core.ResourceList{
+									core.ResourceStorage: resource.MustParse("10Gi"),
+								},
+							},
+						},
+					},
+				}},
+			},
+		}
+
+		Expect(apiClient.Create(ctx, vm)).To(Succeed())
+
+		// Wait for VMI to exist and be ready
+		Eventually(func() (bool, error) {
+			foundVmi := &kubevirtv1.VirtualMachineInstance{}
+			err := apiClient.Get(ctx, client.ObjectKeyFromObject(vm), foundVmi)
+			if err != nil {
+				return false, err
+			}
+
+			for _, condition := range foundVmi.Status.Conditions {
+				if condition.Type == kubevirtv1.VirtualMachineInstanceReady {
+					return condition.Status == core.ConditionTrue, nil
+				}
+			}
+
+			return false, nil
+		}, timeout, time.Second).Should(BeTrue())
+	},
+		table.Entry("[test_id:TODO] with RHEL 8 image", rhel8Image),
+		table.Entry("[test_id:TODO] with RHEL 9 image", rhel9Image),
+	)
+})
+
+func logObject(key client.ObjectKey, obj client.Object) {
+	gvk, err := apiutil.GVKForObject(obj, testScheme)
+	if err != nil {
+		panic(err)
+	}
+	obj.GetObjectKind().SetGroupVersionKind(gvk)
+
+	err = apiClient.Get(ctx, key, obj)
+	if err != nil {
+		fmt.Fprintf(GinkgoWriter, "Failed to get %s: %s\n", gvk.Kind, err)
+	} else {
+		objJson, err := json.MarshalIndent(obj, "", "    ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprintf(GinkgoWriter, "Found %s:\n%s\n", gvk.Kind, objJson)
+	}
+}
