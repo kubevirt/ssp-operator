@@ -265,6 +265,25 @@ var _ = Describe("Template validator operand", func() {
 					}},
 				},
 			}
+			defaultPodAntiAffinity := &core.PodAntiAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []core.WeightedPodAffinityTerm{
+					{
+						Weight: 1,
+						PodAffinityTerm: core.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{
+										Key:      "kubevirt.io",
+										Operator: metav1.LabelSelectorOpIn,
+										Values:   []string{"virt-template-validator"},
+									},
+								},
+							},
+							TopologyKey: "kubernetes.io/hostname",
+						},
+					},
+				},
+			}
 
 			nodeSelector := map[string]string{
 				testKey: testValue,
@@ -288,13 +307,14 @@ var _ = Describe("Template validator operand", func() {
 
 			waitUntilDeployed()
 
-			// Test that placement was added
+			// Test that placement nodeAffinity, nodeSelector and Toleration was added
 			Eventually(func() bool {
 				deployment := apps.Deployment{}
 				key := deploymentRes.GetKey()
 				Expect(apiClient.Get(ctx, key, &deployment)).ToNot(HaveOccurred())
 				podSpec := &deployment.Spec.Template.Spec
-				return reflect.DeepEqual(podSpec.Affinity, affinity) &&
+				return reflect.DeepEqual(podSpec.Affinity.NodeAffinity, affinity.NodeAffinity) &&
+					reflect.DeepEqual(podSpec.Affinity.PodAntiAffinity, defaultPodAntiAffinity) &&
 					reflect.DeepEqual(podSpec.NodeSelector, nodeSelector) &&
 					reflect.DeepEqual(podSpec.Tolerations, tolerations)
 			}, timeout, 1*time.Second).Should(BeTrue(), "placement is different")
@@ -308,13 +328,14 @@ var _ = Describe("Template validator operand", func() {
 
 			waitUntilDeployed()
 
-			// Test that placement was removed
+			// Test that placement nodeAffinity, nodeSelector and Toleration was removed
 			Eventually(func() bool {
 				deployment := apps.Deployment{}
 				key := deploymentRes.GetKey()
 				Expect(apiClient.Get(ctx, key, &deployment)).ToNot(HaveOccurred())
 				podSpec := &deployment.Spec.Template.Spec
-				return podSpec.Affinity == nil &&
+				return reflect.DeepEqual(podSpec.Affinity.PodAntiAffinity, defaultPodAntiAffinity) &&
+					podSpec.Affinity.NodeAffinity == nil &&
 					podSpec.NodeSelector == nil &&
 					podSpec.Tolerations == nil
 			}, timeout, 1*time.Second).Should(BeTrue(), "placement should be nil")

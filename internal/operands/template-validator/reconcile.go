@@ -2,12 +2,11 @@ package template_validator
 
 import (
 	"fmt"
-
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	"kubevirt.io/ssp-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -145,7 +144,7 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 		numberOfReplicas = 1
 	}
 	deployment := newDeployment(request.Namespace, numberOfReplicas, image)
-	addPlacementFields(deployment, validatorSpec.Placement)
+	injectPlacementMetadata(&deployment.Spec.Template.Spec, &validatorSpec)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(deployment).
 		WithAppLabels(operandName, operandComponent).
@@ -173,15 +172,75 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 		Reconcile()
 }
 
-func addPlacementFields(deployment *apps.Deployment, nodePlacement *lifecycleapi.NodePlacement) {
-	if nodePlacement == nil {
+// Merge all Tolerations, Affinity and NodeSelectors from NodePlacement into pod spec
+func injectPlacementMetadata(podSpec *v1.PodSpec, componentConfig *v1beta1.TemplateValidator) {
+	if componentConfig == nil || componentConfig.Placement == nil {
 		return
 	}
+	if podSpec == nil {
+		podSpec = &v1.PodSpec{}
+	}
+	nodePlacement := componentConfig.Placement
+	if podSpec.NodeSelector == nil {
+		podSpec.NodeSelector = make(map[string]string, len(nodePlacement.NodeSelector))
+	}
+	for nsKey, nsVal := range nodePlacement.NodeSelector {
+		// Favor podSpec over NodePlacement. This prevents cluster admin from clobbering
+		// node selectors that operator intentionally set.
+		if _, ok := podSpec.NodeSelector[nsKey]; !ok {
+			podSpec.NodeSelector[nsKey] = nsVal
+		}
+	}
 
-	podSpec := &deployment.Spec.Template.Spec
-	podSpec.Affinity = nodePlacement.Affinity
-	podSpec.NodeSelector = nodePlacement.NodeSelector
-	podSpec.Tolerations = nodePlacement.Tolerations
+	if nodePlacement.Affinity != nil {
+		if podSpec.Affinity == nil {
+			podSpec.Affinity = nodePlacement.Affinity.DeepCopy()
+		} else {
+			mergeNodeAffinity(podSpec.Affinity, nodePlacement.Affinity.NodeAffinity)
+			mergePodAffinity(podSpec.Affinity, nodePlacement.Affinity.PodAffinity)
+			mergePodAntiAffinity(podSpec.Affinity, nodePlacement.Affinity.PodAntiAffinity)
+		}
+	}
+	podSpec.Tolerations = append(podSpec.Tolerations, nodePlacement.Tolerations...)
+}
+
+func mergeNodeAffinity(currentAffinity *v1.Affinity, configNodeAffinity *v1.NodeAffinity) {
+	if configNodeAffinity != nil {
+		if currentAffinity.NodeAffinity == nil {
+			currentAffinity.NodeAffinity = configNodeAffinity.DeepCopy()
+			return
+		}
+		if configNodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+			if currentAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+				currentAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = configNodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.DeepCopy()
+			} else {
+				currentAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(currentAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, configNodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms...)
+			}
+		}
+		currentAffinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(currentAffinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution, configNodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution...)
+	}
+}
+
+func mergePodAffinity(currentAffinity *v1.Affinity, configPodAffinity *v1.PodAffinity) {
+	if configPodAffinity != nil {
+		if currentAffinity.PodAffinity == nil {
+			currentAffinity.PodAffinity = configPodAffinity.DeepCopy()
+			return
+		}
+		currentAffinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(currentAffinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution, configPodAffinity.RequiredDuringSchedulingIgnoredDuringExecution...)
+		currentAffinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(currentAffinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution, configPodAffinity.PreferredDuringSchedulingIgnoredDuringExecution...)
+	}
+}
+
+func mergePodAntiAffinity(currentAffinity *v1.Affinity, configPodAntiAffinity *v1.PodAntiAffinity) {
+	if configPodAntiAffinity != nil {
+		if currentAffinity.PodAntiAffinity == nil {
+			currentAffinity.PodAntiAffinity = configPodAntiAffinity.DeepCopy()
+			return
+		}
+		currentAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(currentAffinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution, configPodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution...)
+		currentAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(currentAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution, configPodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution...)
+	}
 }
 
 func reconcileValidatingWebhook(request *common.Request) (common.ReconcileResult, error) {
