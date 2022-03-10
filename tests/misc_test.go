@@ -345,8 +345,8 @@ var _ = Describe("RHEL VM creation", func() {
 			return false, nil
 		}, timeout, time.Second).Should(BeTrue())
 	},
-		table.Entry("[test_id:TODO] with RHEL 8 image", rhel8Image),
-		table.Entry("[test_id:TODO] with RHEL 9 image", rhel9Image),
+		table.Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
+		table.Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
 	)
 })
 

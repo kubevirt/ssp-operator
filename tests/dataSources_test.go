@@ -709,7 +709,7 @@ var _ = Describe("DataSources", func() {
 				}, shortTimeout, time.Second).Should(Succeed())
 			})
 
-			It("[test_id:TODO] should remove CDI label from DataSource", func() {
+			It("[test_id:8294] should remove CDI label from DataSource", func() {
 				// Wait until it is removed
 				Eventually(func() (bool, error) {
 					ds := &cdiv1beta1.DataSource{}
@@ -843,7 +843,7 @@ var _ = Describe("DataSources", func() {
 				}
 			})
 
-			It("[test_id:TODO] DataSource should have CDI label", func() {
+			It("[test_id:8295] DataSource should have CDI label", func() {
 				Eventually(func() map[string]string {
 					ds := &cdiv1beta1.DataSource{}
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
@@ -886,7 +886,7 @@ var _ = Describe("DataSources", func() {
 				Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
 			})
 
-			It("[test_id:TODO] should restore CDI label on DataSource, if user removes it", func() {
+			It("[test_id:8296] should restore CDI label on DataSource, if user removes it", func() {
 				Eventually(func() error {
 					ds := &cdiv1beta1.DataSource{}
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
@@ -1030,7 +1030,7 @@ var _ = Describe("DataSources", func() {
 					}, shortTimeout, time.Second).Should(Succeed())
 				})
 
-				It("[test_id:TODO] should delete DataImportCron, when CDI label is removed from DataSource", func() {
+				It("[test_id:8297] should delete DataImportCron, when CDI label is removed from DataSource", func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 					}, shortTimeout, time.Second).Should(Succeed())
@@ -1050,7 +1050,7 @@ var _ = Describe("DataSources", func() {
 					}, timeout, time.Second).Should(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
 				})
 
-				It("[test_id:TODO] should restore DataSource, when CDI label is removed", func() {
+				It("[test_id:8298] should restore DataSource, when CDI label is removed", func() {
 					// Wait until DataImportCron imports PVC and changes data source
 					Eventually(func() (bool, error) {
 						cron := &cdiv1beta1.DataImportCron{}
