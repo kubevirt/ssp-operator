@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
@@ -159,14 +160,14 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 	var objects []client.Object
 	for i := range d.sources {
 		ds := d.sources[i]
-		ds.Namespace = ssp.GoldenImagesNSname
+		ds.Namespace = internal.GoldenImagesNamespace
 		objects = append(objects, &ds)
 	}
 
 	objects = append(objects,
-		newGoldenImagesNS(ssp.GoldenImagesNSname),
-		newViewRole(ssp.GoldenImagesNSname),
-		newViewRoleBinding(ssp.GoldenImagesNSname),
+		newGoldenImagesNS(internal.GoldenImagesNamespace),
+		newViewRole(internal.GoldenImagesNamespace),
+		newViewRoleBinding(internal.GoldenImagesNamespace),
 		newEditRole())
 
 	return common.DeleteAll(request, objects...)
@@ -174,14 +175,14 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 
 func reconcileGoldenImagesNS(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newGoldenImagesNS(ssp.GoldenImagesNSname)).
+		ClusterResource(newGoldenImagesNS(internal.GoldenImagesNamespace)).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }
 
 func reconcileViewRole(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRole(ssp.GoldenImagesNSname)).
+		ClusterResource(newViewRole(internal.GoldenImagesNamespace)).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRole := foundRes.(*rbac.Role)
@@ -193,7 +194,7 @@ func reconcileViewRole(request *common.Request) (common.ReconcileResult, error) 
 
 func reconcileViewRoleBinding(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newViewRoleBinding(ssp.GoldenImagesNSname)).
+		ClusterResource(newViewRoleBinding(internal.GoldenImagesNamespace)).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			newBinding := newRes.(*rbac.RoleBinding)
@@ -232,7 +233,7 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 	var dataSourceInfos []dataSourceInfo
 	for i := range d.sources {
 		dataSource := d.sources[i] // Make a copy
-		dataSource.Namespace = ssp.GoldenImagesNSname
+		dataSource.Namespace = internal.GoldenImagesNamespace
 		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(&dataSource, cronByDataSourceName, request)
 		if err != nil {
 			return dataSourcesAndCrons{}, err
@@ -359,7 +360,7 @@ func reconcileDataSources(dataSourceInfos []dataSourceInfo, request *common.Requ
 		}
 
 		dataSource := ownedDataSources[i] // Make local copy
-		dataSource.Namespace = ssp.GoldenImagesNSname
+		dataSource.Namespace = internal.GoldenImagesNamespace
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			if !dataSource.GetDeletionTimestamp().IsZero() {
 				return common.ResourceDeletedResult(&dataSource, common.OperationResultDeleted), nil
@@ -442,7 +443,7 @@ func reconcileDataImportCrons(dataImportCrons []cdiv1beta1.DataImportCron, reque
 	var funcs []common.ReconcileFunc
 	for i := range dataImportCrons {
 		cron := dataImportCrons[i] // Make a local copy
-		cron.Namespace = ssp.GoldenImagesNSname
+		cron.Namespace = internal.GoldenImagesNamespace
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			return reconcileDataImportCron(&cron, request)
 		})
@@ -456,7 +457,7 @@ func reconcileDataImportCrons(dataImportCrons []cdiv1beta1.DataImportCron, reque
 		}
 
 		cron := ownedCrons[i] // Make local copy
-		cron.Namespace = ssp.GoldenImagesNSname
+		cron.Namespace = internal.GoldenImagesNamespace
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			err := request.Client.Delete(request.Context, &cron)
 			if err != nil && !errors.IsNotFound(err) {
@@ -474,7 +475,7 @@ func reconcileDataImportCrons(dataImportCrons []cdiv1beta1.DataImportCron, reque
 
 func listAllOwnedDataSources(request *common.Request) ([]cdiv1beta1.DataSource, error) {
 	foundDataSources := &cdiv1beta1.DataSourceList{}
-	err := request.Client.List(request.Context, foundDataSources, client.InNamespace(ssp.GoldenImagesNSname))
+	err := request.Client.List(request.Context, foundDataSources, client.InNamespace(internal.GoldenImagesNamespace))
 	if err != nil {
 		return nil, err
 	}
@@ -491,7 +492,7 @@ func listAllOwnedDataSources(request *common.Request) ([]cdiv1beta1.DataSource, 
 
 func listAllOwnedDataImportCrons(request *common.Request) ([]cdiv1beta1.DataImportCron, error) {
 	foundCrons := &cdiv1beta1.DataImportCronList{}
-	err := request.Client.List(request.Context, foundCrons, client.InNamespace(ssp.GoldenImagesNSname))
+	err := request.Client.List(request.Context, foundCrons, client.InNamespace(internal.GoldenImagesNamespace))
 	if err != nil {
 		return nil, err
 	}

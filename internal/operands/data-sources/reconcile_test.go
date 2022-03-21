@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
@@ -77,19 +78,19 @@ var _ = Describe("Data-Sources operand", func() {
 	It("should create golden-images namespace", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newGoldenImagesNS(ssp.GoldenImagesNSname), request)
+		ExpectResourceExists(newGoldenImagesNS(internal.GoldenImagesNamespace), request)
 	})
 
 	It("should create view role", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newViewRole(ssp.GoldenImagesNSname), request)
+		ExpectResourceExists(newViewRole(internal.GoldenImagesNamespace), request)
 	})
 
 	It("should create view role binding", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newViewRoleBinding(ssp.GoldenImagesNSname), request)
+		ExpectResourceExists(newViewRoleBinding(internal.GoldenImagesNamespace), request)
 	})
 
 	It("should create edit role", func() {
@@ -134,7 +135,7 @@ var _ = Describe("Data-Sources operand", func() {
 				createdDataImportCron := cdiv1beta1.DataImportCron{}
 				err = request.Client.Get(request.Context, client.ObjectKey{
 					Name:      cronTemplate.GetName(),
-					Namespace: ssp.GoldenImagesNSname,
+					Namespace: internal.GoldenImagesNamespace,
 				}, &createdDataImportCron)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(createdDataImportCron.Spec).To(Equal(cronTemplate.Spec))
@@ -145,7 +146,7 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				cron := cronTemplate.AsDataImportCron()
-				cron.Namespace = ssp.GoldenImagesNSname
+				cron.Namespace = internal.GoldenImagesNamespace
 				ExpectResourceExists(&cron, request)
 
 				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
@@ -161,7 +162,7 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				cron := cronTemplate.AsDataImportCron()
-				cron.Namespace = ssp.GoldenImagesNSname
+				cron.Namespace = internal.GoldenImagesNamespace
 				ExpectResourceExists(&cron, request)
 
 				// Update DataSource to simulate CDI
@@ -213,7 +214,7 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				cron := cronTemplate.AsDataImportCron()
-				cron.Namespace = ssp.GoldenImagesNSname
+				cron.Namespace = internal.GoldenImagesNamespace
 				ExpectResourceNotExists(&cron, request)
 			})
 
@@ -222,7 +223,7 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				cron := cronTemplate.AsDataImportCron()
-				cron.Namespace = ssp.GoldenImagesNSname
+				cron.Namespace = internal.GoldenImagesNamespace
 				ExpectResourceNotExists(&cron, request)
 
 				foundDs := &cdiv1beta1.DataSource{}
@@ -247,7 +248,7 @@ var _ = Describe("Data-Sources operand", func() {
 			cron := &cdiv1beta1.DataImportCron{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cron",
-					Namespace: ssp.GoldenImagesNSname,
+					Namespace: internal.GoldenImagesNamespace,
 				},
 				Spec: cdiv1beta1.DataImportCronSpec{},
 			}
@@ -272,26 +273,26 @@ func getDataSources() []cdiv1beta1.DataSource {
 	return []cdiv1beta1.DataSource{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name1,
-			Namespace: ssp.GoldenImagesNSname,
+			Namespace: internal.GoldenImagesNamespace,
 		},
 		Spec: cdiv1beta1.DataSourceSpec{
 			Source: cdiv1beta1.DataSourceSource{
 				PVC: &cdiv1beta1.DataVolumeSourcePVC{
 					Name:      name1,
-					Namespace: ssp.GoldenImagesNSname,
+					Namespace: internal.GoldenImagesNamespace,
 				},
 			},
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name2,
-			Namespace: ssp.GoldenImagesNSname,
+			Namespace: internal.GoldenImagesNamespace,
 		},
 		Spec: cdiv1beta1.DataSourceSpec{
 			Source: cdiv1beta1.DataSourceSource{
 				PVC: &cdiv1beta1.DataVolumeSourcePVC{
 					Name:      name2,
-					Namespace: ssp.GoldenImagesNSname,
+					Namespace: internal.GoldenImagesNamespace,
 				},
 			},
 		},

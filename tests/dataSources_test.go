@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 )
@@ -43,7 +44,7 @@ var _ = Describe("DataSources", func() {
 		expectedLabels = expectedLabelsFor("data-sources", common.AppComponentTemplating)
 		viewRole = testResource{
 			Name:           data_sources.ViewRoleName,
-			Namespace:      ssp.GoldenImagesNSname,
+			Namespace:      internal.GoldenImagesNamespace,
 			Resource:       &rbac.Role{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(role *rbac.Role) {
@@ -55,7 +56,7 @@ var _ = Describe("DataSources", func() {
 		}
 		viewRoleBinding = testResource{
 			Name:           data_sources.ViewRoleName,
-			Namespace:      ssp.GoldenImagesNSname,
+			Namespace:      internal.GoldenImagesNamespace,
 			Resource:       &rbac.RoleBinding{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
@@ -78,14 +79,14 @@ var _ = Describe("DataSources", func() {
 			},
 		}
 		goldenImageNS = testResource{
-			Name:           ssp.GoldenImagesNSname,
+			Name:           internal.GoldenImagesNamespace,
 			Resource:       &core.Namespace{},
 			ExpectedLabels: expectedLabels,
 			Namespace:      "",
 		}
 		dataSource = testResource{
 			Name:           dataSourceName,
-			Namespace:      ssp.GoldenImagesNSname,
+			Namespace:      internal.GoldenImagesNamespace,
 			Resource:       &cdiv1beta1.DataSource{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(ds *cdiv1beta1.DataSource) {
@@ -197,7 +198,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
@@ -208,7 +209,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
@@ -219,7 +220,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "watch",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "namespaces",
 						},
@@ -232,7 +233,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
@@ -244,7 +245,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
@@ -256,7 +257,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "watch",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
@@ -268,7 +269,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:        "create",
-							Namespace:   ssp.GoldenImagesNSname,
+							Namespace:   internal.GoldenImagesNamespace,
 							Group:       cdiv1beta1.SchemeGroupVersion.Group,
 							Version:     cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:    "datavolumes",
@@ -284,7 +285,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
@@ -296,7 +297,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datavolumes",
@@ -311,7 +312,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
@@ -324,7 +325,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
@@ -335,7 +336,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "persistentvolumeclaims",
 						},
@@ -346,7 +347,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "pods",
 						},
@@ -360,7 +361,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datasources",
@@ -372,7 +373,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datasources",
@@ -384,7 +385,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "watch",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datasources",
@@ -399,7 +400,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datasources",
@@ -411,7 +412,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "datasources",
@@ -426,7 +427,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "get",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "dataimportcrons",
@@ -438,7 +439,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "list",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "dataimportcrons",
@@ -450,7 +451,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "watch",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "dataimportcrons",
@@ -465,7 +466,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "delete",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "dataimportcrons",
@@ -477,7 +478,7 @@ var _ = Describe("DataSources", func() {
 						Groups: sasGroup,
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Group:     cdiv1beta1.SchemeGroupVersion.Group,
 							Version:   cdiv1beta1.SchemeGroupVersion.Version,
 							Resource:  "dataimportcrons",
@@ -506,7 +507,7 @@ var _ = Describe("DataSources", func() {
 					editObj = &rbac.RoleBinding{
 						ObjectMeta: metav1.ObjectMeta{
 							GenerateName: "test-edit-",
-							Namespace:    ssp.GoldenImagesNSname,
+							Namespace:    internal.GoldenImagesNamespace,
 						},
 						Subjects: []rbac.Subject{{
 							Kind:      "ServiceAccount",
@@ -534,7 +535,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Version:   core.SchemeGroupVersion.Version,
 								Resource:  "persistentvolumeclaims",
 							},
@@ -543,7 +544,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Version:   core.SchemeGroupVersion.Version,
 								Resource:  "persistentvolumeclaims",
 							},
@@ -552,7 +553,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "get",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Group:     cdiv1beta1.SchemeGroupVersion.Group,
 								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datavolumes",
@@ -562,7 +563,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Group:     cdiv1beta1.SchemeGroupVersion.Group,
 								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datavolumes",
@@ -572,7 +573,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Group:     cdiv1beta1.SchemeGroupVersion.Group,
 								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datavolumes",
@@ -583,7 +584,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Group:     cdiv1beta1.SchemeGroupVersion.Group,
 								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datasources",
@@ -593,7 +594,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Group:     cdiv1beta1.SchemeGroupVersion.Group,
 								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "datasources",
@@ -604,7 +605,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Group:     cdiv1beta1.SchemeGroupVersion.Group,
 								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "dataimportcrons",
@@ -614,7 +615,7 @@ var _ = Describe("DataSources", func() {
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
-								Namespace: ssp.GoldenImagesNSname,
+								Namespace: internal.GoldenImagesNamespace,
 								Group:     cdiv1beta1.SchemeGroupVersion.Group,
 								Version:   cdiv1beta1.SchemeGroupVersion.Version,
 								Resource:  "dataimportcrons",
@@ -625,7 +626,7 @@ var _ = Describe("DataSources", func() {
 					sars := &authv1.SubjectAccessReviewSpec{
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
-							Namespace: ssp.GoldenImagesNSname,
+							Namespace: internal.GoldenImagesNamespace,
 							Version:   core.SchemeGroupVersion.Version,
 							Resource:  "pods",
 						},
@@ -781,7 +782,7 @@ var _ = Describe("DataSources", func() {
 
 			dataImportCron = testResource{
 				Name:           cronTemplate.Name,
-				Namespace:      ssp.GoldenImagesNSname,
+				Namespace:      internal.GoldenImagesNamespace,
 				Resource:       &cdiv1beta1.DataImportCron{},
 				ExpectedLabels: expectedLabels,
 			}
@@ -912,7 +913,7 @@ var _ = Describe("DataSources", func() {
 				dataVolume = &cdiv1beta1.DataVolume{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        dataSourceName,
-						Namespace:   ssp.GoldenImagesNSname,
+						Namespace:   internal.GoldenImagesNamespace,
 						Annotations: commonAnnotations,
 					},
 					Spec: cdiv1beta1.DataVolumeSpec{
@@ -1100,7 +1101,7 @@ var _ = Describe("DataSources", func() {
 				cron = &cdiv1beta1.DataImportCron{
 					ObjectMeta: metav1.ObjectMeta{
 						GenerateName: "test-not-in-ssp",
-						Namespace:    ssp.GoldenImagesNSname,
+						Namespace:    internal.GoldenImagesNamespace,
 						Annotations:  commonAnnotations,
 					},
 					Spec: cdiv1beta1.DataImportCronSpec{

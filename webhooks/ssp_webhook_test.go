@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal"
 )
 
 var _ = Describe("SSP Validation", func() {
@@ -199,8 +200,8 @@ var _ = Describe("SSP Validation", func() {
 			checkExpectedError(err, shouldFail)
 		},
 			table.Entry("no namepsace provided", "", "test-name", false),
-			table.Entry("no name provided", sspv1beta1.GoldenImagesNSname, "", true),
-			table.Entry("golden image namespace provided", sspv1beta1.GoldenImagesNSname, "test-name", false),
+			table.Entry("no name provided", internal.GoldenImagesNamespace, "", true),
+			table.Entry("golden image namespace provided", internal.GoldenImagesNamespace, "test-name", false),
 			table.Entry("invalid namespace provided", "invalid-namespace", "test-name", true),
 		)
 

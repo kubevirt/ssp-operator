@@ -24,6 +24,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,8 +32,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal"
 )
 
 var ssplog = logf.Log.WithName("ssp-resource")
@@ -167,8 +168,8 @@ func validateDataImportCronTemplates(ssp *sspv1beta1.SSP) error {
 		if cron.Name == "" {
 			return fmt.Errorf("missing name in DataImportCronTemplate")
 		}
-		if len(cron.Namespace) > 0 && cron.Namespace != sspv1beta1.GoldenImagesNSname {
-			return fmt.Errorf("invalid namespace in DataImportCronTemplate %s: must be empty or %s", cron.Name, sspv1beta1.GoldenImagesNSname)
+		if len(cron.Namespace) > 0 && cron.Namespace != internal.GoldenImagesNamespace {
+			return fmt.Errorf("invalid namespace in DataImportCronTemplate %s: must be empty or %s", cron.Name, internal.GoldenImagesNamespace)
 		}
 	}
 	return nil
