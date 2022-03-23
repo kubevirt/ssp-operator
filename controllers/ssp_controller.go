@@ -181,8 +181,9 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspRequest.Logger.V(1).Info("Updating CR status prior to operand reconciliation...")
 	err = preUpdateStatus(sspRequest)
 	if err != nil {
-		return ctrl.Result{}, err
+		return handleError(sspRequest, err)
 	}
+
 	sspRequest.Logger.V(1).Info("CR status updated")
 
 	sspRequest.Logger.Info("Reconciling operands...")
