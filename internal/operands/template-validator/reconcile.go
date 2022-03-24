@@ -2,6 +2,7 @@ package template_validator
 
 import (
 	"fmt"
+
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -63,6 +64,7 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Reconci
 		reconcileServiceAccount,
 		reconcileClusterRoleBinding,
 		reconcileService,
+		reconcilePrometheusService,
 		reconcileDeployment,
 		reconcileValidatingWebhook,
 	)
@@ -121,15 +123,25 @@ func reconcileService(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newService(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			newService := newRes.(*v1.Service)
-			foundService := foundRes.(*v1.Service)
+		UpdateFunc(updateServiceSpec).
+		Reconcile()
+}
 
-			// ClusterIP should not be updated
-			newService.Spec.ClusterIP = foundService.Spec.ClusterIP
+func updateServiceSpec(newRes, foundRes client.Object) {
+	newService := newRes.(*v1.Service)
+	foundService := foundRes.(*v1.Service)
 
-			foundService.Spec = newService.Spec
-		}).
+	// ClusterIP should not be updated
+	newService.Spec.ClusterIP = foundService.Spec.ClusterIP
+
+	foundService.Spec = newService.Spec
+}
+
+func reconcilePrometheusService(request *common.Request) (common.ReconcileResult, error) {
+	return common.CreateOrUpdate(request).
+		NamespacedResource(newPrometheusService(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(updateServiceSpec).
 		Reconcile()
 }
 

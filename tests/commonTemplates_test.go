@@ -19,26 +19,29 @@ import (
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
+func createTestTemplate() testResource {
+	expectedLabels := expectedLabelsFor("common-templates", common.AppComponentTemplating)
+	return testResource{
+		Name:           "rhel8-desktop-tiny",
+		Namespace:      strategy.GetTemplatesNamespace(),
+		Resource:       &templatev1.Template{},
+		ExpectedLabels: expectedLabels,
+		UpdateFunc: func(t *templatev1.Template) {
+			t.Parameters = nil
+		},
+		EqualsFunc: func(old *templatev1.Template, new *templatev1.Template) bool {
+			return reflect.DeepEqual(old.Parameters, new.Parameters)
+		},
+	}
+}
+
 var _ = Describe("Common templates", func() {
 	var (
 		testTemplate testResource
 	)
 
 	BeforeEach(func() {
-		expectedLabels := expectedLabelsFor("common-templates", common.AppComponentTemplating)
-		testTemplate = testResource{
-			Name:           "rhel8-desktop-tiny",
-			Namespace:      strategy.GetTemplatesNamespace(),
-			Resource:       &templatev1.Template{},
-			ExpectedLabels: expectedLabels,
-			UpdateFunc: func(t *templatev1.Template) {
-				t.Parameters = nil
-			},
-			EqualsFunc: func(old *templatev1.Template, new *templatev1.Template) bool {
-				return reflect.DeepEqual(old.Parameters, new.Parameters)
-			},
-		}
-
+		testTemplate = createTestTemplate()
 		waitUntilDeployed()
 	})
 
@@ -187,9 +190,7 @@ var _ = Describe("Common templates", func() {
 		)
 
 		It("[test_id: 7340] should increase metrics when restoring tamplate", func() {
-			restoredCountBefore := totalRestoredTemplatesCount()
-			expectRestoreAfterUpdate(&testTemplate)
-			Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
+			expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate)
 		})
 
 		Context("with pause", func() {
@@ -352,3 +353,9 @@ var _ = Describe("Common templates", func() {
 		})
 	})
 })
+
+func expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate testResource) {
+	restoredCountBefore := totalRestoredTemplatesCount()
+	expectRestoreAfterUpdate(&testTemplate)
+	Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
+}

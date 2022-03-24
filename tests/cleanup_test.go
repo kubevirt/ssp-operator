@@ -32,6 +32,7 @@ var _ = Describe("Cleanup", func() {
 			common_templates.WatchClusterTypes,
 			data_sources.WatchClusterTypes,
 			metrics.WatchTypes,
+			metrics.WatchClusterTypes,
 			nodelabeller.WatchTypes,
 			nodelabeller.WatchClusterTypes,
 			template_validator.WatchTypes,

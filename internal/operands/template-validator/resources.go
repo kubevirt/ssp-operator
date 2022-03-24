@@ -2,6 +2,7 @@ package template_validator
 
 import (
 	"fmt"
+
 	templatev1 "github.com/openshift/api/template/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -16,6 +17,7 @@ import (
 
 	"kubevirt.io/ssp-operator/internal/common"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	metrics "kubevirt.io/ssp-operator/internal/operands/metrics"
 	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
 
@@ -30,12 +32,13 @@ const (
 	WebhookName                   = VirtTemplateValidator
 	ServiceAccountName            = "template-validator"
 	ServiceName                   = VirtTemplateValidator
+	MetricsServiceName            = "template-validator-metrics"
 	DeploymentName                = VirtTemplateValidator
-	PrometheusLabel               = "prometheus.kubevirt.io"
+	PrometheusLabel               = "prometheus.ssp.kubevirt.io"
 	kubernetesHostnameTopologyKey = "kubernetes.io/hostname"
 )
 
-func commonLabels() map[string]string {
+func CommonLabels() map[string]string {
 	return map[string]string{
 		KubevirtIo: VirtTemplateValidator,
 	}
@@ -71,7 +74,7 @@ func newServiceAccount(namespace string) *core.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ServiceAccountName,
 			Namespace: namespace,
-			Labels:    commonLabels(),
+			Labels:    CommonLabels(),
 		},
 	}
 }
@@ -81,7 +84,7 @@ func newClusterRoleBinding(namespace string) *rbac.ClusterRoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ClusterRoleBindingName,
 			Namespace: "",
-			Labels:    commonLabels(),
+			Labels:    CommonLabels(),
 		},
 		RoleRef: rbac.RoleRef{
 			Kind:     "ClusterRole",
@@ -101,7 +104,7 @@ func newService(namespace string) *core.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ServiceName,
 			Namespace: namespace,
-			Labels:    commonLabels(),
+			Labels:    CommonLabels(),
 			Annotations: map[string]string{
 				"service.beta.openshift.io/serving-cert-secret-name": SecretName,
 			},
@@ -112,7 +115,7 @@ func newService(namespace string) *core.Service {
 				Port:       443,
 				TargetPort: intstr.FromInt(ContainerPort),
 			}},
-			Selector: commonLabels(),
+			Selector: CommonLabels(),
 		},
 	}
 }
@@ -144,7 +147,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	const certMountPath = "/etc/webhook/certs"
 	trueVal := true
 
-	podLabels := commonLabels()
+	podLabels := CommonLabels()
 	podLabels[PrometheusLabel] = "true"
 	podLabels["name"] = DeploymentName
 	podAntiAffinity := newPodAntiAffinity(KubevirtIo, kubernetesHostnameTopologyKey, metav1.LabelSelectorOpIn, []string{VirtTemplateValidator})
@@ -160,7 +163,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 		Spec: apps.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: commonLabels(),
+				MatchLabels: CommonLabels(),
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -198,7 +201,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ContainerPort: ContainerPort,
 							Protocol:      core.ProtocolTCP,
 						}, {
-							Name:          "metrics",
+							Name:          metrics.MetricsPortName,
 							ContainerPort: MetricsPort,
 							Protocol:      core.ProtocolTCP,
 						}},
@@ -297,5 +300,33 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 			SideEffects:             &sideEffectsNone,
 			AdmissionReviewVersions: []string{"v1"},
 		}},
+	}
+}
+
+func PrometheusServiceLabels() map[string]string {
+	return map[string]string{
+		metrics.PrometheusLabelKey: metrics.PrometheusLabelValue,
+	}
+}
+
+func newPrometheusService(namespace string) *core.Service {
+	return &core.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      MetricsServiceName,
+			Labels:    PrometheusServiceLabels(),
+		},
+		Spec: core.ServiceSpec{
+			Selector: CommonLabels(),
+			Ports: []core.ServicePort{
+				{
+					Name:       metrics.MetricsPortName,
+					Port:       443,
+					TargetPort: intstr.FromString(metrics.MetricsPortName),
+					Protocol:   core.ProtocolTCP,
+				},
+			},
+			Type: core.ServiceTypeClusterIP,
+		},
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,9 +14,11 @@ import (
 	ginkgo_reporters "github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	osconfv1 "github.com/openshift/api/config/v1"
+	openshiftroutev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promApiv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -34,27 +38,34 @@ import (
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (
-	envExistingCrName        = "TEST_EXISTING_CR_NAME"
-	envExistingCrNamespace   = "TEST_EXISTING_CR_NAMESPACE"
-	envSkipUpdateSspTests    = "SKIP_UPDATE_SSP_TESTS"
-	envSkipCleanupAfterTests = "SKIP_CLEANUP_AFTER_TESTS"
-	envTimeout               = "TIMEOUT_MINUTES"
-	envShortTimeout          = "SHORT_TIMEOUT_MINUTES"
-	envTopologyMode          = "TOPOLOGY_MODE"
+	envExistingCrName         = "TEST_EXISTING_CR_NAME"
+	envExistingCrNamespace    = "TEST_EXISTING_CR_NAMESPACE"
+	envSkipUpdateSspTests     = "SKIP_UPDATE_SSP_TESTS"
+	envSkipCleanupAfterTests  = "SKIP_CLEANUP_AFTER_TESTS"
+	envTimeout                = "TIMEOUT_MINUTES"
+	envShortTimeout           = "SHORT_TIMEOUT_MINUTES"
+	envTopologyMode           = "TOPOLOGY_MODE"
+	envIsUpgradeLane          = "IS_UPGRADE_LANE"
+	envSspDeploymentName      = "SSP_DEPLOYMENT_NAME"
+	envSspDeploymentNamespace = "SSP_DEPLOYMENT_NAMESPACE"
 )
 
 var (
-	tenSecondTimeout = 10 * time.Second
-	shortTimeout     = 1 * time.Minute
-	timeout          = 10 * time.Minute
-	topologyMode     = osconfv1.HighlyAvailableTopologyMode
-	testScheme       *runtime.Scheme
+	tenSecondTimeout       = 10 * time.Second
+	shortTimeout           = 1 * time.Minute
+	timeout                = 10 * time.Minute
+	topologyMode           = osconfv1.HighlyAvailableTopologyMode
+	testScheme             *runtime.Scheme
+	sspDeploymentName      = "ssp-operator"
+	sspDeploymentNamespace = "kubevirt"
+	promClient             promApiv1.API
 )
 
 type TestSuiteStrategy interface {
@@ -65,6 +76,8 @@ type TestSuiteStrategy interface {
 	GetNamespace() string
 	GetTemplatesNamespace() string
 	GetValidatorReplicas() int
+	GetSSPDeploymentName() string
+	GetSSPDeploymentNameSpace() string
 
 	GetVersionLabel() string
 	GetPartOfLabel() string
@@ -73,6 +86,7 @@ type TestSuiteStrategy interface {
 	SkipSspUpdateTestsIfNeeded()
 	SkipUnlessHighlyAvailableTopologyMode()
 	SkipUnlessSingleReplicaTopologyMode()
+	SkipIfUpgradeLane()
 }
 
 type newSspStrategy struct {
@@ -82,8 +96,16 @@ type newSspStrategy struct {
 var _ TestSuiteStrategy = &newSspStrategy{}
 
 func (s *newSspStrategy) Init() {
+	validateDeploymentExists()
+
 	Eventually(func() error {
-		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}}
+		namespaceObj := &v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: s.GetNamespace(),
+				Labels: map[string]string{
+					"openshift.io/cluster-monitoring": "true",
+				},
+			}}
 		return apiClient.Create(ctx, namespaceObj)
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
 
@@ -169,6 +191,14 @@ func (s *newSspStrategy) GetPartOfLabel() string {
 	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
 }
 
+func (s *newSspStrategy) GetSSPDeploymentName() string {
+	return sspDeploymentName
+}
+
+func (s *newSspStrategy) GetSSPDeploymentNameSpace() string {
+	return sspDeploymentNamespace
+}
+
 func (s *newSspStrategy) RevertToOriginalSspCr() {
 	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
@@ -190,6 +220,16 @@ func (s *newSspStrategy) SkipUnlessHighlyAvailableTopologyMode() {
 	}
 }
 
+func (s *newSspStrategy) SkipIfUpgradeLane() {
+	skipIfUpgradeLane()
+}
+
+func skipIfUpgradeLane() {
+	if getBoolEnv(envIsUpgradeLane) {
+		Skip("Skipping in Upgrade Lane", 1)
+	}
+}
+
 type existingSspStrategy struct {
 	Name      string
 	Namespace string
@@ -206,6 +246,8 @@ func (s *existingSspStrategy) Init() {
 
 	templatesNamespace := existingSsp.Spec.CommonTemplates.Namespace
 	Expect(apiClient.Get(ctx, client.ObjectKey{Name: templatesNamespace}, &v1.Namespace{}))
+
+	validateDeploymentExists()
 
 	s.ssp = existingSsp
 
@@ -264,6 +306,14 @@ func (s *existingSspStrategy) GetPartOfLabel() string {
 	return s.ssp.Labels[common.AppKubernetesPartOfLabel]
 }
 
+func (s *existingSspStrategy) GetSSPDeploymentName() string {
+	return sspDeploymentName
+}
+
+func (s *existingSspStrategy) GetSSPDeploymentNameSpace() string {
+	return sspDeploymentNamespace
+}
+
 func (s *existingSspStrategy) RevertToOriginalSspCr() {
 	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
@@ -289,6 +339,10 @@ func (s *existingSspStrategy) SkipUnlessHighlyAvailableTopologyMode() {
 	if topologyMode != osconfv1.HighlyAvailableTopologyMode {
 		Skip("Tests that are specific for SingleReplicaTopologyMode are disabled", 1)
 	}
+}
+
+func (s *existingSspStrategy) SkipIfUpgradeLane() {
+	skipIfUpgradeLane()
 }
 
 var (
@@ -329,6 +383,18 @@ var _ = BeforeSuite(func() {
 		fmt.Println(fmt.Sprintf("TopologyMode set to %s", envTopologyMode))
 	}
 
+	envSspDeploymentName := os.Getenv(envSspDeploymentName)
+	if envSspDeploymentName != "" {
+		sspDeploymentName = envSspDeploymentName
+		fmt.Println(fmt.Sprintf("SspDeploymentName set to %s", envSspDeploymentName))
+	}
+
+	envSspDeploymentNamespace := os.Getenv(envSspDeploymentNamespace)
+	if envSspDeploymentNamespace != "" {
+		sspDeploymentNamespace = envSspDeploymentNamespace
+		fmt.Println(fmt.Sprintf("SspDeploymentNamespace set to %s", envSspDeploymentNamespace))
+	}
+
 	testScheme = runtime.NewScheme()
 	setupApiClient()
 	strategy.Init()
@@ -365,10 +431,14 @@ func setupApiClient() {
 	coreClient, err = kubernetes.NewForConfig(cfg)
 	Expect(err).ToNot(HaveOccurred())
 
+	Expect(openshiftroutev1.AddToScheme(testScheme)).ToNot(HaveOccurred())
+
 	portForwarder = NewPortForwarder(cfg, coreClient.CoreV1().RESTClient())
 
 	ctx = context.Background()
 	sspListerWatcher = createSspListerWatcher(cfg)
+
+	promClient = initializePromClient(getPrometheusUrl(), getAuthorizationTokenForPrometheus())
 }
 
 func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
@@ -471,6 +541,49 @@ func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {
 		}
 		return nil
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
+}
+
+func getAuthorizationTokenForPrometheus() string {
+	var token string
+	Eventually(func() bool {
+		var secretName string
+		var sa v1.ServiceAccount
+
+		saKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: "prometheus-k8s"}
+		Expect(apiClient.Get(ctx, saKey, &sa)).ShouldNot(HaveOccurred())
+
+		for _, secret := range sa.Secrets {
+			if strings.HasPrefix(secret.Name, "prometheus-k8s-token") {
+				secretName = secret.Name
+			}
+		}
+
+		var secret v1.Secret
+		secretKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: secretName}
+		Expect(apiClient.Get(ctx, secretKey, &secret)).ShouldNot(HaveOccurred())
+
+		if _, ok := secret.Data["token"]; !ok {
+			return false
+		}
+		token = string(secret.Data["token"])
+		return true
+	}, 10*time.Second, time.Second).Should(BeTrue())
+	return token
+}
+
+func getPrometheusUrl() string {
+	var route openshiftroutev1.Route
+	routeKey := types.NamespacedName{Name: "prometheus-k8s", Namespace: metrics.MonitorNamespace}
+
+	err := apiClient.Get(ctx, routeKey, &route)
+	Expect(err).ShouldNot(HaveOccurred())
+	return fmt.Sprintf("https://%s", route.Spec.Host)
+}
+
+func validateDeploymentExists() {
+	err := apiClient.Get(ctx, client.ObjectKey{Name: sspDeploymentName, Namespace: sspDeploymentNamespace}, &apps.Deployment{})
+	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("SSP deployment does not exist under given name and namespace, check %s and %s",
+		envSspDeploymentName, envSspDeploymentNamespace))
 }
 
 func createOrUpdateSsp(ssp *sspv1beta1.SSP) {

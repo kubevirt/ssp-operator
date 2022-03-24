@@ -58,6 +58,9 @@ var _ = Describe("Metrics operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 		ExpectResourceExists(newPrometheusRule(namespace), request)
+		ExpectResourceExists(newServiceMonitorCR(namespace), request)
+		ExpectResourceExists(newMonitoringClusterRole(), request)
+		ExpectResourceExists(newMonitoringClusterRoleBinding(), request)
 	})
 })
 

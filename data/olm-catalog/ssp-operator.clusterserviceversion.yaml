@@ -51,6 +51,15 @@ spec:
       clusterPermissions:
       - rules:
         - apiGroups:
+          - ""
+          resources:
+          - endpoints
+          - pods
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - admissionregistration.k8s.io
           resources:
           - validatingwebhookconfigurations
@@ -222,6 +231,8 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheusrules
+          - servicemonitors
+          - services
           verbs:
           - create
           - delete
@@ -249,6 +260,20 @@ spec:
           - clusterroles
           - rolebindings
           - roles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io/v1
+          resources:
+          - role
+          - rolebinding
+          - serviceaccount
           verbs:
           - create
           - delete
@@ -377,7 +402,7 @@ spec:
               labels:
                 control-plane: ssp-operator
                 name: ssp-operator
-                prometheus.kubevirt.io: "true"
+                prometheus.ssp.kubevirt.io: "true"
             spec:
               containers:
               - args:

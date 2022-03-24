@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 )
 
 const pauseDuration = 10 * time.Second
@@ -111,7 +112,7 @@ func expectRecreateAfterDelete(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func sspOperatorReconcilingProperly() (sum int) {
+func sspOperatorReconcilingProperlyCount() (sum int) {
 	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
 	for _, sspOperator := range operatorPods {
 		sum += intMetricValue("ssp_operator_reconciling_properly", operatorMetricsPort, &sspOperator)
@@ -151,7 +152,7 @@ func metricsPort(pods []core.Pod) (uint16, error) {
 	}
 	ports := container.Ports
 	for _, port := range ports {
-		if port.Name == "metrics" {
+		if port.Name == metrics.MetricsPortName {
 			return uint16(port.ContainerPort), nil
 		}
 	}
