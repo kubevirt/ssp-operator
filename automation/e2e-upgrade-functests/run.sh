@@ -5,9 +5,11 @@ set -e
 # It is run from the root of the repository.
 
 # These evn variables are defined by the CI:
+# CI_BRANCH - name of the git branch that CI is testing
 # CI_OPERATOR_IMG - path of the operator image in the local repository accessible on the CI
 # CI_VALIDATOR_IMG - path of the validator image in the local repository accessible on the CI
 
+export RELEASE_BRANCH=${CI_BRANCH}
 export VALIDATOR_IMG=${CI_VALIDATOR_IMG}
 export IMG=${CI_OPERATOR_IMG}
 
