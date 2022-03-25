@@ -5,6 +5,7 @@ set -e
 # It is run from the root of the repository.
 
 # These evn variables are defined by the CI:
+# CI_BRANCH - name of the git branch that CI is testing
 # CI_OPERATOR_IMG - path of the operator image in the local repository accessible on the CI
 # CI_VALIDATOR_IMG - path of the validator image in the local repository accessible on the CI
 
@@ -16,8 +17,21 @@ SOURCE_DIR=$(dirname "$0")
 # Deploy latest released SSP operator
 NAMESPACE=${1:-kubevirt}
 
-LATEST_SSP_VERSION=$(curl 'https://api.github.com/repos/kubevirt/ssp-operator/releases/latest' | jq '.name' | tr -d '"')
-oc apply -n $NAMESPACE -f "https://github.com/kubevirt/ssp-operator/releases/download/${LATEST_SSP_VERSION}/ssp-operator.yaml"
+RELEASE_BRANCH=${CI_BRANCH}
+if [[ -z ${RELEASE_BRANCH} ]] || [[ ${RELEASE_BRANCH} == "master" ]]
+then
+  # Get the latest release branch
+  RELEASE_BRANCH=$(curl 'https://api.github.com/repos/kubevirt/ssp-operator/branches' |
+    jq '[.[].name | select(startswith("release-v"))] | max_by(ltrimstr("release-v") | split(".") | map(tonumber))' |
+    tr -d '"')
+fi
+
+# GitHub API returns releases sorted by creation time. Latest release is the first.
+LATEST_RELEASED_VERSION=$(curl 'https://api.github.com/repos/kubevirt/ssp-operator/releases' |
+  jq --arg BRANCH "${RELEASE_BRANCH}" '[.[] | select(.target_commitish == $BRANCH) | .name] | .[0]' |
+  tr -d '"')
+
+oc apply -n $NAMESPACE -f "https://github.com/kubevirt/ssp-operator/releases/download/${LATEST_RELEASED_VERSION}/ssp-operator.yaml"
 
 # Wait for deployment to be available, otherwise the validating webhook would reject the SSP CR.
 oc wait --for=condition=Available --timeout=600s -n ${NAMESPACE} deployments/ssp-operator
