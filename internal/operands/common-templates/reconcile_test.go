@@ -90,6 +90,35 @@ var _ = Describe("Common-Templates operand", func() {
 		}
 	})
 
+	It("should reconcle predefined labels", func() {
+		const (
+			defaultOsLabel = "template.kubevirt.io/default-os-variant"
+			testLabel      = "some.test.label"
+		)
+
+		for _, template := range getTestTemplates() {
+			template.Namespace = namespace
+			template.Labels[defaultOsLabel] = "true"
+			template.Labels[testLabel] = "test"
+			Expect(request.Client.Create(request.Context, &template)).To(Succeed())
+		}
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		for i := range testTemplates {
+			key := client.ObjectKey{
+				Name:      testTemplates[i].Name,
+				Namespace: namespace,
+			}
+			template := &templatev1.Template{}
+			Expect(request.Client.Get(request.Context, key, template)).To(Succeed())
+
+			Expect(template.Labels).ToNot(HaveKey(defaultOsLabel))
+			Expect(template.Labels).To(HaveKey(testLabel))
+		}
+	})
+
 	Context("old templates", func() {
 		var (
 			parentTpl, oldTpl, newerTemplate *templatev1.Template
@@ -157,12 +186,6 @@ var _ = Describe("Common-Templates operand", func() {
 
 			err = request.Client.Create(request.Context, newerTemplate)
 			Expect(err).ToNot(HaveOccurred(), "creation of newer template failed")
-		})
-
-		AfterEach(func() {
-			Expect(request.Client.Delete(request.Context, oldTpl)).ToNot(HaveOccurred(), "deletion of old tempalte failed")
-			Expect(request.Client.Delete(request.Context, parentTpl)).ToNot(HaveOccurred(), "deletion of parent tempalte failed")
-			Expect(request.Client.Delete(request.Context, newerTemplate)).ToNot(HaveOccurred(), "deletion of newer tempalte failed")
 		})
 
 		It("should replace ownerReferences with owner annotations for older templates", func() {
@@ -243,7 +266,7 @@ func getTestTemplates() []templatev1.Template {
 			Name: "centos-stream8-server-medium",
 			Labels: map[string]string{
 				TemplateTypeLabel:                      TemplateTypeLabelBaseValue,
-				TemplateVersionLabel:                   "v0.16.2",
+				TemplateVersionLabel:                   Version,
 				TemplateOsLabelPrefix + "centos8":      "true",
 				TemplateFlavorLabelPrefix + "medium":   "true",
 				TemplateWorkloadLabelPrefix + "server": "true",
@@ -254,7 +277,7 @@ func getTestTemplates() []templatev1.Template {
 			Name: "windows10-desktop-medium",
 			Labels: map[string]string{
 				TemplateTypeLabel:                       TemplateTypeLabelBaseValue,
-				TemplateVersionLabel:                    "v0.16.2",
+				TemplateVersionLabel:                    Version,
 				TemplateOsLabelPrefix + "win10":         "true",
 				TemplateFlavorLabelPrefix + "medium":    "true",
 				TemplateWorkloadLabelPrefix + "desktop": "true",

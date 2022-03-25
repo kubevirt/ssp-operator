@@ -2,6 +2,7 @@ package common_templates
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -27,6 +28,8 @@ var (
 
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch;create;update;patch;delete
+
+var templateKubevirtIoPattern = regexp.MustCompile(`^(.*\.)?template\.kubevirt\.io/`)
 
 func init() {
 	utilruntime.Must(templatev1.Install(common.Scheme))
@@ -75,16 +78,6 @@ func (c *commonTemplates) RequiredCrds() []string {
 }
 
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	oldTemplateFuncs, err := c.reconcileOlderTemplates(request)
-	if err != nil {
-		return nil, err
-	}
-
-	results, err := common.CollectResourceStatus(request, oldTemplateFuncs...)
-	if err != nil {
-		return nil, err
-	}
-
 	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(c.templatesBundle)...)
 	if err != nil {
 		return nil, err
@@ -94,7 +87,17 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 		incrementTemplatesRestoredMetric(reconcileTemplatesResults, request.Logger)
 	}
 
-	return append(results, reconcileTemplatesResults...), nil
+	oldTemplateFuncs, err := c.reconcileOlderTemplates(request)
+	if err != nil {
+		return nil, err
+	}
+
+	oldTemplatesResults, err := common.CollectResourceStatus(request, oldTemplateFuncs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(reconcileTemplatesResults, oldTemplatesResults...), nil
 }
 
 func isUpgradingNow(request *common.Request) bool {
@@ -239,6 +242,11 @@ func reconcileTemplatesFuncs(templatesBundle []templatev1.Template) []common.Rec
 				UpdateFunc(func(newRes, foundRes client.Object) {
 					newTemplate := newRes.(*templatev1.Template)
 					foundTemplate := foundRes.(*templatev1.Template)
+
+					// Remove old annotations and labels, if they are not present in the new template.
+					// This is useful when new a common-templates version removed some annotations or labels.
+					syncPredefinedAnnotationsAndLabels(foundTemplate, newTemplate)
+
 					foundTemplate.Objects = newTemplate.Objects
 					foundTemplate.Parameters = newTemplate.Parameters
 				}).
@@ -246,4 +254,30 @@ func reconcileTemplatesFuncs(templatesBundle []templatev1.Template) []common.Rec
 		})
 	}
 	return funcs
+}
+
+func syncPredefinedAnnotationsAndLabels(foundTemplate, newTemplate *templatev1.Template) {
+	for annotation := range foundTemplate.Annotations {
+		if isPredefinedKey(annotation) {
+			if _, exists := newTemplate.Annotations[annotation]; !exists {
+				delete(foundTemplate.Annotations, annotation)
+			}
+		}
+	}
+
+	for label := range foundTemplate.Labels {
+		if isPredefinedKey(label) {
+			if _, exists := newTemplate.Labels[label]; !exists {
+				delete(foundTemplate.Labels, label)
+			}
+		}
+	}
+}
+
+func isPredefinedKey(key string) bool {
+	return key == "description" ||
+		key == "tags" ||
+		key == "iconClass" ||
+		strings.HasPrefix(key, "openshift.io/") ||
+		templateKubevirtIoPattern.MatchString(key)
 }
