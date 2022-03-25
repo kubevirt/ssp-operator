@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-logr/logr"
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -89,18 +90,24 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 		return nil, err
 	}
 
-	upgradingNow := isUpgradingNow(request)
-	for _, r := range reconcileTemplatesResults {
-		if !upgradingNow && (r.OperationResult == common.OperationResultUpdated) {
-			request.Logger.Info(fmt.Sprintf("Changes reverted in common template: %s", r.Resource.GetName()))
-			CommonTemplatesRestored.Inc()
-		}
+	if !isUpgradingNow(request) {
+		incrementTemplatesRestoredMetric(reconcileTemplatesResults, request.Logger)
 	}
+
 	return append(results, reconcileTemplatesResults...), nil
 }
 
 func isUpgradingNow(request *common.Request) bool {
 	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
+}
+
+func incrementTemplatesRestoredMetric(reconcileResults []common.ReconcileResult, logger logr.Logger) {
+	for i := range reconcileResults {
+		if reconcileResults[i].OperationResult == common.OperationResultUpdated {
+			logger.Info(fmt.Sprintf("Changes reverted in common template: %s", reconcileResults[i].Resource.GetName()))
+			CommonTemplatesRestored.Inc()
+		}
+	}
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
