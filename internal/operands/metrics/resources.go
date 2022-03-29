@@ -34,6 +34,7 @@ type RecordRulesDesc struct {
 	Name        string
 	Expr        intstr.IntOrString
 	Description string
+	Type        string
 }
 
 // RecordRulesDescList lists all SSP Operator Prometheus Record Rules
@@ -42,26 +43,31 @@ var RecordRulesDescList = []RecordRulesDesc{
 		Name:        "kubevirt_ssp_operator_up_total",
 		Expr:        intstr.FromString("sum(up{pod=~'ssp-operator.*'}) OR on() vector(0)"),
 		Description: "The total number of running ssp-operator pods",
+		Type:        "Gauge",
 	},
 	{
 		Name:        "kubevirt_ssp_template_validator_up_total",
 		Expr:        intstr.FromString("sum(up{pod=~'virt-template-validator.*'}) OR on() vector(0)"),
 		Description: "The total number of running virt-template-validator pods",
+		Type:        "Gauge",
 	},
 	{
 		Name:        "kubevirt_ssp_num_of_operator_reconciling_properly",
 		Expr:        intstr.FromString("sum(ssp_operator_reconciling_properly)"),
 		Description: "The total number of ssp-operator pods reconciling with no errors",
+		Type:        "Gauge",
 	},
 	{
 		Name:        "kubevirt_ssp_rejected_vms_total",
 		Expr:        intstr.FromString(Total_rejected_vms_increase_query + " OR on() vector(0)"),
 		Description: "The total number of vms rejected by virt-template-validator",
+		Type:        "Counter",
 	},
 	{
 		Name:        "kubevirt_ssp_total_restored_common_templates",
 		Expr:        intstr.FromString(Total_restored_common_templates_increase_query + " OR on() vector(0)"),
 		Description: "The total number of common templates restored by the operator back to their original state",
+		Type:        "Counter",
 	},
 }
 
