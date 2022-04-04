@@ -14,7 +14,11 @@ spec:
     singular: ssp
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: SSP is the Schema for the ssps API
