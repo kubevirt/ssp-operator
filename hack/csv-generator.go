@@ -30,7 +30,7 @@ import (
 	csvv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -124,7 +124,7 @@ func runGenerator() error {
 		return err
 	}
 	for _, file := range files {
-		crd := extv1beta1.CustomResourceDefinition{}
+		crd := extv1.CustomResourceDefinition{}
 
 		err := readAndDecodeToCRD(file, &crd)
 		if err != nil {
@@ -139,7 +139,7 @@ func runGenerator() error {
 	return nil
 }
 
-func readAndDecodeToCRD(file os.FileInfo, crd *extv1beta1.CustomResourceDefinition) error {
+func readAndDecodeToCRD(file os.FileInfo, crd *extv1.CustomResourceDefinition) error {
 	crdFile, err := ioutil.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
 	if err != nil {
 		return err
