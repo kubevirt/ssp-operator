@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/onsi/ginkgo/extensions/table"
-	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/pkg/sdk/api"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
