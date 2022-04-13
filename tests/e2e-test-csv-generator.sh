@@ -1,6 +1,6 @@
 #!/bin/bash
 
-olm_output=$(docker run --rm --entrypoint=/csv-generator quay.io/kubevirt/ssp-operator:latest \
+olm_output=$(podman run --rm --entrypoint=/csv-generator quay.io/kubevirt/ssp-operator:latest \
 --csv-version=9.9.9 --namespace=namespace-test --operator-version=8.8.8  --validator-image=validator-test --dump-crds \
 --operator-image=operator-test)
 
@@ -30,7 +30,7 @@ if [ $(echo $olm_output | grep 'group: ssp.kubevirt.io'| wc -l) -eq 0 ]; then
 fi
 
 #test the case without --dump-crds flag
-olm_output=$(docker run --rm --entrypoint=/csv-generator quay.io/kubevirt/ssp-operator:latest \
+olm_output=$(podman run --rm --entrypoint=/csv-generator quay.io/kubevirt/ssp-operator:latest \
 --csv-version=9.9.9 --namespace=namespace-test --operator-version=8.8.8 --validator-image=validator-test \
 --operator-image=operator-test)
 

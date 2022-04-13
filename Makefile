@@ -144,7 +144,7 @@ container-build: unittest bundle
 	mkdir -p data/crd
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	docker build -t ${IMG} \
+	podman build -t ${IMG} \
 		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
 		--build-arg IMG_TAG=${IMG_TAG} \
 		--build-arg IMG=${IMG} \
@@ -155,13 +155,13 @@ container-build: unittest bundle
 
 # Push the container image
 container-push:
-	docker push ${IMG}
+	podman push ${IMG}
 
 build-template-validator:
 	./hack/build-template-validator.sh ${VERSION}
 
 build-template-validator-container:
-	docker build -t ${VALIDATOR_IMG} \
+	podman build -t ${VALIDATOR_IMG} \
 		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
 		--build-arg IMG_TAG=${IMG_TAG} \
 		--build-arg IMG=${IMG} \
@@ -171,7 +171,7 @@ build-template-validator-container:
 		. -f validator.Dockerfile
 
 push-template-validator-container:
-	docker push ${VALIDATOR_IMG}
+	podman push ${VALIDATOR_IMG}
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
@@ -226,7 +226,7 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	podman build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: release
 release: container-build container-push build-template-validator-container push-template-validator-container bundle build-functests
