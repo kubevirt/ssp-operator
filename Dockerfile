@@ -1,7 +1,9 @@
 # Build the manager binary
 FROM registry.access.redhat.com/ubi8/ubi-minimal as builder
 
-RUN microdnf install -y make golang-1.16.* which && microdnf clean all
+RUN microdnf install -y make wget tar gzip which && microdnf clean all
+RUN wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz
+ENV PATH=$PATH:/usr/local/go/bin
 
 # Consume required variables so we can work with make
 ARG IMG_REPOSITORY
