@@ -1,6 +1,8 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal as builder
 
-RUN microdnf install -y golang-1.16.* && microdnf clean all
+RUN microdnf install -y make wget tar gzip which && microdnf clean all
+RUN wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz
+ENV PATH=$PATH:/usr/local/go/bin
 
 ARG VERSION=latest
 ARG COMPONENT="kubevirt-template-validator"
