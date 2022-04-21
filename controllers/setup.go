@@ -19,8 +19,13 @@ import (
 )
 
 func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
+	infrastructureTopology, err := common.GetInfrastructureTopology(mgr.GetAPIReader())
+	if err != nil {
+		return err
+	}
+
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
-	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
+	templatesBundle, err := template_bundle.ReadBundle(templatesFile, infrastructureTopology, mgr.GetScheme())
 	if err != nil {
 		return err
 	}
@@ -41,11 +46,6 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 	// Check if all needed CRDs exist
 	crdList := &extv1.CustomResourceDefinitionList{}
 	err = mgr.GetAPIReader().List(context.TODO(), crdList)
-	if err != nil {
-		return err
-	}
-
-	infrastructureTopology, err := common.GetInfrastructureTopology(mgr.GetAPIReader())
 	if err != nil {
 		return err
 	}

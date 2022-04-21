@@ -80,6 +80,7 @@ objects:
             kubevirt.io/domain: ${NAME}
             kubevirt.io/size: medium
         spec:
+          evictionStrategy: LiveMigrate
           domain:
             cpu:
               sockets: 1
@@ -212,6 +213,7 @@ objects:
             kubevirt.io/domain: ${NAME}
             kubevirt.io/size: large
         spec:
+          evictionStrategy: LiveMigrate
           domain:
             cpu:
               sockets: 2
@@ -370,6 +372,7 @@ objects:
             kubevirt.io/domain: ${NAME}
             kubevirt.io/size: medium
         spec:
+          evictionStrategy: LiveMigrate
           domain:
             clock:
               utc: {}
@@ -510,6 +513,7 @@ objects:
             kubevirt.io/domain: ${NAME}
             kubevirt.io/size: tiny
         spec:
+          evictionStrategy: LiveMigrate
           hostname: ${NAME}
           domain:
             ioThreadsPolicy: auto

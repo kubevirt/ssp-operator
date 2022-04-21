@@ -3,8 +3,12 @@ package template_bundle
 import (
 	"bytes"
 	"fmt"
+	osconfv1 "github.com/openshift/api/config/v1"
 	"io"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +22,7 @@ type Bundle struct {
 	DataSources []cdiv1beta1.DataSource
 }
 
-func ReadBundle(filename string) (Bundle, error) {
+func ReadBundle(filename string, topologyMode osconfv1.TopologyMode, scheme *runtime.Scheme) (Bundle, error) {
 	templates, err := readTemplates(filename)
 	if err != nil {
 		return Bundle{}, err
@@ -29,6 +33,8 @@ func ReadBundle(filename string) (Bundle, error) {
 		return Bundle{}, err
 	}
 
+	codec := serializer.NewCodecFactory(scheme).LegacyCodec(kubevirtv1.GroupVersion)
+	manageSingleReplicaInfrastructure(templates, &topologyMode, codec)
 	return Bundle{
 		Templates:   templates,
 		DataSources: sources,
@@ -93,14 +99,11 @@ func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSourc
 }
 
 func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
-	vmUnstructured := &unstructured.Unstructured{}
-	err := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(template.Objects[0].Raw), 1024).Decode(vmUnstructured)
+	vmUnstructured, isVm, err := decodeToVMUnstructured(&template.Objects[0])
 	if err != nil {
 		return false, err
 	}
 
-	isVm := vmUnstructured.GetAPIVersion() == "kubevirt.io/v1" &&
-		vmUnstructured.GetKind() == "VirtualMachine"
 	if !isVm {
 		return false, fmt.Errorf("template %s contains unexpected object: %s, %s", template.Name, vmUnstructured.GetAPIVersion(), vmUnstructured.GetKind())
 	}
@@ -127,6 +130,18 @@ func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func decodeToVMUnstructured(obj *runtime.RawExtension) (*unstructured.Unstructured, bool, error) {
+	vmUnstructured := &unstructured.Unstructured{}
+	err := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(obj.Raw), 1024).Decode(vmUnstructured)
+	if err != nil {
+		return nil, false, err
+	}
+
+	isVm := vmUnstructured.GetAPIVersion() == "kubevirt.io/v1" &&
+		vmUnstructured.GetKind() == "VirtualMachine"
+	return vmUnstructured, isVm, nil
 }
 
 func findDataSourceName(template *templatev1.Template) (string, bool) {
@@ -175,4 +190,36 @@ func createDataSource(name, namespace string) cdiv1beta1.DataSource {
 			},
 		},
 	}
+}
+
+func manageSingleReplicaInfrastructure(templates []templatev1.Template, topologyMode *osconfv1.TopologyMode, codec runtime.Encoder) error {
+	if *topologyMode != osconfv1.SingleReplicaTopologyMode {
+		return nil
+	}
+
+	for templateIdx, template := range templates {
+		for objIdx, rawObj := range template.Objects {
+			vmUnstructured, isVm, err := decodeToVMUnstructured(&rawObj)
+			if err != nil {
+				return err
+			}
+
+			if !isVm {
+				continue
+			}
+
+			val, found, err := unstructured.NestedFieldNoCopy(vmUnstructured.Object, "spec", "template", "spec", "evictionStrategy")
+			if err != nil {
+				return err
+			}
+
+			if !found || val != string(kubevirtv1.EvictionStrategyLiveMigrate) {
+				continue
+			}
+
+			unstructured.RemoveNestedField(vmUnstructured.Object, "spec", "template", "spec", "evictionStrategy")
+			templates[templateIdx].Objects[objIdx].Raw = []byte(runtime.EncodeOrDie(codec, vmUnstructured))
+		}
+	}
+	return nil
 }
