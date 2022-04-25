@@ -34,7 +34,11 @@ func ReadBundle(filename string, topologyMode osconfv1.TopologyMode, scheme *run
 	}
 
 	codec := serializer.NewCodecFactory(scheme).LegacyCodec(kubevirtv1.GroupVersion)
-	manageSingleReplicaInfrastructure(templates, &topologyMode, codec)
+	err = manageSingleReplicaInfrastructure(templates, &topologyMode, codec)
+	if err != nil {
+		return Bundle{}, err
+	}
+
 	return Bundle{
 		Templates:   templates,
 		DataSources: sources,
@@ -197,9 +201,11 @@ func manageSingleReplicaInfrastructure(templates []templatev1.Template, topology
 		return nil
 	}
 
-	for templateIdx, template := range templates {
-		for objIdx, rawObj := range template.Objects {
-			vmUnstructured, isVm, err := decodeToVMUnstructured(&rawObj)
+	for templateIdx := range templates {
+		objects := templates[templateIdx].Objects
+		for objIdx := range objects {
+			rawObj := &objects[objIdx]
+			vmUnstructured, isVm, err := decodeToVMUnstructured(rawObj)
 			if err != nil {
 				return err
 			}
@@ -218,7 +224,11 @@ func manageSingleReplicaInfrastructure(templates []templatev1.Template, topology
 			}
 
 			unstructured.RemoveNestedField(vmUnstructured.Object, "spec", "template", "spec", "evictionStrategy")
-			templates[templateIdx].Objects[objIdx].Raw = []byte(runtime.EncodeOrDie(codec, vmUnstructured))
+			encoded, err := runtime.Encode(codec, vmUnstructured)
+			if err != nil {
+				return err
+			}
+			templates[templateIdx].Objects[objIdx].Raw = encoded
 		}
 	}
 	return nil

@@ -86,21 +86,21 @@ var _ = Describe("Template bundle", func() {
 })
 
 func ExpectEvictionStrategyNotPresent(obj *runtime.RawExtension) {
-	vmUnstructured := expectEvictionStrategy(obj)
+	vmUnstructured := decodeToVMUnstructuredAndExpectSuccess(obj)
 	_, found, err := unstructured.NestedFieldNoCopy(vmUnstructured.Object, "spec", "template", "spec", "evictionStrategy")
 	Expect(err).ToNot(HaveOccurred())
 	Expect(found).To(BeFalse())
 }
 
 func ExpectEvictionStrategyLiveMigrate(obj *runtime.RawExtension) {
-	vmUnstructured := expectEvictionStrategy(obj)
+	vmUnstructured := decodeToVMUnstructuredAndExpectSuccess(obj)
 	val, found, err := unstructured.NestedFieldNoCopy(vmUnstructured.Object, "spec", "template", "spec", "evictionStrategy")
 	Expect(err).ToNot(HaveOccurred())
 	Expect(found).To(BeTrue())
 	Expect(val).To(Equal(string(kubevirtv1.EvictionStrategyLiveMigrate)))
 }
 
-func expectEvictionStrategy(obj *runtime.RawExtension) *unstructured.Unstructured {
+func decodeToVMUnstructuredAndExpectSuccess(obj *runtime.RawExtension) *unstructured.Unstructured {
 	vmUnstructured, isVm, err := decodeToVMUnstructured(obj)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(isVm).To(BeTrue())
