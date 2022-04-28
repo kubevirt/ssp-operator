@@ -67,8 +67,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -125,10 +125,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -203,8 +203,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -261,10 +261,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -339,8 +339,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -397,10 +397,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -475,8 +475,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -533,10 +533,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -611,8 +611,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -665,10 +665,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -743,8 +743,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -797,10 +797,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -876,8 +876,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -930,10 +930,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1008,8 +1008,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -1062,10 +1062,10 @@ parameters:
   from: 'centos-stream8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1140,8 +1140,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -1198,10 +1198,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1276,8 +1276,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -1334,10 +1334,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1412,8 +1412,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -1470,10 +1470,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1548,8 +1548,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -1606,10 +1606,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1684,8 +1684,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -1738,10 +1738,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1816,8 +1816,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -1870,10 +1870,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -1949,8 +1949,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -2003,10 +2003,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -2081,8 +2081,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -2135,10 +2135,10 @@ parameters:
   from: 'centos-stream9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos-stream9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -2233,8 +2233,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -2290,10 +2290,10 @@ parameters:
   from: 'centos6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -2388,8 +2388,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -2445,10 +2445,10 @@ parameters:
   from: 'centos6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -2544,8 +2544,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -2601,10 +2601,10 @@ parameters:
   from: 'centos6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -2699,8 +2699,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -2756,10 +2756,10 @@ parameters:
   from: 'centos6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -2834,8 +2834,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -2892,10 +2892,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -2970,8 +2970,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3028,10 +3028,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -3106,8 +3106,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3164,10 +3164,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -3242,8 +3242,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3300,10 +3300,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -3378,8 +3378,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3432,10 +3432,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -3510,8 +3510,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3564,10 +3564,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -3643,8 +3643,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3697,10 +3697,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -3775,8 +3775,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3829,10 +3829,10 @@ parameters:
   from: 'centos7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'centos7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user centos
@@ -3915,8 +3915,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -3973,10 +3973,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -4059,8 +4059,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4117,10 +4117,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -4203,8 +4203,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4261,10 +4261,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -4347,8 +4347,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4405,10 +4405,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -4491,8 +4491,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4549,10 +4549,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -4635,8 +4635,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4693,10 +4693,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -4779,8 +4779,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4837,10 +4837,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -4923,8 +4923,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -4981,10 +4981,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -5067,8 +5067,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -5121,10 +5121,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -5207,8 +5207,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -5261,10 +5261,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -5348,8 +5348,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -5402,10 +5402,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -5488,8 +5488,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -5542,10 +5542,10 @@ parameters:
   from: 'fedora-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'fedora'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user fedora
@@ -5622,8 +5622,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -5676,10 +5676,10 @@ parameters:
   from: 'opensuse-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'opensuse'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user opensuse
@@ -5756,8 +5756,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -5810,10 +5810,10 @@ parameters:
   from: 'opensuse-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'opensuse'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user opensuse
@@ -5891,8 +5891,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -5945,10 +5945,10 @@ parameters:
   from: 'opensuse-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'opensuse'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user opensuse
@@ -6025,8 +6025,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -6079,10 +6079,10 @@ parameters:
   from: 'opensuse-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'opensuse'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user opensuse
@@ -6177,8 +6177,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -6238,10 +6238,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -6336,8 +6336,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -6397,10 +6397,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -6495,8 +6495,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -6556,10 +6556,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -6654,8 +6654,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -6715,10 +6715,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -6813,8 +6813,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -6870,10 +6870,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -6968,8 +6968,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -7025,10 +7025,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -7124,8 +7124,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -7181,10 +7181,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -7279,8 +7279,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -7336,10 +7336,10 @@ parameters:
   from: 'rhel6-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel6'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -7432,8 +7432,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -7490,10 +7490,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -7586,8 +7586,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -7644,10 +7644,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -7740,8 +7740,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -7798,10 +7798,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -7894,8 +7894,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -7952,10 +7952,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -8048,8 +8048,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -8106,10 +8106,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -8202,8 +8202,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -8260,10 +8260,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -8356,8 +8356,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -8414,10 +8414,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -8510,8 +8510,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -8568,10 +8568,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -8664,8 +8664,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -8718,10 +8718,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -8814,8 +8814,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -8868,10 +8868,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -8965,8 +8965,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -9019,10 +9019,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -9115,8 +9115,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -9169,10 +9169,10 @@ parameters:
   from: 'rhel7-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel7'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -9257,8 +9257,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -9315,10 +9315,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -9403,8 +9403,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -9461,10 +9461,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -9549,8 +9549,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -9607,10 +9607,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -9695,8 +9695,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -9753,10 +9753,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -9841,8 +9841,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -9899,10 +9899,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -9987,8 +9987,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -10045,10 +10045,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -10133,8 +10133,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -10191,10 +10191,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -10279,8 +10279,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -10337,10 +10337,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -10425,8 +10425,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -10479,10 +10479,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -10567,8 +10567,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -10621,10 +10621,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -10710,8 +10710,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -10764,10 +10764,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -10852,8 +10852,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -10906,10 +10906,10 @@ parameters:
   from: 'rhel8-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel8'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -10997,8 +10997,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -11055,10 +11055,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -11146,8 +11146,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -11204,10 +11204,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -11295,8 +11295,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -11353,10 +11353,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -11444,8 +11444,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -11502,10 +11502,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -11593,8 +11593,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -11651,10 +11651,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -11742,8 +11742,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -11800,10 +11800,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -11891,8 +11891,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -11949,10 +11949,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -12040,8 +12040,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -12098,10 +12098,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -12189,8 +12189,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -12243,10 +12243,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -12334,8 +12334,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -12388,10 +12388,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -12480,8 +12480,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -12534,10 +12534,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -12625,8 +12625,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -12679,10 +12679,10 @@ parameters:
   from: 'rhel9-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'rhel9'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user cloud-user
@@ -12759,8 +12759,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -12817,10 +12817,10 @@ parameters:
   from: 'ubuntu-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'ubuntu'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user ubuntu
@@ -12897,8 +12897,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -12955,10 +12955,10 @@ parameters:
   from: 'ubuntu-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'ubuntu'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user ubuntu
@@ -13036,8 +13036,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -13094,10 +13094,10 @@ parameters:
   from: 'ubuntu-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'ubuntu'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user ubuntu
@@ -13174,8 +13174,8 @@ objects:
               storage: 30Gi
         sourceRef:
           kind: DataSource
-          name: ${SRC_PVC_NAME}
-          namespace: ${SRC_PVC_NAMESPACE}
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -13232,10 +13232,10 @@ parameters:
   from: 'ubuntu-[a-z0-9]{16}'
   generate: expression
   name: NAME
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: 'ubuntu'
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 - description: Randomized password for the cloud-init user ubuntu
@@ -13331,8 +13331,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -13406,10 +13406,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win10
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -13502,8 +13502,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -13577,10 +13577,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win10
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -13672,8 +13672,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -13750,10 +13750,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win10
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -13845,8 +13845,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -13923,10 +13923,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win10
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -14018,8 +14018,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -14096,10 +14096,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k12r2
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -14191,8 +14191,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -14269,10 +14269,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k12r2
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -14364,8 +14364,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -14439,10 +14439,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k12r2
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -14535,8 +14535,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -14610,10 +14610,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k12r2
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -14705,8 +14705,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -14783,10 +14783,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k16
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -14878,8 +14878,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -14956,10 +14956,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k16
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -15051,8 +15051,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -15126,10 +15126,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k16
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -15222,8 +15222,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -15297,10 +15297,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k16
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -15392,8 +15392,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -15470,10 +15470,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k19
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -15565,8 +15565,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -15643,10 +15643,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k19
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -15738,8 +15738,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -15813,10 +15813,10 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k19
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
 ---
@@ -15909,8 +15909,8 @@ objects:
                 storage: 60Gi
           sourceRef:
             kind: DataSource
-            name: ${SRC_PVC_NAME}
-            namespace: ${SRC_PVC_NAMESPACE}
+            name: ${DATA_SOURCE_NAME}
+            namespace: ${DATA_SOURCE_NAMESPACE}
     running: false
     template:
       metadata:
@@ -15984,9 +15984,9 @@ parameters:
   description: VM name
   generate: expression
   from: "windows-[a-z0-9]{6}"
-- name: SRC_PVC_NAME
+- name: DATA_SOURCE_NAME
   description: Name of the DataSource to clone
   value: win2k19
-- name: SRC_PVC_NAMESPACE
+- name: DATA_SOURCE_NAMESPACE
   description: Namespace of the DataSource
   value: kubevirt-os-images
