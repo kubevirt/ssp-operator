@@ -1,8 +1,9 @@
 # Build the manager binary
 FROM registry.access.redhat.com/ubi8/ubi-minimal as builder
 
-RUN microdnf install -y make wget tar gzip which && microdnf clean all
-RUN wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz
+RUN microdnf install -y make tar gzip which && microdnf clean all
+
+RUN curl -L https://go.dev/dl/go1.18.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 ENV PATH=$PATH:/usr/local/go/bin
 
 # Consume required variables so we can work with make
@@ -37,6 +38,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make csv-generator
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 LABEL org.kubevirt.hco.csv-generator.v1="/csv-generator"
+
+RUN microdnf update -y && microdnf clean all
 
 WORKDIR /
 COPY --from=builder /workspace/bin/manager .
