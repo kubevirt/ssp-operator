@@ -168,7 +168,7 @@ func validateSspIsFailingToReconcileMetric() {
 var _ = Describe("SCC annotation", func() {
 	const (
 		sccAnnotation = "openshift.io/scc"
-		sccRestricted = "restricted"
+		sccRestricted = "^restricted*"
 	)
 
 	BeforeEach(func() {
@@ -183,7 +183,7 @@ var _ = Describe("SCC annotation", func() {
 		Expect(pods.Items).ToNot(BeEmpty())
 
 		for _, pod := range pods.Items {
-			Expect(pod.Annotations).To(HaveKeyWithValue(sccAnnotation, sccRestricted), "Expected pod %s/%s to have scc 'restricted'", pod.Namespace, pod.Name)
+			Expect(pod.Annotations).To(HaveKeyWithValue(sccAnnotation, MatchRegexp(sccRestricted)), "Expected pod %s/%s to have scc 'restricted'", pod.Namespace, pod.Name)
 		}
 	})
 
@@ -197,7 +197,7 @@ var _ = Describe("SCC annotation", func() {
 		Expect(pods.Items).ToNot(BeEmpty())
 
 		for _, pod := range pods.Items {
-			Expect(pod.Annotations).To(HaveKeyWithValue(sccAnnotation, sccRestricted), "Expected pod %s/%s to have scc 'restricted'", pod.Namespace, pod.Name)
+			Expect(pod.Annotations).To(HaveKeyWithValue(sccAnnotation, MatchRegexp(sccRestricted)), "Expected pod %s/%s to have scc 'restricted'", pod.Namespace, pod.Name)
 		}
 	})
 })
