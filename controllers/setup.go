@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -46,6 +47,25 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 	}
 
 	infrastructureTopology, err := common.GetInfrastructureTopology(mgr.GetAPIReader())
+	if err != nil {
+		return err
+	}
+
+	serviceController, err := CreateServiceController(mgr)
+	if err != nil {
+		return err
+	}
+
+	err = mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		err := serviceController.Start(ctx, mgr)
+		if err != nil {
+			return fmt.Errorf("error adding serviceController: %w", err)
+		}
+
+		mgr.GetLogger().Info("Services Controller started")
+
+		return nil
+	}))
 	if err != nil {
 		return err
 	}
