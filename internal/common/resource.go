@@ -175,7 +175,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 		// if that is not correct, this code needs to be changed.
 		found.SetOwnerReferences(r.resource.GetOwnerReferences())
 
-		updateLabels(r.resource, found)
+		UpdateLabels(r.resource, found)
 		updateAnnotations(r.resource, found)
 		if r.options.AlwaysCallUpdateFunc || !r.request.VersionCache.Contains(found) {
 			// The generation was updated by other cluster components,
@@ -356,7 +356,7 @@ func updateAnnotations(expected, found client.Object) {
 	updateStringMap(expected.GetAnnotations(), found.GetAnnotations())
 }
 
-func updateLabels(expected, found client.Object) {
+func UpdateLabels(expected, found client.Object) {
 	if found.GetLabels() == nil {
 		found.SetLabels(expected.GetLabels())
 		return
