@@ -45,6 +45,7 @@ import (
 	osconfv1 "github.com/openshift/api/config/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	handler_hook "kubevirt.io/ssp-operator/internal/controller/handler-hook"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
 
@@ -98,10 +99,18 @@ var _ reconcile.Reconciler = &sspReconciler{}
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
 func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
+	eventHandlerHook := func(request ctrl.Request, obj client.Object) {
+		r.log.Info("Reconciliation event received",
+			"ssp", request.NamespacedName,
+			"cause_type", reflect.TypeOf(obj).Elem().Name(),
+			"cause_object", obj.GetNamespace()+"/"+obj.GetName(),
+		)
+	}
+
 	builder := ctrl.NewControllerManagedBy(mgr)
 	watchSspResource(builder)
-	watchClusterResources(builder, r.operands)
-	watchNamespacedResources(builder, r.operands)
+	watchClusterResources(builder, r.operands, eventHandlerHook)
+	watchNamespacedResources(builder, r.operands, eventHandlerHook)
 	return builder.Complete(r)
 }
 
@@ -117,7 +126,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		}
 	}()
 	reqLogger := r.log.WithValues("ssp", req.NamespacedName)
-	reqLogger.V(1).Info("Starting reconciliation...")
+	reqLogger.Info("Starting reconciliation")
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
@@ -181,7 +190,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspRequest.Logger.V(1).Info("Updating CR status prior to operand reconciliation...")
 	err = preUpdateStatus(sspRequest)
 	if err != nil {
-		return handleError(sspRequest, err)
+		return handleError(sspRequest, err, sspRequest.Logger)
 	}
 
 	sspRequest.Logger.V(1).Info("CR status updated")
@@ -189,7 +198,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspRequest.Logger.Info("Reconciling operands...")
 	reconcileResults, err := r.reconcileOperands(sspRequest)
 	if err != nil {
-		return handleError(sspRequest, err)
+		return handleError(sspRequest, err, sspRequest.Logger)
 	}
 	sspRequest.Logger.V(1).Info("Operands reconciled")
 
@@ -578,7 +587,7 @@ func prefixResourceTypeAndName(message string, resource client.Object) string {
 		message)
 }
 
-func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
+func handleError(request *common.Request, errParam error, logger logr.Logger) (ctrl.Result, error) {
 	if errParam == nil {
 		return ctrl.Result{}, nil
 	}
@@ -586,6 +595,9 @@ func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
 	if errors.IsConflict(errParam) {
 		// Conflict happens if multiple components modify the same resource.
 		// Ignore the error and restart reconciliation.
+		logger.Info("Restarting reconciliation",
+			"cause", errParam.Error(),
+		)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -642,7 +654,7 @@ func watchSspResource(bldr *ctrl.Builder) {
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
-func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Operand) {
+func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
@@ -650,10 +662,11 @@ func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Oper
 		},
 		sspOperands,
 		operands.Operand.WatchTypes,
+		eventHandlerHook,
 	)
 }
 
-func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand) {
+func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
 		&libhandler.EnqueueRequestForAnnotation{
 			Type: schema.GroupKind{
@@ -663,10 +676,11 @@ func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand
 		},
 		sspOperands,
 		operands.Operand.WatchClusterTypes,
+		eventHandlerHook,
 	)
 }
 
-func watchResources(builder *ctrl.Builder, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []client.Object) {
+func watchResources(builder *ctrl.Builder, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []client.Object, hookFunc handler_hook.HookFunc) {
 	watchedTypes := make(map[reflect.Type]struct{})
 	for _, operand := range sspOperands {
 		for _, t := range watchTypesFunc(operand) {
@@ -674,7 +688,10 @@ func watchResources(builder *ctrl.Builder, handler handler.EventHandler, sspOper
 				continue
 			}
 
-			builder.Watches(&source.Kind{Type: t}, handler)
+			builder.Watches(
+				&source.Kind{Type: t},
+				handler_hook.New(handler, hookFunc),
+			)
 			watchedTypes[reflect.TypeOf(t)] = struct{}{}
 		}
 	}
