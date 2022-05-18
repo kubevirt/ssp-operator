@@ -128,7 +128,7 @@ var _ = Describe("Data-Sources operand", func() {
 		})
 
 		Context("without existing PVC", func() {
-			It("should create DataImportCron", func() {
+			It("should create DataImportCron in golden images namespace", func() {
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -141,12 +141,46 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(createdDataImportCron.Spec).To(Equal(cronTemplate.Spec))
 			})
 
-			It("should remove DataImportCron if template removed from SSP CR", func() {
+			It("should remove DataImportCron if template removed from SSP CR in golden images namespace", func() {
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
 
 				cron := cronTemplate.AsDataImportCron()
 				cron.Namespace = internal.GoldenImagesNamespace
+				ExpectResourceExists(&cron, request)
+
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				ExpectResourceNotExists(&cron, request)
+			})
+
+			It("should create DataImportCron in other namespace", func() {
+				cronTemplate.Namespace = "other-namespace"
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				createdDataImportCron := cdiv1beta1.DataImportCron{}
+				err = request.Client.Get(request.Context, client.ObjectKey{
+					Name:      cronTemplate.GetName(),
+					Namespace: cronTemplate.GetNamespace(),
+				}, &createdDataImportCron)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(createdDataImportCron.Spec).To(Equal(cronTemplate.Spec))
+			})
+
+			It("should remove DataImportCron if template removed from SSP CR in other namespace", func() {
+				cronTemplate.Namespace = "other-namespace"
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cron := cronTemplate.AsDataImportCron()
 				ExpectResourceExists(&cron, request)
 
 				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil

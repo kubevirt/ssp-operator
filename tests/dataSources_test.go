@@ -803,15 +803,15 @@ var _ = Describe("DataSources", func() {
 				waitUntilDeployed()
 			})
 
-			It("[test_id:7469] should create DataImportCron", func() {
-				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron not created")
+			It("[test_id:7469] should create DataImportCron in golden images namespace", func() {
+				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron created")
 			})
 
 			It("[test_id:7467] should set app labels on DataImportCron", func() {
 				expectAppLabels(&dataImportCron)
 			})
 
-			It("[test_id:7458] should recreate DataImportCron after delete", func() {
+			It("[test_id:7458] should recreate DataImportCron after delete in golden images namespace", func() {
 				expectRecreateAfterDelete(&dataImportCron)
 			})
 
@@ -828,7 +828,7 @@ var _ = Describe("DataSources", func() {
 				Expect(cron.Spec.Template.Spec.Storage.Resources.Requests).To(HaveKeyWithValue(core.ResourceStorage, resource.MustParse("32Mi")))
 			})
 
-			It("[test_id:7455] should remove DataImportCron if removed from SSP CR", func() {
+			It("[test_id:7455] should remove DataImportCron in golden images namespace if removed from SSP CR", func() {
 				updateSsp(func(foundSsp *ssp.SSP) {
 					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
 				})
@@ -901,6 +901,60 @@ var _ = Describe("DataSources", func() {
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 					return ds.GetLabels()
 				}, shortTimeout, time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
+			})
+		})
+
+		Context("without existing PVC and custom namespace", func() {
+			var (
+				customNamespace core.Namespace
+			)
+
+			BeforeEach(func() {
+				customNamespace = core.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "custom-namespace",
+					},
+				}
+				Expect(apiClient.Create(ctx, &customNamespace)).To(Succeed())
+
+				cronTemplate.Namespace = customNamespace.Name
+				dataImportCron.Namespace = customNamespace.Name
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+						cronTemplate,
+					)
+				})
+
+				waitUntilDeployed()
+			})
+
+			AfterEach(func() {
+				Expect(apiClient.Delete(ctx, &customNamespace)).To(Succeed())
+				waitForDeletion(client.ObjectKeyFromObject(&customNamespace), &core.Namespace{})
+			})
+
+			It("[test_id:????] should create DataImportCron ", func() {
+				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron created")
+			})
+
+			It("[test_id:????] should recreate DataImportCron after delete", func() {
+				expectRecreateAfterDelete(&dataImportCron)
+			})
+
+			It("[test_id:????] should remove DataImportCron if removed from SSP CR", func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+				})
+
+				waitUntilDeployed()
+
+				cron := &cdiv1beta1.DataImportCron{}
+				err := apiClient.Get(ctx, dataImportCron.GetKey(), cron)
+				if err != nil {
+					Expect(errors.IsNotFound(err)).To(BeTrue(), "Expected error to be: IsNotFound")
+				} else {
+					Expect(cron.GetDeletionTimestamp().IsZero()).To(BeFalse(), "DataImportCron is not being deleted")
+				}
 			})
 		})
 
@@ -1080,6 +1134,42 @@ var _ = Describe("DataSources", func() {
 						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 						return ds
 					}, shortTimeout, time.Second).ShouldNot(EqualResource(&dataSource, autoUpdateDataSource))
+				})
+			})
+
+			Context("with custom NameSpace", func() {
+				var (
+					customNamespace core.Namespace
+				)
+
+				BeforeEach(func() {
+					customNamespace = core.Namespace{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "custom-namespace",
+						},
+					}
+					Expect(apiClient.Create(ctx, &customNamespace)).To(Succeed())
+
+					cronTemplate.Namespace = customNamespace.Name
+					dataImportCron.Namespace = customNamespace.Name
+					updateSsp(func(foundSsp *ssp.SSP) {
+						foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+							cronTemplate,
+						)
+					})
+
+					waitUntilDeployed()
+				})
+
+				AfterEach(func() {
+					Expect(apiClient.Delete(ctx, &customNamespace)).To(Succeed())
+					waitForDeletion(client.ObjectKeyFromObject(&customNamespace), &core.Namespace{})
+				})
+
+				It("[test_id:????] should create DataImportCron", func() {
+					Eventually(func() error {
+						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+					}, shortTimeout, time.Second).Should(Succeed())
 				})
 			})
 		})

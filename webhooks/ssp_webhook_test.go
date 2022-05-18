@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/onsi/ginkgo/extensions/table"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -154,6 +153,11 @@ var _ = Describe("SSP Validation", func() {
 			templatesNamespace = "test-templates-ns"
 		)
 
+		var (
+			oldSSP *sspv1beta1.SSP
+			newSSP *sspv1beta1.SSP
+		)
+
 		BeforeEach(func() {
 			objects = append(objects, &v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
@@ -161,15 +165,8 @@ var _ = Describe("SSP Validation", func() {
 					ResourceVersion: "1",
 				},
 			})
-		})
 
-		AfterEach(func() {
-			objects = make([]runtime.Object, 0)
-		})
-
-		table.DescribeTable("validate dataImportCronTemplates", func(namespace, name string, shouldFail bool) {
-
-			oldSSP := &sspv1beta1.SSP{
+			oldSSP = &sspv1beta1.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
 					Namespace: "test-ns",
@@ -180,8 +177,7 @@ var _ = Describe("SSP Validation", func() {
 						DataImportCronTemplates: []sspv1beta1.DataImportCronTemplate{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name:      name,
-									Namespace: namespace,
+									Namespace: internal.GoldenImagesNamespace,
 								},
 							},
 						},
@@ -189,22 +185,24 @@ var _ = Describe("SSP Validation", func() {
 				},
 			}
 
-			newSSP := oldSSP.DeepCopy()
+			newSSP = oldSSP.DeepCopy()
+		})
 
-			By("validating create")
-			err := validator.ValidateCreate(ctx, newSSP)
-			checkExpectedError(err, shouldFail)
+		AfterEach(func() {
+			objects = make([]runtime.Object, 0)
+		})
 
-			By("validating update")
-			err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
-			checkExpectedError(err, shouldFail)
-		},
-			table.Entry("no namepsace provided", "", "test-name", false),
-			table.Entry("no name provided", internal.GoldenImagesNamespace, "", true),
-			table.Entry("golden image namespace provided", internal.GoldenImagesNamespace, "test-name", false),
-			table.Entry("invalid namespace provided", "invalid-namespace", "test-name", true),
-		)
+		It("should validate dataImportCronTemplates on create", func() {
+			Expect(validator.ValidateCreate(ctx, newSSP)).To(HaveOccurred())
+			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+			Expect(validator.ValidateCreate(ctx, newSSP)).ToNot(HaveOccurred())
+		})
 
+		It("should validate dataImportCronTemplates on update", func() {
+			Expect(validator.ValidateUpdate(ctx, oldSSP, newSSP)).To(HaveOccurred())
+			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+			Expect(validator.ValidateUpdate(ctx, oldSSP, newSSP)).ToNot(HaveOccurred())
+		})
 	})
 })
 
