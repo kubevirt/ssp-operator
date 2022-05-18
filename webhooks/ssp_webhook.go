@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	"kubevirt.io/ssp-operator/internal"
 )
 
 var ssplog = logf.Log.WithName("ssp-resource")
@@ -167,9 +166,6 @@ func validateDataImportCronTemplates(ssp *sspv1beta1.SSP) error {
 	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
 		if cron.Name == "" {
 			return fmt.Errorf("missing name in DataImportCronTemplate")
-		}
-		if len(cron.Namespace) > 0 && cron.Namespace != internal.GoldenImagesNamespace {
-			return fmt.Errorf("invalid namespace in DataImportCronTemplate %s: must be empty or %s", cron.Name, internal.GoldenImagesNamespace)
 		}
 	}
 	return nil
