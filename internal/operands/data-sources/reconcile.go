@@ -224,23 +224,29 @@ type dataSourcesAndCrons struct {
 
 func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
 	cronTemplates := request.Instance.Spec.CommonTemplates.DataImportCronTemplates
-	cronByDataSourceName := make(map[string]*ssp.DataImportCronTemplate, len(cronTemplates))
+	cronByDataSource := make(map[client.ObjectKey]*ssp.DataImportCronTemplate, len(cronTemplates))
 	for i := range cronTemplates {
 		cron := &cronTemplates[i]
-		cronByDataSourceName[cron.Spec.ManagedDataSource] = cron
+		if cron.Namespace == "" {
+			cron.Namespace = internal.GoldenImagesNamespace
+		}
+		cronByDataSource[client.ObjectKey{
+			Name:      cron.Spec.ManagedDataSource,
+			Namespace: cron.Namespace,
+		}] = cron
 	}
 
 	var dataSourceInfos []dataSourceInfo
 	for i := range d.sources {
 		dataSource := d.sources[i] // Make a copy
 		dataSource.Namespace = internal.GoldenImagesNamespace
-		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(&dataSource, cronByDataSourceName, request)
+		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(&dataSource, cronByDataSource, request)
 		if err != nil {
 			return dataSourcesAndCrons{}, err
 		}
 
 		var dicName string
-		if dic, ok := cronByDataSourceName[dataSource.GetName()]; ok {
+		if dic, ok := cronByDataSource[client.ObjectKeyFromObject(&dataSource)]; ok {
 			dicName = dic.GetName()
 		}
 
@@ -253,12 +259,12 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 
 	for i := range dataSourceInfos {
 		if !dataSourceInfos[i].autoUpdateEnabled {
-			delete(cronByDataSourceName, dataSourceInfos[i].dataSource.GetName())
+			delete(cronByDataSource, client.ObjectKeyFromObject(dataSourceInfos[i].dataSource))
 		}
 	}
 
-	dataImportCrons := make([]cdiv1beta1.DataImportCron, 0, len(cronByDataSourceName))
-	for _, cronTemplate := range cronByDataSourceName {
+	dataImportCrons := make([]cdiv1beta1.DataImportCron, 0, len(cronByDataSource))
+	for _, cronTemplate := range cronByDataSource {
 		dataImportCrons = append(dataImportCrons, cronTemplate.AsDataImportCron())
 	}
 
@@ -270,8 +276,9 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 
 const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
 
-func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSourceName map[string]*ssp.DataImportCronTemplate, request *common.Request) (bool, error) {
-	_, cronExists := cronByDataSourceName[dataSource.GetName()]
+func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSource map[client.ObjectKey]*ssp.DataImportCronTemplate, request *common.Request) (bool, error) {
+	objectKey := client.ObjectKeyFromObject(dataSource)
+	_, cronExists := cronByDataSource[objectKey]
 	if !cronExists {
 		// If DataImportCron does not exist for this DataSource, auto-update is disabled.
 		return false, nil
@@ -279,7 +286,7 @@ func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSo
 
 	// Check existing data source. The Get call uses cache.
 	foundDataSource := &cdiv1beta1.DataSource{}
-	err := request.Client.Get(request.Context, client.ObjectKeyFromObject(dataSource), foundDataSource)
+	err := request.Client.Get(request.Context, objectKey, foundDataSource)
 	if errors.IsNotFound(err) {
 		pvcExists, err := checkIfPvcExists(dataSource, request)
 		if err != nil {
@@ -438,26 +445,24 @@ func reconcileDataImportCrons(dataImportCrons []cdiv1beta1.DataImportCron, reque
 		return nil, err
 	}
 
-	cronNames := make(map[string]struct{}, len(dataImportCrons))
+	crons := make(map[client.ObjectKey]struct{}, len(dataImportCrons))
 
 	var funcs []common.ReconcileFunc
 	for i := range dataImportCrons {
 		cron := dataImportCrons[i] // Make a local copy
-		cron.Namespace = internal.GoldenImagesNamespace
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			return reconcileDataImportCron(&cron, request)
 		})
-		cronNames[cron.GetName()] = struct{}{}
+		crons[client.ObjectKeyFromObject(&cron)] = struct{}{}
 	}
 
 	// Remove owned DataImportCrons that are not in the 'dataImportCrons' parameter
 	for i := range ownedCrons {
-		if _, isUsed := cronNames[ownedCrons[i].GetName()]; isUsed {
+		if _, isUsed := crons[client.ObjectKeyFromObject(&ownedCrons[i])]; isUsed {
 			continue
 		}
 
 		cron := ownedCrons[i] // Make local copy
-		cron.Namespace = internal.GoldenImagesNamespace
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			err := request.Client.Delete(request.Context, &cron)
 			if err != nil && !errors.IsNotFound(err) {
@@ -492,7 +497,7 @@ func listAllOwnedDataSources(request *common.Request) ([]cdiv1beta1.DataSource, 
 
 func listAllOwnedDataImportCrons(request *common.Request) ([]cdiv1beta1.DataImportCron, error) {
 	foundCrons := &cdiv1beta1.DataImportCronList{}
-	err := request.Client.List(request.Context, foundCrons, client.InNamespace(internal.GoldenImagesNamespace))
+	err := request.Client.List(request.Context, foundCrons)
 	if err != nil {
 		return nil, err
 	}
