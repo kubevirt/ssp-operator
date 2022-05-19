@@ -146,6 +146,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	const volumeName = "tls"
 	const certMountPath = "/etc/webhook/certs"
 	trueVal := true
+	falseVal := false
 
 	podLabels := CommonLabels()
 	podLabels[PrometheusLabel] = "true"
@@ -171,6 +172,12 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 					Labels: podLabels,
 				},
 				Spec: core.PodSpec{
+					SecurityContext: &core.PodSecurityContext{
+						RunAsNonRoot: &trueVal,
+						SeccompProfile: &core.SeccompProfile{
+							Type: core.SeccompProfileTypeRuntimeDefault,
+						},
+					},
 					ServiceAccountName: ServiceAccountName,
 					PriorityClassName:  "system-cluster-critical",
 					Containers: []core.Container{{
@@ -194,7 +201,11 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ReadOnly:  true,
 						}},
 						SecurityContext: &core.SecurityContext{
-							ReadOnlyRootFilesystem: &trueVal,
+							ReadOnlyRootFilesystem:   &trueVal,
+							AllowPrivilegeEscalation: &falseVal,
+							Capabilities: &core.Capabilities{
+								Drop: []core.Capability{"ALL"},
+							},
 						},
 						Ports: []core.ContainerPort{{
 							Name:          "webhook",
