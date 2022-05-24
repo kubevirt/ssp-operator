@@ -205,7 +205,7 @@ var _ = Describe("SCC annotation", func() {
 var _ = Describe("RHEL VM creation", func() {
 	const (
 		rhel8Image = "docker://registry.redhat.io/rhel8/rhel-guest-image"
-		rhel9Image = "docker://registry.redhat.io/rhel9-beta/rhel-guest-image"
+		rhel9Image = "docker://registry.redhat.io/rhel9/rhel-guest-image"
 	)
 
 	var (
