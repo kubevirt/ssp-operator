@@ -8,10 +8,10 @@ import (
 
 type Operand interface {
 	// WatchTypes returns a slice of namespaced resources, that the operator should watch.
-	WatchTypes() []client.Object
+	WatchTypes() []WatchType
 
 	// WatchClusterTypes returns a slice of cluster resources, that the operator should watch.
-	WatchClusterTypes() []client.Object
+	WatchClusterTypes() []WatchType
 
 	// RequiredCrds returns names of CRDs, that need to be installed for the operand to work.
 	RequiredCrds() []string
@@ -25,4 +25,13 @@ type Operand interface {
 
 	// Name returns the name of the operand
 	Name() string
+}
+
+type WatchType struct {
+	Object client.Object
+
+	// WatchFullObject specifies if the operator should watch for any changes in the full object.
+	// Otherwise, only these changes in spec, labels, and annotations.
+	// If an object does not have spec field, the full object is watched by default.
+	WatchFullObject bool
 }

@@ -16,8 +16,10 @@ func init() {
 	utilruntime.Must(promv1.AddToScheme(common.Scheme))
 }
 
-func WatchTypes() []client.Object {
-	return []client.Object{&promv1.PrometheusRule{}}
+func WatchTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &promv1.PrometheusRule{}},
+	}
 }
 
 type metrics struct{}
@@ -26,11 +28,11 @@ func (m *metrics) Name() string {
 	return operandName
 }
 
-func (m *metrics) WatchTypes() []client.Object {
+func (m *metrics) WatchTypes() []operands.WatchType {
 	return WatchTypes()
 }
 
-func (m *metrics) WatchClusterTypes() []client.Object {
+func (m *metrics) WatchClusterTypes() []operands.WatchType {
 	return nil
 }
 

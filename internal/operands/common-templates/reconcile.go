@@ -31,9 +31,9 @@ func init() {
 	utilruntime.Must(templatev1.Install(common.Scheme))
 }
 
-func WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&templatev1.Template{},
+func WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &templatev1.Template{}},
 	}
 }
 
@@ -61,11 +61,11 @@ const (
 	operandComponent = common.AppComponentTemplating
 )
 
-func (c *commonTemplates) WatchClusterTypes() []client.Object {
+func (c *commonTemplates) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 
-func (c *commonTemplates) WatchTypes() []client.Object {
+func (c *commonTemplates) WatchTypes() []operands.WatchType {
 	return nil
 }
 
