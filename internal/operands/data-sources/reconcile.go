@@ -39,14 +39,15 @@ func init() {
 	utilruntime.Must(cdiv1beta1.AddToScheme(common.Scheme))
 }
 
-func WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&rbac.ClusterRole{},
-		&rbac.Role{},
-		&rbac.RoleBinding{},
-		&core.Namespace{},
-		&cdiv1beta1.DataSource{},
-		&cdiv1beta1.DataImportCron{},
+func WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &rbac.ClusterRole{}},
+		{Object: &rbac.Role{}},
+		{Object: &rbac.RoleBinding{}},
+		{Object: &core.Namespace{}},
+		// Need to watch status of DataSource to notice if referenced PVC was deleted.
+		{Object: &cdiv1beta1.DataSource{}, WatchFullObject: true},
+		{Object: &cdiv1beta1.DataImportCron{}},
 	}
 }
 
@@ -66,11 +67,11 @@ func (d *dataSources) Name() string {
 	return operandName
 }
 
-func (d *dataSources) WatchTypes() []client.Object {
+func (d *dataSources) WatchTypes() []operands.WatchType {
 	return nil
 }
 
-func (d *dataSources) WatchClusterTypes() []client.Object {
+func (d *dataSources) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 

@@ -18,17 +18,17 @@ func init() {
 	utilruntime.Must(promv1.AddToScheme(common.Scheme))
 }
 
-func WatchTypes() []client.Object {
-	return []client.Object{
-		&promv1.PrometheusRule{},
-		&promv1.ServiceMonitor{},
+func WatchTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &promv1.PrometheusRule{}},
+		{Object: &promv1.ServiceMonitor{}},
 	}
 }
 
-func WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&rbac.ClusterRole{},
-		&rbac.ClusterRoleBinding{},
+func WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &rbac.ClusterRole{}},
+		{Object: &rbac.ClusterRoleBinding{}},
 	}
 }
 
@@ -38,11 +38,11 @@ func (m *metrics) Name() string {
 	return operandName
 }
 
-func (m *metrics) WatchTypes() []client.Object {
+func (m *metrics) WatchTypes() []operands.WatchType {
 	return WatchTypes()
 }
 
-func (m *metrics) WatchClusterTypes() []client.Object {
+func (m *metrics) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 
