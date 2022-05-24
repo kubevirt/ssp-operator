@@ -445,9 +445,14 @@ spec:
                     memory: 150Mi
                 securityContext:
                   allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
               priorityClassName: system-cluster-critical
               securityContext:
                 runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
               serviceAccountName: ssp-operator
               terminationGracePeriodSeconds: 10
       permissions:
