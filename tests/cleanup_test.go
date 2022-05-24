@@ -11,6 +11,7 @@ import (
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
@@ -27,8 +28,8 @@ var _ = Describe("Cleanup", func() {
 	})
 
 	It("[test_id:7394] should cleanup all deployed resources when SSP is deleted", func() {
-		var allResourceTypes []client.Object
-		for _, f := range []func() []client.Object{
+		var allWatchTypes []operands.WatchType
+		for _, f := range []func() []operands.WatchType{
 			common_templates.WatchClusterTypes,
 			data_sources.WatchClusterTypes,
 			metrics.WatchTypes,
@@ -38,7 +39,7 @@ var _ = Describe("Cleanup", func() {
 			template_validator.WatchTypes,
 			template_validator.WatchClusterTypes,
 		} {
-			allResourceTypes = append(allResourceTypes, f()...)
+			allWatchTypes = append(allWatchTypes, f()...)
 		}
 
 		ssp := getSsp()
@@ -47,8 +48,8 @@ var _ = Describe("Cleanup", func() {
 		waitForDeletion(client.ObjectKeyFromObject(ssp), &sspv1beta1.SSP{})
 
 		// Check that all deployed resources were deleted
-		for _, resource := range allResourceTypes {
-			gvk, err := apiutil.GVKForObject(resource, testScheme)
+		for _, watchType := range allWatchTypes {
+			gvk, err := apiutil.GVKForObject(watchType.Object, testScheme)
 			Expect(err).ToNot(HaveOccurred())
 
 			list := &unstructured.UnstructuredList{}
