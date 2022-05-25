@@ -933,15 +933,15 @@ var _ = Describe("DataSources", func() {
 				waitForDeletion(client.ObjectKeyFromObject(&customNamespace), &core.Namespace{})
 			})
 
-			It("[test_id:????] should create DataImportCron ", func() {
+			It("[test_id:8721] should create DataImportCron ", func() {
 				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron created")
 			})
 
-			It("[test_id:????] should recreate DataImportCron after delete", func() {
+			It("[test_id:8722] should recreate DataImportCron after delete", func() {
 				expectRecreateAfterDelete(&dataImportCron)
 			})
 
-			It("[test_id:????] should remove DataImportCron if removed from SSP CR", func() {
+			It("[test_id:8723] should remove DataImportCron if removed from SSP CR", func() {
 				updateSsp(func(foundSsp *ssp.SSP) {
 					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
 				})
@@ -1166,7 +1166,7 @@ var _ = Describe("DataSources", func() {
 					waitForDeletion(client.ObjectKeyFromObject(&customNamespace), &core.Namespace{})
 				})
 
-				It("[test_id:????] should create DataImportCron", func() {
+				It("[test_id:8724] should create DataImportCron", func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 					}, shortTimeout, time.Second).Should(Succeed())
