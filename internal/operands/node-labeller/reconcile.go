@@ -36,19 +36,19 @@ func init() {
 	utilruntime.Must(secv1.Install(common.Scheme))
 }
 
-func WatchTypes() []client.Object {
-	return []client.Object{
-		&v1.ServiceAccount{},
-		&v1.ConfigMap{},
-		&apps.DaemonSet{},
+func WatchTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &v1.ServiceAccount{}},
+		{Object: &v1.ConfigMap{}},
+		{Object: &apps.DaemonSet{}, WatchFullObject: true},
 	}
 }
 
-func WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&rbac.ClusterRole{},
-		&rbac.ClusterRoleBinding{},
-		&secv1.SecurityContextConstraints{},
+func WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &rbac.ClusterRole{}},
+		{Object: &rbac.ClusterRoleBinding{}},
+		{Object: &secv1.SecurityContextConstraints{}},
 	}
 }
 
@@ -58,11 +58,11 @@ func (nl *nodeLabeller) Name() string {
 	return operandName
 }
 
-func (nl *nodeLabeller) WatchTypes() []client.Object {
+func (nl *nodeLabeller) WatchTypes() []operands.WatchType {
 	return WatchTypes()
 }
 
-func (nl *nodeLabeller) WatchClusterTypes() []client.Object {
+func (nl *nodeLabeller) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 

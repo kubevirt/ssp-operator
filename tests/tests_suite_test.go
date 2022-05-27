@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	promApiv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -36,12 +33,12 @@ import (
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	"kubevirt.io/ssp-operator/internal/common"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
@@ -65,7 +62,6 @@ var (
 	testScheme             *runtime.Scheme
 	sspDeploymentName      = "ssp-operator"
 	sspDeploymentNamespace = "kubevirt"
-	promClient             promApiv1.API
 )
 
 type TestSuiteStrategy interface {
@@ -437,8 +433,6 @@ func setupApiClient() {
 
 	ctx = context.Background()
 	sspListerWatcher = createSspListerWatcher(cfg)
-
-	promClient = initializePromClient(getPrometheusUrl(), getAuthorizationTokenForPrometheus())
 }
 
 func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
@@ -541,43 +535,6 @@ func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {
 		}
 		return nil
 	}, timeout, time.Second).ShouldNot(HaveOccurred())
-}
-
-func getAuthorizationTokenForPrometheus() string {
-	var token string
-	Eventually(func() bool {
-		var secretName string
-		var sa v1.ServiceAccount
-
-		saKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: "prometheus-k8s"}
-		Expect(apiClient.Get(ctx, saKey, &sa)).ShouldNot(HaveOccurred())
-
-		for _, secret := range sa.Secrets {
-			if strings.HasPrefix(secret.Name, "prometheus-k8s-token") {
-				secretName = secret.Name
-			}
-		}
-
-		var secret v1.Secret
-		secretKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: secretName}
-		Expect(apiClient.Get(ctx, secretKey, &secret)).ShouldNot(HaveOccurred())
-
-		if _, ok := secret.Data["token"]; !ok {
-			return false
-		}
-		token = string(secret.Data["token"])
-		return true
-	}, 10*time.Second, time.Second).Should(BeTrue())
-	return token
-}
-
-func getPrometheusUrl() string {
-	var route openshiftroutev1.Route
-	routeKey := types.NamespacedName{Name: "prometheus-k8s", Namespace: metrics.MonitorNamespace}
-
-	err := apiClient.Get(ctx, routeKey, &route)
-	Expect(err).ShouldNot(HaveOccurred())
-	return fmt.Sprintf("https://%s", route.Spec.Host)
 }
 
 func validateDeploymentExists() {
