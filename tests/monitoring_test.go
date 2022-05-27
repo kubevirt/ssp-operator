@@ -3,15 +3,20 @@ package tests
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
-	v1 "github.com/openshift/api/template/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	templatev1 "github.com/openshift/api/template/v1"
 	promApi "github.com/prometheus/client_golang/api"
 	promApiv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	promConfig "github.com/prometheus/common/config"
 	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
@@ -87,7 +92,7 @@ var _ = Describe("Prometheus Alerts", func() {
 
 	Context("SSPHighRateRejectedVms Alert", func() {
 		var (
-			template *v1.Template
+			template *templatev1.Template
 		)
 		BeforeEach(func() {
 			template = TemplateWithRules()
@@ -150,7 +155,7 @@ var _ = Describe("Prometheus Alerts", func() {
 
 func waitForAlertToActivate(alertName string) {
 	Eventually(func() *promApiv1.Alert {
-		alerts, err := promClient.Alerts(context.TODO())
+		alerts, err := getPrometheusClient().Alerts(context.TODO())
 		Expect(err).ShouldNot(HaveOccurred())
 		alert := getAlertByName(alerts, alertName)
 		return alert
@@ -159,7 +164,7 @@ func waitForAlertToActivate(alertName string) {
 
 func waitForSeriesToBeDetected(seriesName string) {
 	Eventually(func() bool {
-		results, _, err := promClient.Query(context.TODO(), seriesName, time.Now())
+		results, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
 		Expect(err).ShouldNot(HaveOccurred())
 		return results.String() != ""
 	}, timeout, 10*time.Second).Should(BeTrue())
@@ -172,6 +177,26 @@ func getAlertByName(alerts promApiv1.AlertsResult, alertName string) *promApiv1.
 		}
 	}
 	return nil
+}
+
+var (
+	promClient       promApiv1.API
+	failedPromClient bool
+)
+
+func getPrometheusClient() promApiv1.API {
+	if failedPromClient {
+		// Using short circuit here, because this function is called
+		// in an Eventually() loop
+		Fail("Could not create prometheus client")
+	}
+
+	if promClient == nil {
+		failedPromClient = true
+		promClient = initializePromClient(getPrometheusUrl(), getAuthorizationTokenForPrometheus())
+		failedPromClient = false
+	}
+	return promClient
 }
 
 func initializePromClient(prometheusUrl string, token string) promApiv1.API {
@@ -191,4 +216,50 @@ func initializePromClient(prometheusUrl string, token string) promApiv1.API {
 	})
 	Expect(err).ShouldNot(HaveOccurred())
 	return promApiv1.NewAPI(c)
+}
+
+func getPrometheusUrl() string {
+	var route routev1.Route
+	routeKey := types.NamespacedName{Name: "prometheus-k8s", Namespace: metrics.MonitorNamespace}
+
+	err := apiClient.Get(ctx, routeKey, &route)
+	Expect(err).ShouldNot(HaveOccurred())
+	return fmt.Sprintf("https://%s", route.Spec.Host)
+}
+
+func getAuthorizationTokenForPrometheus() string {
+	var token string
+	Eventually(func() error {
+		var sa core.ServiceAccount
+		saKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: "prometheus-k8s"}
+		err := apiClient.Get(ctx, saKey, &sa)
+		if err != nil {
+			return fmt.Errorf("error getting service account: %w", err)
+		}
+
+		var secretName string
+		for _, secret := range sa.Secrets {
+			if strings.HasPrefix(secret.Name, "prometheus-k8s-token") {
+				secretName = secret.Name
+			}
+		}
+		if secretName == "" {
+			return errors.New("service account does not have prometheus token secret")
+		}
+
+		var secret core.Secret
+		secretKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: secretName}
+		err = apiClient.Get(ctx, secretKey, &secret)
+		if err != nil {
+			return fmt.Errorf("error getting secret: %w", err)
+		}
+
+		tokenBytes, ok := secret.Data["token"]
+		if !ok {
+			return errors.New("token not found in secret data")
+		}
+		token = string(tokenBytes)
+		return nil
+	}, 10*time.Second, time.Second).Should(Succeed())
+	return token
 }

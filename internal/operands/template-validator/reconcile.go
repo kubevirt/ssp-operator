@@ -24,19 +24,19 @@ import (
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch
 // +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines,verbs=get;list;watch
 
-func WatchTypes() []client.Object {
-	return []client.Object{
-		&v1.ServiceAccount{},
-		&v1.Service{},
-		&apps.Deployment{},
+func WatchTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &v1.ServiceAccount{}},
+		{Object: &v1.Service{}},
+		{Object: &apps.Deployment{}, WatchFullObject: true},
 	}
 }
 
-func WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&rbac.ClusterRole{},
-		&rbac.ClusterRoleBinding{},
-		&admission.ValidatingWebhookConfiguration{},
+func WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &rbac.ClusterRole{}},
+		{Object: &rbac.ClusterRoleBinding{}},
+		{Object: &admission.ValidatingWebhookConfiguration{}},
 	}
 }
 
@@ -46,11 +46,11 @@ func (t *templateValidator) Name() string {
 	return operandName
 }
 
-func (t *templateValidator) WatchTypes() []client.Object {
+func (t *templateValidator) WatchTypes() []operands.WatchType {
 	return WatchTypes()
 }
 
-func (t *templateValidator) WatchClusterTypes() []client.Object {
+func (t *templateValidator) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 
