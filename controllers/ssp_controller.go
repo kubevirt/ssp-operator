@@ -45,6 +45,8 @@ import (
 	osconfv1 "github.com/openshift/api/config/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	handler_hook "kubevirt.io/ssp-operator/internal/controller/handler-hook"
+	"kubevirt.io/ssp-operator/internal/controller/predicates"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
 
@@ -98,10 +100,18 @@ var _ reconcile.Reconciler = &sspReconciler{}
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
 func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
+	eventHandlerHook := func(request ctrl.Request, obj client.Object) {
+		r.log.Info("Reconciliation event received",
+			"ssp", request.NamespacedName,
+			"cause_type", reflect.TypeOf(obj).Elem().Name(),
+			"cause_object", obj.GetNamespace()+"/"+obj.GetName(),
+		)
+	}
+
 	builder := ctrl.NewControllerManagedBy(mgr)
 	watchSspResource(builder)
-	watchClusterResources(builder, r.operands)
-	watchNamespacedResources(builder, r.operands)
+	watchClusterResources(builder, r.operands, eventHandlerHook)
+	watchNamespacedResources(builder, r.operands, eventHandlerHook)
 	return builder.Complete(r)
 }
 
@@ -117,7 +127,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		}
 	}()
 	reqLogger := r.log.WithValues("ssp", req.NamespacedName)
-	reqLogger.V(1).Info("Starting reconciliation...")
+	reqLogger.Info("Starting reconciliation")
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
@@ -188,7 +198,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspRequest.Logger.Info("Reconciling operands...")
 	reconcileResults, err := r.reconcileOperands(sspRequest)
 	if err != nil {
-		return handleError(sspRequest, err)
+		return handleError(sspRequest, err, sspRequest.Logger)
 	}
 	sspRequest.Logger.V(1).Info("Operands reconciled")
 
@@ -577,7 +587,7 @@ func prefixResourceTypeAndName(message string, resource client.Object) string {
 		message)
 }
 
-func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
+func handleError(request *common.Request, errParam error, logger logr.Logger) (ctrl.Result, error) {
 	if errParam == nil {
 		return ctrl.Result{}, nil
 	}
@@ -585,6 +595,9 @@ func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
 	if errors.IsConflict(errParam) {
 		// Conflict happens if multiple components modify the same resource.
 		// Ignore the error and restart reconciliation.
+		logger.Info("Restarting reconciliation",
+			"cause", errParam.Error(),
+		)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -620,28 +633,24 @@ func handleError(request *common.Request, errParam error) (ctrl.Result, error) {
 
 func watchSspResource(bldr *ctrl.Builder) {
 	// Predicate is used to only reconcile on these changes to the SSP resource:
-	// - any change in spec - checked with generation
+	// - changes in spec, labels and annotations - using relevantChangesPredicate()
 	// - deletion timestamp - to trigger cleanup when SSP CR is being deleted
-	// - labels or annotations - to detect if reconciliation should be paused or unpaused
 	// - finalizers - to trigger reconciliation after initialization
 	//
 	// Importantly, the reconciliation is not triggered on status change.
-	// Otherwise it would cause a reconciliation loop.
-	pred := predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
-		oldObj := event.ObjectOld
-		newObj := event.ObjectNew
-		return newObj.GetGeneration() != oldObj.GetGeneration() ||
-			!newObj.GetDeletionTimestamp().Equal(oldObj.GetDeletionTimestamp()) ||
-			!reflect.DeepEqual(newObj.GetLabels(), oldObj.GetLabels()) ||
-			!reflect.DeepEqual(newObj.GetAnnotations(), oldObj.GetAnnotations()) ||
-			!reflect.DeepEqual(newObj.GetFinalizers(), oldObj.GetFinalizers())
-
-	}}
+	// Otherwise, it would cause a reconciliation loop.
+	pred := predicate.Or(
+		relevantChangesPredicate(),
+		predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
+			return !event.ObjectNew.GetDeletionTimestamp().Equal(event.ObjectOld.GetDeletionTimestamp()) ||
+				!reflect.DeepEqual(event.ObjectNew.GetFinalizers(), event.ObjectOld.GetFinalizers())
+		}},
+	)
 
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
-func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Operand) {
+func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
@@ -649,10 +658,11 @@ func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Oper
 		},
 		sspOperands,
 		operands.Operand.WatchTypes,
+		eventHandlerHook,
 	)
 }
 
-func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand) {
+func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
 		&libhandler.EnqueueRequestForAnnotation{
 			Type: schema.GroupKind{
@@ -662,19 +672,46 @@ func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand
 		},
 		sspOperands,
 		operands.Operand.WatchClusterTypes,
+		eventHandlerHook,
 	)
 }
 
-func watchResources(builder *ctrl.Builder, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []client.Object) {
-	watchedTypes := make(map[reflect.Type]struct{})
+func watchResources(ctrlBuilder *ctrl.Builder, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []operands.WatchType, hookFunc handler_hook.HookFunc) {
+	// Deduplicate watches
+	watchedTypes := make(map[reflect.Type]operands.WatchType)
 	for _, operand := range sspOperands {
-		for _, t := range watchTypesFunc(operand) {
-			if _, ok := watchedTypes[reflect.TypeOf(t)]; ok {
-				continue
+		for _, watchType := range watchTypesFunc(operand) {
+			key := reflect.TypeOf(watchType.Object)
+			// If at least one watchType wants to watch full object,
+			// then the stored watchType should also watch full object.
+			if wt, ok := watchedTypes[key]; ok {
+				watchType.WatchFullObject = watchType.WatchFullObject || wt.WatchFullObject
 			}
-
-			builder.Watches(&source.Kind{Type: t}, handler)
-			watchedTypes[reflect.TypeOf(t)] = struct{}{}
+			watchedTypes[key] = watchType
 		}
 	}
+
+	for _, watchType := range watchedTypes {
+		var predicates []predicate.Predicate
+		if !watchType.WatchFullObject {
+			predicates = []predicate.Predicate{relevantChangesPredicate()}
+		}
+
+		ctrlBuilder.Watches(
+			&source.Kind{Type: watchType.Object},
+			handler_hook.New(handler, hookFunc),
+			builder.WithPredicates(predicates...),
+		)
+	}
+}
+
+// relevantChangesPredicate is used to only reconcile on certain changes to watched resources
+// - any change in spec
+// - labels or annotations - to detect if necessary labels or annotations were modified or removed
+func relevantChangesPredicate() predicate.Predicate {
+	return predicate.Or(
+		predicate.LabelChangedPredicate{},
+		predicate.AnnotationChangedPredicate{},
+		predicates.SpecChangedPredicate{},
+	)
 }
