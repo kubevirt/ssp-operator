@@ -854,10 +854,17 @@ var _ = Describe("DataSources", func() {
 
 			It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
 				// Wait until DataImportCron imports PVC and changes data source
+				counter := 0
 				Eventually(func() bool {
 					cron := &cdiv1beta1.DataImportCron{}
 					Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
 
+					if counter > 300 {
+						fmt.Println("Status of DataImportCron " + cron.Name + "/" + cron.Namespace)
+						fmt.Printf("%#v \n", cron.Status)
+						fmt.Println("-------------------------------------------------------")
+					}
+					counter++
 					return cron.Status.LastImportTimestamp.IsZero()
 				}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
 
@@ -1107,12 +1114,30 @@ var _ = Describe("DataSources", func() {
 
 				It("[test_id:8298] should restore DataSource, when CDI label is removed", func() {
 					// Wait until DataImportCron imports PVC and changes data source
+					counter := 0
 					Eventually(func() (bool, error) {
 						cron := &cdiv1beta1.DataImportCron{}
 						err := apiClient.Get(ctx, dataImportCron.GetKey(), cron)
 						if err != nil {
 							return false, err
 						}
+
+						if counter > 300 {
+							fmt.Println("Status of DataImportCron " + cron.Name + "/" + cron.Namespace)
+							fmt.Printf("%#v \n", cron.Status)
+
+							dv := &cdiv1beta1.DataVolume{}
+							Expect(apiClient.Get(ctx, client.ObjectKey{
+								Name:      dataVolume.Name,
+								Namespace: dataVolume.Namespace,
+							}, dv)).To(Succeed())
+
+							fmt.Println("Status of DataVolume " + dv.Name + "/" + dv.Namespace)
+							fmt.Printf("%#v \n", dv.Status)
+							fmt.Println("-------------------------------------------------------")
+						}
+						counter++
+
 						return cron.Status.LastImportTimestamp.IsZero(), nil
 					}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
 
