@@ -2,10 +2,13 @@ package tests
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -149,8 +152,6 @@ var _ = Describe("Validation webhook", func() {
 
 		BeforeEach(func() {
 			strategy.SkipSspUpdateTestsIfNeeded()
-
-			foundSsp = getSsp()
 		})
 
 		AfterEach(func() {
@@ -159,15 +160,20 @@ var _ = Describe("Validation webhook", func() {
 
 		Context("Placement API validation", func() {
 			It("[test_id:5990]should succeed with valid template-validator placement fields", func() {
-				foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
-				Expect(apiClient.Update(ctx, foundSsp, client.DryRunAll)).ToNot(HaveOccurred(),
-					"failed to update SSP CR with valid template-validator placement fields")
+				Eventually(func() error {
+					foundSsp = getSsp()
+					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
+					return apiClient.Update(ctx, foundSsp, client.DryRunAll)
+				}, time.Second, tenSecondTimeout).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
 			})
 
 			It("[test_id:5989]should fail with invalid template-validator placement fields", func() {
-				foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
-				Expect(apiClient.Update(ctx, foundSsp, client.DryRunAll)).To(HaveOccurred(),
-					"SSP CR updated with invalid template-validator placement fields")
+				Eventually(func() v1.StatusReason {
+					foundSsp = getSsp()
+					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
+					err := apiClient.Update(ctx, foundSsp, client.DryRunAll)
+					return errors.ReasonForError(err)
+				}, time.Second, tenSecondTimeout).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
 			})
 		})
 	})
