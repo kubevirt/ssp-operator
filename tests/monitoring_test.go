@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -230,34 +231,24 @@ func getPrometheusUrl() string {
 func getAuthorizationTokenForPrometheus() string {
 	var token string
 	Eventually(func() error {
-		var sa core.ServiceAccount
-		saKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: "prometheus-k8s"}
-		err := apiClient.Get(ctx, saKey, &sa)
-		if err != nil {
-			return fmt.Errorf("error getting service account: %w", err)
-		}
-
-		var secretName string
-		for _, secret := range sa.Secrets {
-			if strings.HasPrefix(secret.Name, "prometheus-k8s-token") {
-				secretName = secret.Name
-			}
-		}
-		if secretName == "" {
-			return errors.New("service account does not have prometheus token secret")
-		}
-
-		var secret core.Secret
-		secretKey := types.NamespacedName{Namespace: metrics.MonitorNamespace, Name: secretName}
-		err = apiClient.Get(ctx, secretKey, &secret)
+		secretList := &core.SecretList{}
+		namespace := client.InNamespace(metrics.MonitorNamespace)
+		err := apiClient.List(ctx, secretList, namespace)
 		if err != nil {
 			return fmt.Errorf("error getting secret: %w", err)
 		}
-
-		tokenBytes, ok := secret.Data["token"]
-		if !ok {
-			return errors.New("token not found in secret data")
+		var tokenBytes []byte
+		var ok bool
+		for _, secret := range secretList.Items {
+			if strings.HasPrefix(secret.Name, "prometheus-k8s-token") {
+				tokenBytes, ok = secret.Data["token"]
+				if !ok {
+					return errors.New("token not found in secret data")
+				}
+				break
+			}
 		}
+
 		token = string(tokenBytes)
 		return nil
 	}, 10*time.Second, time.Second).Should(Succeed())
