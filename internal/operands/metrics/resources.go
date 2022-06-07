@@ -19,6 +19,7 @@ const (
 	componentAlertLabelValue     = "ssp-operator"
 	PrometheusLabelKey           = "prometheus.ssp.kubevirt.io"
 	PrometheusLabelValue         = "true"
+	infraAlertLabelKey           = "infra_alert"
 	PrometheusClusterRoleName    = "prometheus-k8s-ssp"
 	PrometheusServiceAccountName = "prometheus-k8s"
 	MetricsPortName              = "metrics"
@@ -88,6 +89,7 @@ var alertRulesList = []promv1.Rule{
 			severityAlertLabelKey:  "critical",
 			partOfAlertLabelKey:    partOfAlertLabelValue,
 			componentAlertLabelKey: componentAlertLabelValue,
+			infraAlertLabelKey:     "true",
 		},
 	},
 	{
@@ -102,6 +104,7 @@ var alertRulesList = []promv1.Rule{
 			severityAlertLabelKey:  "critical",
 			partOfAlertLabelKey:    partOfAlertLabelValue,
 			componentAlertLabelKey: componentAlertLabelValue,
+			infraAlertLabelKey:     "true",
 		},
 	},
 	{
@@ -116,6 +119,7 @@ var alertRulesList = []promv1.Rule{
 			severityAlertLabelKey:  "critical",
 			partOfAlertLabelKey:    partOfAlertLabelValue,
 			componentAlertLabelKey: componentAlertLabelValue,
+			infraAlertLabelKey:     "true",
 		},
 	},
 	{
@@ -130,6 +134,7 @@ var alertRulesList = []promv1.Rule{
 			severityAlertLabelKey:  "warning",
 			partOfAlertLabelKey:    partOfAlertLabelValue,
 			componentAlertLabelKey: componentAlertLabelValue,
+			infraAlertLabelKey:     "true",
 		},
 	},
 	{
@@ -144,6 +149,7 @@ var alertRulesList = []promv1.Rule{
 			severityAlertLabelKey:  "warning",
 			partOfAlertLabelKey:    partOfAlertLabelValue,
 			componentAlertLabelKey: componentAlertLabelValue,
+			infraAlertLabelKey:     "true",
 		},
 	},
 }
