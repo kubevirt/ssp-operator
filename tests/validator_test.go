@@ -426,10 +426,11 @@ var _ = Describe("Template validator webhooks", func() {
 			waitForDeletion(client.ObjectKeyFromObject(vm), vm)
 		}
 		if template != nil {
-			err := apiClient.Delete(ctx, template)
-			if !errors.IsNotFound(err) {
-				Expect(err).ToNot(HaveOccurred(), "Failed to delete Template")
-			}
+			Eventually(func(g Gomega) {
+				if err := apiClient.Delete(ctx, template); err != nil {
+					g.Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
+				}
+			}, shortTimeout, time.Second).Should(Succeed(), "Template should be deleted")
 		}
 	})
 
