@@ -164,7 +164,7 @@ var _ = Describe("Validation webhook", func() {
 					foundSsp = getSsp()
 					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
 					return apiClient.Update(ctx, foundSsp, client.DryRunAll)
-				}, time.Second, tenSecondTimeout).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
+				}, twentySecondTimeout, time.Second).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
 			})
 
 			It("[test_id:5989]should fail with invalid template-validator placement fields", func() {
@@ -173,7 +173,7 @@ var _ = Describe("Validation webhook", func() {
 					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
 					err := apiClient.Update(ctx, foundSsp, client.DryRunAll)
 					return errors.ReasonForError(err)
-				}, time.Second, tenSecondTimeout).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
+				}, twentySecondTimeout, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
 			})
 		})
 	})
