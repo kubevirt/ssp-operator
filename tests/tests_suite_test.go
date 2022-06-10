@@ -56,6 +56,7 @@ const (
 
 var (
 	tenSecondTimeout       = 10 * time.Second
+	twentySecondTimeout    = 20 * time.Second
 	shortTimeout           = 1 * time.Minute
 	timeout                = 10 * time.Minute
 	topologyMode           = osconfv1.HighlyAvailableTopologyMode
