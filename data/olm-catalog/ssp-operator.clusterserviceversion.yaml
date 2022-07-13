@@ -26,7 +26,7 @@ metadata:
     categories: Openshift Optional
     containerImage: REPLACE_IMAGE:TAG
     description: Manages KubeVirt addons for Scheduling, Scale, Performance
-    operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.19.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: ssp-operator.v0.14.0
   namespace: kubevirt
@@ -426,7 +426,10 @@ spec:
           - watch
         serviceAccountName: ssp-operator
       deployments:
-      - name: ssp-operator
+      - label:
+          control-plane: ssp-operator
+          name: ssp-operator
+        name: ssp-operator
         spec:
           replicas: 1
           selector:
