@@ -5,7 +5,7 @@
 VERSION ?= 0.14.0
 
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.14.0
+OPERATOR_SDK_VERSION ?= v1.16.0
 
 
 # CHANNELS define the bundle channels used in the bundle.
@@ -67,81 +67,102 @@ endif
 # Default to podman
 SSP_BUILD_RUNTIME ?= podman
 
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
+
 all: manager
 
+.PHONY: unittest
 unittest: generate fmt vet manifests
 	go test -v -coverprofile cover.out $(SRC_PATHS_TESTS)
 	cd api && go test -v ./...
 
+.PHONY: build-functests
 build-functests:
 	go test -c ./tests
 
+.PHONY: functest
 functest: generate fmt vet manifests
 	go test -v -coverprofile cover.out -timeout 0 ./tests/...
 
 # Build manager binary
+.PHONY: manager
 manager: generate fmt vet
 	go build -o bin/manager \
 		-ldflags="-X 'kubevirt.io/ssp-operator/internal/operands/template-validator.defaultTemplateValidatorImage=${VALIDATOR_IMG}'" \
 		main.go
 
 # Build csv-generator binary
+.PHONY: csv-generator
 csv-generator: generate fmt vet
 	go build -o bin/csv-generator hack/csv-generator.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
+.PHONY: run
 run: generate fmt vet manifests
 	go run ./main.go
 
 # Install CRDs into a cluster
+.PHONY: install
 install: manifests kustomize
 	$(KUSTOMIZE) build config/crd | $(OC) apply -f -
 
 # Uninstall CRDs from a cluster
+.PHONY: uninstall
 uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | $(OC) delete -f -
+	$(KUSTOMIZE) build config/crd | $(OC) delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: manager-envsubst
 manager-envsubst:
 	cd config/manager && VALIDATOR_IMG=${VALIDATOR_IMG} envsubst < manager.template.yaml > manager.yaml
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+.PHONY: deploy
 deploy: manifests kustomize manager-envsubst
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(OC) apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
+.PHONY: undeploy
 undeploy:
-	$(KUSTOMIZE) build config/default | $(OC) delete -f -
+	$(KUSTOMIZE) build config/default | $(OC) delete --ignore-not-found=$(ignore-not-found) -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
+.PHONY: manifests
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook "paths=$(SRC_PATHS_CONTROLLER_GEN)" output:crd:artifacts:config=config/crd/bases
 	cd api && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=operator-role webhook "paths=./..." output:crd:artifacts:config=../config/crd/bases
 
 # Run go fmt against code
+.PHONY: fmt
 fmt:
 	go fmt ./...
 
 # Run go vet against code
+.PHONY: vet
 vet:
 	go vet ./...
 
 # Update vendor modules
-.PHONY:vendor
+.PHONY: vendor
 vendor:
 	go mod vendor
 	go mod tidy
 
 # Validate that this repository does not contain offensive language
+.PHONY: validate-no-offensive-lang
 validate-no-offensive-lang:
 	./hack/validate-no-offensive-lang.sh
 
 # Generate code
+.PHONY: generate
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" "paths=$(SRC_PATHS_CONTROLLER_GEN)"
 	cd api && $(CONTROLLER_GEN) object:headerFile="../hack/boilerplate.go.txt" "paths=./..."
 
 # Build the container image
+.PHONY: container-build
 container-build: unittest bundle
 	mkdir -p data/olm-catalog
 	mkdir -p data/crd
@@ -157,12 +178,15 @@ container-build: unittest bundle
 		.
 
 # Push the container image
+.PHONY: container-push
 container-push:
 	${SSP_BUILD_RUNTIME} push ${IMG}
 
+.PHONY: build-template-validator
 build-template-validator:
 	./hack/build-template-validator.sh ${VERSION}
 
+.PHONY: build-template-validator-container
 build-template-validator-container:
 	${SSP_BUILD_RUNTIME} build -t ${VALIDATOR_IMG} \
 		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
@@ -173,16 +197,19 @@ build-template-validator-container:
 		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
 		. -f validator.Dockerfile
 
+.PHONY: push-template-validator-container
 push-template-validator-container:
 	${SSP_BUILD_RUNTIME} push ${VALIDATOR_IMG}
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+.PHONY: controller-gen
 controller-gen:
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.10.0)
 
 # Download kustomize locally if necessary
 KUSTOMIZE = $(shell pwd)/bin/kustomize
+.PHONY: kustomize
 kustomize:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.7)
 
@@ -235,9 +262,11 @@ bundle-build:
 release: container-build container-push build-template-validator-container push-template-validator-container bundle build-functests
 	cp ./tests.test _out/tests.test
 
+.PHONY: generate-doc
 generate-doc: build-docgen
 	_out/metricsdocs > docs/metrics.md
 
+.PHONY: build-docgen
 build-docgen:
 	go build -ldflags="-s -w" -o _out/metricsdocs ./tools/metricsdocs
 
