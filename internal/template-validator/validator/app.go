@@ -76,7 +76,7 @@ func (app *App) Run() {
 	http.Handle("/metrics", promhttp.Handler())
 
 	if app.TLSInfo.IsEnabled() {
-		server := &http.Server{Addr: app.Address(), TLSConfig: app.TLSInfo.CrateTlsConfig()}
+		server := &http.Server{Addr: app.Address(), TLSConfig: app.TLSInfo.CreateTlsConfig()}
 		log.Log.Infof("validator app: TLS configured, serving over HTTPS on %s", app.Address())
 		if err := server.ListenAndServeTLS("", ""); err != nil {
 			log.Log.Criticalf("Error listening TLS: %s", err)

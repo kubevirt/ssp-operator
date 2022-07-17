@@ -27,6 +27,7 @@ import (
 )
 
 var log = logf.Log.WithName("validator_operand")
+var emptySSPTLSConfig = &common.SSPTLSOptions{}
 
 var _ = Describe("Template validator operand", func() {
 	const (
@@ -85,7 +86,7 @@ var _ = Describe("Template validator operand", func() {
 		ExpectResourceExists(newServiceAccount(namespace), request)
 		ExpectResourceExists(newClusterRoleBinding(namespace), request)
 		ExpectResourceExists(newService(namespace), request)
-		ExpectResourceExists(newDeployment(namespace, replicas, "test-img"), request)
+		ExpectResourceExists(newDeployment(namespace, replicas, "test-img", emptySSPTLSConfig), request)
 		ExpectResourceExists(newValidatingWebhook(namespace), request)
 		ExpectResourceExists(newPrometheusService(namespace), request)
 	})
@@ -153,7 +154,7 @@ var _ = Describe("Template validator operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Set status for deployment
-		key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
+		key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img", emptySSPTLSConfig))
 		updateDeployment(key, &request, func(deployment *apps.Deployment) {
 			deployment.Status.Replicas = replicas
 			deployment.Status.ReadyReplicas = 0
@@ -381,7 +382,7 @@ var _ = Describe("Template validator operand", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 			deployment := &apps.Deployment{}
-			key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
+			key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img", emptySSPTLSConfig))
 			Expect(request.Client.Get(request.Context, key, deployment)).To(Succeed())
 			Expect(deployment.Spec.Template.Spec.Affinity.NodeAffinity).To(Equal(expectedNodeAffinity))
 			Expect(deployment.Spec.Template.Spec.Affinity.PodAffinity).To(Equal(expectedPodAffinity))

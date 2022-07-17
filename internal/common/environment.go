@@ -2,8 +2,12 @@ package common
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 
+	"github.com/go-logr/logr"
 	osconfv1 "github.com/openshift/api/config/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,4 +40,14 @@ func GetInfrastructureTopology(c client.Reader) (osconfv1.TopologyMode, error) {
 	}
 
 	return infraConfig.Status.InfrastructureTopology, nil
+}
+
+func GetOperatorNamespace(logger logr.Logger) (string, error) {
+	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		return "", fmt.Errorf("in getOperatorNamespace failed in call to downward API: %w", err)
+	}
+	ns := strings.TrimSpace(string(nsBytes))
+	logger.Info("Found namespace", "Namespace", ns)
+	return ns, nil
 }
