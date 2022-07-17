@@ -29,9 +29,9 @@ var _ = Describe("TlsInfo", func() {
 
 	It("should return nil if no certificate exists", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		tlsInfo.InitCerts()
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CrateTlsConfig()
+		tlsConfig := tlsInfo.CreateTlsConfig()
 
 		Consistently(func() *tls.Certificate {
 			cert, _ := tlsConfig.GetCertificate(nil)
@@ -42,9 +42,9 @@ var _ = Describe("TlsInfo", func() {
 	It("should load certificate", func() {
 		writeCertificate(certDir)
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		tlsInfo.InitCerts()
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CrateTlsConfig()
+		tlsConfig := tlsInfo.CreateTlsConfig()
 
 		Eventually(func() (*tls.Certificate, error) {
 			return tlsConfig.GetCertificate(nil)
@@ -53,9 +53,9 @@ var _ = Describe("TlsInfo", func() {
 
 	It("should reload new certificate", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		tlsInfo.InitCerts()
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CrateTlsConfig()
+		tlsConfig := tlsInfo.CreateTlsConfig()
 
 		Consistently(func() *tls.Certificate {
 			cert, _ := tlsConfig.GetCertificate(nil)
@@ -72,9 +72,9 @@ var _ = Describe("TlsInfo", func() {
 	It("should keep old certificate on failure", func() {
 		writeCertificate(certDir)
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		tlsInfo.InitCerts()
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CrateTlsConfig()
+		tlsConfig := tlsInfo.CreateTlsConfig()
 
 		Eventually(func() (*tls.Certificate, error) {
 			return tlsConfig.GetCertificate(nil)
