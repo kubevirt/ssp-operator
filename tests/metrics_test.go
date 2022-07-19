@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 
@@ -152,19 +153,39 @@ var _ = Describe("Metrics", func() {
 		)
 	})
 
-	Context("alerts", func() {
-		It("[test_id:7851]should have available runbook URLs", func() {
-			promRule := &promv1.PrometheusRule{}
-			Expect(apiClient.Get(ctx, prometheusRuleRes.GetKey(), promRule)).To(Succeed())
+	Context("SSP alerts rules", func() {
+		var promRule promv1.PrometheusRule
+
+		BeforeEach(func() {
+			Expect(apiClient.Get(ctx, prometheusRuleRes.GetKey(), &promRule)).To(Succeed())
+		})
+
+		It("[test_id:7851]should have all the requried annotations", func() {
 			for _, group := range promRule.Spec.Groups {
 				for _, rule := range group.Rules {
-					if len(rule.Alert) > 0 {
-						Expect(rule.Annotations).ToNot(BeNil())
-						url, ok := rule.Annotations["runbook_url"]
-						Expect(ok).To(BeTrue())
-						resp, err := http.Head(url)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(resp.StatusCode).Should(Equal(http.StatusOK))
+					if rule.Alert != "" {
+						Expect(rule.Annotations).To(HaveKeyWithValue("summary", Not(BeEmpty())),
+							fmt.Sprintf("%s summary is missing or empty", rule.Alert))
+						Expect(rule.Annotations).To(HaveKeyWithValue("runbook_url", Not(BeEmpty())),
+							fmt.Sprintf("%s runbook_url is missing or empty", rule.Alert))
+						resp, err := http.Head(rule.Annotations["runbook_url"])
+						Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("%s runbook is not available", rule.Alert))
+						Expect(resp.StatusCode).Should(Equal(http.StatusOK), fmt.Sprintf("%s runbook is not available", rule.Alert))
+					}
+				}
+			}
+		})
+
+		It("[test_id:8955]should have all the requried labels", func() {
+			for _, group := range promRule.Spec.Groups {
+				for _, rule := range group.Rules {
+					if rule.Alert != "" {
+						Expect(rule.Labels).To(HaveKeyWithValue("severity", BeElementOf("info", "warning", "critical")),
+							fmt.Sprintf("%s severity label is missing or not valid", rule.Alert))
+						Expect(rule.Labels).To(HaveKeyWithValue("kubernetes_operator_part_of", "kubevirt"),
+							fmt.Sprintf("%s kubernetes_operator_part_of label is missing or not valid", rule.Alert))
+						Expect(rule.Labels).To(HaveKeyWithValue("kubernetes_operator_component", "ssp-operator"),
+							fmt.Sprintf("%s kubernetes_operator_component label is missing or not valid", rule.Alert))
 					}
 				}
 			}
