@@ -142,6 +142,14 @@ var _ = Describe("Validation webhook", func() {
 						"created SSP CR with invalid template-validator placement fields")
 				})
 			})
+
+			It("[test_id:TODO] should fail when DataImportCronTemplate does not have a name", func() {
+				newSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{{
+					ObjectMeta: metav1.ObjectMeta{Name: ""},
+				}}
+				err := apiClient.Create(ctx, newSsp, client.DryRunAll)
+				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+			})
 		})
 	})
 
@@ -175,6 +183,16 @@ var _ = Describe("Validation webhook", func() {
 					return errors.ReasonForError(err)
 				}, twentySecondTimeout, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
 			})
+		})
+
+		It("[test_id:TODO] should fail when DataImportCronTemplate does not have a name", func() {
+			Eventually(func() error {
+				foundSsp = getSsp()
+				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{{
+					ObjectMeta: metav1.ObjectMeta{Name: ""},
+				}}
+				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
+			}, twentySecondTimeout, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
 		})
 	})
 })
