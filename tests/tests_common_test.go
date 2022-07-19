@@ -285,7 +285,7 @@ func expectUserCan(sars *authv1.SubjectAccessReviewSpec) {
 			Spec: *sars,
 		}, metav1.CreateOptions{})
 		return err == nil && sar.Status.Allowed
-	}, tenSecondTimeout, time.Second).Should(BeTrue(), fmt.Sprintf("user [%s] with groups %v cannot [%s] resource: [%s], subresource: [%s], name: [%s] in group [%s/%s] in namespace [%s]",
+	}, 10*time.Second, time.Second).Should(BeTrue(), fmt.Sprintf("user [%s] with groups %v cannot [%s] resource: [%s], subresource: [%s], name: [%s] in group [%s/%s] in namespace [%s]",
 		sars.User, sars.Groups, sars.ResourceAttributes.Verb, sars.ResourceAttributes.Resource,
 		sars.ResourceAttributes.Subresource, sars.ResourceAttributes.Name, sars.ResourceAttributes.Group,
 		sars.ResourceAttributes.Version, sars.ResourceAttributes.Namespace))

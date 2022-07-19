@@ -172,7 +172,7 @@ var _ = Describe("Validation webhook", func() {
 					foundSsp = getSsp()
 					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
 					return apiClient.Update(ctx, foundSsp, client.DryRunAll)
-				}, twentySecondTimeout, time.Second).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
+				}, 20*time.Second, time.Second).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
 			})
 
 			It("[test_id:5989]should fail with invalid template-validator placement fields", func() {
@@ -181,7 +181,7 @@ var _ = Describe("Validation webhook", func() {
 					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
 					err := apiClient.Update(ctx, foundSsp, client.DryRunAll)
 					return errors.ReasonForError(err)
-				}, twentySecondTimeout, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
+				}, 20*time.Second, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
 			})
 		})
 
@@ -192,7 +192,7 @@ var _ = Describe("Validation webhook", func() {
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
 				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
-			}, twentySecondTimeout, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
 		})
 	})
 })
