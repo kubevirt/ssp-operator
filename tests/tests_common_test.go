@@ -233,7 +233,7 @@ func updateSsp(updateFunc func(foundSsp *v1beta1.SSP)) {
 		foundSsp := getSsp()
 		updateFunc(foundSsp)
 		return apiClient.Update(ctx, foundSsp)
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	}, shortTimeout, time.Second).Should(Succeed())
 }
 
 func pauseSsp() {
