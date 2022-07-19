@@ -42,8 +42,6 @@ import (
 )
 
 var (
-	shortTimeout           = 1 * time.Minute
-	timeout                = 10 * time.Minute
 	topologyMode           = osconfv1.HighlyAvailableTopologyMode
 	testScheme             *runtime.Scheme
 	sspDeploymentName      = "ssp-operator"
@@ -89,12 +87,12 @@ func (s *newSspStrategy) Init() {
 				},
 			}}
 		return apiClient.Create(ctx, namespaceObj)
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
 	Eventually(func() error {
 		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}}
 		return apiClient.Create(ctx, namespaceObj)
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
 	newSsp := &sspv1beta1.SSP{
 		ObjectMeta: metav1.ObjectMeta{
@@ -120,7 +118,7 @@ func (s *newSspStrategy) Init() {
 
 	Eventually(func() error {
 		return apiClient.Create(ctx, newSsp)
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 	s.ssp = newSsp
 }
 
@@ -347,15 +345,8 @@ var _ = BeforeSuite(func() {
 		strategy = &existingSspStrategy{Name: existingCrName, Namespace: existingCrNamespace}
 	}
 
-	if envTimeout, set := env.Timeout(); set {
-		timeout = envTimeout
-		fmt.Println(fmt.Sprintf("timeout set to %d minutes", envTimeout))
-	}
-
-	if envShortTimeout, set := env.ShortTimeout(); set {
-		shortTimeout = envShortTimeout
-		fmt.Println(fmt.Sprintf("short timeout set to %d minutes", envShortTimeout))
-	}
+	fmt.Println(fmt.Sprintf("timeout set to %d minutes", env.Timeout()))
+	fmt.Println(fmt.Sprintf("short timeout set to %d minutes", env.ShortTimeout()))
 
 	if envTopologyMode, set := env.TopologyMode(); set {
 		topologyMode = envTopologyMode
@@ -452,7 +443,7 @@ func waitUntilDeployed() {
 		ssp := getSsp()
 		return ssp.Status.ObservedGeneration == ssp.Generation &&
 			ssp.Status.Phase == lifecycleapi.PhaseDeployed
-	}, timeout, time.Second).Should(BeTrue())
+	}, env.Timeout(), time.Second).Should(BeTrue())
 	deploymentTimedOut = false
 }
 
@@ -460,7 +451,7 @@ func waitForDeletion(key client.ObjectKey, obj client.Object) {
 	EventuallyWithOffset(1, func() bool {
 		err := apiClient.Get(ctx, key, obj)
 		return errors.IsNotFound(err)
-	}, timeout, time.Second).Should(BeTrue())
+	}, env.Timeout(), time.Second).Should(BeTrue())
 }
 
 func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {
@@ -478,7 +469,7 @@ func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {
 			return fmt.Errorf("waiting for SSP CR deletion")
 		}
 		return nil
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
 func validateDeploymentExists() {
@@ -520,7 +511,7 @@ func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
 			return apiClient.Create(ctx, newSsp)
 		}
 		return err
-	}, timeout, time.Second).ShouldNot(HaveOccurred())
+	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
 func triggerReconciliation() {

@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promApi "github.com/prometheus/client_golang/api"
@@ -18,12 +21,11 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 var _ = Describe("Prometheus Alerts", func() {
@@ -141,11 +143,11 @@ var _ = Describe("Prometheus Alerts", func() {
 				Expect(apiClient.Get(ctx, sspDeploymentKeys, deployment)).ToNot(HaveOccurred())
 				deployment.Spec.Replicas = &origReplicas
 				return apiClient.Update(ctx, deployment)
-			}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
+			}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 			Eventually(func() int32 {
 				Expect(apiClient.Get(ctx, sspDeploymentKeys, deployment)).ToNot(HaveOccurred())
 				return deployment.Status.ReadyReplicas
-			}, shortTimeout, time.Second).Should(Equal(origReplicas))
+			}, env.ShortTimeout(), time.Second).Should(Equal(origReplicas))
 		})
 
 		It("[test_id:8365] Should fire SSPDown", func() {
@@ -160,7 +162,7 @@ func waitForAlertToActivate(alertName string) {
 		Expect(err).ShouldNot(HaveOccurred())
 		alert := getAlertByName(alerts, alertName)
 		return alert
-	}, timeout, time.Second).ShouldNot(BeNil())
+	}, env.Timeout(), time.Second).ShouldNot(BeNil())
 }
 
 func waitForSeriesToBeDetected(seriesName string) {
@@ -168,7 +170,7 @@ func waitForSeriesToBeDetected(seriesName string) {
 		results, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
 		Expect(err).ShouldNot(HaveOccurred())
 		return results.String() != ""
-	}, timeout, 10*time.Second).Should(BeTrue())
+	}, env.Timeout(), 10*time.Second).Should(BeTrue())
 }
 
 func getAlertByName(alerts promApiv1.AlertsResult, alertName string) *promApiv1.Alert {

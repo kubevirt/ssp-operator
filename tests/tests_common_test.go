@@ -24,6 +24,7 @@ import (
 
 	"kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 const pauseDuration = 10 * time.Second
@@ -100,10 +101,10 @@ func expectRecreateAfterDelete(res *testResource) {
 
 	Expect(apiClient.Delete(ctx, resource)).ToNot(HaveOccurred())
 
-	err = WatchChangesUntil(watch, isStatusDeploying, shortTimeout)
+	err = WatchChangesUntil(watch, isStatusDeploying, env.ShortTimeout())
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
 
-	err = WatchChangesUntil(watch, isStatusDeployed, timeout)
+	err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 
 	err = apiClient.Get(ctx, client.ObjectKey{
@@ -176,10 +177,10 @@ func expectRestoreAfterUpdate(res *testResource) {
 	res.Update(changed)
 	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
 
-	err = WatchChangesUntil(watch, isStatusDeploying, shortTimeout)
+	err = WatchChangesUntil(watch, isStatusDeploying, env.ShortTimeout())
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
 
-	err = WatchChangesUntil(watch, isStatusDeployed, timeout)
+	err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 
 	found := res.NewResource()
@@ -213,7 +214,7 @@ func expectRestoreAfterUpdateWithPause(res *testResource) {
 		found := res.NewResource()
 		err := apiClient.Get(ctx, res.GetKey(), found)
 		return found, err
-	}, timeout, time.Second).Should(EqualResource(res, original))
+	}, env.Timeout(), time.Second).Should(EqualResource(res, original))
 }
 
 func hasOwnerAnnotations(annotations map[string]string) bool {
@@ -233,7 +234,7 @@ func updateSsp(updateFunc func(foundSsp *v1beta1.SSP)) {
 		foundSsp := getSsp()
 		updateFunc(foundSsp)
 		return apiClient.Update(ctx, foundSsp)
-	}, shortTimeout, time.Second).Should(Succeed())
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
 }
 
 func pauseSsp() {
@@ -245,7 +246,7 @@ func pauseSsp() {
 	})
 	Eventually(func() bool {
 		return getSsp().Status.Paused
-	}, shortTimeout, time.Second).Should(BeTrue())
+	}, env.ShortTimeout(), time.Second).Should(BeTrue())
 }
 
 func unpauseSsp() {
@@ -254,7 +255,7 @@ func unpauseSsp() {
 	})
 	Eventually(func() bool {
 		return getSsp().Status.Paused
-	}, shortTimeout, time.Second).Should(BeFalse())
+	}, env.ShortTimeout(), time.Second).Should(BeFalse())
 }
 
 func isStatusDeploying(obj *v1beta1.SSP) bool {

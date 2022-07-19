@@ -33,6 +33,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 func testDeploymentResource() testResource {
@@ -237,7 +238,7 @@ var _ = Describe("Template validator operand", func() {
 				}
 			}
 			return runningCount
-		}, timeout, time.Second).Should(BeNumerically("==", strategy.GetValidatorReplicas()))
+		}, env.Timeout(), time.Second).Should(BeNumerically("==", strategy.GetValidatorReplicas()))
 	})
 
 	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", func() {
@@ -342,7 +343,7 @@ var _ = Describe("Template validator operand", func() {
 					reflect.DeepEqual(podSpec.Affinity.PodAntiAffinity, defaultPodAntiAffinity) &&
 					reflect.DeepEqual(podSpec.NodeSelector, nodeSelector) &&
 					reflect.DeepEqual(podSpec.Tolerations, tolerations)
-			}, timeout, 1*time.Second).Should(BeTrue(), "placement is different")
+			}, env.Timeout(), 1*time.Second).Should(BeTrue(), "placement is different")
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
 				placement := foundSsp.Spec.TemplateValidator.Placement
@@ -363,7 +364,7 @@ var _ = Describe("Template validator operand", func() {
 					podSpec.Affinity.NodeAffinity == nil &&
 					podSpec.NodeSelector == nil &&
 					podSpec.Tolerations == nil
-			}, timeout, 1*time.Second).Should(BeTrue(), "placement should be nil")
+			}, env.Timeout(), 1*time.Second).Should(BeTrue(), "placement should be nil")
 		})
 
 		// TODO - This test is currently pending, because it can be flaky.
@@ -378,7 +379,7 @@ var _ = Describe("Template validator operand", func() {
 				foundSsp.Spec.TemplateValidator.Replicas = pointer.Int32Ptr(replicas)
 			})
 
-			err = WatchChangesUntil(watch, isStatusDeploying, timeout)
+			err = WatchChangesUntil(watch, isStatusDeploying, env.Timeout())
 			Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
 
 			err = WatchChangesUntil(watch, func(obj *sspv1beta1.SSP) bool {
@@ -388,10 +389,10 @@ var _ = Describe("Template validator operand", func() {
 				return obj.Status.Phase == lifecycleapi.PhaseDeploying &&
 					available.Status == core.ConditionTrue &&
 					progressing.Status == core.ConditionTrue
-			}, timeout)
+			}, env.Timeout())
 			Expect(err).ToNot(HaveOccurred(), "SSP should be available, but progressing.")
 
-			err = WatchChangesUntil(watch, isStatusDeployed, timeout)
+			err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
 			Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 		})
 	})
@@ -430,7 +431,7 @@ var _ = Describe("Template validator webhooks", func() {
 				if err := apiClient.Delete(ctx, template); err != nil {
 					g.Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 				}
-			}, shortTimeout, time.Second).Should(Succeed(), "Template should be deleted")
+			}, env.ShortTimeout(), time.Second).Should(Succeed(), "Template should be deleted")
 		}
 	})
 
@@ -557,7 +558,7 @@ var _ = Describe("Template validator webhooks", func() {
 					}
 				}
 				return false
-			}, shortTimeout).Should(BeTrue(), "Failed to find error msg in the logs")
+			}, env.ShortTimeout()).Should(BeTrue(), "Failed to find error msg in the logs")
 		})
 		It("[test_id:5591]test with partial annotations", func() {
 			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
@@ -796,7 +797,7 @@ var _ = Describe("Template validator webhooks", func() {
 			Eventually(func() metav1.StatusReason {
 				err := apiClient.Delete(ctx, template, client.DryRunAll)
 				return errors.ReasonForError(err)
-			}, shortTimeout, 1*time.Second).Should(Equal(metav1.StatusReasonForbidden), "Should have given forbidden error")
+			}, env.ShortTimeout(), 1*time.Second).Should(Equal(metav1.StatusReasonForbidden), "Should have given forbidden error")
 		})
 
 		It("[test_id:7037] Can delete template without validations if a VM uses it", func() {
@@ -881,7 +882,7 @@ func eventuallyCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 	// new templates propagate to template validator
 	return EventuallyWithOffset(1, func() error {
 		return apiClient.Create(ctx, vm)
-	}, shortTimeout).Should(Succeed(), "Failed to create VM")
+	}, env.ShortTimeout()).Should(Succeed(), "Failed to create VM")
 }
 
 func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
@@ -909,7 +910,7 @@ func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 			return metav1.StatusReasonUnknown, fmt.Errorf("VM was created")
 		}
 		return errors.ReasonForError(err), nil
-	}, shortTimeout).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
+	}, env.ShortTimeout()).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
 }
 
 func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {

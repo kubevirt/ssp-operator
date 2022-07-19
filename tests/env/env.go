@@ -21,6 +21,11 @@ const (
 	envSspDeploymentNamespace = "SSP_DEPLOYMENT_NAMESPACE"
 )
 
+const (
+	defaultTimeout      = 10 * time.Minute
+	defaultShortTimeout = 1 * time.Minute
+)
+
 func ExistingCrName() string {
 	return os.Getenv(envExistingCrName)
 }
@@ -41,20 +46,30 @@ func ShouldSkipCleanupAfterTests() bool {
 	return getBoolEnv(envSkipCleanupAfterTests)
 }
 
-func Timeout() (time.Duration, bool) {
-	intValue, exists := getIntEnv(envTimeout)
-	if !exists {
-		return 0, false
+var timeout time.Duration
+
+func Timeout() time.Duration {
+	if timeout == 0 {
+		if intValue, exists := getIntEnv(envTimeout); exists {
+			timeout = time.Minute * time.Duration(intValue)
+		} else {
+			timeout = defaultTimeout
+		}
 	}
-	return time.Minute * time.Duration(intValue), true
+	return timeout
 }
 
-func ShortTimeout() (time.Duration, bool) {
-	intValue, exists := getIntEnv(envShortTimeout)
-	if !exists {
-		return 0, false
+var shortTimeout time.Duration
+
+func ShortTimeout() time.Duration {
+	if shortTimeout == 0 {
+		if intValue, exists := getIntEnv(envShortTimeout); exists {
+			shortTimeout = time.Minute * time.Duration(intValue)
+		} else {
+			shortTimeout = defaultShortTimeout
+		}
 	}
-	return time.Minute * time.Duration(intValue), true
+	return shortTimeout
 }
 
 // TopologyMode returns ("", false) if an env var is not set or (X, true) if it is set
