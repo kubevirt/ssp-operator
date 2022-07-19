@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
@@ -33,25 +32,13 @@ import (
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
+	"kubevirt.io/ssp-operator/tests/env"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
-)
-
-const (
-	envExistingCrName         = "TEST_EXISTING_CR_NAME"
-	envExistingCrNamespace    = "TEST_EXISTING_CR_NAMESPACE"
-	envSkipUpdateSspTests     = "SKIP_UPDATE_SSP_TESTS"
-	envSkipCleanupAfterTests  = "SKIP_CLEANUP_AFTER_TESTS"
-	envTimeout                = "TIMEOUT_MINUTES"
-	envShortTimeout           = "SHORT_TIMEOUT_MINUTES"
-	envTopologyMode           = "TOPOLOGY_MODE"
-	envIsUpgradeLane          = "IS_UPGRADE_LANE"
-	envSspDeploymentName      = "SSP_DEPLOYMENT_NAME"
-	envSspDeploymentNamespace = "SSP_DEPLOYMENT_NAMESPACE"
 )
 
 var (
@@ -140,7 +127,7 @@ func (s *newSspStrategy) Init() {
 }
 
 func (s *newSspStrategy) Cleanup() {
-	if getBoolEnv(envSkipCleanupAfterTests) {
+	if env.ShouldSkipCleanupAfterTests() {
 		return
 	}
 
@@ -222,7 +209,7 @@ func (s *newSspStrategy) SkipIfUpgradeLane() {
 }
 
 func skipIfUpgradeLane() {
-	if getBoolEnv(envIsUpgradeLane) {
+	if env.IsUpgradeLane() {
 		Skip("Skipping in Upgrade Lane", 1)
 	}
 }
@@ -323,7 +310,7 @@ func (s *existingSspStrategy) SkipSspUpdateTestsIfNeeded() {
 }
 
 func (s *existingSspStrategy) sspModificationDisabled() bool {
-	return getBoolEnv(envSkipUpdateSspTests)
+	return env.SkipUpdateSspTests()
 }
 
 func (s *existingSspStrategy) SkipUnlessSingleReplicaTopologyMode() {
@@ -353,41 +340,36 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	existingCrName := os.Getenv(envExistingCrName)
+	existingCrName := env.ExistingCrName()
 	if existingCrName == "" {
 		strategy = &newSspStrategy{}
 	} else {
-		existingCrNamespace := os.Getenv(envExistingCrNamespace)
+		existingCrNamespace := env.ExistingCrNamespace()
 		Expect(existingCrNamespace).ToNot(BeEmpty(), "Existing CR Namespace needs to be defined")
 		strategy = &existingSspStrategy{Name: existingCrName, Namespace: existingCrNamespace}
 	}
 
-	envTimeout, set := getIntEnv(envTimeout)
-	if set {
-		timeout = time.Duration(envTimeout) * time.Minute
+	if envTimeout, set := env.Timeout(); set {
+		timeout = envTimeout
 		fmt.Println(fmt.Sprintf("timeout set to %d minutes", envTimeout))
 	}
 
-	envShortTimeout, set := getIntEnv(envShortTimeout)
-	if set {
-		shortTimeout = time.Duration(envShortTimeout) * time.Minute
+	if envShortTimeout, set := env.ShortTimeout(); set {
+		shortTimeout = envShortTimeout
 		fmt.Println(fmt.Sprintf("short timeout set to %d minutes", envShortTimeout))
 	}
 
-	envTopologyMode, set := getTopologyModeEnv(envTopologyMode)
-	if set {
+	if envTopologyMode, set := env.TopologyMode(); set {
 		topologyMode = envTopologyMode
 		fmt.Println(fmt.Sprintf("TopologyMode set to %s", envTopologyMode))
 	}
 
-	envSspDeploymentName := os.Getenv(envSspDeploymentName)
-	if envSspDeploymentName != "" {
+	if envSspDeploymentName := env.SspDeploymentName(); envSspDeploymentName != "" {
 		sspDeploymentName = envSspDeploymentName
 		fmt.Println(fmt.Sprintf("SspDeploymentName set to %s", envSspDeploymentName))
 	}
 
-	envSspDeploymentNamespace := os.Getenv(envSspDeploymentNamespace)
-	if envSspDeploymentNamespace != "" {
+	if envSspDeploymentNamespace := env.SspDeploymentNamespace(); envSspDeploymentNamespace != "" {
 		sspDeploymentNamespace = envSspDeploymentNamespace
 		fmt.Println(fmt.Sprintf("SspDeploymentNamespace set to %s", envSspDeploymentNamespace))
 	}
@@ -483,43 +465,6 @@ func waitForDeletion(key client.ObjectKey, obj client.Object) {
 	}, timeout, time.Second).Should(BeTrue())
 }
 
-func getBoolEnv(envName string) bool {
-	envVal := os.Getenv(envName)
-	if envVal == "" {
-		return false
-	}
-	val, err := strconv.ParseBool(envVal)
-	if err != nil {
-		return false
-	}
-	return val
-}
-
-// getIntEnv returns (0, false) if an env var is not set or (X, true) if it is set
-func getIntEnv(envName string) (int, bool) {
-	envVal := os.Getenv(envName)
-	if envVal == "" {
-		return 0, false
-	} else {
-		val, err := strconv.ParseInt(envVal, 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		return int(val), true
-	}
-}
-
-// getTopologyModeEnv returns ("", false) if an env var is not set or (X, true) if it is set
-func getTopologyModeEnv(envName string) (osconfv1.TopologyMode, bool) {
-	envVal := os.Getenv(envName)
-	if envVal == string(osconfv1.SingleReplicaTopologyMode) {
-		return osconfv1.SingleReplicaTopologyMode, true
-	} else if envVal == string(osconfv1.HighlyAvailableTopologyMode) {
-		return osconfv1.HighlyAvailableTopologyMode, true
-	}
-	return "", false
-}
-
 func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {
 	key := client.ObjectKey{Name: ssp.Name, Namespace: ssp.Namespace}
 	Eventually(func() error {
@@ -541,7 +486,7 @@ func waitForSspDeletionIfNeeded(ssp *sspv1beta1.SSP) {
 func validateDeploymentExists() {
 	err := apiClient.Get(ctx, client.ObjectKey{Name: sspDeploymentName, Namespace: sspDeploymentNamespace}, &apps.Deployment{})
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("SSP deployment does not exist under given name and namespace, check %s and %s",
-		envSspDeploymentName, envSspDeploymentNamespace))
+		env.SspDeploymentName(), env.SspDeploymentNamespace()))
 }
 
 func createOrUpdateSsp(ssp *sspv1beta1.SSP) {
