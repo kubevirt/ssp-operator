@@ -3,11 +3,12 @@ Operator that manages Scheduling, Scale and Performance addons for [KubeVirt](ht
 
 ## Functionality
 
-The operator deploys and manages resources needed by these four components:
+The operator deploys and manages resources needed by these components:
 
 - [Template Validator](https://github.com/kubevirt/ssp-operator/tree/master/internal/template-validator) (You can read more about it here: [Template Validator old repository](https://github.com/kubevirt/kubevirt-template-validator))
 - [Common Templates Bundle](https://github.com/kubevirt/common-templates)
-- Metrics rules - Currently it is only a single Prometheus rule containing the count of all running VMs.
+- DataVolumes for templates - Images are auto-imported to the DataVolumes as specified in the SSP CR.
+- Metrics rules - Prometheus metric rules and alerts.
 
 ## Installation
 
@@ -47,9 +48,6 @@ To activate the operator, a CR needs to be created.
 An example is in [config/samples/ssp_v1beta1_ssp.yaml](config/samples/ssp_v1beta1_ssp.yaml).
 
 ## Building
-
-The Make will try to install kustomize, however if it is already installed it will not reinstall it.
-In case of an error, make sure you are using at least v3 of kustomize, available here: https://kustomize.io/
 
 To build the container image run:
 ```shell
