@@ -329,21 +329,27 @@ var _ = Describe("RHEL VM creation", func() {
 
 		Expect(apiClient.Create(ctx, vm)).To(Succeed())
 
-		// Wait for VMI to exist and be ready
-		Eventually(func() (bool, error) {
+		// Wait for DataVolume to finish importing
+		dvName := vm.Spec.DataVolumeTemplates[0].Name
+		Eventually(func(g Gomega) cdiv1beta1.DataVolumePhase {
+			foundDv := &cdiv1beta1.DataVolume{}
+			err := apiClient.Get(ctx, client.ObjectKey{Name: dvName, Namespace: vm.Namespace}, foundDv)
+			g.Expect(err).ToNot(HaveOccurred())
+			return foundDv.Status.Phase
+		}, 2*timeout, time.Second).Should(Equal(cdiv1beta1.Succeeded))
+
+		// Wait for VMI to be ready
+		Eventually(func(g Gomega) bool {
 			foundVmi := &kubevirtv1.VirtualMachineInstance{}
 			err := apiClient.Get(ctx, client.ObjectKeyFromObject(vm), foundVmi)
-			if err != nil {
-				return false, err
-			}
+			g.Expect(err).ToNot(HaveOccurred())
 
 			for _, condition := range foundVmi.Status.Conditions {
 				if condition.Type == kubevirtv1.VirtualMachineInstanceReady {
-					return condition.Status == core.ConditionTrue, nil
+					return condition.Status == core.ConditionTrue
 				}
 			}
-
-			return false, nil
+			return false
 		}, timeout, time.Second).Should(BeTrue())
 	},
 		table.Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
