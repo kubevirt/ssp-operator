@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	ocpconfigv1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	sdkapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
@@ -442,6 +443,8 @@ type DataSourceSource struct {
 
 // DataSourceStatus provides the most recently observed status of the DataSource
 type DataSourceStatus struct {
+	// Source is the current source of the data referenced by the DataSource
+	Source     DataSourceSource      `json:"source"`
 	Conditions []DataSourceCondition `json:"conditions,omitempty" optional:"true"`
 }
 
@@ -654,13 +657,13 @@ type CDICloneStrategy string
 
 const (
 	// CloneStrategyHostAssisted specifies slower, host-assisted copy
-	CloneStrategyHostAssisted = "copy"
+	CloneStrategyHostAssisted CDICloneStrategy = "copy"
 
 	// CloneStrategySnapshot specifies snapshot-based copying
-	CloneStrategySnapshot = "snapshot"
+	CloneStrategySnapshot CDICloneStrategy = "snapshot"
 
 	// CloneStrategyCsiClone specifies csi volume clone based cloning
-	CloneStrategyCsiClone = "csi-clone"
+	CloneStrategyCsiClone CDICloneStrategy = "csi-clone"
 )
 
 // CDIUninstallStrategy defines the state to leave CDI on uninstall
@@ -742,6 +745,11 @@ type CDIConfigSpec struct {
 	Preallocation *bool `json:"preallocation,omitempty"`
 	// InsecureRegistries is a list of TLS disabled registries
 	InsecureRegistries []string `json:"insecureRegistries,omitempty"`
+	// dataVolumeTTLSeconds is the time in seconds after DataVolume completion it can be garbage collected.
+	// +optional
+	DataVolumeTTLSeconds *int32 `json:"dataVolumeTTLSeconds,omitempty"`
+	// TLSSecurityProfile is used by operators to apply cluster-wide TLS security settings to operands.
+	TLSSecurityProfile *ocpconfigv1.TLSSecurityProfile `json:"tlsSecurityProfile,omitempty"`
 }
 
 //CDIConfigStatus provides the most recently observed status of the CDI Config resource
