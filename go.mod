@@ -10,7 +10,7 @@ require (
 	github.com/go-logr/logr v1.2.3
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
-	github.com/openshift/api v0.0.0
+	github.com/openshift/api v0.0.0-20220124143425-d74727069f6f // release-4.10
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/operator-framework/api v0.14.0
 	github.com/operator-framework/operator-lib v0.10.0
@@ -29,7 +29,7 @@ require (
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	kubevirt.io/api v0.52.0
 	kubevirt.io/client-go v0.52.0
-	kubevirt.io/containerized-data-importer-api v1.47.0
+	kubevirt.io/containerized-data-importer-api v1.53.0
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.7
 	kubevirt.io/ssp-operator/api v0.0.0
@@ -108,8 +108,6 @@ require (
 replace (
 	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
-	github.com/openshift/api => github.com/openshift/api v0.0.0-20220124143425-d74727069f6f // release-4.10
-	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20211209144617-7385dd6338e3 // release-4.10
 	k8s.io/client-go => k8s.io/client-go v0.24.2
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.23.5
 
