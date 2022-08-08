@@ -11,7 +11,7 @@ import (
 const (
 	PrometheusRuleName           = "prometheus-k8s-rules-cnv"
 	MonitorNamespace             = "openshift-monitoring"
-	runbookURLBasePath           = "http://kubevirt.io/monitoring/runbooks/"
+	runbookURLBasePath           = "https://kubevirt.io/monitoring/runbooks/"
 	severityAlertLabelKey        = "severity"
 	partOfAlertLabelKey          = "kubernetes_operator_part_of"
 	partOfAlertLabelValue        = "kubevirt"
