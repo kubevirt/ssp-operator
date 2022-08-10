@@ -852,39 +852,44 @@ var _ = Describe("DataSources", func() {
 				}, shortTimeout, time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
 
-			It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
-				// Wait until DataImportCron imports PVC and changes data source
-				Eventually(func() bool {
-					cron := &cdiv1beta1.DataImportCron{}
-					Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
-
-					return cron.Status.LastImportTimestamp.IsZero()
-				}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
-
-				managedDataSource := &cdiv1beta1.DataSource{}
-				Expect(apiClient.Get(ctx, dataSource.GetKey(), managedDataSource)).To(Succeed())
-
-				// Remove the DataImportCron
-				updateSsp(func(foundSsp *ssp.SSP) {
-					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+			Context("restore dataSource", func() {
+				JustAfterEach(func() {
+					logObject(dataImportCron.GetKey(), &cdiv1beta1.DataImportCron{})
 				})
-				waitUntilDeployed()
 
-				// Check if the DataSource has been reverted
-				revertedDataSource := &cdiv1beta1.DataSource{}
-				Expect(apiClient.Get(ctx, dataSource.GetKey(), revertedDataSource)).To(Succeed())
+				It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
+					// Wait until DataImportCron imports PVC and changes data source
+					Eventually(func() bool {
+						cron := &cdiv1beta1.DataImportCron{}
+						Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
+						return cron.Status.LastImportTimestamp.IsZero()
+					}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
 
-				Expect(revertedDataSource).ToNot(EqualResource(&dataSource, managedDataSource))
+					managedDataSource := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), managedDataSource)).To(Succeed())
 
-				// Delete the DataSource and let the operator recreate it
-				Expect(apiClient.Delete(ctx, revertedDataSource.DeepCopy())).To(Succeed())
+					// Remove the DataImportCron
+					updateSsp(func(foundSsp *ssp.SSP) {
+						foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+					})
+					waitUntilDeployed()
 
-				recreatedDataSource := &cdiv1beta1.DataSource{}
-				Eventually(func() error {
-					return apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)
-				}, shortTimeout, time.Second).Should(Succeed())
+					// Check if the DataSource has been reverted
+					revertedDataSource := &cdiv1beta1.DataSource{}
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), revertedDataSource)).To(Succeed())
 
-				Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
+					Expect(revertedDataSource).ToNot(EqualResource(&dataSource, managedDataSource))
+
+					// Delete the DataSource and let the operator recreate it
+					Expect(apiClient.Delete(ctx, revertedDataSource.DeepCopy())).To(Succeed())
+
+					recreatedDataSource := &cdiv1beta1.DataSource{}
+					Eventually(func() error {
+						return apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)
+					}, shortTimeout, time.Second).Should(Succeed())
+
+					Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
+				})
 			})
 
 			It("[test_id:8296] should restore CDI label on DataSource, if user removes it", func() {
@@ -962,6 +967,10 @@ var _ = Describe("DataSources", func() {
 			var (
 				dataVolume *cdiv1beta1.DataVolume
 			)
+
+			JustAfterEach(func() {
+				logObject(client.ObjectKey{Namespace: internal.GoldenImagesNamespace, Name: dataSourceName}, &cdiv1beta1.DataVolume{})
+			})
 
 			BeforeEach(func() {
 				dataVolume = &cdiv1beta1.DataVolume{
