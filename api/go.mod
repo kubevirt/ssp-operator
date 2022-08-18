@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/openshift/api v0.0.0-20220124143425-d74727069f6f // release-4.10
 	k8s.io/apimachinery v0.23.5
-	kubevirt.io/containerized-data-importer-api v1.53.0
+	kubevirt.io/containerized-data-importer-api v1.53.1
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	sigs.k8s.io/controller-runtime v0.11.2
 )
