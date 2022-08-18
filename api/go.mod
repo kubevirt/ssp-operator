@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	k8s.io/apimachinery v0.23.5
-	kubevirt.io/containerized-data-importer-api v1.53.0
+	kubevirt.io/containerized-data-importer-api v1.53.1
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	sigs.k8s.io/controller-runtime v0.11.2
 )
