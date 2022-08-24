@@ -80,7 +80,7 @@ func runPrometheusServer(metricsAddr string, tlsOptions common.SSPTLSOptions) er
 	}
 
 	tlsConfig := tls.Config{
-		CipherSuites: tlsOptions.CipherIDs(),
+		CipherSuites: tlsOptions.CipherIDs(&setupLog),
 		MinVersion:   minTlsVersion,
 	}
 
@@ -107,7 +107,7 @@ func getWebhookServer(sspTLSOptions common.SSPTLSOptions) *webhook.Server {
 	}
 
 	tlsCfgFunc := func(cfg *tls.Config) {
-		cfg.CipherSuites = sspTLSOptions.CipherIDs()
+		cfg.CipherSuites = sspTLSOptions.CipherIDs(&setupLog)
 		setupLog.Info("Configured ciphers", "ciphers", cfg.CipherSuites)
 	}
 

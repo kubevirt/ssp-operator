@@ -37,6 +37,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.12.2
 )
 
+require k8s.io/kube-aggregator v0.23.0
+
 require (
 	cloud.google.com/go v0.81.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect

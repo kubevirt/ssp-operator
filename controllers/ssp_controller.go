@@ -153,8 +153,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-
-	r.restartIfNeeded(instance)
+	restartNeeded := r.isRestartNeeded(instance)
 	r.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
@@ -167,6 +166,10 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		VersionCache:   r.subresourceCache,
 		TopologyMode:   r.topologyMode,
 		CrdWatch:       r.crdWatch,
+	}
+
+	if restartNeeded {
+		r.restart(sspRequest)
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -237,14 +240,20 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	return ctrl.Result{}, nil
 }
 
-func (r *sspReconciler) restartIfNeeded(sspObj *ssp.SSP) {
+func (r *sspReconciler) isRestartNeeded(sspObj *ssp.SSP) bool {
 	if reflect.DeepEqual(r.lastSspSpec, ssp.SSPSpec{}) {
-		return
+		return false
 	}
 	if !reflect.DeepEqual(r.lastSspSpec.TLSSecurityProfile, sspObj.Spec.TLSSecurityProfile) {
-		r.log.Info("TLSSecurityProfile changed, restarting")
-		os.Exit(0)
+		return true
 	}
+	return false
+}
+
+func (r *sspReconciler) restart(request *common.Request) {
+	r.log.Info("TLSSecurityProfile changed, restarting")
+	setSspResourceDeploying(request)
+	os.Exit(0)
 }
 
 func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
@@ -305,15 +314,19 @@ func updateSsp(request *common.Request) (bool, error) {
 	return err == nil, err
 }
 
+func setSspResourceDeploying(request *common.Request) error {
+	request.Instance.Status.Phase = lifecycleapi.PhaseDeploying
+	request.Instance.Status.ObservedGeneration = request.Instance.Generation
+	return request.Client.Status().Update(request.Context, request.Instance)
+}
+
 func updateSspResource(request *common.Request) error {
 	err := request.Client.Update(request.Context, request.Instance)
 	if err != nil {
 		return err
 	}
 
-	request.Instance.Status.Phase = lifecycleapi.PhaseDeploying
-	request.Instance.Status.ObservedGeneration = request.Instance.Generation
-	return request.Client.Status().Update(request.Context, request.Instance)
+	return setSspResourceDeploying(request)
 }
 
 func (r *sspReconciler) cleanup(request *common.Request) error {
