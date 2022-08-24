@@ -56,12 +56,22 @@ func NewSSPTLSOptions(tlsSecurityProfile *ocpv1.TLSSecurityProfile, logger *logr
 	}, nil
 }
 
-func (s *SSPTLSOptions) CipherIDs() (cipherSuites []uint16) {
+func GetKnownCipherId(IANACipherName string) (uint16, bool) {
+	for _, knownCipher := range tls.CipherSuites() {
+		if knownCipher.Name == IANACipherName {
+			return knownCipher.ID, true
+		}
+	}
+	return 0, false
+}
+
+func (s *SSPTLSOptions) CipherIDs(logger *logr.Logger) (cipherSuites []uint16) {
 	for _, cipherName := range crypto.OpenSSLToIANACipherSuites(s.OpenSSLCipherNames) {
-		for _, knownCipher := range tls.CipherSuites() {
-			if knownCipher.Name == cipherName {
-				cipherSuites = append(cipherSuites, knownCipher.ID)
-				continue
+		if id, ok := GetKnownCipherId(cipherName); ok {
+			cipherSuites = append(cipherSuites, id)
+		} else {
+			if logger != nil {
+				logger.WithName("TLSSecurityProfile").Info("Unsupported cipher name: ", "Cipher Name", cipherName)
 			}
 		}
 	}
@@ -69,24 +79,20 @@ func (s *SSPTLSOptions) CipherIDs() (cipherSuites []uint16) {
 }
 
 func GetSspTlsOptions(ctx context.Context) (*SSPTLSOptions, error) {
-	setupLog := ctrl.Log.WithName("setup")
+	setupLog := ctrl.Log.WithName("setup tls options")
 	restConfig := ctrl.GetConfigOrDie()
 	apiReader, err := client.New(restConfig, client.Options{Scheme: Scheme})
 	if err != nil {
 		return nil, err
 	}
 
-	namespace, err := GetOperatorNamespace(setupLog)
-	if err != nil {
-		return nil, err
-	}
-
 	var sspList v1beta1.SSPList
-	if err := apiReader.List(ctx, &sspList, &client.ListOptions{Namespace: namespace}); err != nil {
+	if err := apiReader.List(ctx, &sspList, &client.ListOptions{}); err != nil {
 		return nil, err
 	}
 
 	if len(sspList.Items) == 0 {
+		setupLog.Info("SSP CR not found, will use default tlsProfile")
 		return &SSPTLSOptions{}, nil
 	}
 
