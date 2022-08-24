@@ -35,7 +35,9 @@ require (
 	kubevirt.io/qe-tools v0.1.7
 	kubevirt.io/ssp-operator/api v0.0.0
 	sigs.k8s.io/controller-runtime v0.12.2
+	k8s.io/kube-aggregator v0.23.0
 )
+
 
 require (
 	cloud.google.com/go v0.81.0 // indirect

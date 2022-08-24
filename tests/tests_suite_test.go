@@ -27,6 +27,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+
 	"k8s.io/utils/pointer"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
@@ -387,7 +389,7 @@ func setupApiClient() {
 	Expect(templatev1.Install(testScheme)).ToNot(HaveOccurred())
 	Expect(secv1.Install(testScheme)).ToNot(HaveOccurred())
 	Expect(cdiv1beta1.AddToScheme(testScheme)).ToNot(HaveOccurred())
-
+	Expect(apiregv1.AddToScheme(testScheme)).NotTo(HaveOccurred())
 	Expect(clientgoscheme.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1")).ToNot(HaveOccurred())
 	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
