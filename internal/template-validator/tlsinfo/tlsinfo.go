@@ -7,18 +7,23 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"kubevirt.io/client-go/log"
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
-	CertFilename  = "tls.crt"
-	KeyFilename   = "tls.key"
-	retryInterval = 1 * time.Minute
+	CertFilename         = "tls.crt"
+	KeyFilename          = "tls.key"
+	retryInterval        = 1 * time.Minute
+	CiphersEnvName       = "TLS_CIPHERS"
+	TLSMinVersionEnvName = "TLS_MIN_VERSION"
 )
 
 type TLSInfo struct {
@@ -26,6 +31,7 @@ type TLSInfo struct {
 	cert           *tls.Certificate
 	certLock       sync.Mutex
 	stopCertReload chan struct{}
+	sspTLSOptions  common.SSPTLSOptions
 }
 
 func (ti *TLSInfo) IsEnabled() bool {
@@ -33,6 +39,17 @@ func (ti *TLSInfo) IsEnabled() bool {
 }
 
 func (ti *TLSInfo) Init() {
+	ti.InitCerts()
+	ti.InitCryptoConfig()
+}
+
+func (ti *TLSInfo) InitCryptoConfig() {
+	nonSplitCiphers, _ := os.LookupEnv(CiphersEnvName)
+	ti.sspTLSOptions.OpenSSLCipherNames = strings.Split(nonSplitCiphers, ",")
+	ti.sspTLSOptions.MinTLSVersion, _ = os.LookupEnv(TLSMinVersionEnvName)
+}
+
+func (ti *TLSInfo) InitCerts() {
 	if !ti.IsEnabled() {
 		return
 	}
@@ -161,8 +178,8 @@ func (ti *TLSInfo) getCertificate() *tls.Certificate {
 	return ti.cert
 }
 
-func (ti *TLSInfo) CrateTlsConfig() *tls.Config {
-	return &tls.Config{
+func (ti *TLSInfo) CreateTlsConfig() *tls.Config {
+	tlsConfig := &tls.Config{
 		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			cert := ti.getCertificate()
 			if cert == nil {
@@ -171,4 +188,15 @@ func (ti *TLSInfo) CrateTlsConfig() *tls.Config {
 			return cert, nil
 		},
 	}
+
+	if !ti.sspTLSOptions.IsEmpty() {
+		tlsConfig.CipherSuites = ti.sspTLSOptions.CipherIDs()
+		minVersion, err := ti.sspTLSOptions.MinTLSVersionId()
+		if err != nil {
+			panic(fmt.Sprintf("TLS Configuration broken, min version misconfigured %v", err))
+		}
+		tlsConfig.MinVersion = minVersion
+	}
+
+	return tlsConfig
 }

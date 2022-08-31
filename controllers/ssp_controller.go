@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 
@@ -143,6 +144,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		return ctrl.Result{}, err
 	}
 
+	r.restartIfNeeded(instance)
 	r.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
@@ -217,6 +219,16 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *sspReconciler) restartIfNeeded(sspObj *ssp.SSP) {
+	if reflect.DeepEqual(r.lastSspSpec, ssp.SSPSpec{}) {
+		return
+	}
+	if !reflect.DeepEqual(r.lastSspSpec.TLSSecurityProfile, sspObj.Spec.TLSSecurityProfile) {
+		r.log.Info("TLSSecurityProfile changed, restarting")
+		os.Exit(0)
+	}
 }
 
 func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {

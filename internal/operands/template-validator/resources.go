@@ -2,6 +2,7 @@ package template_validator
 
 import (
 	"fmt"
+	"strings"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	admission "k8s.io/api/admissionregistration/v1"
@@ -18,6 +19,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	metrics "kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
 	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
 
@@ -142,7 +144,7 @@ func newPodAntiAffinity(key, topologyKey string, operator metav1.LabelSelectorOp
 	}
 }
 
-func newDeployment(namespace string, replicas int32, image string) *apps.Deployment {
+func newDeployment(namespace string, replicas int32, image string, sspTLSOptions *common.SSPTLSOptions) *apps.Deployment {
 	const volumeName = "tls"
 	const certMountPath = "/etc/webhook/certs"
 	trueVal := true
@@ -152,7 +154,6 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	podLabels[PrometheusLabel] = "true"
 	podLabels["name"] = DeploymentName
 	podAntiAffinity := newPodAntiAffinity(KubevirtIo, kubernetesHostnameTopologyKey, metav1.LabelSelectorOpIn, []string{VirtTemplateValidator})
-
 	return &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DeploymentName,
@@ -194,6 +195,16 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							"-v=2",
 							fmt.Sprintf("--port=%d", ContainerPort),
 							fmt.Sprintf("--cert-dir=%s", certMountPath),
+						},
+						Env: []core.EnvVar{
+							{
+								Name:  tlsinfo.CiphersEnvName,
+								Value: strings.Join(sspTLSOptions.OpenSSLCipherNames, ","),
+							},
+							{
+								Name:  tlsinfo.TLSMinVersionEnvName,
+								Value: sspTLSOptions.MinTLSVersion,
+							},
 						},
 						VolumeMounts: []core.VolumeMount{{
 							Name:      volumeName,
