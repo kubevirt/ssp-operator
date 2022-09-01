@@ -64,7 +64,7 @@ var RecordRulesDescList = []RecordRulesDesc{
 		Type:        "Counter",
 	},
 	{
-		Name:        "kubevirt_ssp_total_restored_common_templates",
+		Name:        "kubevirt_ssp_common_templates_restored_total",
 		Expr:        intstr.FromString(Total_restored_common_templates_increase_query + " OR on() vector(0)"),
 		Description: "The total number of common templates restored by the operator back to their original state",
 		Type:        "Counter",
@@ -134,7 +134,7 @@ var alertRulesList = []promv1.Rule{
 	},
 	{
 		Alert: "SSPCommonTemplatesModificationReverted",
-		Expr:  intstr.FromString("kubevirt_ssp_total_restored_common_templates > 0"),
+		Expr:  intstr.FromString("kubevirt_ssp_common_templates_restored_total > 0"),
 		For:   "0m",
 		Annotations: map[string]string{
 			"summary":     "Common Templates manual modifications were reverted by the operator",
