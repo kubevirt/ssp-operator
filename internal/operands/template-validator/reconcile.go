@@ -155,7 +155,13 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 	if request.IsSingleReplicaTopologyMode() && (numberOfReplicas > 1) {
 		numberOfReplicas = 1
 	}
-	deployment := newDeployment(request.Namespace, numberOfReplicas, image)
+
+	sspTLSOptions, err := common.NewSSPTLSOptions(request.Instance.Spec.TLSSecurityProfile, nil)
+	if err != nil {
+		return common.ReconcileResult{}, err
+	}
+
+	deployment := newDeployment(request.Namespace, numberOfReplicas, image, sspTLSOptions)
 	injectPlacementMetadata(&deployment.Spec.Template.Spec, &validatorSpec)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(deployment).

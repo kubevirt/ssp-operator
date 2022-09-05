@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
@@ -33,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -60,18 +62,32 @@ const (
 	// Default cert file names operator-sdk expects to have
 	sdkTLSCrt = "tls.crt"
 	sdkTLSKey = "tls.key"
+
+	webhookPort = 9443
 )
 
-func runPrometheusServer(metricsAddr string) {
+func runPrometheusServer(metricsAddr string, tlsOptions common.SSPTLSOptions) error {
 	setupLog.Info("Starting Prometheus metrics endpoint server with TLS")
 	metrics.Registry.MustRegister(common_templates.CommonTemplatesRestored)
 	metrics.Registry.MustRegister(common.SSPOperatorReconcilingProperly)
 	handler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{})
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)
+
+	minTlsVersion, err := tlsOptions.MinTLSVersionId()
+	if err != nil {
+		return err
+	}
+
+	tlsConfig := tls.Config{
+		CipherSuites: tlsOptions.CipherIDs(),
+		MinVersion:   minTlsVersion,
+	}
+
 	server := http.Server{
-		Addr:    metricsAddr,
-		Handler: mux,
+		Addr:      metricsAddr,
+		Handler:   mux,
+		TLSConfig: &tlsConfig,
 	}
 
 	go func() {
@@ -80,6 +96,23 @@ func runPrometheusServer(metricsAddr string) {
 			setupLog.Error(err, "Failed to start Prometheus metrics endpoint server")
 		}
 	}()
+	return nil
+}
+
+func getWebhookServer(sspTLSOptions common.SSPTLSOptions) *webhook.Server {
+	// If TLSSecurityProfile is empty, we want to return nil so that the default
+	// webhook server configuration is used.
+	if sspTLSOptions.IsEmpty() {
+		return nil
+	}
+
+	tlsCfgFunc := func(cfg *tls.Config) {
+		cfg.CipherSuites = sspTLSOptions.CipherIDs()
+		setupLog.Info("Configured ciphers", "ciphers", cfg.CipherSuites)
+	}
+
+	funcs := []func(*tls.Config){tlsCfgFunc}
+	return &webhook.Server{Port: webhookPort, TLSMinVersion: sspTLSOptions.MinTLSVersion, TLSOpts: funcs}
 }
 
 func main() {
@@ -103,16 +136,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	runPrometheusServer(metricsAddr)
+	tlsOptions, err := common.GetSspTlsOptions()
+	if err != nil {
+		setupLog.Error(err, "Error while getting tls profile")
+		os.Exit(1)
+	}
+
+	err = runPrometheusServer(metricsAddr, *tlsOptions)
+	if err != nil {
+		setupLog.Error(err, "unable to start prometheus server")
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 common.Scheme,
 		MetricsBindAddress:     "0",
 		HealthProbeBindAddress: probeAddr,
-		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       leaderElectionID,
+		// If WebhookServer is set to nil, a default one will be created.
+		WebhookServer: getWebhookServer(*tlsOptions),
 	})
+
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

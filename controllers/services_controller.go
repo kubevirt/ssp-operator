@@ -3,8 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"strings"
 
 	"github.com/go-logr/logr"
 	apps "k8s.io/api/apps/v1"
@@ -119,7 +117,7 @@ func getOperatorDeployment(namespace string, apiReader client.Reader) (*apps.Dep
 
 func newServiceReconciler(mgr ctrl.Manager) (*serviceReconciler, error) {
 	logger := ctrl.Log.WithName("controllers").WithName("Resources")
-	namespace, err := getOperatorNamespace(logger)
+	namespace, err := common.GetOperatorNamespace(logger)
 	if err != nil {
 		return nil, fmt.Errorf("in newServiceReconciler: %w", err)
 	}
@@ -137,16 +135,6 @@ func newServiceReconciler(mgr ctrl.Manager) (*serviceReconciler, error) {
 	}
 
 	return reconciler, nil
-}
-
-func getOperatorNamespace(logger logr.Logger) (string, error) {
-	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	if err != nil {
-		return "", fmt.Errorf("in getOperatorNamespace failed in call to downward API: %w", err)
-	}
-	ns := strings.TrimSpace(string(nsBytes))
-	logger.Info("Found namespace", "Namespace", ns)
-	return ns, nil
 }
 
 func (r *serviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
