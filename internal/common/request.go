@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 )
 
 type Request struct {
@@ -20,6 +21,8 @@ type Request struct {
 	Logger         logr.Logger
 	VersionCache   VersionCache
 	TopologyMode   osconfv1.TopologyMode
+
+	CrdWatch *crd_watch.CrdWatch
 }
 
 func (r *Request) IsSingleReplicaTopologyMode() bool {

@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-
 	"kubevirt.io/ssp-operator/internal/common"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
@@ -18,6 +17,9 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
+
+// Need to watch CRDs
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
 
 func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager) error {
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
@@ -39,19 +41,36 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 		requiredCrds = append(requiredCrds, sspOperands[i].RequiredCrds()...)
 	}
 
-	// Check if all needed CRDs exist
-	crdList := &extv1.CustomResourceDefinitionList{}
-	err = mgr.GetAPIReader().List(ctx, crdList)
+	mgrCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	crdWatch := crd_watch.New(requiredCrds...)
+	// Cleanly stops the manager and exit. The pod will be restarted.
+	crdWatch.AllCrdsAddedHandler = cancel
+	crdWatch.SomeCrdRemovedHandler = cancel
+
+	err = crdWatch.Init(mgrCtx, mgr.GetAPIReader())
 	if err != nil {
-		return fmt.Errorf("failed to list CRDs: %w", err)
+		return err
 	}
 
-	infrastructureTopology, err := common.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
+	if missingCrds := crdWatch.MissingCrds(); len(missingCrds) > 0 {
+		mgr.GetLogger().Error(nil, "Some required crds are missing. The operator will not create any new resources.",
+			"missingCrds", missingCrds,
+		)
+	}
+
+	err = mgr.Add(crdWatch)
+	if err != nil {
+		return err
+	}
+
+	infrastructureTopology, err := common.GetInfrastructureTopology(mgrCtx, mgr.GetAPIReader())
 	if err != nil {
 		return fmt.Errorf("failed to get infrastructure topology: %w", err)
 	}
 
-	serviceController, err := CreateServiceController(ctx, mgr)
+	serviceController, err := CreateServiceController(mgrCtx, mgr)
 	if err != nil {
 		return fmt.Errorf("failed to create service controller: %w", err)
 	}
@@ -70,62 +89,17 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 		return fmt.Errorf("error adding service controller: %w", err)
 	}
 
-	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands)
+	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
 
-	if requiredCrdsExist(requiredCrds, crdList.Items) {
-		// No need to start CRD controller
-		err := reconciler.setupController(mgr)
-		if err != nil {
-			return fmt.Errorf("error setting up SSP controller: %w", err)
-		}
-
-	} else {
-		mgr.GetLogger().Info("Required CRDs do not exist. Waiting until they are installed.",
-			"required_crds", requiredCrds,
-		)
-
-		crdController, err := CreateCrdController(mgr, requiredCrds)
-		if err != nil {
-			return fmt.Errorf("failed to create crd controller: %w", err)
-		}
-
-		err = mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-			// First start the CRD controller
-			err := crdController.Start(ctx)
-			if err != nil {
-				return fmt.Errorf("error from crd controller: %w", err)
-			}
-
-			mgr.GetLogger().Info("Required CRDs were installed, starting SSP operator.")
-
-			// Clear variable, so it can be garbage collected
-			crdController = nil
-
-			// After it is finished, add the SSP controller to the manager
-			return reconciler.setupController(mgr)
-		}))
-		if err != nil {
-			return err
-		}
+	err = reconciler.setupController(mgr)
+	if err != nil {
+		return err
 	}
 
 	mgr.GetLogger().Info("starting manager")
-	if err := mgr.Start(ctx); err != nil {
+	if err := mgr.Start(mgrCtx); err != nil {
 		mgr.GetLogger().Error(err, "problem running manager")
 		return err
 	}
 	return nil
-}
-
-func requiredCrdsExist(required []string, foundCrds []extv1.CustomResourceDefinition) bool {
-OuterLoop:
-	for i := range required {
-		for j := range foundCrds {
-			if required[i] == foundCrds[j].Name {
-				continue OuterLoop
-			}
-		}
-		return false
-	}
-	return true
 }
