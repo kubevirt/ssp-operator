@@ -35,6 +35,12 @@ const (
 	operandComponent = common.AppComponentTemplating
 )
 
+const (
+	dataVolumeCrd     = "datavolumes.cdi.kubevirt.io"
+	dataSourceCrd     = "datasources.cdi.kubevirt.io"
+	dataImportCronCrd = "dataimportcrons.cdi.kubevirt.io"
+)
+
 func init() {
 	utilruntime.Must(cdiv1beta1.AddToScheme(common.Scheme))
 }
@@ -46,8 +52,8 @@ func WatchClusterTypes() []operands.WatchType {
 		{Object: &rbac.RoleBinding{}},
 		{Object: &core.Namespace{}},
 		// Need to watch status of DataSource to notice if referenced PVC was deleted.
-		{Object: &cdiv1beta1.DataSource{}, WatchFullObject: true},
-		{Object: &cdiv1beta1.DataImportCron{}},
+		{Object: &cdiv1beta1.DataSource{}, Crd: dataSourceCrd, WatchFullObject: true},
+		{Object: &cdiv1beta1.DataImportCron{}, Crd: dataImportCronCrd},
 	}
 }
 
@@ -77,9 +83,9 @@ func (d *dataSources) WatchClusterTypes() []operands.WatchType {
 
 func (d *dataSources) RequiredCrds() []string {
 	return []string{
-		"datavolumes.cdi.kubevirt.io",
-		"datasources.cdi.kubevirt.io",
-		"dataimportcrons.cdi.kubevirt.io",
+		dataVolumeCrd,
+		dataSourceCrd,
+		dataImportCronCrd,
 	}
 }
 
@@ -135,34 +141,38 @@ func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResu
 }
 
 func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	ownedCrons, err := listAllOwnedDataImportCrons(request)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []common.CleanupResult
-	allDataImportCronsDeleted := true
-	for i := range ownedCrons {
-		result, err := common.Cleanup(request, &ownedCrons[i])
+	if request.CrdWatch.CrdExists(dataImportCronCrd) {
+		ownedCrons, err := listAllOwnedDataImportCrons(request)
 		if err != nil {
 			return nil, err
 		}
-		results = append(results, result)
-		if !result.Deleted {
-			allDataImportCronsDeleted = false
+
+		var results []common.CleanupResult
+		allDataImportCronsDeleted := true
+		for i := range ownedCrons {
+			result, err := common.Cleanup(request, &ownedCrons[i])
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, result)
+			if !result.Deleted {
+				allDataImportCronsDeleted = false
+			}
+		}
+
+		// The rest of the objects will be deleted when all DataImportCrons are deleted.
+		if !allDataImportCronsDeleted {
+			return results, nil
 		}
 	}
 
-	// The rest of the objects will be deleted when all DataImportCrons are deleted.
-	if !allDataImportCronsDeleted {
-		return results, nil
-	}
-
 	var objects []client.Object
-	for i := range d.sources {
-		ds := d.sources[i]
-		ds.Namespace = internal.GoldenImagesNamespace
-		objects = append(objects, &ds)
+	if request.CrdWatch.CrdExists(dataSourceCrd) {
+		for i := range d.sources {
+			ds := d.sources[i]
+			ds.Namespace = internal.GoldenImagesNamespace
+			objects = append(objects, &ds)
+		}
 	}
 
 	objects = append(objects,

@@ -22,8 +22,10 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
+	osconfv1 "github.com/openshift/api/config/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
@@ -43,11 +45,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	osconfv1 "github.com/openshift/api/config/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	handler_hook "kubevirt.io/ssp-operator/internal/controller/handler-hook"
 	"kubevirt.io/ssp-operator/internal/controller/predicates"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
 
@@ -75,9 +77,11 @@ type sspReconciler struct {
 	lastSspSpec      ssp.SSPSpec
 	subresourceCache common.VersionCache
 	topologyMode     osconfv1.TopologyMode
+	crdWatch         *crd_watch.CrdWatch
+	areCrdsMissing   bool
 }
 
-func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand) *sspReconciler {
+func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, crdWatch *crd_watch.CrdWatch) *sspReconciler {
 	return &sspReconciler{
 		client:           client,
 		uncachedReader:   uncachedReader,
@@ -85,6 +89,7 @@ func NewSspReconciler(client client.Client, uncachedReader client.Reader, infras
 		operands:         operands,
 		subresourceCache: common.VersionCache{},
 		topologyMode:     infrastructureTopology,
+		crdWatch:         crdWatch,
 	}
 }
 
@@ -111,8 +116,13 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 
 	builder := ctrl.NewControllerManagedBy(mgr)
 	watchSspResource(builder)
-	watchClusterResources(builder, r.operands, eventHandlerHook)
-	watchNamespacedResources(builder, r.operands, eventHandlerHook)
+
+	r.areCrdsMissing = len(r.crdWatch.MissingCrds()) > 0
+
+	// Register watches for created objects only if all required CRDs exist
+	watchClusterResources(builder, r.crdWatch, r.operands, eventHandlerHook)
+	watchNamespacedResources(builder, r.crdWatch, r.operands, eventHandlerHook)
+
 	return builder.Complete(r)
 }
 
@@ -156,6 +166,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		Logger:         reqLogger,
 		VersionCache:   r.subresourceCache,
 		TopologyMode:   r.topologyMode,
+		CrdWatch:       r.crdWatch,
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -187,6 +198,11 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		instance.Status.Paused = true
 		instance.Status.ObservedGeneration = instance.Generation
 		err := r.client.Status().Update(ctx, instance)
+		return ctrl.Result{}, err
+	}
+
+	if r.areCrdsMissing {
+		err := updateStatusMissingCrds(sspRequest, r.crdWatch.MissingCrds())
 		return ctrl.Result{}, err
 	}
 
@@ -592,6 +608,34 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 	return request.Client.Status().Update(request.Context, request.Instance)
 }
 
+func updateStatusMissingCrds(request *common.Request, missingCrds []string) error {
+	sspStatus := &request.Instance.Status
+
+	message := fmt.Sprintf("Requred CRDs are missing: %s", strings.Join(missingCrds, ", "))
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionAvailable,
+		Status:  v1.ConditionFalse,
+		Reason:  "Available",
+		Message: message,
+	})
+
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionProgressing,
+		Status:  v1.ConditionTrue,
+		Reason:  "Progressing",
+		Message: message,
+	})
+
+	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
+		Type:    conditionsv1.ConditionDegraded,
+		Status:  v1.ConditionTrue,
+		Reason:  "Degraded",
+		Message: message,
+	})
+
+	return request.Client.Status().Update(request.Context, request.Instance)
+}
+
 func prefixResourceTypeAndName(message string, resource client.Object) string {
 	return fmt.Sprintf("%s %s/%s: %s",
 		resource.GetObjectKind().GroupVersionKind().Kind,
@@ -663,8 +707,9 @@ func watchSspResource(bldr *ctrl.Builder) {
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
-func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
+func watchNamespacedResources(builder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
+		crdWatch,
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &ssp.SSP{},
@@ -675,8 +720,9 @@ func watchNamespacedResources(builder *ctrl.Builder, sspOperands []operands.Oper
 	)
 }
 
-func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
+func watchClusterResources(builder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
+		crdWatch,
 		&libhandler.EnqueueRequestForAnnotation{
 			Type: schema.GroupKind{
 				Group: ssp.GroupVersion.Group,
@@ -689,7 +735,7 @@ func watchClusterResources(builder *ctrl.Builder, sspOperands []operands.Operand
 	)
 }
 
-func watchResources(ctrlBuilder *ctrl.Builder, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []operands.WatchType, hookFunc handler_hook.HookFunc) {
+func watchResources(ctrlBuilder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []operands.WatchType, hookFunc handler_hook.HookFunc) {
 	// Deduplicate watches
 	watchedTypes := make(map[reflect.Type]operands.WatchType)
 	for _, operand := range sspOperands {
@@ -705,6 +751,11 @@ func watchResources(ctrlBuilder *ctrl.Builder, handler handler.EventHandler, ssp
 	}
 
 	for _, watchType := range watchedTypes {
+		if watchType.Crd != "" && !crdWatch.CrdExists(watchType.Crd) {
+			// Do not watch resources without CRD
+			continue
+		}
+
 		var predicates []predicate.Predicate
 		if !watchType.WatchFullObject {
 			predicates = []predicate.Predicate{relevantChangesPredicate()}
