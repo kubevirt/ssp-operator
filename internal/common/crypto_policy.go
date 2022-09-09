@@ -68,7 +68,7 @@ func (s *SSPTLSOptions) CipherIDs() (cipherSuites []uint16) {
 	return
 }
 
-func GetSspTlsOptions() (*SSPTLSOptions, error) {
+func GetSspTlsOptions(ctx context.Context) (*SSPTLSOptions, error) {
 	setupLog := ctrl.Log.WithName("setup")
 	restConfig := ctrl.GetConfigOrDie()
 	apiReader, err := client.New(restConfig, client.Options{Scheme: Scheme})
@@ -82,7 +82,7 @@ func GetSspTlsOptions() (*SSPTLSOptions, error) {
 	}
 
 	var sspList v1beta1.SSPList
-	if err := apiReader.List(context.TODO(), &sspList, &client.ListOptions{Namespace: namespace}); err != nil {
+	if err := apiReader.List(ctx, &sspList, &client.ListOptions{Namespace: namespace}); err != nil {
 		return nil, err
 	}
 
