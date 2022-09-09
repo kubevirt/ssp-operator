@@ -33,9 +33,9 @@ func GetOperatorVersion() string {
 	return EnvOrDefault(OperatorVersionKey, defaultOperatorVersion)
 }
 
-func GetInfrastructureTopology(c client.Reader) (osconfv1.TopologyMode, error) {
+func GetInfrastructureTopology(ctx context.Context, c client.Reader) (osconfv1.TopologyMode, error) {
 	infraConfig := &osconfv1.Infrastructure{}
-	if err := c.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, infraConfig); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: "cluster"}, infraConfig); err != nil {
 		return "", err
 	}
 
