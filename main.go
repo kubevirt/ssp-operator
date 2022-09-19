@@ -165,10 +165,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = controllers.CreateAndSetupReconciler(ctx, mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "SSP")
-		os.Exit(1)
-	}
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = webhooks.Setup(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "SSP")
@@ -185,10 +181,8 @@ func main() {
 	}
 
 	// +kubebuilder:scaffold:builder
-
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctx); err != nil {
-		setupLog.Error(err, "problem running manager")
+	if err = controllers.CreateAndStartReconciler(ctx, mgr); err != nil {
+		setupLog.Error(err, "unable to create or start controller", "controller", "SSP")
 		os.Exit(1)
 	}
 }

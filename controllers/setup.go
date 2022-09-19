@@ -19,11 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-func CreateAndSetupReconciler(ctx context.Context, mgr controllerruntime.Manager) error {
+func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager) error {
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
 	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read template bundle: %w", err)
 	}
 
 	sspOperands := []operands.Operand{
@@ -43,23 +43,23 @@ func CreateAndSetupReconciler(ctx context.Context, mgr controllerruntime.Manager
 	crdList := &extv1.CustomResourceDefinitionList{}
 	err = mgr.GetAPIReader().List(ctx, crdList)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to list CRDs: %w", err)
 	}
 
 	infrastructureTopology, err := common.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get infrastructure topology: %w", err)
 	}
 
 	serviceController, err := CreateServiceController(ctx, mgr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create service controller: %w", err)
 	}
 
 	err = mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 		err := serviceController.Start(ctx, mgr)
 		if err != nil {
-			return fmt.Errorf("error adding serviceController: %w", err)
+			return fmt.Errorf("error starting serviceController: %w", err)
 		}
 
 		mgr.GetLogger().Info("Services Controller started")
@@ -67,40 +67,54 @@ func CreateAndSetupReconciler(ctx context.Context, mgr controllerruntime.Manager
 		return nil
 	}))
 	if err != nil {
-		return err
+		return fmt.Errorf("error adding service controller: %w", err)
 	}
 
 	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands)
 
 	if requiredCrdsExist(requiredCrds, crdList.Items) {
 		// No need to start CRD controller
-		return reconciler.setupController(mgr)
-	}
+		err := reconciler.setupController(mgr)
+		if err != nil {
+			return fmt.Errorf("error setting up SSP controller: %w", err)
+		}
 
-	mgr.GetLogger().Info("Required CRDs do not exist. Waiting until they are installed.",
-		"required_crds", requiredCrds,
-	)
+	} else {
+		mgr.GetLogger().Info("Required CRDs do not exist. Waiting until they are installed.",
+			"required_crds", requiredCrds,
+		)
 
-	crdController, err := CreateCrdController(mgr, requiredCrds)
-	if err != nil {
-		return err
-	}
+		crdController, err := CreateCrdController(mgr, requiredCrds)
+		if err != nil {
+			return fmt.Errorf("failed to create crd controller: %w", err)
+		}
 
-	return mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-		// First start the CRD controller
-		err := crdController.Start(ctx)
+		err = mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+			// First start the CRD controller
+			err := crdController.Start(ctx)
+			if err != nil {
+				return fmt.Errorf("error from crd controller: %w", err)
+			}
+
+			mgr.GetLogger().Info("Required CRDs were installed, starting SSP operator.")
+
+			// Clear variable, so it can be garbage collected
+			crdController = nil
+
+			// After it is finished, add the SSP controller to the manager
+			return reconciler.setupController(mgr)
+		}))
 		if err != nil {
 			return err
 		}
+	}
 
-		mgr.GetLogger().Info("Required CRDs were installed, starting SSP operator.")
-
-		// Clear variable, so it can be garbage collected
-		crdController = nil
-
-		// After it is finished, add the SSP controller to the manager
-		return reconciler.setupController(mgr)
-	}))
+	mgr.GetLogger().Info("starting manager")
+	if err := mgr.Start(ctx); err != nil {
+		mgr.GetLogger().Error(err, "problem running manager")
+		return err
+	}
+	return nil
 }
 
 func requiredCrdsExist(required []string, foundCrds []extv1.CustomResourceDefinition) bool {
