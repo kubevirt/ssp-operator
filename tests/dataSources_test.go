@@ -737,6 +737,8 @@ var _ = Describe("DataSources", func() {
 			pullMethod        = cdiv1beta1.RegistryPullNode
 			commonAnnotations = map[string]string{
 				"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+				// Remove this annotation once CDI handles DataImportCron and garbage collection properly
+				"cdi.kubevirt.io/storage.deleteAfterCompletion": "false",
 			}
 
 			cronTemplate   ssp.DataImportCronTemplate
