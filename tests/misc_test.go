@@ -11,6 +11,7 @@ import (
 	"github.com/onsi/ginkgo/extensions/table"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -241,6 +242,7 @@ var _ = Describe("RHEL VM creation", func() {
 	})
 
 	table.DescribeTable("should be able to start VM", func(imageUrl string) {
+		const annPodPhase = "cdi.kubevirt.io/storage.pod.phase"
 		const diskName = "disk0"
 		const sshPort = 22
 
@@ -331,12 +333,19 @@ var _ = Describe("RHEL VM creation", func() {
 
 		// Wait for DataVolume to finish importing
 		dvName := vm.Spec.DataVolumeTemplates[0].Name
-		Eventually(func(g Gomega) cdiv1beta1.DataVolumePhase {
+		Eventually(func(g Gomega) {
 			foundDv := &cdiv1beta1.DataVolume{}
 			err := apiClient.Get(ctx, client.ObjectKey{Name: dvName, Namespace: vm.Namespace}, foundDv)
+			if err != nil {
+				g.Expect(errors.IsNotFound(err)).To(BeTrue())
+			} else {
+				g.Expect(foundDv.Status.Phase).To(Equal(cdiv1beta1.Succeeded))
+			}
+			foundPvc := &core.PersistentVolumeClaim{}
+			err = apiClient.Get(ctx, client.ObjectKey{Name: dvName, Namespace: vm.Namespace}, foundPvc)
 			g.Expect(err).ToNot(HaveOccurred())
-			return foundDv.Status.Phase
-		}, 2*timeout, time.Second).Should(Equal(cdiv1beta1.Succeeded))
+			g.Expect(foundPvc.Annotations[annPodPhase]).To(Equal(string(core.PodSucceeded)))
+		}, 2*timeout, time.Second).Should(Succeed())
 
 		// Wait for VMI to be ready
 		Eventually(func(g Gomega) bool {
