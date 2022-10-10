@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	"kubevirt.io/ssp-operator/internal/common"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gomodules.xyz/jsonpatch/v2"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 func expectedLabelsFor(name string, component common.AppComponent) map[string]string {
@@ -74,7 +75,7 @@ func waitForLabelMatch(resource client.Object, key client.ObjectKey, expectedLab
 			return false, nil
 		}
 		return true, nil
-	}, shortTimeout).Should(BeTrue(), func() string {
+	}, env.ShortTimeout()).Should(BeTrue(), func() string {
 		return lastResult.String()
 	})
 }

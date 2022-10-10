@@ -17,6 +17,7 @@ import (
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 func createTestTemplate() testResource {
@@ -181,7 +182,7 @@ var _ = Describe("Common templates", func() {
 						Namespace: newTemplateNamespace,
 					})
 					return len(templates.Items) > 0 && err == nil
-				}, shortTimeout).Should(BeTrue(), "templates should be in new namespace")
+				}, env.ShortTimeout()).Should(BeTrue(), "templates should be in new namespace")
 			})
 		})
 
@@ -282,7 +283,7 @@ var _ = Describe("Common templates", func() {
 				}
 				return len(updatedTpl.GetOwnerReferences()) == 0 &&
 					hasOwnerAnnotations(updatedTpl.GetAnnotations()), nil
-			}, shortTimeout).Should(BeTrue(), "ownerReference was not replaced by owner annotations on the old template")
+			}, env.ShortTimeout()).Should(BeTrue(), "ownerReference was not replaced by owner annotations on the old template")
 		})
 		It("[test_id:5620]should remove labels from old templates", func() {
 			triggerReconciliation()
@@ -299,7 +300,7 @@ var _ = Describe("Common templates", func() {
 					updatedTpl.Labels[testWorkflowLabel] == "" &&
 					updatedTpl.Labels[commonTemplates.TemplateTypeLabel] == commonTemplates.TemplateTypeLabelBaseValue &&
 					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest", nil
-			}, shortTimeout).Should(BeTrue(), "labels were not removed from older templates")
+			}, env.ShortTimeout()).Should(BeTrue(), "labels were not removed from older templates")
 		})
 		It("[test_id:5969] should add deprecated annotation to old templates", func() {
 			triggerReconciliation()
@@ -312,7 +313,7 @@ var _ = Describe("Common templates", func() {
 					return false, err
 				}
 				return updatedTpl.Annotations[commonTemplates.TemplateDeprecatedAnnotation] == "true", nil
-			}, shortTimeout).Should(BeTrue(), "deprecated annotation should be added to old template")
+			}, env.ShortTimeout()).Should(BeTrue(), "deprecated annotation should be added to old template")
 		})
 		It("[test_id:5622]should continue to have labels on latest templates", func() {
 			triggerReconciliation()

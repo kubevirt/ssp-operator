@@ -142,6 +142,14 @@ var _ = Describe("Validation webhook", func() {
 						"created SSP CR with invalid template-validator placement fields")
 				})
 			})
+
+			It("[test_id:TODO] should fail when DataImportCronTemplate does not have a name", func() {
+				newSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{{
+					ObjectMeta: metav1.ObjectMeta{Name: ""},
+				}}
+				err := apiClient.Create(ctx, newSsp, client.DryRunAll)
+				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+			})
 		})
 	})
 
@@ -164,7 +172,7 @@ var _ = Describe("Validation webhook", func() {
 					foundSsp = getSsp()
 					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
 					return apiClient.Update(ctx, foundSsp, client.DryRunAll)
-				}, twentySecondTimeout, time.Second).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
+				}, 20*time.Second, time.Second).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
 			})
 
 			It("[test_id:5989]should fail with invalid template-validator placement fields", func() {
@@ -173,8 +181,18 @@ var _ = Describe("Validation webhook", func() {
 					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
 					err := apiClient.Update(ctx, foundSsp, client.DryRunAll)
 					return errors.ReasonForError(err)
-				}, twentySecondTimeout, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
+				}, 20*time.Second, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
 			})
+		})
+
+		It("[test_id:TODO] should fail when DataImportCronTemplate does not have a name", func() {
+			Eventually(func() error {
+				foundSsp = getSsp()
+				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{{
+					ObjectMeta: metav1.ObjectMeta{Name: ""},
+				}}
+				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
 		})
 	})
 })

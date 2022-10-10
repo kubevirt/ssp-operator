@@ -22,6 +22,7 @@ import (
 	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 var _ = Describe("DataSources", func() {
@@ -698,7 +699,7 @@ var _ = Describe("DataSources", func() {
 					ds.GetLabels()[cdiLabel] = "test-value"
 
 					return apiClient.Update(ctx, ds)
-				}, shortTimeout, time.Second).Should(Succeed())
+				}, env.ShortTimeout(), time.Second).Should(Succeed())
 			})
 
 			AfterEach(func() {
@@ -707,7 +708,7 @@ var _ = Describe("DataSources", func() {
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 					delete(ds.GetLabels(), cdiLabel)
 					return apiClient.Update(ctx, ds)
-				}, shortTimeout, time.Second).Should(Succeed())
+				}, env.ShortTimeout(), time.Second).Should(Succeed())
 			})
 
 			It("[test_id:8294] should remove CDI label from DataSource", func() {
@@ -721,7 +722,7 @@ var _ = Describe("DataSources", func() {
 
 					_, labelExists := ds.GetLabels()[cdiLabel]
 					return labelExists, nil
-				}, shortTimeout, time.Second).Should(BeFalse(), "Label '"+cdiLabel+"' should not be on DataSource")
+				}, env.ShortTimeout(), time.Second).Should(BeFalse(), "Label '"+cdiLabel+"' should not be on DataSource")
 			})
 		})
 
@@ -851,7 +852,7 @@ var _ = Describe("DataSources", func() {
 					ds := &cdiv1beta1.DataSource{}
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 					return ds.GetLabels()
-				}, shortTimeout, time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
+				}, env.ShortTimeout(), time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
 
 			Context("restore dataSource", func() {
@@ -865,7 +866,7 @@ var _ = Describe("DataSources", func() {
 						cron := &cdiv1beta1.DataImportCron{}
 						Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
 						return cron.Status.LastImportTimestamp.IsZero()
-					}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
+					}, env.Timeout(), time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
 
 					managedDataSource := &cdiv1beta1.DataSource{}
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), managedDataSource)).To(Succeed())
@@ -888,7 +889,7 @@ var _ = Describe("DataSources", func() {
 					recreatedDataSource := &cdiv1beta1.DataSource{}
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataSource.GetKey(), recreatedDataSource)
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 					Expect(revertedDataSource).To(EqualResource(&dataSource, recreatedDataSource))
 				})
@@ -900,14 +901,14 @@ var _ = Describe("DataSources", func() {
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 					delete(ds.GetLabels(), cdiLabel)
 					return apiClient.Update(ctx, ds)
-				}, shortTimeout, time.Second).Should(Succeed())
+				}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 				// Eventually the label should be added back
 				Eventually(func() map[string]string {
 					ds := &cdiv1beta1.DataSource{}
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 					return ds.GetLabels()
-				}, shortTimeout, time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
+				}, env.ShortTimeout(), time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
 		})
 
@@ -1003,7 +1004,7 @@ var _ = Describe("DataSources", func() {
 					foundDv := &cdiv1beta1.DataVolume{}
 					Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)).To(Succeed())
 					return foundDv.Status.Phase
-				}, timeout, time.Second).Should(Equal(cdiv1beta1.Succeeded), "DataVolume should successfully import.")
+				}, env.Timeout(), time.Second).Should(Equal(cdiv1beta1.Succeeded), "DataVolume should successfully import.")
 
 				Eventually(func() bool {
 					foundDs := &cdiv1beta1.DataSource{}
@@ -1011,7 +1012,7 @@ var _ = Describe("DataSources", func() {
 
 					readyCond := getDataSourceReadyCondition(foundDs)
 					return readyCond != nil && readyCond.Status == core.ConditionTrue
-				}, shortTimeout, time.Second).Should(BeTrue(), "DataSource should have Ready condition true")
+				}, env.ShortTimeout(), time.Second).Should(BeTrue(), "DataSource should have Ready condition true")
 
 				updateSsp(func(foundSsp *ssp.SSP) {
 					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
@@ -1046,7 +1047,7 @@ var _ = Describe("DataSources", func() {
 				// Wait until DataSource is recreated.
 				Eventually(func() error {
 					return apiClient.Get(ctx, dataSource.GetKey(), dataSource.NewResource())
-				}, shortTimeout, time.Second).Should(Succeed())
+				}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 				Expect(err).To(HaveOccurred())
@@ -1063,7 +1064,7 @@ var _ = Describe("DataSources", func() {
 
 				Eventually(func() error {
 					return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
-				}, shortTimeout, time.Second).Should(Succeed())
+				}, env.ShortTimeout(), time.Second).Should(Succeed())
 			})
 
 			Context("with CDI label on DataSource", func() {
@@ -1078,7 +1079,7 @@ var _ = Describe("DataSources", func() {
 						ds.GetLabels()[cdiLabel] = "test-value"
 
 						return apiClient.Update(ctx, ds)
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 				})
 
 				AfterEach(func() {
@@ -1087,19 +1088,19 @@ var _ = Describe("DataSources", func() {
 						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 						delete(ds.GetLabels(), cdiLabel)
 						return apiClient.Update(ctx, ds)
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 				})
 
 				It("[test_id:8116] should create DataImportCron", func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 				})
 
 				It("[test_id:8297] should delete DataImportCron, when CDI label is removed from DataSource", func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 					waitUntilDeployed()
 
@@ -1108,12 +1109,12 @@ var _ = Describe("DataSources", func() {
 						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 						delete(ds.GetLabels(), cdiLabel)
 						return apiClient.Update(ctx, ds)
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 					Eventually(func() metav1.StatusReason {
 						err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 						return errors.ReasonForError(err)
-					}, timeout, time.Second).Should(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
+					}, env.Timeout(), time.Second).Should(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
 				})
 
 				PIt("[QUARANTINE][test_id:8298] should restore DataSource, when CDI label is removed", func() {
@@ -1125,7 +1126,7 @@ var _ = Describe("DataSources", func() {
 							return false, err
 						}
 						return cron.Status.LastImportTimestamp.IsZero(), nil
-					}, timeout, time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
+					}, env.Timeout(), time.Second).Should(BeFalse(), "DataImportCron did not finish importing.")
 
 					// Get DataSource with spec pointing to new PVC
 					autoUpdateDataSource := &cdiv1beta1.DataSource{}
@@ -1137,14 +1138,14 @@ var _ = Describe("DataSources", func() {
 						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
 						delete(ds.GetLabels(), cdiLabel)
 						return apiClient.Update(ctx, ds)
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 					// Wait until DataSource is reverted
 					Eventually(func() client.Object {
 						ds := &cdiv1beta1.DataSource{}
 						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 						return ds
-					}, shortTimeout, time.Second).ShouldNot(EqualResource(&dataSource, autoUpdateDataSource))
+					}, env.ShortTimeout(), time.Second).ShouldNot(EqualResource(&dataSource, autoUpdateDataSource))
 				})
 			})
 
@@ -1180,7 +1181,7 @@ var _ = Describe("DataSources", func() {
 				It("[test_id:8724] should create DataImportCron", func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
-					}, shortTimeout, time.Second).Should(Succeed())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
 				})
 			})
 		})

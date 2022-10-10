@@ -3,6 +3,7 @@ package tests
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"kubevirt.io/ssp-operator/tests/env"
 
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
@@ -32,14 +33,14 @@ var _ = Describe("Single Node Topology", func() {
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
 			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
 			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration && updatedSsp.Status.Phase == api.PhaseDeployed
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		deployment := getTemplateValidatorDeployment()
@@ -59,14 +60,14 @@ var _ = Describe("Single Node Topology", func() {
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
 			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
 			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration && updatedSsp.Status.Phase == api.PhaseDeployed
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 		deployment := getTemplateValidatorDeployment()
 		Expect(int(deployment.Status.Replicas)).Should(Equal(0), "In Single Mode Topology the number of replicas is at most 1")

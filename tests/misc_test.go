@@ -26,6 +26,7 @@ import (
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 var _ = Describe("Observed generation", func() {
@@ -58,14 +59,14 @@ var _ = Describe("Observed generation", func() {
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
 			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
 			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -81,7 +82,7 @@ var _ = Describe("Observed generation", func() {
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
 			return updatedSsp.DeletionTimestamp != nil &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		// SSP operator enters Deleting phase
@@ -89,7 +90,7 @@ var _ = Describe("Observed generation", func() {
 			return updatedSsp.DeletionTimestamp != nil &&
 				updatedSsp.Status.Phase == lifecycleapi.PhaseDeleting &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration
-		}, shortTimeout)
+		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 	})
 })
@@ -132,7 +133,7 @@ func removeFinalizer(deploymentRes testResource, finalizerName string) {
 		// remove the finalizer so everything can go back to normal
 		controllerutil.RemoveFinalizer(deployment, finalizerName)
 		return apiClient.Update(ctx, deployment)
-	}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
+	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
 func addFinalizer(deploymentRes testResource, finalizerName string) {
@@ -144,7 +145,7 @@ func addFinalizer(deploymentRes testResource, finalizerName string) {
 		}
 		controllerutil.AddFinalizer(deployment, finalizerName)
 		return apiClient.Update(ctx, deployment)
-	}, shortTimeout, time.Second).ShouldNot(HaveOccurred())
+	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
 func deleteDeployment(deploymentRes testResource) {
@@ -163,7 +164,7 @@ func validateSspIsFailingToReconcileMetric() {
 	// the reconcile cycle should now be failing, so the ssp_operator_reconciling_properly metric should be 0
 	Eventually(func() int {
 		return sspOperatorReconcilingProperlyCount()
-	}, shortTimeout, time.Second).Should(Equal(0))
+	}, env.ShortTimeout(), time.Second).Should(Equal(0))
 }
 
 var _ = Describe("SCC annotation", func() {
@@ -345,7 +346,7 @@ var _ = Describe("RHEL VM creation", func() {
 			err = apiClient.Get(ctx, client.ObjectKey{Name: dvName, Namespace: vm.Namespace}, foundPvc)
 			g.Expect(err).ToNot(HaveOccurred())
 			g.Expect(foundPvc.Annotations[annPodPhase]).To(Equal(string(core.PodSucceeded)))
-		}, 2*timeout, time.Second).Should(Succeed())
+		}, 2*env.Timeout(), time.Second).Should(Succeed())
 
 		// Wait for VMI to be ready
 		Eventually(func(g Gomega) bool {
@@ -359,7 +360,7 @@ var _ = Describe("RHEL VM creation", func() {
 				}
 			}
 			return false
-		}, timeout, time.Second).Should(BeTrue())
+		}, env.Timeout(), time.Second).Should(BeTrue())
 	},
 		table.Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
 		table.Entry("[test_id:8300] with RHEL 9 image", rhel9Image),

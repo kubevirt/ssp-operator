@@ -11,9 +11,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 func getSspMetricsService() (*v1.Service, error) {
@@ -48,7 +50,7 @@ var _ = Describe("Service Controller", func() {
 				return "", err
 			}
 			return foundService.UID, nil
-		}, shortTimeout, time.Second).ShouldNot(Equal(oldUID), fmt.Sprintf("Did not recreate the %s service", controllers.MetricsServiceName))
+		}, env.ShortTimeout(), time.Second).ShouldNot(Equal(oldUID), fmt.Sprintf("Did not recreate the %s service", controllers.MetricsServiceName))
 	})
 
 	It("[test_id: 8810] Should restore ssp-operator-metrics service after update", func() {
@@ -67,11 +69,11 @@ var _ = Describe("Service Controller", func() {
 
 		Eventually(func() error {
 			return apiClient.Update(ctx, changed)
-		}, shortTimeout, time.Second).Should(Succeed())
+		}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 		Eventually(func() bool {
 			Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(changed), changed)).ToNot(HaveOccurred())
 			return equalService(service, changed)
-		}, shortTimeout, time.Second).Should(BeTrue())
+		}, env.ShortTimeout(), time.Second).Should(BeTrue())
 	})
 })
