@@ -61,8 +61,8 @@ func ServiceObject(namespace string) *v1.Service {
 // Annotation to generate RBAC roles to read and modify services
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;watch;list;create;update;delete
 
-func CreateServiceController(mgr ctrl.Manager) (*serviceReconciler, error) {
-	return newServiceReconciler(mgr)
+func CreateServiceController(ctx context.Context, mgr ctrl.Manager) (*serviceReconciler, error) {
+	return newServiceReconciler(ctx, mgr)
 }
 
 func (r *serviceReconciler) Start(ctx context.Context, mgr ctrl.Manager) error {
@@ -105,24 +105,24 @@ type serviceReconciler struct {
 	deployment       *apps.Deployment
 }
 
-func getOperatorDeployment(namespace string, apiReader client.Reader) (*apps.Deployment, error) {
+func getOperatorDeployment(ctx context.Context, namespace string, apiReader client.Reader) (*apps.Deployment, error) {
 	objKey := client.ObjectKey{Namespace: namespace, Name: OperatorName}
 	var deployment apps.Deployment
-	err := apiReader.Get(context.TODO(), objKey, &deployment)
+	err := apiReader.Get(ctx, objKey, &deployment)
 	if err != nil {
 		return nil, fmt.Errorf("getOperatorDeployment, get deployment: %w", err)
 	}
 	return &deployment, nil
 }
 
-func newServiceReconciler(mgr ctrl.Manager) (*serviceReconciler, error) {
+func newServiceReconciler(ctx context.Context, mgr ctrl.Manager) (*serviceReconciler, error) {
 	logger := ctrl.Log.WithName("controllers").WithName("Resources")
 	namespace, err := common.GetOperatorNamespace(logger)
 	if err != nil {
 		return nil, fmt.Errorf("in newServiceReconciler: %w", err)
 	}
 
-	deployment, err := getOperatorDeployment(namespace, mgr.GetAPIReader())
+	deployment, err := getOperatorDeployment(ctx, namespace, mgr.GetAPIReader())
 	if err != nil {
 		return nil, fmt.Errorf("in newServiceReconciler: %w", err)
 	}

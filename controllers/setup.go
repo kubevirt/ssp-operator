@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-
 	"kubevirt.io/ssp-operator/internal/common"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
@@ -19,11 +18,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
+// Need to watch CRDs
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
+
+func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager) error {
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
 	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read template bundle: %w", err)
 	}
 
 	sspOperands := []operands.Operand{
@@ -39,27 +41,44 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 		requiredCrds = append(requiredCrds, sspOperands[i].RequiredCrds()...)
 	}
 
-	// Check if all needed CRDs exist
-	crdList := &extv1.CustomResourceDefinitionList{}
-	err = mgr.GetAPIReader().List(context.TODO(), crdList)
+	mgrCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	crdWatch := crd_watch.New(requiredCrds...)
+	// Cleanly stops the manager and exit. The pod will be restarted.
+	crdWatch.AllCrdsAddedHandler = cancel
+	crdWatch.SomeCrdRemovedHandler = cancel
+
+	err = crdWatch.Init(mgrCtx, mgr.GetAPIReader())
 	if err != nil {
 		return err
 	}
 
-	infrastructureTopology, err := common.GetInfrastructureTopology(mgr.GetAPIReader())
+	if missingCrds := crdWatch.MissingCrds(); len(missingCrds) > 0 {
+		mgr.GetLogger().Error(nil, "Some required crds are missing. The operator will not create any new resources.",
+			"missingCrds", missingCrds,
+		)
+	}
+
+	err = mgr.Add(crdWatch)
 	if err != nil {
 		return err
 	}
 
-	serviceController, err := CreateServiceController(mgr)
+	infrastructureTopology, err := common.GetInfrastructureTopology(mgrCtx, mgr.GetAPIReader())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get infrastructure topology: %w", err)
+	}
+
+	serviceController, err := CreateServiceController(mgrCtx, mgr)
+	if err != nil {
+		return fmt.Errorf("failed to create service controller: %w", err)
 	}
 
 	err = mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 		err := serviceController.Start(ctx, mgr)
 		if err != nil {
-			return fmt.Errorf("error adding serviceController: %w", err)
+			return fmt.Errorf("error starting serviceController: %w", err)
 		}
 
 		mgr.GetLogger().Info("Services Controller started")
@@ -67,51 +86,20 @@ func CreateAndSetupReconciler(mgr controllerruntime.Manager) error {
 		return nil
 	}))
 	if err != nil {
-		return err
+		return fmt.Errorf("error adding service controller: %w", err)
 	}
 
-	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands)
+	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
 
-	if requiredCrdsExist(requiredCrds, crdList.Items) {
-		// No need to start CRD controller
-		return reconciler.setupController(mgr)
-	}
-
-	mgr.GetLogger().Info("Required CRDs do not exist. Waiting until they are installed.",
-		"required_crds", requiredCrds,
-	)
-
-	crdController, err := CreateCrdController(mgr, requiredCrds)
+	err = reconciler.setupController(mgr)
 	if err != nil {
 		return err
 	}
 
-	return mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-		// First start the CRD controller
-		err := crdController.Start(ctx)
-		if err != nil {
-			return err
-		}
-
-		mgr.GetLogger().Info("Required CRDs were installed, starting SSP operator.")
-
-		// Clear variable, so it can be garbage collected
-		crdController = nil
-
-		// After it is finished, add the SSP controller to the manager
-		return reconciler.setupController(mgr)
-	}))
-}
-
-func requiredCrdsExist(required []string, foundCrds []extv1.CustomResourceDefinition) bool {
-OuterLoop:
-	for i := range required {
-		for j := range foundCrds {
-			if required[i] == foundCrds[j].Name {
-				continue OuterLoop
-			}
-		}
-		return false
+	mgr.GetLogger().Info("starting manager")
+	if err := mgr.Start(mgrCtx); err != nil {
+		mgr.GetLogger().Error(err, "problem running manager")
+		return err
 	}
-	return true
+	return nil
 }
