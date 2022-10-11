@@ -14,6 +14,8 @@ import (
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io/v1,resources=role;rolebinding;serviceaccount,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=pods;endpoints,verbs=get;list;watch
 
+const prometheusRulesCrd = "prometheusrules.monitoring.coreos.com"
+
 func init() {
 	utilruntime.Must(promv1.AddToScheme(common.Scheme))
 }
@@ -27,8 +29,8 @@ func WatchTypes() []operands.WatchType {
 
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
-		{Object: &rbac.ClusterRole{}},
-		{Object: &rbac.ClusterRoleBinding{}},
+		{Object: &rbac.ClusterRole{}, Crd: prometheusRulesCrd},
+		{Object: &rbac.ClusterRoleBinding{}, Crd: prometheusRulesCrd},
 	}
 }
 
@@ -47,7 +49,7 @@ func (m *metrics) WatchClusterTypes() []operands.WatchType {
 }
 
 func (m *metrics) RequiredCrds() []string {
-	return []string{"prometheusrules.monitoring.coreos.com"}
+	return []string{prometheusRulesCrd}
 }
 
 func (m *metrics) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {

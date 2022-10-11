@@ -30,6 +30,9 @@ type Operand interface {
 type WatchType struct {
 	Object client.Object
 
+	// Crd name that defines the object
+	Crd string
+
 	// WatchFullObject specifies if the operator should watch for any changes in the full object.
 	// Otherwise, only these changes in spec, labels, and annotations.
 	// If an object does not have spec field, the full object is watched by default.
