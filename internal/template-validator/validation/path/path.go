@@ -142,6 +142,12 @@ func (r *Results) AsString() ([]string, error) {
 				ret = append(ret, strObj)
 				continue
 			}
+			strObj = res[j].String()
+			if strObj != "<invalid Value>" {
+				ret = append(ret, strObj)
+				continue
+			}
+
 			return nil, fmt.Errorf("mismatching type: %v, not string", res[j].Type().Name())
 		}
 	}
