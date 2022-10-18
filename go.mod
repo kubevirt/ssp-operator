@@ -1,6 +1,6 @@
 module kubevirt.io/ssp-operator
 
-go 1.18
+go 1.19
 
 require (
 	github.com/blang/semver/v4 v4.0.0
@@ -28,8 +28,8 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog/v2 v2.60.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
-	kubevirt.io/api v0.52.0
-	kubevirt.io/client-go v0.52.0
+	kubevirt.io/api v0.58.0
+	kubevirt.io/client-go v0.58.0
 	kubevirt.io/containerized-data-importer-api v1.53.1
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.7
@@ -49,7 +49,7 @@ require (
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
+	github.com/emicklei/go-restful v2.16.0+incompatible // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/go-kit/kit v0.9.0 // indirect
