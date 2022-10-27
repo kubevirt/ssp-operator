@@ -41,7 +41,7 @@ VALIDATOR_REPOSITORY ?= quay.io/kubevirt/kubevirt-template-validator
 VALIDATOR_IMG_TAG ?= latest
 VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDATOR_IMG_TAG}
 
-CRD_OPTIONS ?= "crd:preserveUnknownFields=false,generateEmbeddedObjectMeta=true"
+CRD_OPTIONS ?= "crd:generateEmbeddedObjectMeta=true"
 
 SRC_PATHS_TESTS = ./controllers/... ./internal/... ./hack/... ./webhooks/...
 SRC_PATHS_CONTROLLER_GEN = {./controllers/..., ./internal/..., ./hack/..., ./webhooks/...}
@@ -176,12 +176,12 @@ push-template-validator-container:
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen:
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.10.0)
 
 # Download kustomize locally if necessary
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize:
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.4)
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.7)
 
 
 # Download operator-sdk locally if necessary
