@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.1
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: ssps.ssp.kubevirt.io
 spec:
@@ -227,6 +226,7 @@ spec:
                                           - kind
                                           - name
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         dataSourceRef:
                                           description: 'Specifies the object from
                                             which to populate the volume with data,
@@ -248,14 +248,15 @@ spec:
                                             are two important differences between
                                             DataSource and DataSourceRef: * While
                                             DataSource only allows two specific types
-                                            of objects, DataSourceRef   allows any
-                                            non-core object, as well as PersistentVolumeClaim
+                                            of objects, DataSourceRef allows any non-core
+                                            object, as well as PersistentVolumeClaim
                                             objects. * While DataSource ignores disallowed
-                                            values (dropping them), DataSourceRef   preserves
-                                            all values, and generates an error if
-                                            a disallowed value is   specified. (Alpha)
-                                            Using this field requires the AnyVolumeDataSource
-                                            feature gate to be enabled.'
+                                            values (dropping them), DataSourceRef
+                                            preserves all values, and generates an
+                                            error if a disallowed value is specified.
+                                            (Alpha) Using this field requires the
+                                            AnyVolumeDataSource feature gate to be
+                                            enabled.'
                                           properties:
                                             apiGroup:
                                               description: APIGroup is the group for
@@ -277,6 +278,7 @@ spec:
                                           - kind
                                           - name
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         resources:
                                           description: 'Resources represents the minimum
                                             resources the volume should have. If RecoverVolumeExpansionFailure
@@ -369,6 +371,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         storageClassName:
                                           description: 'Name of the StorageClass required
                                             by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
@@ -637,6 +640,7 @@ spec:
                                           - kind
                                           - name
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         resources:
                                           description: 'Resources represents the minimum
                                             resources the volume should have. More
@@ -724,6 +728,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         storageClassName:
                                           description: 'Name of the StorageClass required
                                             by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
@@ -929,6 +934,7 @@ spec:
                                             type: object
                                           type: array
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     weight:
                                       description: Weight associated with matching
                                         the corresponding nodeSelectorTerm, in the
@@ -1035,10 +1041,12 @@ spec:
                                             type: object
                                           type: array
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     type: array
                                 required:
                                 - nodeSelectorTerms
                                 type: object
+                                x-kubernetes-map-type: atomic
                             type: object
                           podAffinity:
                             description: Describes pod affinity scheduling rules (e.g.
@@ -1123,6 +1131,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaceSelector:
                                           description: A label query over the set
                                             of namespaces that the term applies to.
@@ -1187,6 +1196,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaces:
                                           description: namespaces specifies a static
                                             list of namespace names that the term
@@ -1296,6 +1306,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaceSelector:
                                       description: A label query over the set of namespaces
                                         that the term applies to. The term is applied
@@ -1355,6 +1366,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaces:
                                       description: namespaces specifies a static list
                                         of namespace names that the term applies to.
@@ -1464,6 +1476,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaceSelector:
                                           description: A label query over the set
                                             of namespaces that the term applies to.
@@ -1528,6 +1541,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaces:
                                           description: namespaces specifies a static
                                             list of namespace names that the term
@@ -1637,6 +1651,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaceSelector:
                                       description: A label query over the set of namespaces
                                         that the term applies to. The term is applied
@@ -1696,6 +1711,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaces:
                                       description: namespaces specifies a static list
                                         of namespace names that the term applies to.
@@ -1897,6 +1913,7 @@ spec:
                                             type: object
                                           type: array
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     weight:
                                       description: Weight associated with matching
                                         the corresponding nodeSelectorTerm, in the
@@ -2003,10 +2020,12 @@ spec:
                                             type: object
                                           type: array
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     type: array
                                 required:
                                 - nodeSelectorTerms
                                 type: object
+                                x-kubernetes-map-type: atomic
                             type: object
                           podAffinity:
                             description: Describes pod affinity scheduling rules (e.g.
@@ -2091,6 +2110,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaceSelector:
                                           description: A label query over the set
                                             of namespaces that the term applies to.
@@ -2155,6 +2175,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaces:
                                           description: namespaces specifies a static
                                             list of namespace names that the term
@@ -2264,6 +2285,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaceSelector:
                                       description: A label query over the set of namespaces
                                         that the term applies to. The term is applied
@@ -2323,6 +2345,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaces:
                                       description: namespaces specifies a static list
                                         of namespace names that the term applies to.
@@ -2432,6 +2455,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaceSelector:
                                           description: A label query over the set
                                             of namespaces that the term applies to.
@@ -2496,6 +2520,7 @@ spec:
                                                 ANDed.
                                               type: object
                                           type: object
+                                          x-kubernetes-map-type: atomic
                                         namespaces:
                                           description: namespaces specifies a static
                                             list of namespace names that the term
@@ -2605,6 +2630,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaceSelector:
                                       description: A label query over the set of namespaces
                                         that the term applies to. The term is applied
@@ -2664,6 +2690,7 @@ spec:
                                             only "value". The requirements are ANDed.
                                           type: object
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     namespaces:
                                       description: namespaces specifies a static list
                                         of namespace names that the term applies to.
@@ -2761,16 +2788,16 @@ spec:
                     description: "custom is a user-defined TLS security profile. Be
                       extremely careful using a custom profile as invalid configurations
                       can be catastrophic. An example custom profile looks like this:
-                      \n   ciphers:     - ECDHE-ECDSA-CHACHA20-POLY1305     - ECDHE-RSA-CHACHA20-POLY1305
-                      \    - ECDHE-RSA-AES128-GCM-SHA256     - ECDHE-ECDSA-AES128-GCM-SHA256
-                      \  minTLSVersion: TLSv1.1"
+                      \n ciphers: - ECDHE-ECDSA-CHACHA20-POLY1305 - ECDHE-RSA-CHACHA20-POLY1305
+                      - ECDHE-RSA-AES128-GCM-SHA256 - ECDHE-ECDSA-AES128-GCM-SHA256
+                      minTLSVersion: TLSv1.1"
                     nullable: true
                     properties:
                       ciphers:
                         description: "ciphers is used to specify the cipher algorithms
                           that are negotiated during the TLS handshake.  Operators
                           may remove entries their operands do not support.  For example,
-                          to use DES-CBC3-SHA  (yaml): \n   ciphers:     - DES-CBC3-SHA"
+                          to use DES-CBC3-SHA  (yaml): \n ciphers: - DES-CBC3-SHA"
                         items:
                           type: string
                         type: array
@@ -2778,7 +2805,7 @@ spec:
                         description: "minTLSVersion is used to specify the minimal
                           version of the TLS protocol that is negotiated during the
                           TLS handshake. For example, to use TLS versions 1.1, 1.2
-                          and 1.3 (yaml): \n   minTLSVersion: TLSv1.1 \n NOTE: currently
+                          and 1.3 (yaml): \n minTLSVersion: TLSv1.1 \n NOTE: currently
                           the highest minTLSVersion allowed is VersionTLS12"
                         enum:
                         - VersionTLS10
@@ -2790,38 +2817,34 @@ spec:
                   intermediate:
                     description: "intermediate is a TLS security profile based on:
                       \n https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29
-                      \n and looks like this (yaml): \n   ciphers:     - TLS_AES_128_GCM_SHA256
-                      \    - TLS_AES_256_GCM_SHA384     - TLS_CHACHA20_POLY1305_SHA256
-                      \    - ECDHE-ECDSA-AES128-GCM-SHA256     - ECDHE-RSA-AES128-GCM-SHA256
-                      \    - ECDHE-ECDSA-AES256-GCM-SHA384     - ECDHE-RSA-AES256-GCM-SHA384
-                      \    - ECDHE-ECDSA-CHACHA20-POLY1305     - ECDHE-RSA-CHACHA20-POLY1305
-                      \    - DHE-RSA-AES128-GCM-SHA256     - DHE-RSA-AES256-GCM-SHA384
-                      \  minTLSVersion: TLSv1.2"
+                      \n and looks like this (yaml): \n ciphers: - TLS_AES_128_GCM_SHA256
+                      - TLS_AES_256_GCM_SHA384 - TLS_CHACHA20_POLY1305_SHA256 - ECDHE-ECDSA-AES128-GCM-SHA256
+                      - ECDHE-RSA-AES128-GCM-SHA256 - ECDHE-ECDSA-AES256-GCM-SHA384
+                      - ECDHE-RSA-AES256-GCM-SHA384 - ECDHE-ECDSA-CHACHA20-POLY1305
+                      - ECDHE-RSA-CHACHA20-POLY1305 - DHE-RSA-AES128-GCM-SHA256 -
+                      DHE-RSA-AES256-GCM-SHA384 minTLSVersion: TLSv1.2"
                     nullable: true
                     type: object
                   modern:
                     description: "modern is a TLS security profile based on: \n https://wiki.mozilla.org/Security/Server_Side_TLS#Modern_compatibility
-                      \n and looks like this (yaml): \n   ciphers:     - TLS_AES_128_GCM_SHA256
-                      \    - TLS_AES_256_GCM_SHA384     - TLS_CHACHA20_POLY1305_SHA256
-                      \  minTLSVersion: TLSv1.3 \n NOTE: Currently unsupported."
+                      \n and looks like this (yaml): \n ciphers: - TLS_AES_128_GCM_SHA256
+                      - TLS_AES_256_GCM_SHA384 - TLS_CHACHA20_POLY1305_SHA256 minTLSVersion:
+                      TLSv1.3 \n NOTE: Currently unsupported."
                     nullable: true
                     type: object
                   old:
                     description: "old is a TLS security profile based on: \n https://wiki.mozilla.org/Security/Server_Side_TLS#Old_backward_compatibility
-                      \n and looks like this (yaml): \n   ciphers:     - TLS_AES_128_GCM_SHA256
-                      \    - TLS_AES_256_GCM_SHA384     - TLS_CHACHA20_POLY1305_SHA256
-                      \    - ECDHE-ECDSA-AES128-GCM-SHA256     - ECDHE-RSA-AES128-GCM-SHA256
-                      \    - ECDHE-ECDSA-AES256-GCM-SHA384     - ECDHE-RSA-AES256-GCM-SHA384
-                      \    - ECDHE-ECDSA-CHACHA20-POLY1305     - ECDHE-RSA-CHACHA20-POLY1305
-                      \    - DHE-RSA-AES128-GCM-SHA256     - DHE-RSA-AES256-GCM-SHA384
-                      \    - DHE-RSA-CHACHA20-POLY1305     - ECDHE-ECDSA-AES128-SHA256
-                      \    - ECDHE-RSA-AES128-SHA256     - ECDHE-ECDSA-AES128-SHA
-                      \    - ECDHE-RSA-AES128-SHA     - ECDHE-ECDSA-AES256-SHA384
-                      \    - ECDHE-RSA-AES256-SHA384     - ECDHE-ECDSA-AES256-SHA
-                      \    - ECDHE-RSA-AES256-SHA     - DHE-RSA-AES128-SHA256     -
-                      DHE-RSA-AES256-SHA256     - AES128-GCM-SHA256     - AES256-GCM-SHA384
-                      \    - AES128-SHA256     - AES256-SHA256     - AES128-SHA     -
-                      AES256-SHA     - DES-CBC3-SHA   minTLSVersion: TLSv1.0"
+                      \n and looks like this (yaml): \n ciphers: - TLS_AES_128_GCM_SHA256
+                      - TLS_AES_256_GCM_SHA384 - TLS_CHACHA20_POLY1305_SHA256 - ECDHE-ECDSA-AES128-GCM-SHA256
+                      - ECDHE-RSA-AES128-GCM-SHA256 - ECDHE-ECDSA-AES256-GCM-SHA384
+                      - ECDHE-RSA-AES256-GCM-SHA384 - ECDHE-ECDSA-CHACHA20-POLY1305
+                      - ECDHE-RSA-CHACHA20-POLY1305 - DHE-RSA-AES128-GCM-SHA256 -
+                      DHE-RSA-AES256-GCM-SHA384 - DHE-RSA-CHACHA20-POLY1305 - ECDHE-ECDSA-AES128-SHA256
+                      - ECDHE-RSA-AES128-SHA256 - ECDHE-ECDSA-AES128-SHA - ECDHE-RSA-AES128-SHA
+                      - ECDHE-ECDSA-AES256-SHA384 - ECDHE-RSA-AES256-SHA384 - ECDHE-ECDSA-AES256-SHA
+                      - ECDHE-RSA-AES256-SHA - DHE-RSA-AES128-SHA256 - DHE-RSA-AES256-SHA256
+                      - AES128-GCM-SHA256 - AES256-GCM-SHA384 - AES128-SHA256 - AES256-SHA256
+                      - AES128-SHA - AES256-SHA - DES-CBC3-SHA minTLSVersion: TLSv1.0"
                     nullable: true
                     type: object
                   type:
@@ -2901,9 +2924,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
