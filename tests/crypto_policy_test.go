@@ -28,13 +28,17 @@ var _ = Describe("Crypto Policy", func() {
 		waitUntilDeployed()
 	})
 
-	Context("setting Crypto Policy", func() {
-		sspPod := operatorPod()
+	AfterEach(func() {
+		strategy.RevertToOriginalSspCr()
+	})
+
+	FContext("setting Crypto Policy", func() {
+		//sspPod := operatorPod()
 		table.DescribeTable("Adhere to defined TLSConfig", testSettingTLSConfig,
-			table.Entry("[test_id:???] old", sspPod, oldPermutation),
-			table.Entry("[test_id:???] intermediate", sspPod, intermediatePermutation),
-			table.Entry("[test_id:???] modern", sspPod, modernPermutation),
-			table.Entry("[test_id:???] custom", sspPod, customPermutation),
+			table.Entry("[test_id:???] old", oldPermutation),
+			table.Entry("[test_id:???] intermediate", intermediatePermutation),
+			table.Entry("[test_id:???] modern", modernPermutation),
+			table.Entry("[test_id:???] custom", customPermutation),
 		)
 	})
 })
@@ -48,6 +52,7 @@ func operatorPod() core.Pod {
 	err = apiClient.List(context.TODO(), pods, client.MatchingLabels{"control-plane": "ssp-operator"})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pods.Items).ToNot(BeEmpty())
+	Expect(len(pods.Items)).To(Equal(1))
 	return pods.Items[0]
 }
 
@@ -228,7 +233,8 @@ func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 }
 
-func testSettingTLSConfig(pod core.Pod, tlsConfigTestPermutation tlsConfigTestPermutation) {
+func testSettingTLSConfig(tlsConfigTestPermutation tlsConfigTestPermutation) {
+	pod := operatorPod()
 	applyTLSConfig(tlsConfigTestPermutation.openshiftTLSPolicy)
 	testMetricsEndpoint(pod, tlsConfigTestPermutation)
 	testWebhookEndpoint(pod, tlsConfigTestPermutation)
