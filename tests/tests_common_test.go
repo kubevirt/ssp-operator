@@ -113,30 +113,35 @@ func expectRecreateAfterDelete(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func sspOperatorReconcilingProperlyCount() (sum int) {
-	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
-	for _, sspOperator := range operatorPods {
-		sum += intMetricValue("ssp_operator_reconciling_properly", operatorMetricsPort, &sspOperator)
+func getOperatorIntMetric(metricName string) (int, error) {
+	operatorPods, err := getOperatorPods()
+	if err != nil {
+		return 0, fmt.Errorf("error getting operator pods: %w", err)
 	}
-	return
+	if len(operatorPods) == 0 {
+		return 0, fmt.Errorf("no operator pods found")
+	}
+
+	operatorMetricsPort, err := metricsPort(operatorPods)
+	if err != nil {
+		return 0, fmt.Errorf("error getting metrics port: %w", err)
+	}
+
+	value, err := intMetricValuePods(metricName, operatorMetricsPort, operatorPods)
+	if err != nil {
+		return 0, fmt.Errorf("error getting metric value: %w", err)
+	}
+
+	return value, nil
 }
 
-func totalRestoredTemplatesCount() (sum int) {
-	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
-	for _, sspOperator := range operatorPods {
-		sum += intMetricValue("total_restored_common_templates", operatorMetricsPort, &sspOperator)
-	}
-	return
-}
-
-func operatorPodsWithMetricsPort() ([]core.Pod, uint16) {
+func getOperatorPods() ([]core.Pod, error) {
 	pods := &core.PodList{}
 	err := apiClient.List(ctx, pods, client.MatchingLabels{"control-plane": "ssp-operator"})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(pods.Items).ToNot(BeEmpty())
-	operatorMetricsPort, err := metricsPort(pods.Items)
-	Expect(err).ToNot(HaveOccurred())
-	return pods.Items, operatorMetricsPort
+	if err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
 }
 
 func metricsPort(pods []core.Pod) (uint16, error) {

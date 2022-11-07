@@ -31,7 +31,7 @@ var _ PortForwarder = &portForwarderImpl{}
 func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn, error) {
 	streamConnection, err := p.createStreamConnection(pod)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed creating stream connection: %w", err)
 	}
 
 	requestId := atomic.AddInt32(&p.requestId, 1)
@@ -44,7 +44,7 @@ func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn,
 	errorStream, err := streamConnection.CreateStream(headers)
 	if err != nil {
 		streamConnection.Close()
-		return nil, err
+		return nil, fmt.Errorf("failed to create error stream: %w", err)
 	}
 	// We will not write to error stream
 	errorStream.Close()
@@ -53,7 +53,7 @@ func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn,
 	dataStream, err := streamConnection.CreateStream(headers)
 	if err != nil {
 		streamConnection.Close()
-		return nil, err
+		return nil, fmt.Errorf("failed to create data stream: %w", err)
 	}
 
 	pipeIn, pipeOut := net.Pipe()
@@ -84,7 +84,7 @@ func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn,
 func (p *portForwarderImpl) createStreamConnection(pod *core.Pod) (httpstream.Connection, error) {
 	transport, upgrader, err := spdy.RoundTripperFor(p.config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create RoundTripper: %w", err)
 	}
 
 	req := p.client.Post().
@@ -95,7 +95,10 @@ func (p *portForwarderImpl) createStreamConnection(pod *core.Pod) (httpstream.Co
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
 	streamConn, _, err := dialer.Dial(portforward.PortForwardProtocolV1Name)
-	return streamConn, err
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial: %w", err)
+	}
+	return streamConn, nil
 }
 
 func NewPortForwarder(config *rest.Config, client rest.Interface) PortForwarder {

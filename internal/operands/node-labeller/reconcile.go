@@ -70,7 +70,7 @@ func (nl *nodeLabeller) RequiredCrds() []string {
 	return nil
 }
 
-//Reconsile deletes all node-labeller component, because labeller is migrated into kubevirt core.
+// Reconsile deletes all node-labeller component, because labeller is migrated into kubevirt core.
 func (nl *nodeLabeller) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	// Not using common.DeleteAll(), because these resources
 	// do not have correct owner annotations.

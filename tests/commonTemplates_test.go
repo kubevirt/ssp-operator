@@ -356,7 +356,13 @@ var _ = Describe("Common templates", func() {
 })
 
 func expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate testResource) {
-	restoredCountBefore := totalRestoredTemplatesCount()
+	restoredCountBefore, err := getOperatorIntMetric(totalRestoredCommonTemplatesMetricsValue)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+
 	expectRestoreAfterUpdate(&testTemplate)
-	Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
+
+	restoredCountAfter, err := getOperatorIntMetric(totalRestoredCommonTemplatesMetricsValue)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+
+	Expect(restoredCountAfter - restoredCountBefore).To(Equal(1))
 }

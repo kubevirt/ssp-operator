@@ -914,7 +914,7 @@ func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 }
 
 func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
-	rejectedCountBefore := totalRejectedVmsMetricsValue()
+	rejectedCountBefore := totalRejectedVmsMetric()
 	vmi := NewRandomVMIWithBridgeInterface(strategy.GetNamespace())
 	// set values that will fail validation
 	vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
@@ -924,7 +924,7 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 		labels.AnnotationTemplateNamespaceKey: template.Namespace,
 	}
 	eventuallyFailToCreateVm(vm)
-	Expect(totalRejectedVmsMetricsValue() - rejectedCountBefore).To(Equal(1))
+	Expect(totalRejectedVmsMetric() - rejectedCountBefore).To(Equal(1))
 	err := apiClient.Delete(ctx, vm)
 	if !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
@@ -932,14 +932,14 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 	waitForDeletion(client.ObjectKeyFromObject(vm), vm)
 }
 
-func totalRejectedVmsMetricsValue() (sum int) {
+func totalRejectedVmsMetric() int {
 	pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 	Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
 	Expect(pods.Items).ToNot(BeEmpty())
-	for _, validatorPod := range pods.Items {
-		sum += intMetricValue("total_rejected_vms", validator.MetricsPort, &validatorPod)
-	}
-	return
+
+	value, err := intMetricValuePods(totalRejectedVmsMetricsValue, validator.MetricsPort, pods.Items)
+	Expect(err).ToNot(HaveOccurred())
+	return value
 }
 
 func addObjectsToTemplates(genName, validation string) *templatev1.Template {

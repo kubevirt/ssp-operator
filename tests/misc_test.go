@@ -162,8 +162,8 @@ func validateSspIsFailingToReconcileMetric() {
 		foundSsp.Spec.TemplateValidator.Replicas = &newValidatorReplicas
 	})
 	// the reconcile cycle should now be failing, so the ssp_operator_reconciling_properly metric should be 0
-	Eventually(func() int {
-		return sspOperatorReconcilingProperlyCount()
+	Eventually(func() (int, error) {
+		return getOperatorIntMetric(sspOperatorReconcilingProperlyMetricsValue)
 	}, env.ShortTimeout(), time.Second).Should(Equal(0))
 }
 
