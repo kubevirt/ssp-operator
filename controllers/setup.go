@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/go-logr/logr"
 	"path/filepath"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -22,6 +23,32 @@ import (
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
 
 func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager) error {
+	mgrCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	mgrCtx = logr.NewContext(mgrCtx, mgr.GetLogger())
+
+	runningOnOpenShift, err := common.RunningOnOpenshift(ctx, mgr.GetAPIReader())
+	if err != nil {
+		return err
+	}
+
+	if runningOnOpenShift {
+		if err = setupActiveMode(mgrCtx, cancel, mgr); err != nil {
+			return err
+		}
+	} else { // do nothing if not running on OpenShift
+		mgr.GetLogger().Info("SSP operator is running in inactive mode. The operator will not react to any event.")
+	}
+
+	mgr.GetLogger().Info("starting manager")
+	if err = mgr.Start(mgrCtx); err != nil {
+		mgr.GetLogger().Error(err, "problem running manager")
+		return err
+	}
+	return nil
+}
+
+func setupActiveMode(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager) error {
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
 	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
 	if err != nil {
@@ -41,16 +68,12 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 		requiredCrds = append(requiredCrds, sspOperands[i].RequiredCrds()...)
 	}
 
-	mgrCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	crdWatch := crd_watch.New(requiredCrds...)
 	// Cleanly stops the manager and exit. The pod will be restarted.
 	crdWatch.AllCrdsAddedHandler = cancel
 	crdWatch.SomeCrdRemovedHandler = cancel
 
-	err = crdWatch.Init(mgrCtx, mgr.GetAPIReader())
-	if err != nil {
+	if err = crdWatch.Init(ctx, mgr.GetAPIReader()); err != nil {
 		return err
 	}
 
@@ -60,22 +83,31 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 		)
 	}
 
-	err = mgr.Add(crdWatch)
+	infrastructureTopology, err := common.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
 	if err != nil {
 		return err
 	}
 
-	infrastructureTopology, err := common.GetInfrastructureTopology(mgrCtx, mgr.GetAPIReader())
-	if err != nil {
-		return fmt.Errorf("failed to get infrastructure topology: %w", err)
+	if err = mgr.Add(crdWatch); err != nil {
+		return err
 	}
 
-	serviceController, err := CreateServiceController(mgrCtx, mgr)
+	serviceController, err := CreateServiceController(ctx, mgr)
 	if err != nil {
 		return fmt.Errorf("failed to create service controller: %w", err)
 	}
 
-	err = mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+	if err = mgr.Add(getRunnable(mgr, serviceController)); err != nil {
+		return fmt.Errorf("error adding service controller: %w", err)
+	}
+
+	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
+
+	return reconciler.setupController(mgr)
+}
+
+func getRunnable(mgr controllerruntime.Manager, serviceController *serviceReconciler) manager.Runnable {
+	return manager.RunnableFunc(func(ctx context.Context) error {
 		err := serviceController.Start(ctx, mgr)
 		if err != nil {
 			return fmt.Errorf("error starting serviceController: %w", err)
@@ -84,22 +116,5 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 		mgr.GetLogger().Info("Services Controller started")
 
 		return nil
-	}))
-	if err != nil {
-		return fmt.Errorf("error adding service controller: %w", err)
-	}
-
-	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
-
-	err = reconciler.setupController(mgr)
-	if err != nil {
-		return err
-	}
-
-	mgr.GetLogger().Info("starting manager")
-	if err := mgr.Start(mgrCtx); err != nil {
-		mgr.GetLogger().Error(err, "problem running manager")
-		return err
-	}
-	return nil
+	})
 }
