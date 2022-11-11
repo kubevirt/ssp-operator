@@ -737,8 +737,6 @@ var _ = Describe("DataSources", func() {
 			pullMethod        = cdiv1beta1.RegistryPullNode
 			commonAnnotations = map[string]string{
 				"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
-				// Remove this annotation once CDI handles DataImportCron and garbage collection properly
-				"cdi.kubevirt.io/storage.deleteAfterCompletion": "false",
 			}
 
 			cronTemplate   ssp.DataImportCronTemplate
@@ -990,11 +988,20 @@ var _ = Describe("DataSources", func() {
 				}
 				Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
 
-				Eventually(func() cdiv1beta1.DataVolumePhase {
+				Eventually(func() bool {
 					foundDv := &cdiv1beta1.DataVolume{}
-					Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)).To(Succeed())
-					return foundDv.Status.Phase
-				}, timeout, time.Second).Should(Equal(cdiv1beta1.Succeeded), "DataVolume should successfully import.")
+					err := apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)
+
+					if errors.IsNotFound(err) {
+						foundPvc := &core.PersistentVolumeClaim{}
+						err = apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundPvc)
+						Expect(err).ToNot(HaveOccurred())
+						return true
+					}
+
+					Expect(err).ToNot(HaveOccurred())
+					return foundDv.Status.Phase == cdiv1beta1.Succeeded
+				}, timeout, time.Second).Should(BeTrue(), "DataVolume should successfully import.")
 
 				Eventually(func() bool {
 					foundDs := &cdiv1beta1.DataSource{}
@@ -1013,12 +1020,23 @@ var _ = Describe("DataSources", func() {
 				waitUntilDeployed()
 			})
 
-			AfterEach(func() {
+			deleteDVAndPVC := func() {
 				err := apiClient.Delete(ctx, dataVolume)
 				if !errors.IsNotFound(err) {
 					Expect(err).ToNot(HaveOccurred(), "Failed to delete data volume")
 				}
 				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+
+				pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
+				err = apiClient.Delete(ctx, pvc)
+				if !errors.IsNotFound(err) {
+					Expect(err).ToNot(HaveOccurred(), "Failed to delete persistent volume claim")
+				}
+				waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
+			}
+
+			AfterEach(func() {
+				deleteDVAndPVC()
 			})
 
 			It("[test_id:8110] should not create DataImportCron", func() {
@@ -1049,8 +1067,7 @@ var _ = Describe("DataSources", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
 
-				Expect(apiClient.Delete(ctx, dataVolume)).To(Succeed())
-				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+				deleteDVAndPVC()
 
 				Eventually(func() error {
 					return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
