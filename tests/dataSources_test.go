@@ -854,7 +854,7 @@ var _ = Describe("DataSources", func() {
 				}, shortTimeout, time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
 
-			PIt("[QUARANTINE][test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
+			It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
 				// Wait until DataImportCron imports PVC and changes data source
 				Eventually(func() bool {
 					cron := &cdiv1beta1.DataImportCron{}
@@ -1107,7 +1107,7 @@ var _ = Describe("DataSources", func() {
 					}, timeout, time.Second).Should(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
 				})
 
-				PIt("[QUARANTINE][test_id:8298] should restore DataSource, when CDI label is removed", func() {
+				It("[test_id:8298] should restore DataSource, when CDI label is removed", func() {
 					// Wait until DataImportCron imports PVC and changes data source
 					Eventually(func() (bool, error) {
 						cron := &cdiv1beta1.DataImportCron{}
