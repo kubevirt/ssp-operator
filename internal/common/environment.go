@@ -9,6 +9,9 @@ import (
 
 	"github.com/go-logr/logr"
 	osconfv1 "github.com/openshift/api/config/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -31,6 +34,23 @@ func EnvOrDefault(envName string, defVal string) string {
 
 func GetOperatorVersion() string {
 	return EnvOrDefault(OperatorVersionKey, defaultOperatorVersion)
+}
+
+func RunningOnOpenshift(ctx context.Context, cl client.Reader) (bool, error) {
+	clusterVersion := &osconfv1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "version",
+		},
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(clusterVersion), clusterVersion); err != nil {
+		if meta.IsNoMatchError(err) || apierrors.IsNotFound(err) {
+			// Not on OpenShift
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 func GetInfrastructureTopology(ctx context.Context, c client.Reader) (osconfv1.TopologyMode, error) {
