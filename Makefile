@@ -5,7 +5,7 @@
 VERSION ?= 0.14.0
 
 #operator-sdk version
-OPERATOR_SDK_VERSION ?= v1.23.0
+OPERATOR_SDK_VERSION ?= v1.25.1
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "preview,fast,stable")
