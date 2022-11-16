@@ -129,18 +129,19 @@ func totalRestoredTemplatesCount() (sum int) {
 	return
 }
 
+// Note we are not assuming only one operator pod here although that is how it should be,
+// this is to make the relevant tests more robust.
 func operatorPodsWithMetricsPort() ([]core.Pod, uint16) {
 	pods := &core.PodList{}
 	err := apiClient.List(ctx, pods, client.MatchingLabels{"control-plane": "ssp-operator"})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pods.Items).ToNot(BeEmpty())
-	operatorMetricsPort, err := metricsPort(pods.Items)
+	operatorMetricsPort, err := metricsPort(pods.Items[0])
 	Expect(err).ToNot(HaveOccurred())
 	return pods.Items, operatorMetricsPort
 }
 
-func metricsPort(pods []core.Pod) (uint16, error) {
-	pod := pods[0]
+func metricsPort(pod core.Pod) (uint16, error) {
 	var container *core.Container
 	for _, c := range pod.Spec.Containers {
 		if c.Name == "manager" {
