@@ -52,8 +52,8 @@ type Result struct {
 	failed bool
 }
 
-//Warn logs warnings into pod's log.
-//Warnings are not included in result response.
+// Warn logs warnings into pod's log.
+// Warnings are not included in result response.
 func (r *Result) Warn(message string, e error) {
 	log.Log.Warningf(fmt.Sprintf("%s: %s", message, e.Error()))
 }
