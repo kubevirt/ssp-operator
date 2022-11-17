@@ -1,0 +1,664 @@
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: alpine
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: centos.7
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: centos.7.desktop
+spec:
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: centos.8
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: centos.8.desktop
+spec:
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: centos.9
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredDiskDedicatedIoThread: true
+    preferredInterfaceModel: virtio
+    preferredRng: {}
+  features:
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: centos.9.desktop
+spec:
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredDiskDedicatedIoThread: true
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+    preferredRng: {}
+  features:
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: cirros
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: fedora.35
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+    preferredNetworkInterfaceMultiQueue: true
+    preferredRng: {}
+  features:
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: fedora.36
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+    preferredNetworkInterfaceMultiQueue: true
+    preferredRng: {}
+  features:
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: rhel.7
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: rhel.7.desktop
+spec:
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: rhel.8
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: rhel.8.desktop
+spec:
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: rhel.9
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredDiskDedicatedIoThread: true
+    preferredInterfaceModel: virtio
+    preferredRng: {}
+  features:
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: rhel.9.desktop
+spec:
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredDiskDedicatedIoThread: true
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+    preferredRng: {}
+  features:
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: ubuntu.18.04
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+    preferredRng: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: ubuntu.20.04
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+    preferredRng: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: ubuntu.22.04
+spec:
+  devices:
+    preferredDiskBus: virtio
+    preferredInterfaceModel: virtio
+    preferredRng: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.10
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: sata
+    preferredInterfaceModel: e1000e
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.10.virtio
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.11
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: sata
+    preferredInterfaceModel: e1000e
+    preferredTPM: {}
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.11.virtio
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+    preferredTPM: {}
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+    preferredSmm: {}
+  firmware:
+    preferredUseEfi: true
+    preferredUseSecureBoot: true
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.2k12
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: sata
+    preferredInterfaceModel: e1000e
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.2k12.virtio
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.2k16
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: sata
+    preferredInterfaceModel: e1000e
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.2k16.virtio
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.2k19
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: sata
+    preferredInterfaceModel: e1000e
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterPreference
+metadata:
+  name: windows.2k19.virtio
+spec:
+  clock:
+    preferredClockOffset:
+      utc: {}
+    preferredTimer:
+      hpet:
+        present: false
+      hyperv: {}
+      pit:
+        tickPolicy: delay
+      rtc:
+        tickPolicy: catchup
+  cpu:
+    preferredCPUTopology: preferSockets
+  devices:
+    preferredAutoattachInputDevice: true
+    preferredDiskBus: virtio
+    preferredInputBus: virtio
+    preferredInputType: tablet
+    preferredInterfaceModel: virtio
+  features:
+    preferredAcpi: {}
+    preferredApic: {}
+    preferredHyperv:
+      frequencies: {}
+      ipi: {}
+      reenlightenment: {}
+      relaxed: {}
+      reset: {}
+      runtime: {}
+      spinlocks:
+        spinlocks: 8191
+      synic: {}
+      synictimer:
+        direct: {}
+      tlbflush: {}
+      vapic: {}
+      vpindex: {}

@@ -1,0 +1,93 @@
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    kubevirt.io/size: large
+  name: highperformance.large
+spec:
+  cpu:
+    dedicatedCPUPlacement: true
+    guest: 2
+    isolateEmulatorThread: true
+  ioThreadsPolicy: shared
+  memory:
+    guest: 8Gi
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    kubevirt.io/size: medium
+  name: highperformance.medium
+spec:
+  cpu:
+    dedicatedCPUPlacement: true
+    guest: 1
+    isolateEmulatorThread: true
+  ioThreadsPolicy: shared
+  memory:
+    guest: 4Gi
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    kubevirt.io/size: small
+  name: highperformance.small
+spec:
+  cpu:
+    dedicatedCPUPlacement: true
+    guest: 1
+    isolateEmulatorThread: true
+  ioThreadsPolicy: shared
+  memory:
+    guest: 2Gi
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    kubevirt.io/size: large
+  name: server.large
+spec:
+  cpu:
+    guest: 2
+  memory:
+    guest: 8Gi
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    kubevirt.io/size: medium
+  name: server.medium
+spec:
+  cpu:
+    guest: 1
+  memory:
+    guest: 4Gi
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    kubevirt.io/size: small
+  name: server.small
+spec:
+  cpu:
+    guest: 1
+  memory:
+    guest: 2Gi
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    kubevirt.io/size: tiny
+  name: server.tiny
+spec:
+  cpu:
+    guest: 1
+  memory:
+    guest: 1.5Gi
