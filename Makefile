@@ -64,6 +64,9 @@ else
 OC = oc
 endif
 
+# Default to podman
+SSP_BUILD_RUNTIME ?= podman
+
 all: manager
 
 unittest: generate fmt vet manifests
@@ -144,7 +147,7 @@ container-build: unittest bundle
 	mkdir -p data/crd
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	podman build -t ${IMG} \
+	${SSP_BUILD_RUNTIME} build -t ${IMG} \
 		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
 		--build-arg IMG_TAG=${IMG_TAG} \
 		--build-arg IMG=${IMG} \
@@ -155,13 +158,13 @@ container-build: unittest bundle
 
 # Push the container image
 container-push:
-	podman push ${IMG}
+	${SSP_BUILD_RUNTIME} push ${IMG}
 
 build-template-validator:
 	./hack/build-template-validator.sh ${VERSION}
 
 build-template-validator-container:
-	podman build -t ${VALIDATOR_IMG} \
+	${SSP_BUILD_RUNTIME} build -t ${VALIDATOR_IMG} \
 		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
 		--build-arg IMG_TAG=${IMG_TAG} \
 		--build-arg IMG=${IMG} \
@@ -171,7 +174,7 @@ build-template-validator-container:
 		. -f validator.Dockerfile
 
 push-template-validator-container:
-	podman push ${VALIDATOR_IMG}
+	${SSP_BUILD_RUNTIME} push ${VALIDATOR_IMG}
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
@@ -226,7 +229,7 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build:
-	podman build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	${SSP_BUILD_RUNTIME} build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: release
 release: container-build container-push build-template-validator-container push-template-validator-container bundle build-functests
@@ -238,3 +241,11 @@ generate-doc: build-docgen
 build-docgen:
 	go build -ldflags="-s -w" -o _out/metricsdocs ./tools/metricsdocs
 
+cluster-up:
+	./hack/kubevirtci.sh up
+
+cluster-down:
+	./hack/kubevirtci.sh down
+
+cluster-sync:
+	KUSTOMIZE=$(KUSTOMIZE) ./hack/kubevirtci.sh sync
