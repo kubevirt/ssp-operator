@@ -112,10 +112,10 @@ var _ = Describe("Crypto Policy", func() {
 			testMetricsEndpoint(pod, tlsConfigTestPermutation)
 			testWebhookEndpoint(pod, tlsConfigTestPermutation)
 		},
-			table.Entry("[test_id:???] old", oldPermutation),
-			table.Entry("[test_id:???] intermediate", intermediatePermutation),
-			table.Entry("[test_id:???] modern", modernPermutation),
-			table.Entry("[test_id:???] custom", customPermutation),
+			table.Entry("[test_id:9360] old", oldPermutation),
+			table.Entry("[test_id:9276] intermediate", intermediatePermutation),
+			table.Entry("[test_id:9477] modern", modernPermutation),
+			table.Entry("[test_id:9280] custom", customPermutation),
 		)
 	})
 })
