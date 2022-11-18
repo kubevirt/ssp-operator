@@ -183,10 +183,10 @@ func tryToAccessEndpoint(pod core.Pod, subpath string, port uint16, tlsConfig cl
 		subpath = "/" + subpath
 	}
 
-	// ssp-webhook-service.kubevirt.svc is used to access the endpoints we are testing.
+	// ssp-webhook-service.${deploymentNamespace}.svc is used to access the endpoints we are testing.
 	// It is used here for the metrics as well for simplicity, as it is the CN in the ca_cert
 	// and the metrics just sit on a different port on the same pod.
-	attemptedUrl = fmt.Sprintf("https://ssp-webhook-service.kubevirt.svc:%d%s", port, subpath)
+	attemptedUrl = fmt.Sprintf("https://ssp-webhook-service.%s.svc:%d%s", strategy.GetSSPDeploymentNameSpace(), port, subpath)
 	_, err = client.Get(attemptedUrl)
 	return attemptedUrl, err
 }
