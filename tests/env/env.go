@@ -19,6 +19,7 @@ const (
 	envIsUpgradeLane          = "IS_UPGRADE_LANE"
 	envSspDeploymentName      = "SSP_DEPLOYMENT_NAME"
 	envSspDeploymentNamespace = "SSP_DEPLOYMENT_NAMESPACE"
+	envSspWebhookServiceName  = "SSP_WEBHOOK_SERVICE_NAME"
 )
 
 const (
@@ -89,6 +90,10 @@ func SspDeploymentName() string {
 
 func SspDeploymentNamespace() string {
 	return os.Getenv(envSspDeploymentNamespace)
+}
+
+func SspWebhookServiceName() string {
+	return os.Getenv(envSspWebhookServiceName)
 }
 
 func getBoolEnv(envName string) bool {
