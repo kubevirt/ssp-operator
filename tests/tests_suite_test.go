@@ -48,6 +48,7 @@ var (
 	testScheme             *runtime.Scheme
 	sspDeploymentName      = "ssp-operator"
 	sspDeploymentNamespace = "kubevirt"
+	sspWebhookServiceName  = "ssp-webhook-service"
 )
 
 type TestSuiteStrategy interface {
@@ -60,6 +61,7 @@ type TestSuiteStrategy interface {
 	GetValidatorReplicas() int
 	GetSSPDeploymentName() string
 	GetSSPDeploymentNameSpace() string
+	GetSSPWebhookServiceName() string
 
 	GetVersionLabel() string
 	GetPartOfLabel() string
@@ -181,6 +183,10 @@ func (s *newSspStrategy) GetSSPDeploymentNameSpace() string {
 	return sspDeploymentNamespace
 }
 
+func (s *newSspStrategy) GetSSPWebhookServiceName() string {
+	return sspWebhookServiceName
+}
+
 func (s *newSspStrategy) RevertToOriginalSspCr() {
 	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
@@ -296,6 +302,10 @@ func (s *existingSspStrategy) GetSSPDeploymentNameSpace() string {
 	return sspDeploymentNamespace
 }
 
+func (s *existingSspStrategy) GetSSPWebhookServiceName() string {
+	return sspWebhookServiceName
+}
+
 func (s *existingSspStrategy) RevertToOriginalSspCr() {
 	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
@@ -363,6 +373,11 @@ var _ = BeforeSuite(func() {
 	if envSspDeploymentNamespace := env.SspDeploymentNamespace(); envSspDeploymentNamespace != "" {
 		sspDeploymentNamespace = envSspDeploymentNamespace
 		fmt.Println(fmt.Sprintf("SspDeploymentNamespace set to %s", envSspDeploymentNamespace))
+	}
+
+	if envSspWebhookServiceName := env.SspWebhookServiceName(); envSspWebhookServiceName != "" {
+		sspWebhookServiceName = envSspWebhookServiceName
+		fmt.Println(fmt.Sprintf("SspWebhookServiceName set to %s", envSspWebhookServiceName))
 	}
 
 	testScheme = runtime.NewScheme()
