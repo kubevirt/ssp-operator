@@ -152,12 +152,26 @@ func (s *clientTLSOptions) CipherIDs() []uint16 {
 	return cipherSuites
 }
 
-func getPemCertificate() []byte {
-	var apiService apiregv1.APIService
-	err := apiClient.Get(ctx, client.ObjectKey{Name: "v1.build.openshift.io"}, &apiService)
+func getCaCertificate() []byte {
+	var service core.Service
+	err := apiClient.Get(ctx, client.ObjectKey{Name: strategy.GetSSPWebhookServiceName(), Namespace: strategy.GetSSPDeploymentNameSpace()}, &service)
 	Expect(err).ToNot(HaveOccurred())
-	pemCertificate := apiService.Spec.CABundle
-	return pemCertificate
+
+	var ca []byte
+	if service.Annotations["service.beta.openshift.io/serving-cert-secret-name"] != "" {
+		var apiService apiregv1.APIService
+		err = apiClient.Get(ctx, client.ObjectKey{Name: "v1.build.openshift.io"}, &apiService)
+		Expect(err).ToNot(HaveOccurred())
+		ca = apiService.Spec.CABundle
+	} else {
+		var secret core.Secret
+		err := apiClient.Get(ctx, client.ObjectKey{Name: strategy.GetSSPWebhookServiceName() + "-cert", Namespace: strategy.GetSSPDeploymentNameSpace()}, &secret)
+		Expect(err).ToNot(HaveOccurred())
+		ca = secret.Data["olmCAKey"]
+	}
+
+	Expect(ca).ToNot(BeEmpty())
+	return ca
 }
 
 func tryToAccessEndpoint(pod core.Pod, subpath string, port uint16, tlsConfig clientTLSOptions) (attemptedUrl string, err error) {
@@ -166,10 +180,9 @@ func tryToAccessEndpoint(pod core.Pod, subpath string, port uint16, tlsConfig cl
 	defer conn.Close()
 
 	certPool := x509.NewCertPool()
-	pemCert := getPemCertificate()
-	certPool.AppendCertsFromPEM(pemCert)
+	certPool.AppendCertsFromPEM(getCaCertificate())
 
-	client := &http.Client{
+	httpClient := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return conn, nil
@@ -186,7 +199,7 @@ func tryToAccessEndpoint(pod core.Pod, subpath string, port uint16, tlsConfig cl
 	// It is used here for the metrics as well for simplicity, as it is the CN in the ca_cert
 	// and the metrics just sit on a different port on the same pod.
 	attemptedUrl = fmt.Sprintf("https://%s.%s.svc:%d%s", strategy.GetSSPWebhookServiceName(), strategy.GetSSPDeploymentNameSpace(), port, subpath)
-	_, err = client.Get(attemptedUrl)
+	_, err = httpClient.Get(attemptedUrl)
 	return attemptedUrl, err
 }
 
