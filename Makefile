@@ -249,3 +249,12 @@ cluster-down:
 
 cluster-sync:
 	KUSTOMIZE=$(KUSTOMIZE) ./hack/kubevirtci.sh sync
+
+kubevirt-up:
+	./hack/kubevirt.sh up
+
+kubevirt-down:
+	./hack/kubevirt.sh down
+
+kubevirt-sync:
+	KUSTOMIZE=$(KUSTOMIZE) ./hack/kubevirt.sh sync

@@ -12,4 +12,5 @@ cover.out
 bundle.Dockerfile
 config/manager/manager.yaml
 cluster-up/
+_kubevirt/
 
