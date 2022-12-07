@@ -17,6 +17,25 @@ The CRDs can be removed using:
 make uninstall
 ```
 
+Alternatively developers can also deploy `kubevirtci` based clusters before
+building and deploying the operator. For convenience the following makefile
+targets are provided that automate this flow either directly through the
+`kubevirtci` project or indirectly using the main `kubevirt` project to
+launch an environment. The latter being useful when testing changes that
+rely on core changes in `kubevirt` itself:
+
+```shell
+make cluster-up   # Deploys the latest released version of KubeVirt
+make cluster-sync # Builds and deploys the SSP operator from source
+make cluster-down # Destroys the environment
+```
+
+```shell
+make kubevirt-up   # Deploys KubeVirt from source
+make kubevirt-sync # Builds and deploys the SSP operator from source
+make kubevirt-down # Destroys the environment
+```
+
 ## Testing
 
 To run unit tests, use this command:

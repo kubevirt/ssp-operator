@@ -1,0 +1,13 @@
+# Adds namespace to all resources.
+namespace: kubevirt
+
+# TODO - Reintroduce webhooks
+bases:
+- ../namespace
+- ../crd
+- ../rbac
+- ../manager
+
+patchesStrategicMerge:
+  - manager-disable-webhooks.yaml
+

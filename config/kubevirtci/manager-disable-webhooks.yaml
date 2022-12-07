@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operator
+  namespace: kubevirt
+spec:
+  template:
+    spec:
+      containers:
+      - command:
+        - /manager
+        args: ["--leader-elect"]
+        env:
+          - name: ENABLE_WEBHOOKS
+            value: "false"
+        name: manager
+

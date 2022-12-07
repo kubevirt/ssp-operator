@@ -3,9 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/go-logr/logr"
 	"path/filepath"
 
+	"github.com/go-logr/logr"
+	v1 "github.com/openshift/api/config/v1"
 	"kubevirt.io/ssp-operator/internal/common"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -27,32 +28,34 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 	defer cancel()
 	mgrCtx = logr.NewContext(mgrCtx, mgr.GetLogger())
 
-	runningOnOpenShift, err := common.RunningOnOpenshift(ctx, mgr.GetAPIReader())
-	if err != nil {
+	if err := setupManager(mgrCtx, cancel, mgr); err != nil {
 		return err
 	}
 
-	if runningOnOpenShift {
-		if err = setupActiveMode(mgrCtx, cancel, mgr); err != nil {
-			return err
-		}
-	} else { // do nothing if not running on OpenShift
-		mgr.GetLogger().Info("SSP operator is running in inactive mode. The operator will not react to any event.")
-	}
-
 	mgr.GetLogger().Info("starting manager")
-	if err = mgr.Start(mgrCtx); err != nil {
+	if err := mgr.Start(mgrCtx); err != nil {
 		mgr.GetLogger().Error(err, "problem running manager")
 		return err
 	}
 	return nil
 }
 
-func setupActiveMode(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager) error {
+func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager) error {
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
 	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
 	if err != nil {
 		return fmt.Errorf("failed to read template bundle: %w", err)
+	}
+
+	runningOnOpenShift, err := common.RunningOnOpenshift(ctx, mgr.GetAPIReader())
+	if err != nil {
+		return err
+	}
+
+	if !runningOnOpenShift {
+		// do nothing if not running on OpenShift
+		mgr.GetLogger().Info("SSP operator is running in inactive mode. The operator will not react to any event.")
+		return nil
 	}
 
 	sspOperands := []operands.Operand{
@@ -83,9 +86,12 @@ func setupActiveMode(ctx context.Context, cancel context.CancelFunc, mgr control
 		)
 	}
 
-	infrastructureTopology, err := common.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
-	if err != nil {
-		return err
+	infrastructureTopology := v1.HighlyAvailableTopologyMode
+	if runningOnOpenShift {
+		infrastructureTopology, err = common.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
+		if err != nil {
+			return err
+		}
 	}
 
 	if err = mgr.Add(crdWatch); err != nil {
