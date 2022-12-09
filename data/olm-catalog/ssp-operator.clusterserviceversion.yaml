@@ -232,6 +232,30 @@ spec:
           - update
           - watch
         - apiGroups:
+          - instancetype.kubevirt.io
+          resources:
+          - virtualmachineclusterinstancetypes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - instancetype.kubevirt.io
+          resources:
+          - virtualmachineclusterpreferences
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - kubevirt.io
           resources:
           - virtualmachines

@@ -10,6 +10,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
+	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
@@ -47,23 +48,30 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("failed to read template bundle: %w", err)
 	}
 
+	instancetypePath := common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundlePrefix + ".yaml"
+	preferencePath := common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundlePrefix + ".yaml"
+	common_instancetypes_operand, err := common_instancetypes.New(instancetypePath, preferencePath)
+	if err != nil {
+		return err
+	}
+
+	sspOperands := []operands.Operand{
+		common_instancetypes_operand,
+	}
+
 	runningOnOpenShift, err := common.RunningOnOpenshift(ctx, mgr.GetAPIReader())
 	if err != nil {
 		return err
 	}
 
-	if !runningOnOpenShift {
-		// do nothing if not running on OpenShift
-		mgr.GetLogger().Info("SSP operator is running in inactive mode. The operator will not react to any event.")
-		return nil
-	}
-
-	sspOperands := []operands.Operand{
-		metrics.New(),
-		template_validator.New(),
-		common_templates.New(templatesBundle.Templates),
-		data_sources.New(templatesBundle.DataSources),
-		node_labeller.New(),
+	if runningOnOpenShift {
+		sspOperands = append(sspOperands,
+			metrics.New(),
+			template_validator.New(),
+			common_templates.New(templatesBundle.Templates),
+			data_sources.New(templatesBundle.DataSources),
+			node_labeller.New(),
+		)
 	}
 
 	var requiredCrds []string

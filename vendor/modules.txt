@@ -681,6 +681,8 @@ k8s.io/utils/trace
 ## explicit; go 1.17
 kubevirt.io/api/core
 kubevirt.io/api/core/v1
+kubevirt.io/api/instancetype
+kubevirt.io/api/instancetype/v1alpha2
 # kubevirt.io/client-go v0.58.0
 ## explicit; go 1.17
 kubevirt.io/client-go/log
