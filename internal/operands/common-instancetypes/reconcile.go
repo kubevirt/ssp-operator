@@ -87,7 +87,10 @@ func (c *commonInstancetypes) WatchTypes() []operands.WatchType {
 }
 
 func (c *commonInstancetypes) RequiredCrds() []string {
-	return nil
+	return []string{
+		instancetypeapi.ClusterPluralResourceName + "." + instancetypeapi.GroupName,
+		instancetypeapi.ClusterPluralPreferenceResourceName + "." + instancetypeapi.GroupName,
+	}
 }
 
 func (c *commonInstancetypes) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
