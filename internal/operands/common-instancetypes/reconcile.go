@@ -99,7 +99,14 @@ func (c *commonInstancetypes) Reconcile(request *common.Request) ([]common.Recon
 }
 
 func (c *commonInstancetypes) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	return nil, nil
+	var objects []client.Object
+	for i := range c.virtualMachineClusterInstancetypes {
+		objects = append(objects, &c.virtualMachineClusterInstancetypes[i])
+	}
+	for i := range c.virtualMachineClusterPreferences {
+		objects = append(objects, &c.virtualMachineClusterPreferences[i])
+	}
+	return common.DeleteAll(request, objects...)
 }
 
 func (c *commonInstancetypes) reconcileFuncs() []common.ReconcileFunc {

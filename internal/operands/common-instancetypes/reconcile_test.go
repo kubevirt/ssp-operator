@@ -71,7 +71,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 	})
 
-	It("should create common-instancetypes resources", func() {
+	It("should create and cleanup common-instancetypes resources", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -89,6 +89,17 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		for _, preference := range virtualMachineClusterPreferences {
 			ExpectResourceExists(&preference, request)
+		}
+
+		_, err = operand.Cleanup(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		for _, instancetype := range virtualMachineClusterInstancetypes {
+			ExpectResourceNotExists(&instancetype, request)
+		}
+
+		for _, preference := range virtualMachineClusterPreferences {
+			ExpectResourceNotExists(&preference, request)
 		}
 	})
 })
