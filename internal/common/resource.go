@@ -262,6 +262,17 @@ func Cleanup(request *Request, resource client.Object) (CleanupResult, error) {
 			request.Logger.Error(err, fmt.Sprintf("Error deleting \"%s\": %s", resource.GetName(), err))
 			return CleanupResult{}, err
 		}
+		err = request.Client.Get(request.Context, client.ObjectKeyFromObject(resource), found)
+		if errors.IsNotFound(err) {
+			return CleanupResult{
+				Resource: resource,
+				Deleted:  true,
+			}, nil
+		}
+		if err != nil {
+			request.Logger.Error(err, fmt.Sprintf("Error checking if \"%s\" has been deleted: %s", resource.GetName(), err))
+			return CleanupResult{}, err
+		}
 	}
 
 	return CleanupResult{

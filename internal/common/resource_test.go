@@ -282,11 +282,6 @@ var _ = Describe("Resource", func() {
 			resource := newTestResource(namespace)
 			cleanupResult, err := Cleanup(&request, resource)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(cleanupResult.Deleted).To(BeFalse())
-
-			// Deleting second time will make sure that the resource does not exist
-			cleanupResult, err = Cleanup(&request, resource)
-			Expect(err).ToNot(HaveOccurred())
 			Expect(cleanupResult.Deleted).To(BeTrue())
 		})
 	})
