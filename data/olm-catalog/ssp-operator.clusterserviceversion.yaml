@@ -26,7 +26,7 @@ metadata:
     categories: Openshift Optional
     containerImage: REPLACE_IMAGE:TAG
     description: Manages KubeVirt addons for Scheduling, Scale, Performance
-    operators.operatorframework.io/builder: operator-sdk-v1.8.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.25.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: ssp-operator.v0.14.0
   namespace: kubevirt
@@ -426,7 +426,10 @@ spec:
           - watch
         serviceAccountName: ssp-operator
       deployments:
-      - name: ssp-operator
+      - label:
+          control-plane: ssp-operator
+          name: ssp-operator
+        name: ssp-operator
         spec:
           replicas: 1
           selector:
@@ -435,6 +438,8 @@ spec:
           strategy: {}
           template:
             metadata:
+              annotations:
+                kubectl.kubernetes.io/default-container: manager
               labels:
                 control-plane: ssp-operator
                 name: ssp-operator
@@ -477,7 +482,7 @@ spec:
                   periodSeconds: 10
                 resources:
                   requests:
-                    cpu: 100m
+                    cpu: 200m
                     memory: 150Mi
                 securityContext:
                   allowPrivilegeEscalation: false
@@ -565,7 +570,6 @@ spec:
   webhookdefinitions:
   - admissionReviewVersions:
     - v1
-    - v1beta1
     containerPort: 9443
     deploymentName: ssp-operator
     failurePolicy: Fail

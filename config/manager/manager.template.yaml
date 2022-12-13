@@ -13,6 +13,8 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: ssp-operator
         name: ssp-operator
@@ -41,7 +43,7 @@ spec:
         resources:
           requests:
             memory: "150Mi"
-            cpu: "100m"
+            cpu: "200m"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
