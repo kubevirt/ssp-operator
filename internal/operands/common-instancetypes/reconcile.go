@@ -18,11 +18,13 @@ import (
 // +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterpreferences,verbs=get;list;watch;create;update;patch;delete
 
 const (
-	operandName                      = "common-instancetypes"
-	operandComponent                 = common.AppComponentTemplating
-	BundleDir                        = "data/common-instancetypes-bundle/"
-	ClusterInstancetypesBundlePrefix = "common-clusterinstancetypes-bundle"
-	ClusterPreferencesBundlePrefix   = "common-clusterpreferences-bundle"
+	operandName                          = "common-instancetypes"
+	operandComponent                     = common.AppComponentTemplating
+	BundleDir                            = "data/common-instancetypes-bundle/"
+	ClusterInstancetypesBundlePrefix     = "common-clusterinstancetypes-bundle"
+	ClusterPreferencesBundlePrefix       = "common-clusterpreferences-bundle"
+	virtualMachineClusterInstancetypeCrd = instancetypeapi.ClusterPluralResourceName + "." + instancetypeapi.GroupName
+	virtualMachineClusterPreferenceCrd   = instancetypeapi.ClusterPluralPreferenceResourceName + "." + instancetypeapi.GroupName
 )
 
 type commonInstancetypes struct {
@@ -88,8 +90,8 @@ func (c *commonInstancetypes) WatchTypes() []operands.WatchType {
 
 func (c *commonInstancetypes) RequiredCrds() []string {
 	return []string{
-		instancetypeapi.ClusterPluralResourceName + "." + instancetypeapi.GroupName,
-		instancetypeapi.ClusterPluralPreferenceResourceName + "." + instancetypeapi.GroupName,
+		virtualMachineClusterInstancetypeCrd,
+		virtualMachineClusterPreferenceCrd,
 	}
 }
 
@@ -100,13 +102,24 @@ func (c *commonInstancetypes) Reconcile(request *common.Request) ([]common.Recon
 
 func (c *commonInstancetypes) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
-	for i := range c.virtualMachineClusterInstancetypes {
-		objects = append(objects, &c.virtualMachineClusterInstancetypes[i])
+
+	// Before collecting resources to clean up ensure the corresponding CRD is available
+	if request.CrdWatch.CrdExists(virtualMachineClusterInstancetypeCrd) {
+		for i := range c.virtualMachineClusterInstancetypes {
+			objects = append(objects, &c.virtualMachineClusterInstancetypes[i])
+		}
 	}
-	for i := range c.virtualMachineClusterPreferences {
-		objects = append(objects, &c.virtualMachineClusterPreferences[i])
+	if request.CrdWatch.CrdExists(virtualMachineClusterPreferenceCrd) {
+		for i := range c.virtualMachineClusterPreferences {
+			objects = append(objects, &c.virtualMachineClusterPreferences[i])
+		}
 	}
-	return common.DeleteAll(request, objects...)
+
+	if len(objects) > 0 {
+		return common.DeleteAll(request, objects...)
+	}
+
+	return nil, nil
 }
 
 func (c *commonInstancetypes) reconcileFuncs() []common.ReconcileFunc {
