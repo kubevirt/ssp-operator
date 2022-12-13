@@ -3,11 +3,11 @@ apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
 metadata:
   labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: large
   name: highperformance.large
 spec:
   cpu:
-    dedicatedCPUPlacement: true
     guest: 2
     isolateEmulatorThread: true
   ioThreadsPolicy: shared
@@ -18,11 +18,11 @@ apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
 metadata:
   labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: medium
   name: highperformance.medium
 spec:
   cpu:
-    dedicatedCPUPlacement: true
     guest: 1
     isolateEmulatorThread: true
   ioThreadsPolicy: shared
@@ -33,11 +33,11 @@ apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
 metadata:
   labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: small
   name: highperformance.small
 spec:
   cpu:
-    dedicatedCPUPlacement: true
     guest: 1
     isolateEmulatorThread: true
   ioThreadsPolicy: shared
@@ -48,6 +48,7 @@ apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
 metadata:
   labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: large
   name: server.large
 spec:
@@ -60,6 +61,7 @@ apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
 metadata:
   labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: medium
   name: server.medium
 spec:
@@ -72,6 +74,20 @@ apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
 metadata:
   labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
+    kubevirt.io/size: micro
+  name: server.micro
+spec:
+  cpu:
+    guest: 1
+  memory:
+    guest: 256Mi
+---
+apiVersion: instancetype.kubevirt.io/v1alpha2
+kind: VirtualMachineClusterInstancetype
+metadata:
+  labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: small
   name: server.small
 spec:
@@ -84,6 +100,7 @@ apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
 metadata:
   labels:
+    instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: tiny
   name: server.tiny
 spec:
