@@ -87,7 +87,10 @@ func (c *commonInstancetypes) WatchTypes() []operands.WatchType {
 }
 
 func (c *commonInstancetypes) RequiredCrds() []string {
-	return nil
+	return []string{
+		instancetypeapi.ClusterPluralResourceName + "." + instancetypeapi.GroupName,
+		instancetypeapi.ClusterPluralPreferenceResourceName + "." + instancetypeapi.GroupName,
+	}
 }
 
 func (c *commonInstancetypes) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
@@ -96,7 +99,14 @@ func (c *commonInstancetypes) Reconcile(request *common.Request) ([]common.Recon
 }
 
 func (c *commonInstancetypes) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	return nil, nil
+	var objects []client.Object
+	for i := range c.virtualMachineClusterInstancetypes {
+		objects = append(objects, &c.virtualMachineClusterInstancetypes[i])
+	}
+	for i := range c.virtualMachineClusterPreferences {
+		objects = append(objects, &c.virtualMachineClusterPreferences[i])
+	}
+	return common.DeleteAll(request, objects...)
 }
 
 func (c *commonInstancetypes) reconcileFuncs() []common.ReconcileFunc {
@@ -117,9 +127,6 @@ func (c *commonInstancetypes) reconcileVirtualMachineClusterInstancetypesFuncs()
 				UpdateFunc(func(newRes, foundRes client.Object) {
 					foundRes.(*instancetypev1alpha2.VirtualMachineClusterInstancetype).Spec = newRes.(*instancetypev1alpha2.VirtualMachineClusterInstancetype).Spec
 				}).
-				ImmutableSpec(func(resource client.Object) interface{} {
-					return resource.(*instancetypev1alpha2.VirtualMachineClusterInstancetype).Spec
-				}).
 				Reconcile()
 		})
 	}
@@ -136,9 +143,6 @@ func (c *commonInstancetypes) reconcileVirtualMachineClusterPreferencesFuncs() [
 				WithAppLabels(operandName, operandComponent).
 				UpdateFunc(func(newRes, foundRes client.Object) {
 					foundRes.(*instancetypev1alpha2.VirtualMachineClusterPreference).Spec = newRes.(*instancetypev1alpha2.VirtualMachineClusterPreference).Spec
-				}).
-				ImmutableSpec(func(resource client.Object) interface{} {
-					return resource.(*instancetypev1alpha2.VirtualMachineClusterPreference).Spec
 				}).
 				Reconcile()
 		})
