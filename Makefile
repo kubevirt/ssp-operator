@@ -280,20 +280,26 @@ generate-doc: build-docgen
 build-docgen:
 	go build -ldflags="-s -w" -o _out/metricsdocs ./tools/metricsdocs
 
+.PHONY: cluster-up
 cluster-up:
 	./hack/kubevirtci.sh up
 
+.PHONY: cluster-down
 cluster-down:
 	./hack/kubevirtci.sh down
 
+.PHONY: cluster-sync
 cluster-sync:
 	KUSTOMIZE=$(KUSTOMIZE) ./hack/kubevirtci.sh sync
 
+.PHONY: kubevirt-up
 kubevirt-up:
 	./hack/kubevirt.sh up
 
+.PHONY: kubevirt-down
 kubevirt-down:
 	./hack/kubevirt.sh down
 
+.PHONY: kubevirt-sync
 kubevirt-sync:
 	KUSTOMIZE=$(KUSTOMIZE) ./hack/kubevirt.sh sync
