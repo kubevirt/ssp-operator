@@ -31,6 +31,7 @@ import (
 
 	"k8s.io/utils/pointer"
 	kubevirtv1 "kubevirt.io/api/core/v1"
+	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
@@ -408,6 +409,7 @@ func setupApiClient() {
 	Expect(clientgoscheme.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1")).ToNot(HaveOccurred())
 	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(instancetypev1alpha2.AddToScheme(testScheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
