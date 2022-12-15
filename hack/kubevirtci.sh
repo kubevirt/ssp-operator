@@ -20,20 +20,21 @@ export KUBEVIRTCI_TAG=${KUBEVIRTCI_TAG:-$(curl -sfL https://storage.googleapis.c
 export KUBEVIRT_DEPLOY_CDI="true"
 
 _base_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-_kubectl="${_base_dir}/cluster-up/cluster-up/kubectl.sh"
-_kubessh="${_base_dir}/cluster-up/cluster-up/ssh.sh"
-_kubevirtcicli="${_base_dir}/cluster-up/cluster-up/cli.sh"
+_cluster_up_dir="${_base_dir}/_cluster_up"
+_kubectl="${_cluster_up_dir}/cluster-up/kubectl.sh"
+_kubessh="${_cluster_up_dir}/cluster-up/ssh.sh"
+_kubevirtcicli="${_cluster_up_dir}/cluster-up/cli.sh"
 _action=$1
 shift
 
 function kubevirtci::fetch_kubevirtci() {
-	if [[ ! -d ${_base_dir}/cluster-up ]]; then
-    git clone --depth 1 --branch "${KUBEVIRTCI_TAG}" https://github.com/kubevirt/kubevirtci.git "${_base_dir}"/cluster-up
+	if [[ ! -d ${_cluster_up_dir} ]]; then
+    git clone --depth 1 --branch "${KUBEVIRTCI_TAG}" https://github.com/kubevirt/kubevirtci.git "${_cluster_up_dir}"
   fi
 }
 
 function kubevirtci::up() {
-  make cluster-up -C "${_base_dir}/cluster-up"
+  make cluster-up -C "${_cluster_up_dir}"
   KUBECONFIG=$(kubevirtci::kubeconfig)
   export KUBECONFIG
   echo "adding kubevirtci registry to cdi-insecure-registries"
@@ -47,7 +48,7 @@ function kubevirtci::up() {
 }
 
 function kubevirtci::down() {
-  make cluster-down -C "${_base_dir}/cluster-up"
+  make cluster-down -C "${_cluster_up_dir}"
 }
 
 function kubevirtci::registry() {
@@ -60,7 +61,7 @@ function kubevirtci::sync() {
 }
 
 function kubevirtci::kubeconfig() {
-  "${_base_dir}/cluster-up/cluster-up/kubeconfig.sh"
+  "${_cluster_up_dir}/cluster-up/kubeconfig.sh"
 }
 
 kubevirtci::fetch_kubevirtci
