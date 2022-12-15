@@ -77,11 +77,15 @@ func (c *commonInstancetypes) Name() string {
 	return operandName
 }
 
-func (c *commonInstancetypes) WatchClusterTypes() []operands.WatchType {
+func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
 		{Object: &instancetypev1alpha2.VirtualMachineClusterInstancetype{}, Crd: instancetypeapi.ClusterPluralResourceName, WatchFullObject: true},
 		{Object: &instancetypev1alpha2.VirtualMachineClusterPreference{}, Crd: instancetypeapi.ClusterPluralPreferenceResourceName, WatchFullObject: true},
 	}
+}
+
+func (c *commonInstancetypes) WatchClusterTypes() []operands.WatchType {
+	return WatchClusterTypes()
 }
 
 func (c *commonInstancetypes) WatchTypes() []operands.WatchType {

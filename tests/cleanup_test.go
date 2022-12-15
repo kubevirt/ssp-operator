@@ -3,7 +3,6 @@ package tests
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -12,7 +11,9 @@ import (
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
@@ -31,6 +32,7 @@ var _ = Describe("Cleanup", func() {
 		var allWatchTypes []operands.WatchType
 		for _, f := range []func() []operands.WatchType{
 			common_templates.WatchClusterTypes,
+			common_instancetypes.WatchClusterTypes,
 			data_sources.WatchClusterTypes,
 			metrics.WatchTypes,
 			metrics.WatchClusterTypes,
