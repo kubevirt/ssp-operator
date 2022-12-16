@@ -8,7 +8,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.3
-	github.com/onsi/ginkgo v1.16.5
+	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/onsi/gomega v1.19.0
 	github.com/openshift/api v0.0.0-20220124143425-d74727069f6f // release-4.10
 	github.com/openshift/custom-resource-status v1.1.2
@@ -33,7 +33,7 @@ require (
 	kubevirt.io/client-go v0.58.0
 	kubevirt.io/containerized-data-importer-api v1.53.1
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
-	kubevirt.io/qe-tools v0.1.7
+	kubevirt.io/qe-tools v0.1.8
 	kubevirt.io/ssp-operator/api v0.0.0
 	sigs.k8s.io/controller-runtime v0.13.1
 )
@@ -80,7 +80,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -98,7 +97,6 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiserver v0.25.0 // indirect

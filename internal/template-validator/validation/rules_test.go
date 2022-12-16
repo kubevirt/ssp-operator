@@ -1,11 +1,11 @@
 package validation
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
-	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
+	test_utils "kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Rules", func() {

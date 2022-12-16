@@ -1,7 +1,7 @@
 package validation
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -9,7 +9,7 @@ import (
 
 	k6tobjs "kubevirt.io/ssp-operator/internal/template-validator/kubevirtjobs"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
-	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
+	test_utils "kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Specialized", func() {

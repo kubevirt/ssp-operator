@@ -3,8 +3,7 @@ package tests
 import (
 	"reflect"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	secv1 "github.com/openshift/api/security/v1"
 	apps "k8s.io/api/apps/v1"
@@ -102,25 +101,25 @@ var _ = Describe("Node Labeller", func() {
 	})
 
 	Context("resource deletion", func() {
-		table.DescribeTable("deleted cluster resource", func(res *testResource) {
+		DescribeTable("deleted cluster resource", func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).To(HaveOccurred())
 			Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 		},
-			table.Entry("[test_id:6068]cluster role", &clusterRoleRes),
-			table.Entry("[test_id:6067]cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:6066]security context constraint", &securityContextConstraintRes),
+			Entry("[test_id:6068]cluster role", &clusterRoleRes),
+			Entry("[test_id:6067]cluster role binding", &clusterRoleBindingRes),
+			Entry("[test_id:6066]security context constraint", &securityContextConstraintRes),
 		)
 
-		table.DescribeTable("deleted namespaced resource", func(res *testResource) {
+		DescribeTable("deleted namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).To(HaveOccurred())
 			Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 		},
-			table.Entry("[test_id:6063]service account", &serviceAccountRes),
-			table.Entry("[test_id:6064]configMap", &configMapRes),
-			table.Entry("[test_id:6065]daemonSet", &daemonSetRes),
+			Entry("[test_id:6063]service account", &serviceAccountRes),
+			Entry("[test_id:6064]configMap", &configMapRes),
+			Entry("[test_id:6065]daemonSet", &daemonSetRes),
 		)
 	})
 

@@ -5,10 +5,9 @@ import (
 	"reflect"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/onsi/ginkgo/extensions/table"
 	authv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -102,37 +101,37 @@ var _ = Describe("DataSources", func() {
 	})
 
 	Context("resource creation", func() {
-		table.DescribeTable("created cluster resource", func(res *testResource) {
+		DescribeTable("created cluster resource", func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue(), "Missing owner annotations")
 		},
-			table.Entry("[test_id:4584]edit role", &editClusterRole),
-			table.Entry("[test_id:4494]golden images namespace", &goldenImageNS),
+			Entry("[test_id:4584]edit role", &editClusterRole),
+			Entry("[test_id:4494]golden images namespace", &goldenImageNS),
 		)
 
-		table.DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("[test_id:4777]view role", &viewRole),
-			table.Entry("[test_id:4772]view role binding", &viewRoleBinding),
+			Entry("[test_id:4777]view role", &viewRole),
+			Entry("[test_id:4772]view role binding", &viewRoleBinding),
 		)
 
-		table.DescribeTable("should set app labels", expectAppLabels,
-			table.Entry("[test_id:6215] edit role", &editClusterRole),
-			table.Entry("[test_id:6216] golden images namespace", &goldenImageNS),
-			table.Entry("[test_id:6217] view role", &viewRole),
-			table.Entry("[test_id:6218] view role binding", &viewRoleBinding),
+		DescribeTable("should set app labels", expectAppLabels,
+			Entry("[test_id:6215] edit role", &editClusterRole),
+			Entry("[test_id:6216] golden images namespace", &goldenImageNS),
+			Entry("[test_id:6217] view role", &viewRole),
+			Entry("[test_id:6218] view role binding", &viewRoleBinding),
 		)
 	})
 
 	Context("resource change", func() {
-		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:5315]edit cluster role", &editClusterRole),
-			table.Entry("[test_id:5316]view role", &viewRole),
-			table.Entry("[test_id:5317]view role binding", &viewRoleBinding),
+		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+			Entry("[test_id:5315]edit cluster role", &editClusterRole),
+			Entry("[test_id:5316]view role", &viewRole),
+			Entry("[test_id:5317]view role binding", &viewRoleBinding),
 		)
 
 		Context("with pause", func() {
@@ -144,27 +143,27 @@ var _ = Describe("DataSources", func() {
 				unpauseSsp()
 			})
 
-			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
-				table.Entry("[test_id:5388]view role", &viewRole),
-				table.Entry("[test_id:5389]view role binding", &viewRoleBinding),
-				table.Entry("[test_id:5393]edit cluster role", &editClusterRole),
+			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				Entry("[test_id:5388]view role", &viewRole),
+				Entry("[test_id:5389]view role binding", &viewRoleBinding),
+				Entry("[test_id:5393]edit cluster role", &editClusterRole),
 			)
 		})
 
-		table.DescribeTable("should restore app labels", expectAppLabelsRestoreAfterUpdate,
-			table.Entry("[test_id:6210] edit role", &editClusterRole),
-			table.Entry("[test_id:6211] golden images namespace", &goldenImageNS),
-			table.Entry("[test_id:6212] view role", &viewRole),
-			table.Entry("[test_id:6213] view role binding", &viewRoleBinding),
+		DescribeTable("should restore app labels", expectAppLabelsRestoreAfterUpdate,
+			Entry("[test_id:6210] edit role", &editClusterRole),
+			Entry("[test_id:6211] golden images namespace", &goldenImageNS),
+			Entry("[test_id:6212] view role", &viewRole),
+			Entry("[test_id:6213] view role binding", &viewRoleBinding),
 		)
 	})
 
 	Context("resource deletion", func() {
-		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:4773]view role", &viewRole),
-			table.Entry("[test_id:4842]view role binding", &viewRoleBinding),
-			table.Entry("[test_id:4771]edit cluster role", &editClusterRole),
-			table.Entry("[test_id:4770]golden image NS", &goldenImageNS),
+		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+			Entry("[test_id:4773]view role", &viewRole),
+			Entry("[test_id:4842]view role binding", &viewRoleBinding),
+			Entry("[test_id:4771]edit cluster role", &editClusterRole),
+			Entry("[test_id:4770]golden image NS", &goldenImageNS),
 		)
 	})
 
@@ -192,8 +191,8 @@ var _ = Describe("DataSources", func() {
 				Expect(apiClient.Delete(ctx, regularSA)).NotTo(HaveOccurred())
 			})
 
-			table.DescribeTable("regular service account namespace RBAC", expectUserCan,
-				table.Entry("[test_id:6069] should be able to 'get' namespaces",
+			DescribeTable("regular service account namespace RBAC", expectUserCan,
+				Entry("[test_id:6069] should be able to 'get' namespaces",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -204,7 +203,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "namespaces",
 						},
 					}),
-				table.Entry("[test_id:6070] should be able to 'list' namespaces",
+				Entry("[test_id:6070] should be able to 'list' namespaces",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -215,7 +214,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "namespaces",
 						},
 					}),
-				table.Entry("[test_id:6071] should be able to 'watch' namespaces",
+				Entry("[test_id:6071] should be able to 'watch' namespaces",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -227,8 +226,8 @@ var _ = Describe("DataSources", func() {
 						},
 					}))
 
-			table.DescribeTable("regular service account DV RBAC allowed", expectUserCan,
-				table.Entry("[test_id:6072] should be able to 'get' datavolumes",
+			DescribeTable("regular service account DV RBAC allowed", expectUserCan,
+				Entry("[test_id:6072] should be able to 'get' datavolumes",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -240,7 +239,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "datavolumes",
 						},
 					}),
-				table.Entry("[test_id:6073] should be able to 'list' datavolumes",
+				Entry("[test_id:6073] should be able to 'list' datavolumes",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -252,7 +251,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "datavolumes",
 						},
 					}),
-				table.Entry("[test_id:6074] should be able to 'watch' datavolumes",
+				Entry("[test_id:6074] should be able to 'watch' datavolumes",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -264,7 +263,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "datavolumes",
 						},
 					}),
-				table.Entry("[test_id:5005]: ServiceAccounts with only view role can create dv/source",
+				Entry("[test_id:5005]: ServiceAccounts with only view role can create dv/source",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -279,8 +278,8 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			table.DescribeTable("regular service account DV RBAC denied", expectUserCannot,
-				table.Entry("[test_id:4873]: ServiceAccounts with only view role cannot delete DVs",
+			DescribeTable("regular service account DV RBAC denied", expectUserCannot,
+				Entry("[test_id:4873]: ServiceAccounts with only view role cannot delete DVs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -292,7 +291,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "datavolumes",
 						},
 					}),
-				table.Entry("[test_id:4874]: ServiceAccounts with only view role cannot create DVs",
+				Entry("[test_id:4874]: ServiceAccounts with only view role cannot create DVs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -306,8 +305,8 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			table.DescribeTable("regular service account PVC RBAC allowed", expectUserCan,
-				table.Entry("[test_id:4775]: ServiceAccounts with view role can view PVCs",
+			DescribeTable("regular service account PVC RBAC allowed", expectUserCan,
+				Entry("[test_id:4775]: ServiceAccounts with view role can view PVCs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -319,8 +318,8 @@ var _ = Describe("DataSources", func() {
 						},
 					}))
 
-			table.DescribeTable("regular service account PVC RBAC denied", expectUserCannot,
-				table.Entry("[test_id:4776]: ServiceAccounts with only view role cannot create PVCs",
+			DescribeTable("regular service account PVC RBAC denied", expectUserCannot,
+				Entry("[test_id:4776]: ServiceAccounts with only view role cannot create PVCs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -331,7 +330,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "persistentvolumeclaims",
 						},
 					}),
-				table.Entry("[test_id:4846]: ServiceAccounts with only view role cannot delete PVCs",
+				Entry("[test_id:4846]: ServiceAccounts with only view role cannot delete PVCs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -342,7 +341,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "persistentvolumeclaims",
 						},
 					}),
-				table.Entry("[test_id:4879]: ServiceAccounts with only view role cannot create any other resources other than the ones listed in the View role",
+				Entry("[test_id:4879]: ServiceAccounts with only view role cannot create any other resources other than the ones listed in the View role",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -355,8 +354,8 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			table.DescribeTable("regular service account DataSource RBAC allowed", expectUserCan,
-				table.Entry("[test_id:7466] should be able to 'get' datasources",
+			DescribeTable("regular service account DataSource RBAC allowed", expectUserCan,
+				Entry("[test_id:7466] should be able to 'get' datasources",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -368,7 +367,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "datasources",
 						},
 					}),
-				table.Entry("[test_id:7468] should be able to 'list' datasources",
+				Entry("[test_id:7468] should be able to 'list' datasources",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -380,7 +379,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "datasources",
 						},
 					}),
-				table.Entry("[test_id:7462] should be able to 'watch' datasources",
+				Entry("[test_id:7462] should be able to 'watch' datasources",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -394,8 +393,8 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			table.DescribeTable("regular service account DataSource RBAC denied", expectUserCannot,
-				table.Entry("[test_id:7464]: ServiceAccounts with only view role cannot delete DataSources",
+			DescribeTable("regular service account DataSource RBAC denied", expectUserCannot,
+				Entry("[test_id:7464]: ServiceAccounts with only view role cannot delete DataSources",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -407,7 +406,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "datasources",
 						},
 					}),
-				table.Entry("[test_id:7450]: ServiceAccounts with only view role cannot create DataSources",
+				Entry("[test_id:7450]: ServiceAccounts with only view role cannot create DataSources",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -421,8 +420,8 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			table.DescribeTable("regular service account DataImportCron RBAC allowed", expectUserCan,
-				table.Entry("[test_id:7460] should be able to 'get' DataImportCrons",
+			DescribeTable("regular service account DataImportCron RBAC allowed", expectUserCan,
+				Entry("[test_id:7460] should be able to 'get' DataImportCrons",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -434,7 +433,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "dataimportcrons",
 						},
 					}),
-				table.Entry("[test_id:7461] should be able to 'list' DataImportCrons",
+				Entry("[test_id:7461] should be able to 'list' DataImportCrons",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -446,7 +445,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "dataimportcrons",
 						},
 					}),
-				table.Entry("[test_id:7459] should be able to 'watch' DataImportCrons",
+				Entry("[test_id:7459] should be able to 'watch' DataImportCrons",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -460,8 +459,8 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			table.DescribeTable("regular service account DataImportCron RBAC denied", expectUserCannot,
-				table.Entry("[test_id:7456]: ServiceAccounts with only view role cannot delete DataImportCrons",
+			DescribeTable("regular service account DataImportCron RBAC denied", expectUserCannot,
+				Entry("[test_id:7456]: ServiceAccounts with only view role cannot delete DataImportCrons",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -473,7 +472,7 @@ var _ = Describe("DataSources", func() {
 							Resource:  "dataimportcrons",
 						},
 					}),
-				table.Entry("[test_id:7454]: ServiceAccounts with only view role cannot create DataImportCrons",
+				Entry("[test_id:7454]: ServiceAccounts with only view role cannot create DataImportCrons",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
 						Groups: sasGroup,
@@ -527,12 +526,12 @@ var _ = Describe("DataSources", func() {
 					Expect(apiClient.Delete(ctx, editObj)).ToNot(HaveOccurred())
 					Expect(apiClient.Delete(ctx, privilegedSA)).NotTo(HaveOccurred())
 				})
-				table.DescribeTable("should verify resource permissions", func(sars *authv1.SubjectAccessReviewSpec) {
+				DescribeTable("should verify resource permissions", func(sars *authv1.SubjectAccessReviewSpec) {
 					// Because privilegedSAFullName is filled after test Tree generation
 					sars.User = privilegedSAFullName
 					expectUserCan(sars)
 				},
-					table.Entry("[test_id:4774]: ServiceAcounts with edit role can create PVCs",
+					Entry("[test_id:4774]: ServiceAcounts with edit role can create PVCs",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
@@ -541,7 +540,7 @@ var _ = Describe("DataSources", func() {
 								Resource:  "persistentvolumeclaims",
 							},
 						}),
-					table.Entry("[test_id:4845]: ServiceAcounts with edit role can delete PVCs",
+					Entry("[test_id:4845]: ServiceAcounts with edit role can delete PVCs",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
@@ -550,7 +549,7 @@ var _ = Describe("DataSources", func() {
 								Resource:  "persistentvolumeclaims",
 							},
 						}),
-					table.Entry("[test_id:4877]: ServiceAccounts with edit role can view DVs",
+					Entry("[test_id:4877]: ServiceAccounts with edit role can view DVs",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "get",
@@ -560,7 +559,7 @@ var _ = Describe("DataSources", func() {
 								Resource:  "datavolumes",
 							},
 						}),
-					table.Entry("[test_id:4872]: ServiceAccounts with edit role can create DVs",
+					Entry("[test_id:4872]: ServiceAccounts with edit role can create DVs",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
@@ -570,7 +569,7 @@ var _ = Describe("DataSources", func() {
 								Resource:  "datavolumes",
 							},
 						}),
-					table.Entry("[test_id:4876]: ServiceAccounts with edit role can delete DVs",
+					Entry("[test_id:4876]: ServiceAccounts with edit role can delete DVs",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
@@ -581,7 +580,7 @@ var _ = Describe("DataSources", func() {
 							},
 						}),
 
-					table.Entry("[test_id:7452]: ServiceAccounts with edit role can create DataSources",
+					Entry("[test_id:7452]: ServiceAccounts with edit role can create DataSources",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
@@ -591,7 +590,7 @@ var _ = Describe("DataSources", func() {
 								Resource:  "datasources",
 							},
 						}),
-					table.Entry("[test_id:7451]: ServiceAccounts with edit role can delete DataSources",
+					Entry("[test_id:7451]: ServiceAccounts with edit role can delete DataSources",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",
@@ -602,7 +601,7 @@ var _ = Describe("DataSources", func() {
 							},
 						}),
 
-					table.Entry("[test_id:7449]: ServiceAccounts with edit role can create DataImportCrons",
+					Entry("[test_id:7449]: ServiceAccounts with edit role can create DataImportCrons",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "create",
@@ -612,7 +611,7 @@ var _ = Describe("DataSources", func() {
 								Resource:  "dataimportcrons",
 							},
 						}),
-					table.Entry("[test_id:7448]: ServiceAccounts with edit role can delete DataImportCrons",
+					Entry("[test_id:7448]: ServiceAccounts with edit role can delete DataImportCrons",
 						&authv1.SubjectAccessReviewSpec{
 							ResourceAttributes: &authv1.ResourceAttributes{
 								Verb:      "delete",

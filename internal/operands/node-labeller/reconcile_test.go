@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	secv1 "github.com/openshift/api/security/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"

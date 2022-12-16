@@ -3,16 +3,16 @@ package template_bundle
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Template bundle", func() {
+var _ = Describe("Template bundle", Ordered, func() {
 	var (
 		testBundle Bundle
 	)
 
-	BeforeSuite(func() {
+	BeforeAll(func() {
 		var err error
 		testBundle, err = ReadBundle("template-bundle-test.yaml")
 		Expect(err).ToNot(HaveOccurred())

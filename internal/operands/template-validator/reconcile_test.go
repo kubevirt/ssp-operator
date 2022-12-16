@@ -4,10 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onsi/ginkgo/extensions/table"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -375,7 +374,7 @@ var _ = Describe("Template validator operand", func() {
 			request.Instance.Spec.TemplateValidator.Placement.Affinity.NodeAffinity = nodeAffinity
 		}
 
-		table.DescribeTable("with different configuration", func(requestAdjustFunctions []func(*common.Request), expectedNodeAffinity *core.NodeAffinity, expectedPodAffinity *core.PodAffinity, expectedPodAntiAffinity *core.PodAntiAffinity) {
+		DescribeTable("with different configuration", func(requestAdjustFunctions []func(*common.Request), expectedNodeAffinity *core.NodeAffinity, expectedPodAffinity *core.PodAffinity, expectedPodAntiAffinity *core.PodAntiAffinity) {
 			for _, f := range requestAdjustFunctions {
 				f(&request)
 			}
@@ -388,13 +387,13 @@ var _ = Describe("Template validator operand", func() {
 			Expect(deployment.Spec.Template.Spec.Affinity.PodAffinity).To(Equal(expectedPodAffinity))
 			Expect(deployment.Spec.Template.Spec.Affinity.PodAntiAffinity).To(Equal(expectedPodAntiAffinity))
 		},
-			table.Entry("with specific nodeAffinity", []func(*common.Request){setNodeAffinity}, nodeAffinity, nil, defaultPodAntiAffinity),
-			table.Entry("with specific podAffinity", []func(*common.Request){setPodAffinity}, nil, podAffinity, defaultPodAntiAffinity),
-			table.Entry("with specific podAntiAffinity", []func(*common.Request){setPodAntiAffinity}, nil, nil, mergedPodAntiAffinity),
-			table.Entry("with specific nodeAffinity and podAffinity", []func(*common.Request){setNodeAffinity, setPodAffinity}, nodeAffinity, podAffinity, defaultPodAntiAffinity),
-			table.Entry("with specific nodeAffinity and podAntiAffinity", []func(*common.Request){setNodeAffinity, setPodAntiAffinity}, nodeAffinity, nil, mergedPodAntiAffinity),
-			table.Entry("with specific podAffinity and podAntiAffinity", []func(*common.Request){setPodAffinity, setPodAntiAffinity}, nil, podAffinity, mergedPodAntiAffinity),
-			table.Entry("with specific nodeAffinity, podAffinity and podAntiAffinity", []func(*common.Request){setNodeAffinity, setPodAffinity, setPodAntiAffinity}, nodeAffinity, podAffinity, mergedPodAntiAffinity),
+			Entry("with specific nodeAffinity", []func(*common.Request){setNodeAffinity}, nodeAffinity, nil, defaultPodAntiAffinity),
+			Entry("with specific podAffinity", []func(*common.Request){setPodAffinity}, nil, podAffinity, defaultPodAntiAffinity),
+			Entry("with specific podAntiAffinity", []func(*common.Request){setPodAntiAffinity}, nil, nil, mergedPodAntiAffinity),
+			Entry("with specific nodeAffinity and podAffinity", []func(*common.Request){setNodeAffinity, setPodAffinity}, nodeAffinity, podAffinity, defaultPodAntiAffinity),
+			Entry("with specific nodeAffinity and podAntiAffinity", []func(*common.Request){setNodeAffinity, setPodAntiAffinity}, nodeAffinity, nil, mergedPodAntiAffinity),
+			Entry("with specific podAffinity and podAntiAffinity", []func(*common.Request){setPodAffinity, setPodAntiAffinity}, nil, podAffinity, mergedPodAntiAffinity),
+			Entry("with specific nodeAffinity, podAffinity and podAntiAffinity", []func(*common.Request){setNodeAffinity, setPodAffinity, setPodAntiAffinity}, nodeAffinity, podAffinity, mergedPodAntiAffinity),
 		)
 	})
 })

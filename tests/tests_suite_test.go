@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	ginkgo_reporters "github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
+	ginkgo_reporters "github.com/onsi/ginkgo/v2/reporters"
 	. "github.com/onsi/gomega"
 	osconfv1 "github.com/openshift/api/config/v1"
 	openshiftroutev1 "github.com/openshift/api/route/v1"

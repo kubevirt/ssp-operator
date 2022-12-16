@@ -8,8 +8,7 @@ import (
 	"net"
 	"net/http"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	ocpv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/library-go/pkg/crypto"
@@ -107,16 +106,16 @@ var _ = Describe("Crypto Policy", func() {
 	})
 
 	Context("setting Crypto Policy", func() {
-		table.DescribeTable("Adhere to defined TLSConfig", func(tlsConfigTestPermutation tlsConfigTestPermutation) {
+		DescribeTable("Adhere to defined TLSConfig", func(tlsConfigTestPermutation tlsConfigTestPermutation) {
 			pod := operatorPod()
 			applyTLSConfig(tlsConfigTestPermutation.openshiftTLSPolicy)
 			testMetricsEndpoint(pod, tlsConfigTestPermutation)
 			testWebhookEndpoint(pod, tlsConfigTestPermutation)
 		},
-			table.Entry("[test_id:9360] old", oldPermutation),
-			table.Entry("[test_id:9276] intermediate", intermediatePermutation),
-			table.Entry("[test_id:9477] modern", modernPermutation),
-			table.Entry("[test_id:9280] custom", customPermutation),
+			Entry("[test_id:9360] old", oldPermutation),
+			Entry("[test_id:9276] intermediate", intermediatePermutation),
+			Entry("[test_id:9477] modern", modernPermutation),
+			Entry("[test_id:9280] custom", customPermutation),
 		)
 	})
 })
