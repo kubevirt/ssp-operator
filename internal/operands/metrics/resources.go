@@ -13,6 +13,7 @@ const (
 	MonitorNamespace             = "openshift-monitoring"
 	runbookURLBasePath           = "https://kubevirt.io/monitoring/runbooks/"
 	severityAlertLabelKey        = "severity"
+	healthImpactAlertLabelKey    = "operator_health_impact"
 	partOfAlertLabelKey          = "kubernetes_operator_part_of"
 	partOfAlertLabelValue        = "kubevirt"
 	componentAlertLabelKey       = "kubernetes_operator_component"
@@ -85,9 +86,10 @@ var alertRulesList = []promv1.Rule{
 			"runbook_url": runbookURLBasePath + "SSPOperatorDown",
 		},
 		Labels: map[string]string{
-			severityAlertLabelKey:  "critical",
-			partOfAlertLabelKey:    partOfAlertLabelValue,
-			componentAlertLabelKey: componentAlertLabelValue,
+			severityAlertLabelKey:     "critical",
+			healthImpactAlertLabelKey: "critical",
+			partOfAlertLabelKey:       partOfAlertLabelValue,
+			componentAlertLabelKey:    componentAlertLabelValue,
 		},
 	},
 	{
@@ -99,9 +101,10 @@ var alertRulesList = []promv1.Rule{
 			"runbook_url": runbookURLBasePath + "SSPTemplateValidatorDown",
 		},
 		Labels: map[string]string{
-			severityAlertLabelKey:  "critical",
-			partOfAlertLabelKey:    partOfAlertLabelValue,
-			componentAlertLabelKey: componentAlertLabelValue,
+			severityAlertLabelKey:     "critical",
+			healthImpactAlertLabelKey: "critical",
+			partOfAlertLabelKey:       partOfAlertLabelValue,
+			componentAlertLabelKey:    componentAlertLabelValue,
 		},
 	},
 	{
@@ -113,9 +116,10 @@ var alertRulesList = []promv1.Rule{
 			"runbook_url": runbookURLBasePath + "SSPFailingToReconcile",
 		},
 		Labels: map[string]string{
-			severityAlertLabelKey:  "critical",
-			partOfAlertLabelKey:    partOfAlertLabelValue,
-			componentAlertLabelKey: componentAlertLabelValue,
+			severityAlertLabelKey:     "critical",
+			healthImpactAlertLabelKey: "critical",
+			partOfAlertLabelKey:       partOfAlertLabelValue,
+			componentAlertLabelKey:    componentAlertLabelValue,
 		},
 	},
 	{
@@ -127,9 +131,10 @@ var alertRulesList = []promv1.Rule{
 			"runbook_url": runbookURLBasePath + "SSPHighRateRejectedVms",
 		},
 		Labels: map[string]string{
-			severityAlertLabelKey:  "warning",
-			partOfAlertLabelKey:    partOfAlertLabelValue,
-			componentAlertLabelKey: componentAlertLabelValue,
+			severityAlertLabelKey:     "warning",
+			healthImpactAlertLabelKey: "warning",
+			partOfAlertLabelKey:       partOfAlertLabelValue,
+			componentAlertLabelKey:    componentAlertLabelValue,
 		},
 	},
 	{
@@ -141,9 +146,10 @@ var alertRulesList = []promv1.Rule{
 			"runbook_url": runbookURLBasePath + "SSPCommonTemplatesModificationReverted",
 		},
 		Labels: map[string]string{
-			severityAlertLabelKey:  "warning",
-			partOfAlertLabelKey:    partOfAlertLabelValue,
-			componentAlertLabelKey: componentAlertLabelValue,
+			severityAlertLabelKey:     "warning",
+			healthImpactAlertLabelKey: "none",
+			partOfAlertLabelKey:       partOfAlertLabelValue,
+			componentAlertLabelKey:    componentAlertLabelValue,
 		},
 	},
 }
