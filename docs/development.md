@@ -89,6 +89,10 @@ operands are called during the reconciliation of `SspReconciler`.
 
 Each operand handles a designated task.
 
+#### `common-instancetypes` operand
+
+Installs the bundled common instance types found in `data/common-instancetypes-bundle`.
+
 #### `common-templates` operand
 
 Installs the bundled common templates found in `data/common-templates-bundle`.
