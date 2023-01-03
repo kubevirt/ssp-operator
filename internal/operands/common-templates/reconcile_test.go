@@ -71,7 +71,7 @@ var _ = Describe("Common-Templates operand", func() {
 					Namespace: namespace,
 				},
 				Spec: ssp.SSPSpec{
-					CommonTemplates: ssp.CommonTemplates{
+					CommonTemplates: &ssp.CommonTemplates{
 						Namespace: namespace,
 					},
 				},

@@ -2865,8 +2865,6 @@ spec:
                     - Custom
                     type: string
                 type: object
-            required:
-            - commonTemplates
             type: object
           status:
             description: SSPStatus defines the observed state of SSP

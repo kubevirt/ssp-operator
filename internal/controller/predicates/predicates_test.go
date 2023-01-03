@@ -17,7 +17,7 @@ var _ = Describe("SpecChangedPredicate", func() {
 	It("Should be false if spec is the same", func() {
 		obj := &sspv1beta1.SSP{
 			Spec: sspv1beta1.SSPSpec{
-				TemplateValidator: sspv1beta1.TemplateValidator{
+				TemplateValidator: &sspv1beta1.TemplateValidator{
 					Replicas: pointer.Int32(1),
 				},
 			},
@@ -34,7 +34,7 @@ var _ = Describe("SpecChangedPredicate", func() {
 	It("Shuld be true if spec is different", func() {
 		obj := &sspv1beta1.SSP{
 			Spec: sspv1beta1.SSPSpec{
-				TemplateValidator: sspv1beta1.TemplateValidator{
+				TemplateValidator: &sspv1beta1.TemplateValidator{
 					Replicas: pointer.Int32(1),
 				},
 			},

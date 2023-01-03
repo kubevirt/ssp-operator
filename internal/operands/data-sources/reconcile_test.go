@@ -65,7 +65,7 @@ var _ = Describe("Data-Sources operand", func() {
 					Namespace: namespace,
 				},
 				Spec: ssp.SSPSpec{
-					CommonTemplates: ssp.CommonTemplates{
+					CommonTemplates: &ssp.CommonTemplates{
 						Namespace: namespace,
 					},
 				},

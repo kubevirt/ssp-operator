@@ -84,7 +84,7 @@ var _ = Describe("SSP Validation", func() {
 						ResourceVersion: "1",
 					},
 					Spec: sspv1beta1.SSPSpec{
-						CommonTemplates: sspv1beta1.CommonTemplates{
+						CommonTemplates: &sspv1beta1.CommonTemplates{
 							Namespace: templatesNamespace,
 						},
 					},
@@ -98,7 +98,7 @@ var _ = Describe("SSP Validation", func() {
 						Namespace: "test-ns2",
 					},
 					Spec: sspv1beta1.SSPSpec{
-						CommonTemplates: sspv1beta1.CommonTemplates{
+						CommonTemplates: &sspv1beta1.CommonTemplates{
 							Namespace: templatesNamespace,
 						},
 					},
@@ -117,7 +117,7 @@ var _ = Describe("SSP Validation", func() {
 					Namespace: "test-ns",
 				},
 				Spec: sspv1beta1.SSPSpec{
-					CommonTemplates: sspv1beta1.CommonTemplates{
+					CommonTemplates: &sspv1beta1.CommonTemplates{
 						Namespace: nonexistingNamespace,
 					},
 				},
@@ -135,7 +135,7 @@ var _ = Describe("SSP Validation", func() {
 				Namespace: "test-ns",
 			},
 			Spec: sspv1beta1.SSPSpec{
-				CommonTemplates: sspv1beta1.CommonTemplates{
+				CommonTemplates: &sspv1beta1.CommonTemplates{
 					Namespace: "old-ns",
 				},
 			},
@@ -172,7 +172,7 @@ var _ = Describe("SSP Validation", func() {
 					Namespace: "test-ns",
 				},
 				Spec: sspv1beta1.SSPSpec{
-					CommonTemplates: sspv1beta1.CommonTemplates{
+					CommonTemplates: &sspv1beta1.CommonTemplates{
 						Namespace: templatesNamespace,
 						DataImportCronTemplates: []sspv1beta1.DataImportCronTemplate{
 							{

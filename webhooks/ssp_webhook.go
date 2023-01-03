@@ -107,6 +107,9 @@ func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) error
 }
 
 func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta1.SSP) error {
+	if ssp.Spec.TemplateValidator == nil {
+		return nil
+	}
 	return s.validateOperandPlacement(ctx, ssp.Namespace, ssp.Spec.TemplateValidator.Placement)
 }
 
