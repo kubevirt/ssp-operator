@@ -5,10 +5,9 @@ import (
 	"reflect"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/onsi/ginkgo/extensions/table"
 	templatev1 "github.com/openshift/api/template/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,11 +46,11 @@ var _ = Describe("Common templates", func() {
 	})
 
 	Context("resource creation", func() {
-		table.DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("[test_id:5086]common-template in custom NS", &testTemplate),
+			Entry("[test_id:5086]common-template in custom NS", &testTemplate),
 		)
 
 		It("[test_id:5352]creates only one default variant per OS", func() {
@@ -142,8 +141,8 @@ var _ = Describe("Common templates", func() {
 			}
 		})
 
-		table.DescribeTable("should set app labels", expectAppLabels,
-			table.Entry("[test_id:6219] common-template in custom NS", &testTemplate),
+		DescribeTable("should set app labels", expectAppLabels,
+			Entry("[test_id:6219] common-template in custom NS", &testTemplate),
 		)
 	})
 
@@ -186,8 +185,8 @@ var _ = Describe("Common templates", func() {
 			})
 		})
 
-		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:5087]test template", &testTemplate),
+		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+			Entry("[test_id:5087]test template", &testTemplate),
 		)
 
 		It("[test_id: 7340] should increase metrics when restoring tamplate", func() {
@@ -203,19 +202,19 @@ var _ = Describe("Common templates", func() {
 				unpauseSsp()
 			})
 
-			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
-				table.Entry("[test_id:5391]testTemplate in custom NS", &testTemplate),
+			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				Entry("[test_id:5391]testTemplate in custom NS", &testTemplate),
 			)
 		})
 
-		table.DescribeTable("should restore app labels", expectAppLabelsRestoreAfterUpdate,
-			table.Entry("[test_id:6214] common-template in custom NS", &testTemplate),
+		DescribeTable("should restore app labels", expectAppLabelsRestoreAfterUpdate,
+			Entry("[test_id:6214] common-template in custom NS", &testTemplate),
 		)
 	})
 
 	Context("resource deletion", func() {
-		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:5088]testTemplate in custom NS", &testTemplate),
+		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+			Entry("[test_id:5088]testTemplate in custom NS", &testTemplate),
 		)
 	})
 

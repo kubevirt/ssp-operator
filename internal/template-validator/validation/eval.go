@@ -39,7 +39,7 @@ var (
 	ErrUnsatisfiedRule      = errors.New("rule is not satisfied")
 )
 
-type Report struct {
+type ValidationReport struct {
 	Ref       *Rule
 	Skipped   bool   // because not valid, with `valid` defined as per spec
 	Satisfied bool   // applied rule, with this result
@@ -48,7 +48,7 @@ type Report struct {
 }
 
 type Result struct {
-	Status []Report
+	Status []ValidationReport
 	failed bool
 }
 
@@ -59,7 +59,7 @@ func (r *Result) Warn(message string, e error) {
 }
 
 func (r *Result) Fail(ru *Rule, e error) {
-	r.Status = append(r.Status, Report{
+	r.Status = append(r.Status, ValidationReport{
 		Ref:   ru,
 		Error: e,
 	})
@@ -69,14 +69,14 @@ func (r *Result) Fail(ru *Rule, e error) {
 }
 
 func (r *Result) Skip(ru *Rule) {
-	r.Status = append(r.Status, Report{
+	r.Status = append(r.Status, ValidationReport{
 		Ref:     ru,
 		Skipped: true,
 	})
 }
 
 func (r *Result) Applied(ru *Rule, satisfied bool, message string) {
-	r.Status = append(r.Status, Report{
+	r.Status = append(r.Status, ValidationReport{
 		Ref:       ru,
 		Satisfied: satisfied,
 		Message:   message,
@@ -95,9 +95,9 @@ func (r *Result) Succeeded() bool {
 	return !r.failed
 }
 
-// checks if a report needs to be translated to a StatusCause, and if so
+// checks if a ValidationReport needs to be translated to a StatusCause, and if so
 // return the message describing the cause
-func needsCause(rr *Report) (bool, string) {
+func needsCause(rr *ValidationReport) (bool, string) {
 	if rr.Error != nil {
 		// internal errors need explanation
 		return true, fmt.Sprintf("%v", rr.Error)
@@ -147,8 +147,8 @@ func validateRule(r *Rule) error {
 }
 
 // Evaluate applies *all* the rules (greedy evaluation) to the given VM.
-// Returns a Report for each applied Rule, but ordering isn't guaranteed.
-// Use Report.Ref to crosslink Reports with Rules.
+// Returns a ValidationReport for each applied Rule, but ordering isn't guaranteed.
+// Use ValidationReport.Ref to crosslink ValidationReports with Rules.
 // The 'bool' return value is a syntetic result, it is true if Evaluation succeeded.
 // The 'error' return value signals *internal* evaluation error.
 // IOW 'false' evaluation *DOES NOT* imply error != nil

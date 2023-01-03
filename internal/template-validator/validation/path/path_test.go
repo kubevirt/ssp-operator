@@ -1,12 +1,12 @@
 package path
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	kubevirtv1 "kubevirt.io/api/core/v1"
 
-	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
+	test_utils "kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Path", func() {

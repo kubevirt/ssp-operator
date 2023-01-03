@@ -2,14 +2,14 @@ package tests
 
 import (
 	"fmt"
-	templatev1 "github.com/openshift/api/template/v1"
-	"kubevirt.io/ssp-operator/tests/env"
 	"net/http"
 	"reflect"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/extensions/table"
+	templatev1 "github.com/openshift/api/template/v1"
+	"kubevirt.io/ssp-operator/tests/env"
+
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	apps "k8s.io/api/apps/v1"
@@ -106,39 +106,39 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("resource creation", func() {
-		table.DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("[test_id:8346] service monitor", &serviceMonitorRes),
-			table.Entry("[test_id:8347] role", &rbacClusterRoleRes),
-			table.Entry("[test_id:8345] role binding", &rbacClusterRoleBindingRes),
-			table.Entry("[test_id:4665] prometheus rules", &prometheusRuleRes),
+			Entry("[test_id:8346] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8347] role", &rbacClusterRoleRes),
+			Entry("[test_id:8345] role binding", &rbacClusterRoleBindingRes),
+			Entry("[test_id:4665] prometheus rules", &prometheusRuleRes),
 		)
 
-		table.DescribeTable("should set app labels", expectAppLabels,
-			table.Entry("[test_id:8348] service monitor", &serviceMonitorRes),
-			table.Entry("[test_id:8349] role", &rbacClusterRoleRes),
-			table.Entry("[test_id:8350] role binding", &rbacClusterRoleBindingRes),
-			table.Entry("[test_id:5790] prometheus rules", &prometheusRuleRes),
+		DescribeTable("should set app labels", expectAppLabels,
+			Entry("[test_id:8348] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8349] role", &rbacClusterRoleRes),
+			Entry("[test_id:8350] role binding", &rbacClusterRoleBindingRes),
+			Entry("[test_id:5790] prometheus rules", &prometheusRuleRes),
 		)
 	})
 
 	Context("resource deletion", func() {
-		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:8351] service monitor", &serviceMonitorRes),
-			table.Entry("[test_id:8352] role", &rbacClusterRoleRes),
-			table.Entry("[test_id:8355] role binding", &rbacClusterRoleBindingRes),
-			table.Entry("[test_id:6055] prometheus rules", &prometheusRuleRes),
+		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+			Entry("[test_id:8351] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8352] role", &rbacClusterRoleRes),
+			Entry("[test_id:8355] role binding", &rbacClusterRoleBindingRes),
+			Entry("[test_id:6055] prometheus rules", &prometheusRuleRes),
 		)
 	})
 
 	Context("resource change", func() {
-		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:8356] service monitor", &serviceMonitorRes),
-			table.Entry("[test_id:8353] role", &rbacClusterRoleRes),
-			table.Entry("[test_id:8354] role binding", &rbacClusterRoleBindingRes),
-			table.Entry("[test_id:4666] prometheus rules", &prometheusRuleRes),
+		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+			Entry("[test_id:8356] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8353] role", &rbacClusterRoleRes),
+			Entry("[test_id:8354] role binding", &rbacClusterRoleBindingRes),
+			Entry("[test_id:4666] prometheus rules", &prometheusRuleRes),
 		)
 
 		Context("with pause", func() {
@@ -150,19 +150,19 @@ var _ = Describe("Metrics", func() {
 				unpauseSsp()
 			})
 
-			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
-				table.Entry("[test_id:8357] service monitor", &serviceMonitorRes),
-				table.Entry("[test_id:8358] role", &rbacClusterRoleRes),
-				table.Entry("[test_id:8361] role binding", &rbacClusterRoleBindingRes),
-				table.Entry("[test_id:5397] prometheus rules", &prometheusRuleRes),
+			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				Entry("[test_id:8357] service monitor", &serviceMonitorRes),
+				Entry("[test_id:8358] role", &rbacClusterRoleRes),
+				Entry("[test_id:8361] role binding", &rbacClusterRoleBindingRes),
+				Entry("[test_id:5397] prometheus rules", &prometheusRuleRes),
 			)
 		})
 
-		table.DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
-			table.Entry("[test_id:8362] service monitor", &serviceMonitorRes),
-			table.Entry("[test_id:8359] role", &rbacClusterRoleRes),
-			table.Entry("[test_id:8360] role binding", &rbacClusterRoleBindingRes),
-			table.Entry("[test_id:5790] prometheus rules", &prometheusRuleRes),
+		DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
+			Entry("[test_id:8362] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8359] role", &rbacClusterRoleRes),
+			Entry("[test_id:8360] role binding", &rbacClusterRoleBindingRes),
+			Entry("[test_id:5790] prometheus rules", &prometheusRuleRes),
 		)
 	})
 

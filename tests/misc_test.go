@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/onsi/ginkgo/extensions/table"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -242,7 +241,7 @@ var _ = Describe("RHEL VM creation", func() {
 		}, &core.PersistentVolumeClaim{})
 	})
 
-	table.DescribeTable("should be able to start VM", func(imageUrl string) {
+	DescribeTable("should be able to start VM", func(imageUrl string) {
 		const diskName = "disk0"
 		const sshPort = 22
 
@@ -360,8 +359,8 @@ var _ = Describe("RHEL VM creation", func() {
 			return false
 		}, env.Timeout(), time.Second).Should(BeTrue())
 	},
-		table.Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
-		table.Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
+		Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
+		Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
 	)
 })
 

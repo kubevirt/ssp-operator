@@ -3,13 +3,13 @@ package validation
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
-	"kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
+	test_utils "kubevirt.io/ssp-operator/internal/template-validator/validation/test-utils"
 )
 
 var _ = Describe("Eval", func() {

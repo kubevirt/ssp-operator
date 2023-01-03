@@ -13,8 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	templatev1 "github.com/openshift/api/template/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
@@ -138,58 +137,58 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	Context("resource creation", func() {
-		table.DescribeTable("created cluster resource", func(res *testResource) {
+		DescribeTable("created cluster resource", func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue(), "owner annotations are missing")
 		},
-			table.Entry("[test_id:4907] cluster role", &clusterRoleRes),
-			table.Entry("[test_id:4908] cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:4909] validating webhook configuration", &webhookConfigRes),
+			Entry("[test_id:4907] cluster role", &clusterRoleRes),
+			Entry("[test_id:4908] cluster role binding", &clusterRoleBindingRes),
+			Entry("[test_id:4909] validating webhook configuration", &webhookConfigRes),
 		)
 
-		table.DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			table.Entry("[test_id:4910] service account", &serviceAccountRes),
-			table.Entry("[test_id:4911] service", &serviceRes),
-			table.Entry("[test_id:8366] metrics service", &serviceMetricsRes),
-			table.Entry("[test_id:4912] deployment", &deploymentRes),
+			Entry("[test_id:4910] service account", &serviceAccountRes),
+			Entry("[test_id:4911] service", &serviceRes),
+			Entry("[test_id:8366] metrics service", &serviceMetricsRes),
+			Entry("[test_id:4912] deployment", &deploymentRes),
 		)
 
-		table.DescribeTable("should set app labels", expectAppLabels,
-			table.Entry("[test_id:5824]cluster role", &clusterRoleRes),
-			table.Entry("[test_id:5825]cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:5826]validating webhook configuration", &webhookConfigRes),
-			table.Entry("[test_id:6201]service account", &serviceAccountRes),
-			table.Entry("[test_id:5827]service", &serviceRes),
-			table.Entry("[test_id:8367]metrics service", &serviceMetricsRes),
-			table.Entry("[test_id:5828]deployment", &deploymentRes),
+		DescribeTable("should set app labels", expectAppLabels,
+			Entry("[test_id:5824]cluster role", &clusterRoleRes),
+			Entry("[test_id:5825]cluster role binding", &clusterRoleBindingRes),
+			Entry("[test_id:5826]validating webhook configuration", &webhookConfigRes),
+			Entry("[test_id:6201]service account", &serviceAccountRes),
+			Entry("[test_id:5827]service", &serviceRes),
+			Entry("[test_id:8367]metrics service", &serviceMetricsRes),
+			Entry("[test_id:5828]deployment", &deploymentRes),
 		)
 	})
 
 	Context("resource deletion", func() {
-		table.DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			table.Entry("[test_id:4914] cluster role", &clusterRoleRes),
-			table.Entry("[test_id:4916] cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:4918] validating webhook configuration", &webhookConfigRes),
-			table.Entry("[test_id:4920] service account", &serviceAccountRes),
-			table.Entry("[test_id:4922] service", &serviceRes),
-			table.Entry("[test_id:8370] metrics service", &serviceMetricsRes),
-			table.Entry("[test_id:4924] deployment", &deploymentRes),
+		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+			Entry("[test_id:4914] cluster role", &clusterRoleRes),
+			Entry("[test_id:4916] cluster role binding", &clusterRoleBindingRes),
+			Entry("[test_id:4918] validating webhook configuration", &webhookConfigRes),
+			Entry("[test_id:4920] service account", &serviceAccountRes),
+			Entry("[test_id:4922] service", &serviceRes),
+			Entry("[test_id:8370] metrics service", &serviceMetricsRes),
+			Entry("[test_id:4924] deployment", &deploymentRes),
 		)
 	})
 
 	Context("resource change", func() {
-		table.DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			table.Entry("[test_id:4915] cluster role", &clusterRoleRes),
-			table.Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes),
-			table.Entry("[test_id:4923] service", &serviceRes),
-			table.Entry("[test_id:8371] metrics service", &serviceMetricsRes),
-			table.Entry("[test_id:4925] deployment", &deploymentRes),
+		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+			Entry("[test_id:4915] cluster role", &clusterRoleRes),
+			Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes),
+			Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes),
+			Entry("[test_id:4923] service", &serviceRes),
+			Entry("[test_id:8371] metrics service", &serviceMetricsRes),
+			Entry("[test_id:4925] deployment", &deploymentRes),
 		)
 
 		Context("with pause", func() {
@@ -201,23 +200,23 @@ var _ = Describe("Template validator operand", func() {
 				unpauseSsp()
 			})
 
-			table.DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
-				table.Entry("[test_id:5534] cluster role", &clusterRoleRes),
-				table.Entry("[test_id:5535] cluster role binding", &clusterRoleBindingRes),
-				table.Entry("[test_id:5536] validating webhook configuration", &webhookConfigRes),
-				table.Entry("[test_id:5538] service", &serviceRes),
-				table.Entry("[test_id:8368] metrics service", &serviceMetricsRes),
-				table.Entry("[test_id:5539] deployment", &deploymentRes),
+			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+				Entry("[test_id:5534] cluster role", &clusterRoleRes),
+				Entry("[test_id:5535] cluster role binding", &clusterRoleBindingRes),
+				Entry("[test_id:5536] validating webhook configuration", &webhookConfigRes),
+				Entry("[test_id:5538] service", &serviceRes),
+				Entry("[test_id:8368] metrics service", &serviceMetricsRes),
+				Entry("[test_id:5539] deployment", &deploymentRes),
 			)
 		})
 
-		table.DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
-			table.Entry("[test_id:6205] cluster role", &clusterRoleRes),
-			table.Entry("[test_id:6206] cluster role binding", &clusterRoleBindingRes),
-			table.Entry("[test_id:6207] validating webhook configuration", &webhookConfigRes),
-			table.Entry("[test_id:6208] service", &serviceRes),
-			table.Entry("[test_id:8369] metrics service", &serviceMetricsRes),
-			table.Entry("[test_id:6209] deployment", &deploymentRes),
+		DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
+			Entry("[test_id:6205] cluster role", &clusterRoleRes),
+			Entry("[test_id:6206] cluster role binding", &clusterRoleBindingRes),
+			Entry("[test_id:6207] validating webhook configuration", &webhookConfigRes),
+			Entry("[test_id:6208] service", &serviceRes),
+			Entry("[test_id:8369] metrics service", &serviceMetricsRes),
+			Entry("[test_id:6209] deployment", &deploymentRes),
 		)
 	})
 

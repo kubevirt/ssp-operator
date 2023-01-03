@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	templatev1 "github.com/openshift/api/template/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
