@@ -57,6 +57,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 
 	sspOperands := []operands.Operand{
 		common_instancetypes_operand,
+		data_sources.New(templatesBundle.DataSources),
 	}
 
 	runningOnOpenShift, err := common.RunningOnOpenshift(ctx, mgr.GetAPIReader())
@@ -69,7 +70,6 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 			metrics.New(),
 			template_validator.New(),
 			common_templates.New(templatesBundle.Templates),
-			data_sources.New(templatesBundle.DataSources),
 			node_labeller.New(),
 		)
 	}
