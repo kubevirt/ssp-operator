@@ -20,7 +20,7 @@ export KUBEVIRTCI_TAG=${KUBEVIRTCI_TAG:-$(curl -sfL https://storage.googleapis.c
 export KUBEVIRT_DEPLOY_CDI="true"
 
 _base_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-_cluster_up_dir="${_base_dir}/_cluster_up"
+_cluster_up_dir="${_base_dir}/_cluster-up"
 _kubectl="${_cluster_up_dir}/cluster-up/kubectl.sh"
 _kubessh="${_cluster_up_dir}/cluster-up/ssh.sh"
 _kubevirtcicli="${_cluster_up_dir}/cluster-up/cli.sh"
