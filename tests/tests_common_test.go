@@ -133,7 +133,7 @@ func totalRestoredTemplatesCount() (sum int) {
 // this is to make the relevant tests more robust.
 func operatorPodsWithMetricsPort() ([]core.Pod, uint16) {
 	pods := &core.PodList{}
-	err := apiClient.List(ctx, pods, client.MatchingLabels{"control-plane": "ssp-operator"})
+	err := apiClient.List(ctx, pods, client.MatchingLabels{"control-plane": "ssp-operator"}, client.MatchingFields{"status.phase": "Running"})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pods.Items).ToNot(BeEmpty())
 	operatorMetricsPort, err := metricsPort(pods.Items[0])
