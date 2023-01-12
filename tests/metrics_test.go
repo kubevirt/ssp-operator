@@ -178,7 +178,10 @@ var _ = Describe("Metrics", func() {
 
 				for _, rs := range rsList.Items {
 					for _, env := range rs.Spec.Template.Spec.Containers[0].Env {
-						if env.Name == common.OperatorVersionKey && env.Value == version && rs.Status.ReadyReplicas == *rs.Spec.Replicas {
+						if env.Name == common.OperatorVersionKey &&
+							env.Value == version &&
+							*rs.Spec.Replicas > 0 &&
+							rs.Status.ReadyReplicas == *rs.Spec.Replicas {
 							return nil
 						}
 					}
