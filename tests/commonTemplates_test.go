@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -357,5 +358,7 @@ var _ = Describe("Common templates", func() {
 func expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate testResource) {
 	restoredCountBefore := totalRestoredTemplatesCount()
 	expectRestoreAfterUpdate(&testTemplate)
-	Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
+	Eventually(func() int {
+		return totalRestoredTemplatesCount() - restoredCountBefore
+	}, env.ShortTimeout(), time.Second).Should(Equal(1))
 }
