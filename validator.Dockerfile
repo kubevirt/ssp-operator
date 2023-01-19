@@ -22,7 +22,7 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY internal/ internal/
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -ldflags="-X 'kubevirt.io/ssp-operator/internal/template-validator/version.COMPONENT=$COMPONENT'\
+RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -ldflags="-X 'kubevirt.io/ssp-operator/internal/template-validator/version.COMPONENT=$COMPONENT'\
 -X 'kubevirt.io/ssp-operator/internal/template-validator/version.VERSION=$VERSION'\
 -X 'kubevirt.io/ssp-operator/internal/template-validator/version.BRANCH=$BRANCH'\
 -X 'kubevirt.io/ssp-operator/internal/template-validator/version.REVISION=$REVISION'" -o kubevirt-template-validator internal/template-validator/main.go
