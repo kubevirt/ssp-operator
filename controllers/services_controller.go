@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	MetricsServiceName = "ssp-operator-metrics"
-	OperatorName       = "ssp-operator"
+	MetricsServiceName    = "ssp-operator-metrics"
+	OperatorName          = "ssp-operator"
+	serviceControllerName = "service-controller"
 )
 
 func ServiceObject(namespace string) *v1.Service {
@@ -63,6 +64,10 @@ func ServiceObject(namespace string) *v1.Service {
 
 func CreateServiceController(ctx context.Context, mgr ctrl.Manager) (*serviceReconciler, error) {
 	return newServiceReconciler(ctx, mgr)
+}
+
+func (r *serviceReconciler) Name() string {
+	return serviceControllerName
 }
 
 func (r *serviceReconciler) Start(ctx context.Context, mgr ctrl.Manager) error {
