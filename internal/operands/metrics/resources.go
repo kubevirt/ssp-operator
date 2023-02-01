@@ -23,6 +23,7 @@ const (
 	PrometheusClusterRoleName    = "prometheus-k8s-ssp"
 	PrometheusServiceAccountName = "prometheus-k8s"
 	MetricsPortName              = "metrics"
+	Rhel6AlertName               = "DeprecatedRHEL6Vm"
 )
 
 const (
@@ -144,6 +145,20 @@ var alertRulesList = []promv1.Rule{
 		Annotations: map[string]string{
 			"summary":     "Common Templates manual modifications were reverted by the operator",
 			"runbook_url": runbookURLBasePath + "SSPCommonTemplatesModificationReverted",
+		},
+		Labels: map[string]string{
+			severityAlertLabelKey:     "warning",
+			healthImpactAlertLabelKey: "none",
+			partOfAlertLabelKey:       partOfAlertLabelValue,
+			componentAlertLabelKey:    componentAlertLabelValue,
+		},
+	},
+	{
+		Alert: Rhel6AlertName,
+		Expr:  intstr.FromString("sum by (namespace, name) (kubevirt_vm_rhel6) > 0"),
+		Annotations: map[string]string{
+			"summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is based on RHEL6 template, and this will not be supported in the next release",
+			//"runbook_url": runbookURLBasePath + Rhel6AlertName,
 		},
 		Labels: map[string]string{
 			severityAlertLabelKey:     "warning",

@@ -115,19 +115,29 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("error adding service controller: %w", err)
 	}
 
+	vmController, err := CreateVmController(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to create vm controller: %w", err)
+	}
+
+	if err = mgr.Add(getRunnable(mgr, vmController)); err != nil {
+		return fmt.Errorf("error adding vm controller: %w", err)
+	}
+
 	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
 
 	return reconciler.setupController(mgr)
 }
 
-func getRunnable(mgr controllerruntime.Manager, serviceController *serviceReconciler) manager.Runnable {
+func getRunnable(mgr controllerruntime.Manager, ctrl ControllerReconciler) manager.Runnable {
 	return manager.RunnableFunc(func(ctx context.Context) error {
-		err := serviceController.Start(ctx, mgr)
+		mgr.GetLogger().Info(fmt.Sprintf("Starting %s", ctrl.Name()))
+		err := ctrl.Start(ctx, mgr)
 		if err != nil {
-			return fmt.Errorf("error starting serviceController: %w", err)
+			return fmt.Errorf("error starting %s: %w", ctrl.Name(), err)
 		}
 
-		mgr.GetLogger().Info("Services Controller started")
+		mgr.GetLogger().Info(fmt.Sprintf("%s started", ctrl.Name()))
 
 		return nil
 	})

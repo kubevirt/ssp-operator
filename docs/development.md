@@ -74,12 +74,13 @@ for development is the [Kubebuilder Book](https://book.kubebuilder.io/).
 
 ### Controllers
 
-There are two controllers found in `controllers/`. The `CrdController` ensures
-that all required CRDs are available before the `SspReconciler` is started.
-Both controllers are setup by `controllers/setup.go` (deviating from the
-default kubebuilder structure, because of `SspReconciler`'s dependency on
-`CrdController`). If all required CRDs are already available during setup,
-`SspReconciler` is started immediately.
+There are three controllers found in `controllers/`.
+- `ServiceReconciler` adds and reconciles a Service that should exist
+independently of the SSP CR for Prometheus monitoring to work with SSP.
+- `SspReconciler` ensures that all required CRDs are available and reconciles
+  the ssp CRD itself and its operands .
+- `VmReconciler` watches for vms based on RHEL6 template and updates the
+`kubevirt_vm_rhel6` metric.
 
 The logic of `ssp-operator` is split into separate operands, which can be found
 under `internal/operands`. Each operand deals with a designated task, all
