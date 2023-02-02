@@ -1,6 +1,8 @@
 package common
 
 import (
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"kubevirt.io/ssp-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -60,4 +62,12 @@ func addInstanceLabels(requestInstance *v1beta1.SSP, to map[string]string) {
 
 func copyLabel(from, to map[string]string, key string) {
 	to[key] = from[key]
+}
+
+func GetAppNameSelector(name string) (labels.Selector, error) {
+	appNameRequirement, err := labels.NewRequirement(AppKubernetesNameLabel, selection.Equals, []string{name})
+	if err != nil {
+		return nil, err
+	}
+	return labels.NewSelector().Add(*appNameRequirement), nil
 }
