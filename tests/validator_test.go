@@ -323,10 +323,12 @@ var _ = Describe("Template validator operand", func() {
 			waitUntilDeployed()
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator.Placement = &lifecycleapi.NodePlacement{
-					Affinity:     affinity,
-					NodeSelector: nodeSelector,
-					Tolerations:  tolerations,
+				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+					Placement: &lifecycleapi.NodePlacement{
+						Affinity:     affinity,
+						NodeSelector: nodeSelector,
+						Tolerations:  tolerations,
+					},
 				}
 			})
 
@@ -345,10 +347,13 @@ var _ = Describe("Template validator operand", func() {
 			}, env.Timeout(), 1*time.Second).Should(BeTrue(), "placement is different")
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				placement := foundSsp.Spec.TemplateValidator.Placement
-				placement.Affinity = nil
-				placement.NodeSelector = nil
-				placement.Tolerations = nil
+				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+					Placement: &lifecycleapi.NodePlacement{
+						Affinity:     nil,
+						NodeSelector: nil,
+						Tolerations:  nil,
+					},
+				}
 			})
 
 			waitUntilDeployed()
@@ -375,7 +380,9 @@ var _ = Describe("Template validator operand", func() {
 			defer watch.Stop()
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator.Replicas = pointer.Int32Ptr(replicas)
+				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+					Replicas: pointer.Int32Ptr(replicas),
+				}
 			})
 
 			err = WatchChangesUntil(watch, isStatusDeploying, env.Timeout())

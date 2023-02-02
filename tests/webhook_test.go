@@ -129,14 +129,18 @@ var _ = Describe("Validation webhook", func() {
 
 			Context("Placement API validation", func() {
 				It("[test_id:5988]should succeed with valid template-validator placement fields", func() {
-					newSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
+					newSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+						Placement: &placementAPIValidationValidPlacement,
+					}
 
 					Expect(apiClient.Create(ctx, newSsp, client.DryRunAll)).ToNot(HaveOccurred(),
 						"failed to create SSP CR with valid template-validator placement fields")
 				})
 
 				It("[test_id:5987]should fail with invalid template-validator placement fields", func() {
-					newSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
+					newSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+						Placement: &placementAPIValidationInvalidPlacement,
+					}
 
 					Expect(apiClient.Create(ctx, newSsp, client.DryRunAll)).To(HaveOccurred(),
 						"created SSP CR with invalid template-validator placement fields")
@@ -170,7 +174,9 @@ var _ = Describe("Validation webhook", func() {
 			It("[test_id:5990]should succeed with valid template-validator placement fields", func() {
 				Eventually(func() error {
 					foundSsp = getSsp()
-					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationValidPlacement
+					foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+						Placement: &placementAPIValidationValidPlacement,
+					}
 					return apiClient.Update(ctx, foundSsp, client.DryRunAll)
 				}, 20*time.Second, time.Second).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
 			})
@@ -178,7 +184,9 @@ var _ = Describe("Validation webhook", func() {
 			It("[test_id:5989]should fail with invalid template-validator placement fields", func() {
 				Eventually(func() v1.StatusReason {
 					foundSsp = getSsp()
-					foundSsp.Spec.TemplateValidator.Placement = &placementAPIValidationInvalidPlacement
+					foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+						Placement: &placementAPIValidationInvalidPlacement,
+					}
 					err := apiClient.Update(ctx, foundSsp, client.DryRunAll)
 					return errors.ReasonForError(err)
 				}, 20*time.Second, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")

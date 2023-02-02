@@ -88,7 +88,9 @@ var _ = Describe("Prometheus Alerts", func() {
 			strategy.SkipSspUpdateTestsIfNeeded()
 			var replicas int32 = 0
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator.Replicas = &replicas
+				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+					Replicas: &replicas,
+				}
 			})
 			waitUntilDeployed()
 			waitForAlertToActivate("SSPTemplateValidatorDown")
