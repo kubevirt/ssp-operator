@@ -16,7 +16,9 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	node_labeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
+	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -55,6 +57,12 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return err
 	}
 
+	vmConsoleProxyBundlePath := vm_console_proxy_bundle.GetBundlePath()
+	vmConsoleProxyBundle, err := vm_console_proxy_bundle.ReadBundle(vmConsoleProxyBundlePath)
+	if err != nil {
+		return fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
+	}
+
 	sspOperands := []operands.Operand{
 		common_instancetypes_operand,
 		data_sources.New(templatesBundle.DataSources),
@@ -71,6 +79,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 			template_validator.New(),
 			common_templates.New(templatesBundle.Templates),
 			node_labeller.New(),
+			vm_console_proxy.New(&vmConsoleProxyBundle),
 		)
 	}
 
