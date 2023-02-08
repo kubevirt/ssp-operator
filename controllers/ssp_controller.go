@@ -65,7 +65,6 @@ var kvsspCRDs = map[string]string{
 	"kubevirtmetricsaggregations.ssp.kubevirt.io":    "KubevirtMetricsAggregation",
 	"kubevirttemplatevalidators.ssp.kubevirt.io":     "KubevirtTemplateValidator",
 	"kubevirtcommontemplatesbundles.ssp.kubevirt.io": "KubevirtCommonTemplatesBundle",
-	"kubevirtnodelabellerbundles.ssp.kubevirt.io":    "KubevirtNodeLabellerBundle",
 }
 
 // sspReconciler reconciles a SSP object
@@ -102,7 +101,6 @@ var _ reconcile.Reconciler = &sspReconciler{}
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtcommontemplatesbundles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtmetricsaggregations,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtnodelabellerbundles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
 func (r *sspReconciler) setupController(mgr ctrl.Manager) error {

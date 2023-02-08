@@ -48,11 +48,6 @@ type CommonTemplates struct {
 	DataImportCronTemplates []DataImportCronTemplate `json:"dataImportCronTemplates,omitempty"`
 }
 
-type NodeLabeller struct {
-	// Placement describes the node scheduling configuration
-	Placement *lifecycleapi.NodePlacement `json:"placement,omitempty"`
-}
-
 // SSPSpec defines the desired state of SSP
 type SSPSpec struct {
 	// TemplateValidator is configuration of the template validator operand
@@ -60,9 +55,6 @@ type SSPSpec struct {
 
 	// CommonTemplates is the configuration of the common templates operand
 	CommonTemplates CommonTemplates `json:"commonTemplates"`
-
-	// NodeLabeller is configuration of the node-labeller operand
-	NodeLabeller *NodeLabeller `json:"nodeLabeller,omitempty"`
 
 	// TLSSecurityProfile is a configuration for the TLS.
 	TLSSecurityProfile *ocpv1.TLSSecurityProfile `json:"tlsSecurityProfile,omitempty"`

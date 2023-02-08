@@ -15,7 +15,6 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 )
 
@@ -36,8 +35,6 @@ var _ = Describe("Cleanup", func() {
 			data_sources.WatchClusterTypes,
 			metrics.WatchTypes,
 			metrics.WatchClusterTypes,
-			nodelabeller.WatchTypes,
-			nodelabeller.WatchClusterTypes,
 			template_validator.WatchTypes,
 			template_validator.WatchClusterTypes,
 		} {

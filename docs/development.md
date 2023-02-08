@@ -111,12 +111,6 @@ Installs prometheus monitoring rules for `ssp-operator` metrics. The available
 metrics can be found in `docs/metrics.md`. The installed rules can be found in
 `internal/operands/metrics/resources.go`.
 
-#### `node-labeller` operand
-
-Node labeling was moved to the [kubevirt](https://github.com/kubevirt/kubevirt)
-core. The operand removes remaining resources created by older versions of
-`ssp-operator`.
-
 #### `template-validator` operand
 
 The main `template-validator` runs in at least one separate container than the

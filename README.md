@@ -23,7 +23,6 @@ The following resource types and CRDs are needed by `ssp-operator` when deployed
 | `datavolumes.cdi.kubevirt.io/v1beta1`                                   | `data-sources` operand (Kind `DataVolume` and `DataVolumeSource`)         |
 | `datasources.cdi.kubevirt.io/v1beta1`                                   | `data-sources` operand (Kind `DataSource`)                                |
 | `prometheusrules.monitoring.coreos.com`                                 | `metrics` operand (Kind `PrometheusRule`)                                 |
-| `securitycontextconstraints.security.openshift.io`                      | `node-labeller` operand (Kind `SecurityContextConstraints`)               |
 | `template.openshift.io/v1`                                              | `common-templates` operand (Kind `Template`)                              |
 | `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1alpha2` | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
 | `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1alpha2`   | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |

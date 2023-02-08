@@ -93,18 +93,6 @@ spec:
         - apiGroups:
           - apps
           resources:
-          - daemonsets
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - apps
-          resources:
           - deployments
           verbs:
           - create
@@ -182,19 +170,6 @@ spec:
           resources:
           - configmaps
           - serviceaccounts
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - configmaps
-          - serviceaccounts
           - services
           verbs:
           - create
@@ -216,14 +191,6 @@ spec:
           - patch
           - update
           - watch
-        - apiGroups:
-          - ""
-          resources:
-          - nodes
-          verbs:
-          - get
-          - patch
-          - update
         - apiGroups:
           - ""
           resources:
@@ -353,26 +320,6 @@ spec:
           - update
           - watch
         - apiGroups:
-          - security.openshift.io
-          resources:
-          - securitycontextconstraints
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - security.openshift.io
-          resourceNames:
-          - privileged
-          resources:
-          - securitycontextconstraints
-          verbs:
-          - use
-        - apiGroups:
           - ssp.kubevirt.io
           resources:
           - kubevirtcommontemplatesbundles
@@ -388,18 +335,6 @@ spec:
           - ssp.kubevirt.io
           resources:
           - kubevirtmetricsaggregations
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ssp.kubevirt.io
-          resources:
-          - kubevirtnodelabellerbundles
           verbs:
           - create
           - delete
