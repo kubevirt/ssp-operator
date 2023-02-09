@@ -112,7 +112,7 @@ func (s *newSspStrategy) Init() {
 			},
 		},
 		Spec: sspv1beta1.SSPSpec{
-			TemplateValidator: sspv1beta1.TemplateValidator{
+			TemplateValidator: &sspv1beta1.TemplateValidator{
 				Replicas: pointer.Int32Ptr(int32(s.GetValidatorReplicas())),
 			},
 			CommonTemplates: sspv1beta1.CommonTemplates{
@@ -247,14 +247,25 @@ func (s *existingSspStrategy) Init() {
 	// Try to modify the SSP and check if it is not reverted by another operator
 	defer s.RevertToOriginalSspCr()
 
-	newReplicasCount := *existingSsp.Spec.TemplateValidator.Replicas + 1
+	newReplicasCount := int32(2)
+	if existingSsp.Spec.TemplateValidator != nil && existingSsp.Spec.TemplateValidator.Replicas != nil {
+		newReplicasCount = *existingSsp.Spec.TemplateValidator.Replicas + int32(1)
+	}
 	updateSsp(func(foundSsp *sspv1beta1.SSP) {
-		foundSsp.Spec.TemplateValidator.Replicas = &newReplicasCount
+		if existingSsp.Spec.TemplateValidator != nil {
+			foundSsp.Spec.TemplateValidator.Replicas = &newReplicasCount
+		} else {
+			foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+				Replicas: &newReplicasCount,
+			}
+		}
 	})
 
-	Consistently(func() int32 {
-		return *getSsp().Spec.TemplateValidator.Replicas
-	}, 20*time.Second, time.Second).Should(Equal(newReplicasCount),
+	Consistently(func() bool {
+		return getSsp().Spec.TemplateValidator != nil &&
+			getSsp().Spec.TemplateValidator.Replicas != nil &&
+			*getSsp().Spec.TemplateValidator.Replicas == newReplicasCount
+	}, 20*time.Second, time.Second).Should(BeTrue(),
 		"The SSP CR was modified outside of the test. "+
 			"If the CR is managed by a controller, consider disabling modification tests by setting "+
 			"SKIP_UPDATE_SSP_TESTS=true")
@@ -282,7 +293,7 @@ func (s *existingSspStrategy) GetTemplatesNamespace() string {
 }
 
 func (s *existingSspStrategy) GetValidatorReplicas() int {
-	if s.ssp == nil {
+	if s.ssp == nil || s.ssp.Spec.TemplateValidator == nil || s.ssp.Spec.TemplateValidator.Replicas == nil {
 		panic("Strategy is not initialized")
 	}
 	return int(*s.ssp.Spec.TemplateValidator.Replicas)

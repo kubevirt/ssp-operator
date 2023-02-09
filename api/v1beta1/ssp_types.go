@@ -56,13 +56,13 @@ type NodeLabeller struct {
 // SSPSpec defines the desired state of SSP
 type SSPSpec struct {
 	// TemplateValidator is configuration of the template validator operand
-	TemplateValidator TemplateValidator `json:"templateValidator,omitempty"`
+	TemplateValidator *TemplateValidator `json:"templateValidator,omitempty"`
 
 	// CommonTemplates is the configuration of the common templates operand
 	CommonTemplates CommonTemplates `json:"commonTemplates"`
 
 	// NodeLabeller is configuration of the node-labeller operand
-	NodeLabeller NodeLabeller `json:"nodeLabeller,omitempty"`
+	NodeLabeller *NodeLabeller `json:"nodeLabeller,omitempty"`
 
 	// TLSSecurityProfile is a configuration for the TLS.
 	TLSSecurityProfile *ocpv1.TLSSecurityProfile `json:"tlsSecurityProfile,omitempty"`

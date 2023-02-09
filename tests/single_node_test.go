@@ -26,19 +26,23 @@ var _ = Describe("Single Node Topology", func() {
 
 		var newValidatorReplicas int32 = 3
 		updateSsp(func(foundSsp *sspv1beta1.SSP) {
-			foundSsp.Spec.TemplateValidator.Replicas = &newValidatorReplicas
+			foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+				Replicas: &newValidatorReplicas,
+			}
 		})
 
 		// Watch changes until above change
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
-			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
+			return updatedSsp.Spec.TemplateValidator != nil &&
+				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
 		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
-			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
+			return updatedSsp.Spec.TemplateValidator != nil &&
+				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration && updatedSsp.Status.Phase == api.PhaseDeployed
 		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
@@ -54,18 +58,22 @@ var _ = Describe("Single Node Topology", func() {
 
 		var newValidatorReplicas int32 = 0
 		updateSsp(func(foundSsp *sspv1beta1.SSP) {
-			foundSsp.Spec.TemplateValidator.Replicas = &newValidatorReplicas
+			foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+				Replicas: &newValidatorReplicas,
+			}
 		})
 
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
-			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
+			return updatedSsp.Spec.TemplateValidator != nil &&
+				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
 		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
 		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
-			return *updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
+			return updatedSsp.Spec.TemplateValidator != nil &&
+				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration && updatedSsp.Status.Phase == api.PhaseDeployed
 		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())

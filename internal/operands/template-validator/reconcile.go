@@ -146,14 +146,17 @@ func reconcilePrometheusService(request *common.Request) (common.ReconcileResult
 }
 
 func reconcileDeployment(request *common.Request) (common.ReconcileResult, error) {
-	validatorSpec := request.Instance.Spec.TemplateValidator
 	image := getTemplateValidatorImage()
 	if image == "" {
 		panic("Cannot reconcile without valid image name")
 	}
-	numberOfReplicas := *validatorSpec.Replicas
-	if request.IsSingleReplicaTopologyMode() && (numberOfReplicas > 1) {
-		numberOfReplicas = 1
+	numberOfReplicas := int32(1)
+	validatorSpec := request.Instance.Spec.TemplateValidator
+	if validatorSpec != nil && validatorSpec.Replicas != nil {
+		numberOfReplicas = *validatorSpec.Replicas
+		if request.IsSingleReplicaTopologyMode() && (numberOfReplicas > 1) {
+			numberOfReplicas = 1
+		}
 	}
 
 	sspTLSOptions, err := common.NewSSPTLSOptions(request.Instance.Spec.TLSSecurityProfile, nil)
@@ -162,7 +165,7 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 	}
 
 	deployment := newDeployment(request.Namespace, numberOfReplicas, image, sspTLSOptions)
-	injectPlacementMetadata(&deployment.Spec.Template.Spec, &validatorSpec)
+	injectPlacementMetadata(&deployment.Spec.Template.Spec, validatorSpec)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(deployment).
 		WithAppLabels(operandName, operandComponent).
