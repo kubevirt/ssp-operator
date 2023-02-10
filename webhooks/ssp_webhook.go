@@ -19,6 +19,7 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	apps "k8s.io/api/apps/v1"
@@ -83,6 +84,10 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 		return errors.Wrap(err, "dataImportCronTemplates validation error")
 	}
 
+	if err := validateCommonInstancetypes(ssp); err != nil {
+		return errors.Wrap(err, "commonInstancetypes validation error")
+	}
+
 	return nil
 }
 
@@ -97,6 +102,10 @@ func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Obj
 
 	if err := validateDataImportCronTemplates(newSsp); err != nil {
 		return errors.Wrap(err, "dataImportCronTemplates validation error")
+	}
+
+	if err := validateCommonInstancetypes(newSsp); err != nil {
+		return errors.Wrap(err, "commonInstancetypes validation error")
 	}
 
 	return nil
@@ -170,6 +179,21 @@ func validateDataImportCronTemplates(ssp *sspv1beta1.SSP) error {
 		if cron.Name == "" {
 			return fmt.Errorf("missing name in DataImportCronTemplate")
 		}
+	}
+	return nil
+}
+
+func validateCommonInstancetypes(ssp *sspv1beta1.SSP) error {
+	if ssp.Spec.CommonInstancetypes == nil || ssp.Spec.CommonInstancetypes.URL == nil {
+		return nil
+	}
+
+	url := *ssp.Spec.CommonInstancetypes.URL
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "ssh://") {
+		return fmt.Errorf("%s is invalid, only https:// or ssh:// are supported as a remote kustomize target for commonInstancetypes", url)
+	}
+	if !strings.Contains(url, "?ref=") && !strings.Contains(url, "?version=") {
+		return fmt.Errorf("%s is invalid, the remote kustomize target for commonInstancetypes must include a static '?ref=$reference' or '?version=$reference'", url)
 	}
 	return nil
 }
