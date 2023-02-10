@@ -125,7 +125,7 @@ func operatorPod() core.Pod {
 	err := apiClient.List(context.TODO(), pods, client.MatchingLabels{"control-plane": "ssp-operator"})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pods.Items).ToNot(BeEmpty())
-	Expect(len(pods.Items)).To(Equal(1))
+	Expect(pods.Items).To(HaveLen(1))
 	return pods.Items[0]
 }
 

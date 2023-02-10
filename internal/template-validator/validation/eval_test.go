@@ -34,8 +34,8 @@ var _ = Describe("Eval", func() {
 
 			res := NewEvaluator().Evaluate(rules, &vm)
 			Expect(res.Succeeded()).To(BeFalse())
-			Expect(len(res.Status)).To(Equal(2))
-			Expect(res.Status[0].Error).To(BeNil())
+			Expect(res.Status).To(HaveLen(2))
+			Expect(res.Status[0].Error).ToNot(HaveOccurred())
 			Expect(res.Status[1].Error).To(Equal(ErrDuplicateRuleName))
 
 		})
@@ -51,7 +51,7 @@ var _ = Describe("Eval", func() {
 
 			res := NewEvaluator().Evaluate(rules, &vm)
 			Expect(res.Succeeded()).To(BeFalse())
-			Expect(len(res.Status)).To(Equal(1))
+			Expect(res.Status).To(HaveLen(1))
 			Expect(res.Status[0].Error).To(Equal(ErrMissingRequiredKey))
 		})
 
@@ -67,7 +67,7 @@ var _ = Describe("Eval", func() {
 
 			res := NewEvaluator().Evaluate(rules, &vm)
 			Expect(res.Succeeded()).To(BeFalse())
-			Expect(len(res.Status)).To(Equal(1))
+			Expect(res.Status).To(HaveLen(1))
 			Expect(res.Status[0].Error).To(Equal(ErrUnrecognizedRuleType))
 		})
 		It("Should detect unappliable rules", func() {
@@ -85,10 +85,10 @@ var _ = Describe("Eval", func() {
 			res := ev.Evaluate(rules, &vm)
 
 			Expect(res.Succeeded()).To(BeTrue())
-			Expect(len(res.Status)).To(Equal(1))
+			Expect(res.Status).To(HaveLen(1))
 			Expect(res.Status[0].Skipped).To(BeTrue())
 			Expect(res.Status[0].Satisfied).To(BeFalse())
-			Expect(res.Status[0].Error).To(BeNil())
+			Expect(res.Status[0].Error).ToNot(HaveOccurred())
 		})
 
 		It("Should not fail, when justWarning is set", func() {
@@ -109,10 +109,10 @@ var _ = Describe("Eval", func() {
 			res := ev.Evaluate(rules, &vm)
 
 			Expect(res.Succeeded()).To(BeTrue(), "succeeded")
-			Expect(len(res.Status)).To(Equal(1), "status length")
+			Expect(res.Status).To(HaveLen(1), "status length")
 			Expect(res.Status[0].Skipped).To(BeFalse(), "skipped")
 			Expect(res.Status[0].Satisfied).To(BeFalse(), "satisfied")
-			Expect(res.Status[0].Error).To(BeNil(), "error")
+			Expect(res.Status[0].Error).ToNot(HaveOccurred(), "error")
 		})
 	})
 
@@ -140,10 +140,10 @@ var _ = Describe("Eval", func() {
 			res := ev.Evaluate(rules, vmCirros)
 
 			Expect(res.Succeeded()).To(BeTrue())
-			Expect(len(res.Status)).To(Equal(1))
+			Expect(res.Status).To(HaveLen(1))
 			Expect(res.Status[0].Skipped).To(BeTrue())
 			Expect(res.Status[0].Satisfied).To(BeFalse())
-			Expect(res.Status[0].Error).To(BeNil())
+			Expect(res.Status[0].Error).ToNot(HaveOccurred())
 
 		})
 
@@ -193,7 +193,7 @@ var _ = Describe("Eval", func() {
 			Expect(res.Succeeded()).To(BeFalse())
 
 			causes := res.ToStatusCauses()
-			Expect(len(causes)).To(Equal(1))
+			Expect(causes).To(HaveLen(1))
 		})
 
 		It("should not fail, when justWarning is set", func() {
@@ -212,10 +212,10 @@ var _ = Describe("Eval", func() {
 			res := ev.Evaluate(rules, vmCirros)
 
 			Expect(res.Succeeded()).To(BeTrue(), "succeeded")
-			Expect(len(res.Status)).To(Equal(1), "status length")
+			Expect(res.Status).To(HaveLen(1), "status length")
 			Expect(res.Status[0].Skipped).To(BeFalse(), "skipped")
 			Expect(res.Status[0].Satisfied).To(BeFalse(), "satisfied")
-			Expect(res.Status[0].Error).To(BeNil(), "error")
+			Expect(res.Status[0].Error).ToNot(HaveOccurred(), "error")
 		})
 
 		It("should fail, when one rule does not have justWarning set", func() {
@@ -242,13 +242,13 @@ var _ = Describe("Eval", func() {
 			res := ev.Evaluate(rules, vmCirros)
 
 			Expect(res.Succeeded()).To(BeFalse(), "succeeded")
-			Expect(len(res.Status)).To(Equal(2), "status length")
+			Expect(res.Status).To(HaveLen(2), "status length")
 			Expect(res.Status[0].Skipped).To(BeFalse(), "skipped")
 			Expect(res.Status[0].Satisfied).To(BeFalse(), "satisfied")
-			Expect(res.Status[0].Error).To(BeNil(), "error")
+			Expect(res.Status[0].Error).ToNot(HaveOccurred(), "error")
 			Expect(res.Status[1].Skipped).To(BeFalse(), "skipped")
 			Expect(res.Status[1].Satisfied).To(BeFalse(), "satisfied")
-			Expect(res.Status[1].Error).To(BeNil(), "error")
+			Expect(res.Status[1].Error).ToNot(HaveOccurred(), "error")
 		})
 	})
 
@@ -288,10 +288,10 @@ var _ = Describe("Eval", func() {
 				fmt.Fprintf(GinkgoWriter, "%+#v", res.Status[ix])
 			}
 
-			Expect(len(res.Status)).To(Equal(len(rules)))
+			Expect(res.Status).To(HaveLen(len(rules)))
 			for ix := range res.Status {
 				Expect(res.Status[ix].Satisfied).To(BeTrue())
-				Expect(res.Status[ix].Error).To(BeNil())
+				Expect(res.Status[ix].Error).ToNot(HaveOccurred())
 			}
 		})
 
@@ -346,15 +346,15 @@ var _ = Describe("Eval", func() {
 			}
 
 			Expect(res.Succeeded()).To(BeFalse(), "succeeded")
-			Expect(len(res.Status)).To(Equal(2), "status length")
+			Expect(res.Status).To(HaveLen(2), "status length")
 			//status for second rule which should pass
 			Expect(res.Status[0].Skipped).To(BeFalse(), "skipped")
 			Expect(res.Status[0].Satisfied).To(BeFalse(), "satisfied")
-			Expect(res.Status[0].Error).NotTo(BeNil(), "error") // expects invalid JSONPath
+			Expect(res.Status[0].Error).To(HaveOccurred(), "error") // expects invalid JSONPath
 
 			Expect(res.Status[1].Skipped).To(BeFalse(), "skipped")
 			Expect(res.Status[1].Satisfied).To(BeTrue(), "satisfied")
-			Expect(res.Status[1].Error).To(BeNil(), "error")
+			Expect(res.Status[1].Error).ToNot(HaveOccurred(), "error")
 		})
 	})
 })

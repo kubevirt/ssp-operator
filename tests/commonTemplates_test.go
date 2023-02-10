@@ -155,7 +155,7 @@ var _ = Describe("Common templates", func() {
 
 				namespaceObj = &v1.Namespace{ObjectMeta: metav1.ObjectMeta{GenerateName: "ssp-operator-functests-new-templates"}}
 				err := apiClient.Create(ctx, namespaceObj)
-				Expect(err).To(BeNil(), "err should be nil")
+				Expect(err).ToNot(HaveOccurred(), "err should be nil")
 
 				newTemplateNamespace = namespaceObj.GetName()
 			})
@@ -163,7 +163,7 @@ var _ = Describe("Common templates", func() {
 			AfterEach(func() {
 				strategy.RevertToOriginalSspCr()
 				err := apiClient.Delete(ctx, namespaceObj)
-				Expect(err).To(BeNil(), "err should be nil")
+				Expect(err).ToNot(HaveOccurred(), "err should be nil")
 			})
 
 			It("[test_id:6057] should update commonTemplates.namespace", func() {
@@ -325,7 +325,7 @@ var _ = Describe("Common templates", func() {
 					commonTemplates.TemplateVersionLabel: commonTemplates.Version,
 				})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(latestTemplates.Items)).To(BeNumerically(">", 0), "Latest templates are missing")
+			Expect(latestTemplates.Items).ToNot(BeEmpty(), "Latest templates are missing")
 
 			for _, template := range latestTemplates.Items {
 				for label, value := range template.Labels {

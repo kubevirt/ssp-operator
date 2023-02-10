@@ -118,7 +118,7 @@ var _ = Describe("Specialized", func() {
 			}
 
 			ra, err := r.Specialize(vmCirros, vmRef)
-			Expect(err).To(Not(BeNil()))
+			Expect(err).To(HaveOccurred())
 			Expect(ra).To(BeNil())
 		})
 
@@ -246,12 +246,12 @@ var _ = Describe("Specialized", func() {
 				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			ra, err := r.Specialize(vmCirros, vmRef)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(ra).To(Not(BeNil()))
 
 			ok, err := ra.Apply(vmCirros, vmRef)
-			Expect(err).To(BeNil())
-			Expect(ok).To(Equal(false))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ok).To(BeFalse())
 
 			result := ra.String()
 			Expect(result).To(Equal("value 1000000 is lower than minimum [67108864]"))
@@ -271,12 +271,12 @@ var _ = Describe("Specialized", func() {
 				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			ra, err := r.Specialize(vmCirros, vmRef)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(ra).To(Not(BeNil()))
 
 			ok, err := ra.Apply(vmCirros, vmRef)
-			Expect(err).To(BeNil())
-			Expect(ok).To(Equal(false))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ok).To(BeFalse())
 
 			result := ra.String()
 			Expect(result).To(Equal("value 10000000000 is higher than maximum [536870912]"))
@@ -296,12 +296,12 @@ var _ = Describe("Specialized", func() {
 				Max:     &path.IntOrPath{Int: 512 * 1024 * 1024},
 			}
 			ra, err := r.Specialize(vmCirros, vmRef)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(ra).To(Not(BeNil()))
 
 			ok, err := ra.Apply(vmCirros, vmRef)
-			Expect(err).To(BeNil())
-			Expect(ok).To(Equal(true))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ok).To(BeTrue())
 
 			result := ra.String()
 			Expect(result).To(Equal("All values [68000000] are in interval [67108864, 536870912]"))
@@ -320,7 +320,7 @@ func expectRuleApplicationFailure(r *Rule, vm, ref *kubevirtv1.VirtualMachine) {
 
 func expectRuleApplicationError(r *Rule, vm, ref *kubevirtv1.VirtualMachine) {
 	ra, err := r.Specialize(vm, ref)
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 	Expect(ra).To(Not(BeNil()))
 
 	_, err = ra.Apply(vm, ref)
@@ -329,10 +329,10 @@ func expectRuleApplicationError(r *Rule, vm, ref *kubevirtv1.VirtualMachine) {
 
 func checkRuleApplication(r *Rule, vm, ref *kubevirtv1.VirtualMachine, expected bool) {
 	ra, err := r.Specialize(vm, ref)
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 	Expect(ra).To(Not(BeNil()))
 
 	ok, err := ra.Apply(vm, ref)
-	Expect(err).To(BeNil())
+	Expect(err).ToNot(HaveOccurred())
 	Expect(ok).To(Equal(expected))
 }
