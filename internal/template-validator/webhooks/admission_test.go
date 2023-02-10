@@ -22,7 +22,7 @@ var _ = Describe("Admission", func() {
 
 			causes := ValidateVm(rules, &newVM)
 
-			Expect(len(causes)).To(Equal(0))
+			Expect(causes).To(BeEmpty())
 		})
 	})
 
@@ -56,7 +56,7 @@ var _ = Describe("Admission", func() {
 			}}
 
 			causes := ValidateVm(rules, &vm)
-			Expect(len(causes)).To(Equal(0))
+			Expect(causes).To(BeEmpty())
 		})
 
 		It("should set default cores", func() {
@@ -69,7 +69,7 @@ var _ = Describe("Admission", func() {
 			}}
 
 			causes := ValidateVm(rules, &vm)
-			Expect(len(causes)).To(Equal(0))
+			Expect(causes).To(BeEmpty())
 		})
 
 		It("should set default threads", func() {
@@ -82,7 +82,7 @@ var _ = Describe("Admission", func() {
 			}}
 
 			causes := ValidateVm(rules, &vm)
-			Expect(len(causes)).To(Equal(0))
+			Expect(causes).To(BeEmpty())
 		})
 	})
 
@@ -108,7 +108,7 @@ var _ = Describe("Admission", func() {
 			vmRules, err := getValidationRulesForVM(vm, nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(len(vmRules)).To(Equal(1))
+			Expect(vmRules).To(HaveLen(1))
 			Expect(vmRules[0].Name).To(Equal(ruleName))
 			Expect(vmRules[0].Path.Expr()).To(Equal(".test.path"))
 		})

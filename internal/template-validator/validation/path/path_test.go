@@ -44,7 +44,7 @@ var _ = Describe("Path", func() {
 			for _, s := range testStrings {
 				p, err := NewJSONPathFromString(s)
 				Expect(p).To(Equal(expected))
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			}
 		})
 	})
@@ -62,7 +62,7 @@ var _ = Describe("Path", func() {
 		It("Should return error", func() {
 			p, err := New("jsonpath::.spec.this.path.does.not.exist")
 			Expect(p).To(Not(BeNil()))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			_, err = p.Find(vmCirros)
 			Expect(err).To(Equal(ErrInvalidJSONPath))
@@ -71,7 +71,7 @@ var _ = Describe("Path", func() {
 		It("Should detect malformed path", func() {
 			p, err := New("jsonpath::random56junk%(*$%&*()")
 			Expect(p).To(BeNil())
-			Expect(err).To(Not(BeNil()))
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -89,15 +89,15 @@ var _ = Describe("Path", func() {
 			s := "jsonpath::.spec.domain.resources.requests.memory"
 			p, err := New(s)
 			Expect(p).To(Not(BeNil()))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			results, err := p.Find(vmCirros)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(results.Len()).To(BeNumerically(">=", 1))
 
 			vals, err := results.AsInt64()
-			Expect(err).To(BeNil())
-			Expect(len(vals)).To(Equal(1))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(vals).To(HaveLen(1))
 			Expect(vals[0]).To(BeNumerically(">", 1024))
 		})
 
@@ -105,15 +105,15 @@ var _ = Describe("Path", func() {
 			s := "jsonpath::.spec.domain.machine.type"
 			p, err := New(s)
 			Expect(p).To(Not(BeNil()))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			results, err := p.Find(vmCirros)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(results.Len()).To(BeNumerically(">=", 1))
 
 			vals, err := results.AsString()
-			Expect(err).To(BeNil())
-			Expect(len(vals)).To(Equal(1))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(vals).To(HaveLen(1))
 			Expect(vals[0]).To(Equal("q35"))
 		})
 
