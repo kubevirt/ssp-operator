@@ -5,3 +5,4 @@ linters:
   # https://golangci-lint.run/usage/linters/#enabled-by-default
   enable:
     - whitespace
+    - misspell
