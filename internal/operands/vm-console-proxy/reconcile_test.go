@@ -58,7 +58,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(name).To(Equal(operandName), "should return correct name")
 	})
 
-	It("should return functions from reconcile correclty", func() {
+	It("should return functions from reconcile correctly", func() {
 		functions, err := v.Reconcile(mockedRequest)
 		Expect(err).ToNot(HaveOccurred(), "should not throw err")
 		Expect(len(functions)).To(Equal(7), "should return correct number of reconcile functions")

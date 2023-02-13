@@ -231,7 +231,7 @@ var _ = Describe("Common templates", func() {
 
 		BeforeEach(func() {
 			// Create a dummy template to act as an owner for the test template
-			// we can't use the SSP CR as an owner for these tests because the tempaltes
+			// we can't use the SSP CR as an owner for these tests because the templates
 			// might be deployed in a different namespace than the CR, and will be immediately
 			// removed by the GC, the choice to use a template as an owner object was arbitrary
 			ownerTemplate = &templatev1.Template{
