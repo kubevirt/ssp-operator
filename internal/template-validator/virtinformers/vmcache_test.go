@@ -224,7 +224,6 @@ func keyFromObject(obj metav1.Object) string {
 }
 
 func newObject(name, template string) metav1.Object {
-
 	return &metav1.ObjectMeta{
 		Name:      name,
 		Namespace: testVmNamespace,
