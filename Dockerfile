@@ -31,6 +31,9 @@ COPY webhooks/ webhooks/
 COPY hack/boilerplate.go.txt hack/boilerplate.go.txt
 COPY hack/csv-generator.go hack/csv-generator.go
 
+# Copy .golangci.yaml so we can run lint as part of the build process
+COPY .golangci.yaml .golangci.yaml
+
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make manager
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make csv-generator

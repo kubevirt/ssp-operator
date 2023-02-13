@@ -84,7 +84,7 @@ endif
 all: manager
 
 .PHONY: unittest
-unittest: generate fmt vet manifests
+unittest: generate lint fmt vet manifests
 	go test -v -coverprofile cover.out $(SRC_PATHS_TESTS)
 	cd api && go test -v ./...
 
@@ -108,19 +108,19 @@ functest: ginkgo generate fmt vet manifests
 
 # Build manager binary
 .PHONY: manager
-manager: generate fmt vet
+manager: generate lint fmt vet
 	go build -o bin/manager \
 		-ldflags="-X 'kubevirt.io/ssp-operator/internal/operands/template-validator.defaultTemplateValidatorImage=${VALIDATOR_IMG}'" \
 		main.go
 
 # Build csv-generator binary
 .PHONY: csv-generator
-csv-generator: generate fmt vet
+csv-generator: generate lint fmt vet
 	go build -o bin/csv-generator hack/csv-generator.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
-run: generate fmt vet manifests
+run: generate lint fmt vet manifests
 	go run ./main.go
 
 # Install CRDs into a cluster
@@ -313,3 +313,11 @@ kubevirt-down:
 .PHONY: kubevirt-sync
 kubevirt-sync:
 	KUSTOMIZE=$(KUSTOMIZE) ./hack/kubevirt.sh sync
+
+GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
+GOLANGCI_LINT_VERSION ?= v1.51.1
+
+.PHONY: lint
+lint:
+	test -s $(GOLANGCI_LINT) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION)
+	$(GOLANGCI_LINT) run --timeout 5m
