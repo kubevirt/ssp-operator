@@ -70,6 +70,18 @@ rules:
   - update
   - watch
 - apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+- apiGroups:
   - cdi.kubevirt.io
   resources:
   - dataimportcrons
@@ -125,6 +137,20 @@ rules:
   resources:
   - configmaps
   - serviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - serviceaccounts
+  - services
   verbs:
   - create
   - delete
@@ -209,6 +235,14 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - kubevirt.io
+  resources:
+  - virtualmachineinstances
+  verbs:
+  - get
+  - list
   - watch
 - apiGroups:
   - kubevirt.io
