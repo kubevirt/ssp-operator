@@ -62,14 +62,20 @@ var _ = Describe("Node Labeller operand", func() {
 	})
 
 	It("should delete node-labeller during reconcile", func() {
-		reconcileClusterRole(&request)
-		reconcileServiceAccount(&request)
-		reconcileClusterRoleBinding(&request)
-		reconcileConfigMap(&request)
-		reconcileDaemonSet(&request)
-		reconcileSecurityContextConstraint(&request)
+		_, err := reconcileClusterRole(&request)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = reconcileServiceAccount(&request)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = reconcileClusterRoleBinding(&request)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = reconcileConfigMap(&request)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = reconcileDaemonSet(&request)
+		Expect(err).ToNot(HaveOccurred())
+		_, err = reconcileSecurityContextConstraint(&request)
+		Expect(err).ToNot(HaveOccurred())
 
-		_, err := operand.Reconcile(&request)
+		_, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceNotExists(newClusterRole(), request)
