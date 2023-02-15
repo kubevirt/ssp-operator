@@ -22,6 +22,7 @@ metadata:
   name: cx1.2xlarge
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 8
     isolateEmulatorThread: true
     numa:
@@ -29,6 +30,8 @@ spec:
   ioThreadsPolicy: auto
   memory:
     guest: 16Gi
+    hugepages:
+      pageSize: 2Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
@@ -53,6 +56,7 @@ metadata:
   name: cx1.4xlarge
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 16
     isolateEmulatorThread: true
     numa:
@@ -60,6 +64,8 @@ spec:
   ioThreadsPolicy: auto
   memory:
     guest: 32Gi
+    hugepages:
+      pageSize: 2Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
@@ -84,6 +90,7 @@ metadata:
   name: cx1.8xlarge
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 32
     isolateEmulatorThread: true
     numa:
@@ -91,6 +98,8 @@ spec:
   ioThreadsPolicy: auto
   memory:
     guest: 64Gi
+    hugepages:
+      pageSize: 2Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
@@ -115,6 +124,7 @@ metadata:
   name: cx1.large
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 2
     isolateEmulatorThread: true
     numa:
@@ -122,6 +132,8 @@ spec:
   ioThreadsPolicy: auto
   memory:
     guest: 4Gi
+    hugepages:
+      pageSize: 2Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
@@ -146,6 +158,7 @@ metadata:
   name: cx1.medium
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 1
     isolateEmulatorThread: true
     numa:
@@ -153,6 +166,8 @@ spec:
   ioThreadsPolicy: auto
   memory:
     guest: 2Gi
+    hugepages:
+      pageSize: 2Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
@@ -177,6 +192,7 @@ metadata:
   name: cx1.xlarge
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 4
     isolateEmulatorThread: true
     numa:
@@ -184,6 +200,8 @@ spec:
   ioThreadsPolicy: auto
   memory:
     guest: 8Gi
+    hugepages:
+      pageSize: 2Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1alpha2
 kind: VirtualMachineClusterInstancetype
@@ -306,6 +324,7 @@ metadata:
   name: highperformance.large
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 2
     isolateEmulatorThread: true
   ioThreadsPolicy: shared
@@ -321,6 +340,7 @@ metadata:
   name: highperformance.medium
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 1
     isolateEmulatorThread: true
   ioThreadsPolicy: shared
@@ -336,6 +356,7 @@ metadata:
   name: highperformance.small
 spec:
   cpu:
+    dedicatedCPUPlacement: true
     guest: 1
     isolateEmulatorThread: true
   ioThreadsPolicy: shared
@@ -359,7 +380,6 @@ metadata:
 spec:
   cpu:
     guest: 8
-    isolateEmulatorThread: true
   memory:
     guest: 64Gi
     hugepages:
@@ -382,7 +402,6 @@ metadata:
 spec:
   cpu:
     guest: 16
-    isolateEmulatorThread: true
   memory:
     guest: 128Gi
     hugepages:
@@ -405,7 +424,6 @@ metadata:
 spec:
   cpu:
     guest: 32
-    isolateEmulatorThread: true
   memory:
     guest: 256Gi
     hugepages:
@@ -428,7 +446,6 @@ metadata:
 spec:
   cpu:
     guest: 2
-    isolateEmulatorThread: true
   memory:
     guest: 16Gi
     hugepages:
@@ -451,7 +468,6 @@ metadata:
 spec:
   cpu:
     guest: 4
-    isolateEmulatorThread: true
   memory:
     guest: 32Gi
     hugepages:
