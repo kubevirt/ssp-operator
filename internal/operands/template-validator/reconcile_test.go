@@ -44,7 +44,7 @@ var _ = Describe("Template validator operand", func() {
 		s := scheme.Scheme
 		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
 
-		client := fake.NewFakeClientWithScheme(s)
+		client := fake.NewClientBuilder().WithScheme(s).Build()
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{

@@ -44,7 +44,7 @@ var _ = Describe("Data-Sources operand", func() {
 
 		operand = New(testDataSources)
 
-		client := fake.NewFakeClientWithScheme(common.Scheme)
+		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{

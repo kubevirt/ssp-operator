@@ -51,7 +51,7 @@ var _ = Describe("Common-Templates operand", func() {
 		testTemplates = getTestTemplates()
 		operand = New(testTemplates)
 
-		client := fake.NewFakeClientWithScheme(common.Scheme)
+		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{

@@ -37,7 +37,7 @@ var _ = Describe("Node Labeller operand", func() {
 		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
 		Expect(secv1.Install(s)).ToNot(HaveOccurred())
 
-		client := fake.NewFakeClientWithScheme(s)
+		client := fake.NewClientBuilder().WithScheme(s).Build()
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{

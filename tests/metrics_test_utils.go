@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"regexp"
@@ -35,7 +35,7 @@ func intMetricValue(metricName string, metricsPort uint16, pod *v1.Pod) int {
 	resp, err := client.Get(fmt.Sprintf("https://localhost:%d/metrics", metricsPort))
 	Expect(err).ToNot(HaveOccurred(), "Can't get metrics from %s", pod.Name)
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	regex, ok := regexpForMetrics[metricName]
 	if !ok {
 		panic(fmt.Sprintf("metricName %s does not have a defined regexp string, please add one to the regexpForMetrics map", metricName))

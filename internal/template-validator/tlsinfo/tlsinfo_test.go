@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -23,7 +22,7 @@ var _ = Describe("TlsInfo", func() {
 
 	BeforeEach(func() {
 		var err error
-		certDir, err = ioutil.TempDir("", "certs")
+		certDir, err = os.MkdirTemp("", "certs")
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -80,7 +79,7 @@ var _ = Describe("TlsInfo", func() {
 			return tlsConfig.GetCertificate(nil)
 		}, time.Second).ShouldNot(BeNil())
 
-		Expect(ioutil.WriteFile(filepath.Join(certDir, CertFilename), []byte{}, 0777)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(certDir, CertFilename), []byte{}, 0777)).To(Succeed())
 
 		Consistently(func() (*tls.Certificate, error) {
 			return tlsConfig.GetCertificate(nil)
@@ -123,8 +122,8 @@ func writeCertificate(dir string) {
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
 
-	Expect(ioutil.WriteFile(filepath.Join(dir, CertFilename), certPEM, 0777)).To(Succeed())
-	Expect(ioutil.WriteFile(filepath.Join(dir, KeyFilename), keyPEM, 0777)).To(Succeed())
+	Expect(os.WriteFile(filepath.Join(dir, CertFilename), certPEM, 0777)).To(Succeed())
+	Expect(os.WriteFile(filepath.Join(dir, KeyFilename), keyPEM, 0777)).To(Succeed())
 }
 
 func TestTlsInfo(t *testing.T) {

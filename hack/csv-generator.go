@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/blang/semver/v4"
@@ -101,7 +100,7 @@ func init() {
 }
 
 func runGenerator() error {
-	csvFile, err := ioutil.ReadFile(f.file)
+	csvFile, err := os.ReadFile(f.file)
 	if err != nil {
 		return err
 	}
@@ -134,14 +133,19 @@ func runGenerator() error {
 	if !f.dumpCRDs {
 		return nil
 	}
-	files, err := ioutil.ReadDir("data/crd")
+	files, err := os.ReadDir("data/crd")
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
 		crd := extv1.CustomResourceDefinition{}
 
-		err := readAndDecodeToCRD(file, &crd)
+		fsInfo, err := file.Info()
+		if err != nil {
+			return err
+		}
+
+		err = readAndDecodeToCRD(fsInfo, &crd)
 		if err != nil {
 			return err
 		}
@@ -155,7 +159,7 @@ func runGenerator() error {
 }
 
 func readAndDecodeToCRD(file os.FileInfo, crd *extv1.CustomResourceDefinition) error {
-	crdFile, err := ioutil.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
+	crdFile, err := os.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
 	if err != nil {
 		return err
 	}
