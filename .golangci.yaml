@@ -7,3 +7,4 @@ linters:
     - whitespace
     - misspell
     - ginkgolinter
+    - errcheck

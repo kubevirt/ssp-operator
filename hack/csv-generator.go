@@ -65,7 +65,10 @@ var (
 )
 
 func main() {
-	rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 }
 
 func init() {
@@ -79,10 +82,18 @@ func init() {
 	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
 	rootCmd.Flags().BoolVar(&f.dumpCRDs, "dump-crds", false, "Dump crds to stdout")
 
-	rootCmd.MarkFlagRequired("csv-version")
-	rootCmd.MarkFlagRequired("namespace")
-	rootCmd.MarkFlagRequired("operator-image")
-	rootCmd.MarkFlagRequired("operator-version")
+	if err := rootCmd.MarkFlagRequired("csv-version"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
+	if err := rootCmd.MarkFlagRequired("namespace"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
+	if err := rootCmd.MarkFlagRequired("operator-image"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
+	if err := rootCmd.MarkFlagRequired("operator-version"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
 }
 
 func runGenerator() error {
@@ -272,11 +283,15 @@ func marshallObject(obj interface{}, relatedImages []interface{}, writer io.Writ
 			unstructured.RemoveNestedField(deployment, "spec", "template", "metadata", "creationTimestamp")
 			unstructured.RemoveNestedField(deployment, "status")
 		}
-		unstructured.SetNestedSlice(r.Object, deployments, "spec", "install", "spec", "deployments")
+		if err = unstructured.SetNestedSlice(r.Object, deployments, "spec", "install", "spec", "deployments"); err != nil {
+			return err
+		}
 	}
 
 	if len(relatedImages) > 0 {
-		unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages")
+		if err = unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages"); err != nil {
+			return err
+		}
 	}
 
 	jsonBytes, err = json.Marshal(r.Object)

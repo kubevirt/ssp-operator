@@ -47,9 +47,9 @@ var _ = Describe("SSP Validation", func() {
 	JustBeforeEach(func() {
 		scheme := runtime.NewScheme()
 		// add our own scheme
-		sspv1beta1.SchemeBuilder.AddToScheme(scheme)
+		Expect(sspv1beta1.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
 		// add more schemes
-		v1.AddToScheme(scheme)
+		Expect(v1.AddToScheme(scheme)).To(Succeed())
 
 		client = fake.NewFakeClientWithScheme(scheme, objects...)
 
