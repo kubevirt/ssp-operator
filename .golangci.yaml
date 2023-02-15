@@ -9,3 +9,4 @@ linters:
     - ginkgolinter
     - errcheck
     - ineffassign
+    - staticcheck

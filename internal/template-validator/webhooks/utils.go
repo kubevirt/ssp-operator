@@ -3,7 +3,7 @@ package validating
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	templatev1 "github.com/openshift/api/template/v1"
@@ -16,7 +16,7 @@ import (
 func GetAdmissionReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 	var body []byte
 	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
+		if data, err := io.ReadAll(r.Body); err == nil {
 			body = data
 		}
 	}

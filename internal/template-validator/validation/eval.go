@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -132,7 +131,7 @@ type Evaluator struct {
 }
 
 func NewEvaluator() *Evaluator {
-	return &Evaluator{Sink: ioutil.Discard}
+	return &Evaluator{Sink: io.Discard}
 }
 
 func validateRule(r *Rule) error {

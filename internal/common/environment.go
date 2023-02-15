@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -63,7 +62,7 @@ func GetInfrastructureTopology(ctx context.Context, c client.Reader) (osconfv1.T
 }
 
 func GetOperatorNamespace(logger logr.Logger) (string, error) {
-	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	nsBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		return "", fmt.Errorf("in getOperatorNamespace failed in call to downward API: %w", err)
 	}

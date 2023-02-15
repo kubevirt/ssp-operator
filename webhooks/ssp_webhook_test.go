@@ -51,7 +51,7 @@ var _ = Describe("SSP Validation", func() {
 		// add more schemes
 		Expect(v1.AddToScheme(scheme)).To(Succeed())
 
-		client = fake.NewFakeClientWithScheme(scheme, objects...)
+		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objects...).Build()
 
 		validator = newSspValidator(client)
 		ctx = context.Background()
