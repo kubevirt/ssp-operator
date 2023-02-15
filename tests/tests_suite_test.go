@@ -42,6 +42,7 @@ import (
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 )
 
 var (
@@ -59,6 +60,7 @@ type TestSuiteStrategy interface {
 	GetName() string
 	GetNamespace() string
 	GetTemplatesNamespace() string
+	GetVmConsoleProxyNamespace() string
 	GetValidatorReplicas() int
 	GetSSPDeploymentName() string
 	GetSSPDeploymentNameSpace() string
@@ -109,6 +111,10 @@ func (s *newSspStrategy) Init() {
 				common.AppKubernetesPartOfLabel:    "hyperconverged-cluster",
 				common.AppKubernetesVersionLabel:   "v0.0.0-test",
 				common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
+			},
+			Annotations: map[string]string{
+				vm_console_proxy.EnableAnnotation:                  "true",
+				vm_console_proxy.VmConsoleProxyNamespaceAnnotation: s.GetVmConsoleProxyNamespace(),
 			},
 		},
 		Spec: sspv1beta1.SSPSpec{
@@ -162,6 +168,11 @@ func (s *newSspStrategy) GetNamespace() string {
 func (s *newSspStrategy) GetTemplatesNamespace() string {
 	const commonTemplatesTestNS = "ssp-operator-functests-templates"
 	return commonTemplatesTestNS
+}
+
+func (s *newSspStrategy) GetVmConsoleProxyNamespace() string {
+	const vmConsoleProxyNamespace = "kubevirt"
+	return vmConsoleProxyNamespace
 }
 
 func (s *newSspStrategy) GetValidatorReplicas() int {
@@ -290,6 +301,21 @@ func (s *existingSspStrategy) GetTemplatesNamespace() string {
 		panic("Strategy is not initialized")
 	}
 	return s.ssp.Spec.CommonTemplates.Namespace
+}
+
+func (s *existingSspStrategy) GetVmConsoleProxyNamespace() string {
+	if s.ssp != nil && s.ssp.ObjectMeta.GetAnnotations() != nil {
+		namespace, isFound := s.ssp.ObjectMeta.GetAnnotations()[vm_console_proxy.VmConsoleProxyNamespaceAnnotation]
+		if isFound {
+			return namespace
+		}
+	}
+
+	namespace := env.VmConsoleProxyNamespace()
+	if namespace == "" {
+		panic("VM_CONSOLE_PROXY_NAMESPACE is not set")
+	}
+	return namespace
 }
 
 func (s *existingSspStrategy) GetValidatorReplicas() int {

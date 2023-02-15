@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	kubeVirtNamespace = "kubevirt"
-	operandName       = "vm-console-proxy"
-	operandComponent  = "vm-console-proxy"
-	enableAnnotation  = "ssp.kubevirt.io/enable-vm-console-proxy"
+	EnableAnnotation                  = "ssp.kubevirt.io/vm-console-proxy-enabled"
+	VmConsoleProxyNamespaceAnnotation = "ssp.kubevirt.io/vm-console-proxy-namespace"
+
+	operandName      = "vm-console-proxy"
+	operandComponent = "vm-console-proxy"
 )
 
 // Define RBAC rules needed by this operand:
@@ -29,6 +30,17 @@ const (
 // +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachineinstances,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+
+func WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &rbac.ClusterRole{}},
+		{Object: &rbac.ClusterRoleBinding{}},
+		{Object: &core.ServiceAccount{}},
+		{Object: &core.Service{}},
+		{Object: &apps.Deployment{}, WatchFullObject: true},
+		{Object: &core.ConfigMap{}},
+	}
+}
 
 type vmConsoleProxy struct {
 	serviceAccount     *core.ServiceAccount
@@ -61,14 +73,7 @@ func (v *vmConsoleProxy) WatchTypes() []operands.WatchType {
 }
 
 func (v *vmConsoleProxy) WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &rbac.ClusterRole{}},
-		{Object: &rbac.ClusterRoleBinding{}},
-		{Object: &core.ServiceAccount{}},
-		{Object: &core.Service{}},
-		{Object: &apps.Deployment{}},
-		{Object: &core.ConfigMap{}},
-	}
+	return WatchClusterTypes()
 }
 
 func (v *vmConsoleProxy) RequiredCrds() []string {
@@ -88,12 +93,12 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 		return []common.ReconcileResult{}, nil
 	}
 
-	reconcileFunc = append(reconcileFunc, reconcileServiceAccountsFuncs(*v.serviceAccount))
-	reconcileFunc = append(reconcileFunc, reconcileClusterRoleFuncs(*v.clusterRole))
-	reconcileFunc = append(reconcileFunc, reconcileClusterRoleBindingFuncs(*v.clusterRoleBinding))
-	reconcileFunc = append(reconcileFunc, reconcileConfigMapFuncs(*v.configMap))
-	reconcileFunc = append(reconcileFunc, reconcileServiceFuncs(*v.service))
-	reconcileFunc = append(reconcileFunc, reconcileDeploymentFuncs(*v.deployment))
+	reconcileFunc = append(reconcileFunc, reconcileServiceAccountsFuncs(*v.serviceAccount.DeepCopy()))
+	reconcileFunc = append(reconcileFunc, reconcileClusterRoleFuncs(*v.clusterRole.DeepCopy()))
+	reconcileFunc = append(reconcileFunc, reconcileClusterRoleBindingFuncs(*v.clusterRoleBinding.DeepCopy()))
+	reconcileFunc = append(reconcileFunc, reconcileConfigMapFuncs(*v.configMap.DeepCopy()))
+	reconcileFunc = append(reconcileFunc, reconcileServiceFuncs(*v.service.DeepCopy()))
+	reconcileFunc = append(reconcileFunc, reconcileDeploymentFuncs(*v.deployment.DeepCopy()))
 
 	reconcileBundleResults, err := common.CollectResourceStatus(request, reconcileFunc...)
 	if err != nil {
@@ -118,7 +123,7 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 
 func reconcileServiceAccountsFuncs(serviceAccount core.ServiceAccount) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		serviceAccount.Namespace = kubeVirtNamespace
+		serviceAccount.Namespace = getVmConsoleProxyNamespace(request)
 		return common.CreateOrUpdate(request).
 			ClusterResource(&serviceAccount).
 			WithAppLabels(operandName, operandComponent).
@@ -157,17 +162,24 @@ func reconcileClusterRoleBindingFuncs(clusterRoleBinding rbac.ClusterRoleBinding
 
 func reconcileConfigMapFuncs(configMap core.ConfigMap) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		configMap.Namespace = kubeVirtNamespace
+		configMap.Namespace = getVmConsoleProxyNamespace(request)
 		return common.CreateOrUpdate(request).
 			ClusterResource(&configMap).
 			WithAppLabels(operandName, operandComponent).
+			UpdateFunc(func(newRes, foundRes client.Object) {
+				newConfigMap := newRes.(*core.ConfigMap)
+				foundConfigMap := foundRes.(*core.ConfigMap)
+				foundConfigMap.Immutable = newConfigMap.Immutable
+				foundConfigMap.Data = newConfigMap.Data
+				foundConfigMap.BinaryData = newConfigMap.BinaryData
+			}).
 			Reconcile()
 	}
 }
 
 func reconcileServiceFuncs(service core.Service) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		service.Namespace = kubeVirtNamespace
+		service.Namespace = getVmConsoleProxyNamespace(request)
 		return common.CreateOrUpdate(request).
 			ClusterResource(&service).
 			WithAppLabels(operandName, operandComponent).
@@ -183,8 +195,9 @@ func reconcileServiceFuncs(service core.Service) common.ReconcileFunc {
 }
 
 func reconcileDeploymentFuncs(deployment apps.Deployment) common.ReconcileFunc {
+	numberOfReplicas := *deployment.Spec.Replicas
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		deployment.Namespace = kubeVirtNamespace
+		deployment.Namespace = getVmConsoleProxyNamespace(request)
 		deployment.Spec.Template.Spec.Containers[0].Image = getVmConsoleProxyImage()
 		return common.CreateOrUpdate(request).
 			ClusterResource(&deployment).
@@ -195,13 +208,10 @@ func reconcileDeploymentFuncs(deployment apps.Deployment) common.ReconcileFunc {
 			StatusFunc(func(res client.Object) common.ResourceStatus {
 				dep := res.(*apps.Deployment)
 				status := common.ResourceStatus{}
-				numberOfReplicas := *deployment.Spec.Replicas
-
 				if numberOfReplicas > 0 && dep.Status.AvailableReplicas == 0 {
 					msg := fmt.Sprintf("No vm-console-proxy pods are running. Expected: %d", dep.Status.Replicas)
 					status.NotAvailable = &msg
 				}
-
 				if dep.Status.AvailableReplicas != numberOfReplicas {
 					msg := fmt.Sprintf(
 						"Not all template vm-console-proxy pods are running. Expected: %d, running: %d",
@@ -211,7 +221,6 @@ func reconcileDeploymentFuncs(deployment apps.Deployment) common.ReconcileFunc {
 					status.Progressing = &msg
 					status.Degraded = &msg
 				}
-
 				return status
 			}).
 			Reconcile()
@@ -222,7 +231,7 @@ func isEnabled(request *common.Request) bool {
 	if request.Instance.GetAnnotations() == nil {
 		return false
 	}
-	enabledStr, ok := request.Instance.GetAnnotations()[enableAnnotation]
+	enabledStr, ok := request.Instance.GetAnnotations()[EnableAnnotation]
 	if !ok {
 		return false
 	}
@@ -231,6 +240,18 @@ func isEnabled(request *common.Request) bool {
 		return false
 	}
 	return isEnabled
+}
+
+func getVmConsoleProxyNamespace(request *common.Request) string {
+	const defaultNamespace = "kubevirt"
+	if request.Instance.GetAnnotations() == nil {
+		return defaultNamespace
+	}
+	namespaceStr, ok := request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation]
+	if !ok {
+		return defaultNamespace
+	}
+	return namespaceStr
 }
 
 func getVmConsoleProxyImage() string {
