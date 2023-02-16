@@ -264,14 +264,6 @@ var _ = Describe("SSP Validation", func() {
 	})
 })
 
-func checkExpectedError(err error, shouldFail bool) {
-	if shouldFail {
-		ExpectWithOffset(1, err).To(HaveOccurred())
-	} else {
-		ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	}
-}
-
 func TestWebhook(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "API Suite")

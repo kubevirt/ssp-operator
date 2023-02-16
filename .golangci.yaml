@@ -10,3 +10,4 @@ linters:
     - errcheck
     - ineffassign
     - staticcheck
+    - unused
