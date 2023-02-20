@@ -3,13 +3,14 @@ package tests
 import (
 	"errors"
 	"fmt"
-	"k8s.io/client-go/tools/cache"
 	"sync/atomic"
 	"time"
 
+	"k8s.io/client-go/tools/cache"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
@@ -84,7 +85,7 @@ func (s *sspWatch) startWatch() {
 
 		err = s.handleWatch(w)
 		if err != nil {
-			if err != errorStopWatch {
+			if err != errStopWatch {
 				s.atomicError.Store(err)
 			}
 			return
@@ -92,14 +93,14 @@ func (s *sspWatch) startWatch() {
 	}
 }
 
-var errorStopWatch = errors.New("watch stopped")
+var errStopWatch = errors.New("watch stopped")
 
 func (s *sspWatch) handleWatch(w watch.Interface) error {
 	defer w.Stop()
 	for {
 		select {
 		case <-s.stopCh:
-			return errorStopWatch
+			return errStopWatch
 		case event, ok := <-w.ResultChan():
 			if !ok {
 				return nil
@@ -116,7 +117,7 @@ func (s *sspWatch) handleWatch(w watch.Interface) error {
 			if event.Type == watch.Added || event.Type == watch.Modified {
 				select {
 				case <-s.stopCh:
-					return errorStopWatch
+					return errStopWatch
 				case s.updateCh <- sspObj:
 					break
 				}
@@ -126,7 +127,7 @@ func (s *sspWatch) handleWatch(w watch.Interface) error {
 	}
 }
 
-var ErrorTimeout = fmt.Errorf("timed out")
+var ErrTimeout = fmt.Errorf("timed out")
 
 func WatchChangesUntil(watch SspWatch, predicate func(updatedSsp *sspv1beta1.SSP) bool, timeout time.Duration) error {
 	timeoutCh := time.After(timeout)
@@ -140,7 +141,7 @@ func WatchChangesUntil(watch SspWatch, predicate func(updatedSsp *sspv1beta1.SSP
 				return nil
 			}
 		case <-timeoutCh:
-			return ErrorTimeout
+			return ErrTimeout
 		}
 	}
 }
