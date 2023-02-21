@@ -92,9 +92,19 @@ unittest: generate fmt vet manifests
 build-functests:
 	go test -c ./tests
 
+GINKGO_VERSION ?= v2.1.4
+GINKGO_TIMEOUT ?= 2h
+
+.PHONY: ginkgo
+ginkgo: getginkgo vendor
+
+.PHONY: getginkgo
+getginkgo:
+	go get github.com/onsi/ginkgo/v2@$(GINKGO_VERSION)
+
 .PHONY: functest
-functest: generate fmt vet manifests
-	go test -v -coverprofile cover.out -timeout 0 ./tests/...
+functest: ginkgo generate fmt vet manifests
+	go run github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION) -v -coverprofile cover.out -timeout $(GINKGO_TIMEOUT) ./tests/...
 
 # Build manager binary
 .PHONY: manager
