@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -202,6 +203,63 @@ var _ = Describe("SSP Validation", func() {
 			Expect(validator.ValidateUpdate(ctx, oldSSP, newSSP)).To(HaveOccurred())
 			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
 			Expect(validator.ValidateUpdate(ctx, oldSSP, newSSP)).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("CommonInstancetypes", func() {
+
+		const (
+			templatesNamespace = "test-templates-ns"
+		)
+
+		var ssp *sspv1beta1.SSP
+
+		BeforeEach(func() {
+			objects = append(objects, &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            templatesNamespace,
+					ResourceVersion: "1",
+				},
+			})
+			ssp = &sspv1beta1.SSP{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ssp",
+				},
+				Spec: sspv1beta1.SSPSpec{
+					CommonTemplates: sspv1beta1.CommonTemplates{
+						Namespace: templatesNamespace,
+					},
+					CommonInstancetypes: &sspv1beta1.CommonInstancetypes{},
+				},
+			}
+		})
+
+		AfterEach(func() {
+			objects = make([]runtime.Object, 0)
+		})
+
+		It("should reject URL without https:// or ssh://", func() {
+			ssp.Spec.CommonInstancetypes.URL = pointer.String("file://foo/bar")
+			Expect(validator.ValidateCreate(ctx, ssp)).ShouldNot(Succeed())
+		})
+
+		It("should reject URL without ?ref= or ?version=", func() {
+			ssp.Spec.CommonInstancetypes.URL = pointer.String("https://foo.com/bar")
+			Expect(validator.ValidateCreate(ctx, ssp)).ShouldNot(Succeed())
+		})
+
+		DescribeTable("should accept a valid remote kustomize target URL", func(url string) {
+			ssp.Spec.CommonInstancetypes.URL = pointer.String(url)
+			Expect(validator.ValidateCreate(ctx, ssp)).Should(Succeed())
+		},
+			Entry("https:// with ?ref=", "https://foo.com/bar?ref=1234"),
+			Entry("https:// with ?target=", "https://foo.com/bar?version=1234"),
+			Entry("ssh:// with ?ref=", "ssh://foo.com/bar?ref=1234"),
+			Entry("ssh:// with ?target=", "ssh://foo.com/bar?version=1234"),
+		)
+
+		It("should accept when no URL is provided", func() {
+			Expect(validator.ValidateCreate(ctx, ssp)).Should(Succeed())
 		})
 	})
 })

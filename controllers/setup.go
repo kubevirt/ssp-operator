@@ -50,13 +50,6 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("failed to read template bundle: %w", err)
 	}
 
-	instancetypePath := common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundlePrefix + ".yaml"
-	preferencePath := common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundlePrefix + ".yaml"
-	common_instancetypes_operand, err := common_instancetypes.New(instancetypePath, preferencePath)
-	if err != nil {
-		return err
-	}
-
 	vmConsoleProxyBundlePath := vm_console_proxy_bundle.GetBundlePath()
 	vmConsoleProxyBundle, err := vm_console_proxy_bundle.ReadBundle(vmConsoleProxyBundlePath)
 	if err != nil {
@@ -64,7 +57,11 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 	}
 
 	sspOperands := []operands.Operand{
-		common_instancetypes_operand,
+		// The bundle paths are not hardcoded within New to allow tests to use a different path
+		common_instancetypes.New(
+			common_instancetypes.BundleDir+common_instancetypes.ClusterInstancetypesBundle,
+			common_instancetypes.BundleDir+common_instancetypes.ClusterPreferencesBundle,
+		),
 		data_sources.New(templatesBundle.DataSources),
 	}
 
