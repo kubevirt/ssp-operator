@@ -92,7 +92,7 @@ unittest: generate lint fmt vet manifests
 build-functests:
 	go test -c ./tests
 
-GINKGO_VERSION ?= v2.1.4
+GINKGO_VERSION ?= v2.8.3
 GINKGO_TIMEOUT ?= 2h
 
 .PHONY: ginkgo
