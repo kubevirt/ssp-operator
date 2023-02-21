@@ -7,6 +7,7 @@ The operator deploys and manages resources needed by these four components:
 
 - [Template Validator](https://github.com/kubevirt/ssp-operator/tree/master/internal/template-validator) (You can read more about it here: [Template Validator old repository](https://github.com/kubevirt/kubevirt-template-validator))
 - [Common Templates Bundle](https://github.com/kubevirt/common-templates)
+- [VM Console Proxy](https://github.com/kubevirt/vm-console-proxy)
 - Metrics rules - Currently it is only a single Prometheus rule containing the count of all running VMs.
 
 ## Installation
