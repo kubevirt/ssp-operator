@@ -83,17 +83,17 @@ endif
 
 all: manager
 
+GINKGO_VERSION ?= v2.8.3
+GINKGO_TIMEOUT ?= 2h
+GINKGO_RUN ?= go run github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION) -v -coverprofile cover.out -timeout $(GINKGO_TIMEOUT)
+
 .PHONY: unittest
-unittest: generate lint fmt vet manifests
-	go test -v -coverprofile cover.out $(SRC_PATHS_TESTS)
-	cd api && go test -v ./...
+unittest: ginkgo generate lint fmt vet manifests
+	$(GINKGO_RUN) $(SRC_PATHS_TESTS)
 
 .PHONY: build-functests
 build-functests:
 	go test -c ./tests
-
-GINKGO_VERSION ?= v2.8.3
-GINKGO_TIMEOUT ?= 2h
 
 .PHONY: ginkgo
 ginkgo: getginkgo vendor
@@ -104,7 +104,7 @@ getginkgo:
 
 .PHONY: functest
 functest: ginkgo generate fmt vet manifests
-	go run github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION) -v -coverprofile cover.out -timeout $(GINKGO_TIMEOUT) ./tests/...
+	$(GINKGO_RUN) ./tests/...
 
 # Build manager binary
 .PHONY: manager
