@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"strconv"
 
+	routev1 "github.com/openshift/api/route/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 )
 
 const (
@@ -25,11 +29,16 @@ const (
 // +kubebuilder:rbac:groups=core,resources=services;serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachineinstances,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+
+func init() {
+	utilruntime.Must(routev1.Install(common.Scheme))
+}
 
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
@@ -39,6 +48,7 @@ func WatchClusterTypes() []operands.WatchType {
 		{Object: &core.Service{}},
 		{Object: &apps.Deployment{}, WatchFullObject: true},
 		{Object: &core.ConfigMap{}},
+		{Object: &routev1.Route{}},
 	}
 }
 
@@ -99,6 +109,7 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 	reconcileFunc = append(reconcileFunc, reconcileConfigMapFuncs(*v.configMap.DeepCopy()))
 	reconcileFunc = append(reconcileFunc, reconcileServiceFuncs(*v.service.DeepCopy()))
 	reconcileFunc = append(reconcileFunc, reconcileDeploymentFuncs(*v.deployment.DeepCopy()))
+	reconcileFunc = append(reconcileFunc, reconcileRoute(v.service.GetName()))
 
 	reconcileBundleResults, err := common.CollectResourceStatus(request, reconcileFunc...)
 	if err != nil {
@@ -117,6 +128,7 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 	objects = append(objects, v.configMap.DeepCopy())
 	objects = append(objects, v.service.DeepCopy())
 	objects = append(objects, v.deployment.DeepCopy())
+	objects = append(objects, newRoute(getVmConsoleProxyNamespace(request), v.service.GetName()))
 
 	return common.DeleteAll(request, objects...)
 }
@@ -227,6 +239,18 @@ func reconcileDeploymentFuncs(deployment apps.Deployment) common.ReconcileFunc {
 	}
 }
 
+func reconcileRoute(serviceName string) common.ReconcileFunc {
+	return func(request *common.Request) (common.ReconcileResult, error) {
+		return common.CreateOrUpdate(request).
+			ClusterResource(newRoute(getVmConsoleProxyNamespace(request), serviceName)).
+			WithAppLabels(operandName, operandComponent).
+			UpdateFunc(func(newRes, foundRes client.Object) {
+				foundRes.(*routev1.Route).Spec = newRes.(*routev1.Route).Spec
+			}).
+			Reconcile()
+	}
+}
+
 func isEnabled(request *common.Request) bool {
 	if request.Instance.GetAnnotations() == nil {
 		return false
@@ -256,4 +280,24 @@ func getVmConsoleProxyNamespace(request *common.Request) string {
 
 func getVmConsoleProxyImage() string {
 	return common.EnvOrDefault("VM_CONSOLE_PROXY_IMAGE", "quay.io/kubevirt/vm-console-proxy:v0.1.0")
+}
+
+func newRoute(namespace string, serviceName string) *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "vm-console-proxy",
+			Namespace: namespace,
+		},
+		Spec: routev1.RouteSpec{
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				Name: serviceName,
+			},
+			TLS: &routev1.TLSConfig{
+				Termination:                   routev1.TLSTerminationReencrypt,
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			},
+			WildcardPolicy: routev1.WildcardPolicyNone,
+		},
+	}
 }

@@ -12,7 +12,7 @@ import (
 	ginkgo_reporters "github.com/onsi/ginkgo/v2/reporters"
 	. "github.com/onsi/gomega"
 	osconfv1 "github.com/openshift/api/config/v1"
-	openshiftroutev1 "github.com/openshift/api/route/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -447,6 +447,7 @@ func setupApiClient() {
 	Expect(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1")).ToNot(HaveOccurred())
 	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(instancetypev1alpha2.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(routev1.Install(testScheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
@@ -454,8 +455,6 @@ func setupApiClient() {
 	Expect(err).ToNot(HaveOccurred())
 	coreClient, err = kubernetes.NewForConfig(cfg)
 	Expect(err).ToNot(HaveOccurred())
-
-	Expect(openshiftroutev1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 
 	portForwarder = NewPortForwarder(cfg, coreClient.CoreV1().RESTClient())
 
