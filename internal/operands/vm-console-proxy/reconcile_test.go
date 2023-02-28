@@ -89,9 +89,12 @@ func getMockedRequest() *common.Request {
 				APIVersion: ssp.GroupVersion.String(),
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        name,
-				Namespace:   "kubevirt",
-				Annotations: map[string]string{enableAnnotation: "true"},
+				Name:      name,
+				Namespace: "kubevirt",
+				Annotations: map[string]string{
+					EnableAnnotation:                  "true",
+					VmConsoleProxyNamespaceAnnotation: "kubevirt",
+				},
 			},
 		},
 		Logger:       log,

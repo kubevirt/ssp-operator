@@ -5,21 +5,22 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/openshift/api/config/v1"
+	v1 "github.com/openshift/api/config/v1"
 )
 
 const (
-	envExistingCrName         = "TEST_EXISTING_CR_NAME"
-	envExistingCrNamespace    = "TEST_EXISTING_CR_NAMESPACE"
-	envSkipUpdateSspTests     = "SKIP_UPDATE_SSP_TESTS"
-	envSkipCleanupAfterTests  = "SKIP_CLEANUP_AFTER_TESTS"
-	envTimeout                = "TIMEOUT_MINUTES"
-	envShortTimeout           = "SHORT_TIMEOUT_MINUTES"
-	envTopologyMode           = "TOPOLOGY_MODE"
-	envIsUpgradeLane          = "IS_UPGRADE_LANE"
-	envSspDeploymentName      = "SSP_DEPLOYMENT_NAME"
-	envSspDeploymentNamespace = "SSP_DEPLOYMENT_NAMESPACE"
-	envSspWebhookServiceName  = "SSP_WEBHOOK_SERVICE_NAME"
+	envExistingCrName          = "TEST_EXISTING_CR_NAME"
+	envExistingCrNamespace     = "TEST_EXISTING_CR_NAMESPACE"
+	envSkipUpdateSspTests      = "SKIP_UPDATE_SSP_TESTS"
+	envSkipCleanupAfterTests   = "SKIP_CLEANUP_AFTER_TESTS"
+	envTimeout                 = "TIMEOUT_MINUTES"
+	envShortTimeout            = "SHORT_TIMEOUT_MINUTES"
+	envTopologyMode            = "TOPOLOGY_MODE"
+	envIsUpgradeLane           = "IS_UPGRADE_LANE"
+	envSspDeploymentName       = "SSP_DEPLOYMENT_NAME"
+	envSspDeploymentNamespace  = "SSP_DEPLOYMENT_NAMESPACE"
+	envSspWebhookServiceName   = "SSP_WEBHOOK_SERVICE_NAME"
+	envVmConsoleProxyNamespace = "VM_CONSOLE_PROXY_NAMESPACE"
 )
 
 const (
@@ -94,6 +95,10 @@ func SspDeploymentNamespace() string {
 
 func SspWebhookServiceName() string {
 	return os.Getenv(envSspWebhookServiceName)
+}
+
+func VmConsoleProxyNamespace() string {
+	return os.Getenv(envVmConsoleProxyNamespace)
 }
 
 func getBoolEnv(envName string) bool {

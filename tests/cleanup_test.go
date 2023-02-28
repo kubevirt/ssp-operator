@@ -17,6 +17,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 )
 
 var _ = Describe("Cleanup", func() {
@@ -40,6 +41,7 @@ var _ = Describe("Cleanup", func() {
 			nodelabeller.WatchClusterTypes,
 			template_validator.WatchTypes,
 			template_validator.WatchClusterTypes,
+			vm_console_proxy.WatchClusterTypes,
 		} {
 			allWatchTypes = append(allWatchTypes, f()...)
 		}
