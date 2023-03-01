@@ -19,6 +19,8 @@ package webhooks
 import (
 	"context"
 	"fmt"
+	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -88,10 +90,15 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 		return errors.Wrap(err, "commonInstancetypes validation error")
 	}
 
+	if err := validateVmProxyAnnotations(ssp); err != nil {
+		return errors.Wrap(err, "vmProxyAnnotations validation error")
+	}
+
 	return nil
 }
 
-func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) error {
+func (s *sspValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+	oldSsp := oldObj.(*sspv1beta1.SSP)
 	newSsp := newObj.(*sspv1beta1.SSP)
 
 	ssplog.Info("validate update", "name", newSsp.Name)
@@ -106,6 +113,14 @@ func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Obj
 
 	if err := validateCommonInstancetypes(newSsp); err != nil {
 		return errors.Wrap(err, "commonInstancetypes validation error")
+	}
+
+	if err := validateVmProxyAnnotations(newSsp); err != nil {
+		return errors.Wrap(err, "vmProxyAnnotations validation error")
+	}
+
+	if err := validateVmProxyNamespace(oldSsp, newSsp); err != nil {
+		return errors.Wrap(err, "vmProxyNamespace validation error")
 	}
 
 	return nil
@@ -196,6 +211,47 @@ func validateCommonInstancetypes(ssp *sspv1beta1.SSP) error {
 		return fmt.Errorf("%s is invalid, the remote kustomize target for commonInstancetypes must include a static '?ref=$reference' or '?version=$reference'", url)
 	}
 	return nil
+}
+
+func validateVmProxyAnnotations(obj *sspv1beta1.SSP) error {
+	enabledAnnotation := obj.Annotations[vm_console_proxy.EnableAnnotation]
+	if enabledAnnotation == "" {
+		return nil
+	}
+
+	if _, err := strconv.ParseBool(enabledAnnotation); err != nil {
+		return fmt.Errorf("could not parse %s annotation as a boolean: %w", vm_console_proxy.EnableAnnotation, err)
+	}
+	return nil
+}
+
+func validateVmProxyNamespace(oldObj, newObj *sspv1beta1.SSP) error {
+	// TODO: Temporary workaround: Block vm-console-proxy namespace change while the proxy is deployed.
+	oldNamespace := oldObj.Annotations[vm_console_proxy.VmConsoleProxyNamespaceAnnotation]
+	newNamespace := newObj.Annotations[vm_console_proxy.VmConsoleProxyNamespaceAnnotation]
+
+	if oldNamespace == newNamespace {
+		return nil
+	}
+
+	// Namespace can only be changed if the proxy is disabled and deployment is finished
+	isProxyEnabled := false
+	if enabledAnnotation := oldObj.Annotations[vm_console_proxy.EnableAnnotation]; enabledAnnotation != "" {
+		var err error
+		isProxyEnabled, err = strconv.ParseBool(enabledAnnotation)
+		if err != nil {
+			return err
+		}
+	}
+
+	if isProxyEnabled {
+		return fmt.Errorf("vm-console-proxy-namespace cannot be changed while proxy is enabled")
+	}
+
+	// - can we check observed generation?
+	// - can we use phase?
+
+	panic("not implemented")
 }
 
 func newSspValidator(clt client.Client) *sspValidator {
