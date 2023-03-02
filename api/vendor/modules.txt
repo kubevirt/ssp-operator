@@ -81,7 +81,7 @@ k8s.io/klog/v2
 ## explicit; go 1.12
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
-# kubevirt.io/containerized-data-importer-api v1.53.1
+# kubevirt.io/containerized-data-importer-api v1.55.2
 ## explicit; go 1.18
 kubevirt.io/containerized-data-importer-api/pkg/apis/core
 kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1

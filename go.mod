@@ -29,9 +29,9 @@ require (
 	k8s.io/klog/v2 v2.70.1 // indirect
 	k8s.io/kube-aggregator v0.24.2
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
-	kubevirt.io/api v0.58.0
-	kubevirt.io/client-go v0.58.0
-	kubevirt.io/containerized-data-importer-api v1.53.1
+	kubevirt.io/api v0.59.0
+	kubevirt.io/client-go v0.59.0
+	kubevirt.io/containerized-data-importer-api v1.55.2
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.8
 	kubevirt.io/ssp-operator/api v0.0.0
