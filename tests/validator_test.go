@@ -42,7 +42,7 @@ func testDeploymentResource() testResource {
 		Resource:       &apps.Deployment{},
 		ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 		UpdateFunc: func(deployment *apps.Deployment) {
-			deployment.Spec.Replicas = pointer.Int32Ptr(0)
+			deployment.Spec.Replicas = pointer.Int32(0)
 		},
 		EqualsFunc: func(old *apps.Deployment, new *apps.Deployment) bool {
 			return reflect.DeepEqual(old.Spec, new.Spec)
@@ -381,7 +381,7 @@ var _ = Describe("Template validator operand", func() {
 
 			updateSsp(func(foundSsp *sspv1beta1.SSP) {
 				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
-					Replicas: pointer.Int32Ptr(replicas),
+					Replicas: pointer.Int32(replicas),
 				}
 			})
 

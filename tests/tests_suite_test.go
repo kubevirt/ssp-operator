@@ -119,7 +119,7 @@ func (s *newSspStrategy) Init() {
 		},
 		Spec: sspv1beta1.SSPSpec{
 			TemplateValidator: &sspv1beta1.TemplateValidator{
-				Replicas: pointer.Int32Ptr(int32(s.GetValidatorReplicas())),
+				Replicas: pointer.Int32(int32(s.GetValidatorReplicas())),
 			},
 			CommonTemplates: sspv1beta1.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),

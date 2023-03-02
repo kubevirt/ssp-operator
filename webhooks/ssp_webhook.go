@@ -141,7 +141,7 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 			Namespace: namespace,
 		},
 		Spec: apps.DeploymentSpec{
-			Replicas: pointer.Int32Ptr(1),
+			Replicas: pointer.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					webhookTestLabel: "",

@@ -287,7 +287,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
 					Namespace: serviceNamespace,
-					Path:      pointer.StringPtr(webhook.VmValidatePath),
+					Path:      pointer.String(webhook.VmValidatePath),
 				},
 			},
 			Rules:                   vmRules,
@@ -300,7 +300,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
 					Namespace: serviceNamespace,
-					Path:      pointer.StringPtr(webhook.TemplateValidatePath),
+					Path:      pointer.String(webhook.TemplateValidatePath),
 				},
 			},
 			ObjectSelector: &metav1.LabelSelector{

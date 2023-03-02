@@ -98,7 +98,7 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to get informer: %w", err)
 	}
 
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			c.lock.Lock()
 			defer c.lock.Unlock()
@@ -110,6 +110,9 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 			c.crdDeleted(obj.(*metav1.PartialObjectMetadata).GetName())
 		},
 	})
+	if err != nil {
+		return err
+	}
 
 	if err := c.sync(ctx, c.cache); err != nil {
 		return err
