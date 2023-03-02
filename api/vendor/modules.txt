@@ -17,8 +17,8 @@ github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.2
 ## explicit; go 1.12
 github.com/modern-go/reflect2
-# github.com/openshift/api v0.0.0-20220124143425-d74727069f6f
-## explicit; go 1.16
+# github.com/openshift/api v0.0.0-20230228142948-d170fcdc0fa6
+## explicit; go 1.19
 github.com/openshift/api/config/v1
 # github.com/openshift/custom-resource-status v1.1.2
 ## explicit; go 1.12
