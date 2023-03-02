@@ -24,7 +24,6 @@ import (
 	"os"
 
 	"github.com/blang/semver/v4"
-	gyaml "github.com/ghodss/yaml"
 	"github.com/operator-framework/api/pkg/lib/version"
 	csvv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
@@ -33,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"kubevirt.io/ssp-operator/internal/common"
+	sigsyaml "sigs.k8s.io/yaml"
 )
 
 type generatorFlags struct {
@@ -298,12 +298,7 @@ func marshallObject(obj interface{}, relatedImages []interface{}, writer io.Writ
 		}
 	}
 
-	jsonBytes, err = json.Marshal(r.Object)
-	if err != nil {
-		return err
-	}
-
-	yamlBytes, err := gyaml.JSONToYAML(jsonBytes)
+	yamlBytes, err := sigsyaml.Marshal(r.Object)
 	if err != nil {
 		return err
 	}

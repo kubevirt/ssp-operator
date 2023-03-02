@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,15 +76,15 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 	}
 
 	if err = s.validatePlacement(ctx, ssp); err != nil {
-		return errors.Wrap(err, "placement api validation error")
+		return fmt.Errorf("placement api validation error: %w", err)
 	}
 
 	if err := validateDataImportCronTemplates(ssp); err != nil {
-		return errors.Wrap(err, "dataImportCronTemplates validation error")
+		return fmt.Errorf("dataImportCronTemplates validation error: %w", err)
 	}
 
 	if err := validateCommonInstancetypes(ssp); err != nil {
-		return errors.Wrap(err, "commonInstancetypes validation error")
+		return fmt.Errorf("commonInstancetypes validation error: %w", err)
 	}
 
 	return nil
@@ -97,15 +96,15 @@ func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Obj
 	ssplog.Info("validate update", "name", newSsp.Name)
 
 	if err := s.validatePlacement(ctx, newSsp); err != nil {
-		return errors.Wrap(err, "placement api validation error")
+		return fmt.Errorf("placement api validation error: %w", err)
 	}
 
 	if err := validateDataImportCronTemplates(newSsp); err != nil {
-		return errors.Wrap(err, "dataImportCronTemplates validation error")
+		return fmt.Errorf("dataImportCronTemplates validation error: %w", err)
 	}
 
 	if err := validateCommonInstancetypes(newSsp); err != nil {
-		return errors.Wrap(err, "commonInstancetypes validation error")
+		return fmt.Errorf("commonInstancetypes validation error: %w", err)
 	}
 
 	return nil

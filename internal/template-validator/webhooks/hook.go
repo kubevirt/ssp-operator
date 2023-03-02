@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -89,8 +88,17 @@ func (w *webhooks) admitVm(ar *admissionv1.AdmissionReview) *admissionv1.Admissi
 		return ToAdmissionResponseError(err)
 	}
 
-	log.Log.V(8).Infof("admission vm:\n%s", spew.Sdump(vm))
-	log.Log.V(8).Infof("admission rules:\n%s", spew.Sdump(rules))
+	if vmJson, err := json.Marshal(vm); err == nil {
+		log.Log.V(8).Infof("admission vm:\n%s", string(vmJson))
+	} else {
+		log.Log.V(8).Infof("admission vm:\nCould not marshal VM to json: %s", err.Error())
+	}
+
+	if rulesJson, err := json.Marshal(rules); err == nil {
+		log.Log.V(8).Infof("admission rules:\n%s", string(rulesJson))
+	} else {
+		log.Log.V(8).Infof("admission vm:\nCould not marshal rules to json: %s", err.Error())
+	}
 
 	causes := ValidateVm(rules, vm)
 	if len(causes) > 0 {
@@ -154,11 +162,19 @@ func serve(resp http.ResponseWriter, req *http.Request, admit admitFunc) {
 		return
 	}
 
-	log.Log.V(8).Infof("admission review:\n%s", spew.Sdump(review))
+	if reviewJson, err := json.Marshal(review); err == nil {
+		log.Log.V(8).Infof("admission review:\n%s", string(reviewJson))
+	} else {
+		log.Log.V(8).Infof("admission review:\nCould not marshal review to json: %s", err.Error())
+	}
 
 	reviewResponse := admit(review)
 
-	log.Log.V(8).Infof("admission review response:\n%s", spew.Sdump(reviewResponse))
+	if reviewResponseJson, err := json.Marshal(reviewResponse); err == nil {
+		log.Log.V(8).Infof("admission review response:\n%s", string(reviewResponseJson))
+	} else {
+		log.Log.V(8).Infof("admission review response:\nCould not marshal reviewResponse to json: %s", err.Error())
+	}
 
 	response := admissionv1.AdmissionReview{
 		TypeMeta: metav1.TypeMeta{
