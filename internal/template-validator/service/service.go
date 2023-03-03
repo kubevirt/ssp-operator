@@ -6,10 +6,8 @@ import (
 	"strconv"
 
 	flag "github.com/spf13/pflag"
-)
-
-var (
-	defaultServiceVerbosity = "2"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 type Service interface {
@@ -47,15 +45,13 @@ func (service *ServiceLibvirt) AddLibvirtFlags() {
 func Setup(service Service) {
 	service.AddFlags()
 
-	if err := flag.Set("v", defaultServiceVerbosity); err != nil {
-		panic(fmt.Sprintf("%v", err))
-	}
-	if err := flag.Set("logtostderr", "true"); err != nil {
-		panic(fmt.Sprintf("%v", err))
-	}
+	zapOpts := zap.Options{}
+	zapOpts.BindFlags(goflag.CommandLine)
 
 	// FIXME - Remove call to AddGoFlagSet once glog is no longer an indirect dependency
 	// https://github.com/spf13/pflag/blob/master/README.md#supporting-go-flags-when-using-pflag
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zapOpts)))
 }

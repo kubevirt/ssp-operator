@@ -12,8 +12,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-	"kubevirt.io/client-go/log"
 
+	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 	"kubevirt.io/ssp-operator/internal/template-validator/service"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
 	"kubevirt.io/ssp-operator/internal/template-validator/version"
@@ -45,7 +45,11 @@ func (app *App) AddFlags() {
 }
 
 func (app *App) Run() {
-	log.Log.Infof("%s %s (revision: %s) starting", version.COMPONENT, version.VERSION, version.REVISION)
+	logger.Log.Info("Starting",
+		"component", version.COMPONENT,
+		"version", version.VERSION,
+		"revision", version.REVISION,
+	)
 	if app.versionOnly {
 		return
 	}
@@ -60,7 +64,7 @@ func (app *App) Run() {
 
 	informers, err := virtinformers.NewInformers(apiScheme)
 	if err != nil {
-		log.Log.Criticalf("Error creating informers: %v", err)
+		logger.Log.Error(err, "Error creating informers")
 		panic(err)
 	}
 
@@ -71,21 +75,21 @@ func (app *App) Run() {
 
 	registerReadinessProbe()
 
-	log.Log.Infof("validator app: running with TLSInfo.CertsDirectory%+v", app.TLSInfo.CertsDirectory)
+	logger.Log.Info("TLS certs directory", "directory", app.TLSInfo.CertsDirectory)
 
 	http.Handle("/metrics", promhttp.Handler())
 
 	if app.TLSInfo.IsEnabled() {
 		server := &http.Server{Addr: app.Address(), TLSConfig: app.TLSInfo.CreateTlsConfig()}
-		log.Log.Infof("validator app: TLS configured, serving over HTTPS on %s", app.Address())
+		logger.Log.Info("TLS configured, serving over HTTPS", "address", app.Address())
 		if err := server.ListenAndServeTLS("", ""); err != nil {
-			log.Log.Criticalf("Error listening TLS: %s", err)
+			logger.Log.Error(err, "Error listening TLS")
 			panic(err)
 		}
 	} else {
-		log.Log.Infof("validator app: TLS *NOT* configured, serving over HTTP on %s", app.Address())
+		logger.Log.Info("TLS disabled, serving over HTTP", "address", app.Address())
 		if err := http.ListenAndServe(app.Address(), nil); err != nil {
-			log.Log.Criticalf("Error listening TLS: %s", err)
+			logger.Log.Error(err, "Error listening")
 			panic(err)
 		}
 	}

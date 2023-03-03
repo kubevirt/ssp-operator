@@ -24,11 +24,10 @@ import (
 	"io"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	k6tv1 "kubevirt.io/api/core/v1"
-	"kubevirt.io/client-go/log"
 
 	k6tobjs "kubevirt.io/ssp-operator/internal/template-validator/kubevirtjobs"
+	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 )
 
 var (
@@ -49,12 +48,6 @@ type ValidationReport struct {
 type Result struct {
 	Status []ValidationReport
 	failed bool
-}
-
-// Warn logs warnings into pod's log.
-// Warnings are not included in result response.
-func (r *Result) Warn(message string, e error) {
-	log.Log.Warningf(fmt.Sprintf("%s: %s", message, e.Error()))
 }
 
 func (r *Result) Fail(ru *Rule, e error) {
@@ -83,7 +76,7 @@ func (r *Result) Applied(ru *Rule, satisfied bool, message string) {
 
 	if !satisfied {
 		if ru.JustWarning {
-			r.Warn(ru.Message, ErrUnsatisfiedRule)
+			logger.Log.Error(ErrUnsatisfiedRule, ru.Message)
 		} else {
 			r.failed = true
 		}

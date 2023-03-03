@@ -26,12 +26,6 @@ github.com/fsnotify/fsnotify
 # github.com/go-errors/errors v1.4.2
 ## explicit; go 1.14
 github.com/go-errors/errors
-# github.com/go-kit/kit v0.9.0
-## explicit
-github.com/go-kit/kit/log
-# github.com/go-logfmt/logfmt v0.5.1
-## explicit; go 1.17
-github.com/go-logfmt/logfmt
 # github.com/go-logr/logr v1.2.3
 ## explicit; go 1.16
 github.com/go-logr/logr
@@ -49,8 +43,6 @@ github.com/go-openapi/jsonreference/internal
 # github.com/go-openapi/swag v0.22.3
 ## explicit; go 1.18
 github.com/go-openapi/swag
-# github.com/go-stack/stack v1.8.1
-## explicit; go 1.17
 # github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0
 ## explicit; go 1.13
 github.com/go-task/slim-sprig
@@ -58,9 +50,6 @@ github.com/go-task/slim-sprig
 ## explicit; go 1.15
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/sortkeys
-# github.com/golang/glog v1.0.0
-## explicit; go 1.11
-github.com/golang/glog
 # github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 ## explicit
 github.com/golang/groupcache/lru
@@ -680,9 +669,6 @@ kubevirt.io/api/core
 kubevirt.io/api/core/v1
 kubevirt.io/api/instancetype
 kubevirt.io/api/instancetype/v1alpha2
-# kubevirt.io/client-go v0.59.0
-## explicit; go 1.17
-kubevirt.io/client-go/log
 # kubevirt.io/containerized-data-importer-api v1.55.2
 ## explicit; go 1.18
 kubevirt.io/containerized-data-importer-api/pkg/apis/core

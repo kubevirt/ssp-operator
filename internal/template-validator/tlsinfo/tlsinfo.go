@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"kubevirt.io/client-go/log"
+
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 )
 
 const (
@@ -90,14 +91,14 @@ func (ti *TLSInfo) Clean() {
 func watchDirectory(directory string) (chan struct{}, io.Closer, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Log.Reason(err).Critical("Failed to create an inotify watcher")
+		logger.Log.Error(err, "Failed to create an inotify watcher")
 		return nil, nil, err
 	}
 
 	err = watcher.Add(directory)
 	if err != nil {
 		watcher.Close()
-		log.Log.Reason(err).Criticalf("Failed to establish a watch on %s", directory)
+		logger.Log.Error(err, "Failed to establish a watch", "directory", directory)
 		return nil, nil, err
 	}
 
@@ -116,7 +117,7 @@ func watchDirectory(directory string) (chan struct{}, io.Closer, error) {
 				if !ok {
 					return
 				}
-				log.Log.Reason(err).Errorf("An error occurred when watching %s", directory)
+				logger.Log.Error(err, "An error occurred while watching", "directory", directory)
 			}
 		}
 	}()
@@ -134,7 +135,9 @@ func notify(channel chan struct{}) {
 func (ti *TLSInfo) updateCertificates(directory string) error {
 	cert, err := loadCertificates(directory)
 	if err != nil {
-		log.Log.Reason(err).Infof("failed to load the certificate in %s", directory)
+		logger.Log.Info("failed to load certificates",
+			"directory", directory,
+			"error", err)
 		return err
 	}
 
@@ -142,7 +145,7 @@ func (ti *TLSInfo) updateCertificates(directory string) error {
 	defer ti.certLock.Unlock()
 	ti.cert = cert
 
-	log.Log.Infof("certificate from %s with common name '%s' retrieved.", directory, cert.Leaf.Subject.CommonName)
+	logger.Log.Info("certificate retrieved", "directory", directory, "name", cert.Leaf.Subject.CommonName)
 	return nil
 }
 
