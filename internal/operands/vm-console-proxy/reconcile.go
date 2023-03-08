@@ -91,49 +91,36 @@ func (v *vmConsoleProxy) RequiredCrds() []string {
 }
 
 func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	var results []common.ReconcileResult
-	var reconcileFunc []common.ReconcileFunc
-
 	if !isEnabled(request) {
-		_, err := v.Cleanup(request)
-		if err != nil {
-			return []common.ReconcileResult{}, err
+		if _, err := v.Cleanup(request); err != nil {
+			return nil, err
 		}
 
-		return []common.ReconcileResult{}, nil
+		return nil, nil
 	}
 
-	reconcileFunc = append(reconcileFunc, reconcileServiceAccountsFuncs(*v.serviceAccount.DeepCopy()))
-	reconcileFunc = append(reconcileFunc, reconcileClusterRoleFuncs(*v.clusterRole.DeepCopy()))
-	reconcileFunc = append(reconcileFunc, reconcileClusterRoleBindingFuncs(*v.clusterRoleBinding.DeepCopy()))
-	reconcileFunc = append(reconcileFunc, reconcileConfigMapFuncs(*v.configMap.DeepCopy()))
-	reconcileFunc = append(reconcileFunc, reconcileServiceFuncs(*v.service.DeepCopy()))
-	reconcileFunc = append(reconcileFunc, reconcileDeploymentFuncs(*v.deployment.DeepCopy()))
-	reconcileFunc = append(reconcileFunc, reconcileRoute(v.service.GetName()))
-
-	reconcileBundleResults, err := common.CollectResourceStatus(request, reconcileFunc...)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(results, reconcileBundleResults...), nil
+	return common.CollectResourceStatus(request,
+		reconcileServiceAccount(*v.serviceAccount.DeepCopy()),
+		reconcileClusterRole(*v.clusterRole.DeepCopy()),
+		reconcileClusterRoleBinding(*v.clusterRoleBinding.DeepCopy()),
+		reconcileConfigMap(*v.configMap.DeepCopy()),
+		reconcileService(*v.service.DeepCopy()),
+		reconcileDeployment(*v.deployment.DeepCopy()),
+		reconcileRoute(v.service.GetName()))
 }
 
 func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	var objects []client.Object
-
-	objects = append(objects, v.serviceAccount.DeepCopy())
-	objects = append(objects, v.clusterRole.DeepCopy())
-	objects = append(objects, v.clusterRoleBinding.DeepCopy())
-	objects = append(objects, v.configMap.DeepCopy())
-	objects = append(objects, v.service.DeepCopy())
-	objects = append(objects, v.deployment.DeepCopy())
-	objects = append(objects, newRoute(getVmConsoleProxyNamespace(request), v.service.GetName()))
-
-	return common.DeleteAll(request, objects...)
+	return common.DeleteAll(request,
+		v.serviceAccount.DeepCopy(),
+		v.clusterRole.DeepCopy(),
+		v.clusterRoleBinding.DeepCopy(),
+		v.configMap.DeepCopy(),
+		v.service.DeepCopy(),
+		v.deployment.DeepCopy(),
+		newRoute(getVmConsoleProxyNamespace(request), v.service.GetName()))
 }
 
-func reconcileServiceAccountsFuncs(serviceAccount core.ServiceAccount) common.ReconcileFunc {
+func reconcileServiceAccount(serviceAccount core.ServiceAccount) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		serviceAccount.Namespace = getVmConsoleProxyNamespace(request)
 		return common.CreateOrUpdate(request).
@@ -143,21 +130,21 @@ func reconcileServiceAccountsFuncs(serviceAccount core.ServiceAccount) common.Re
 	}
 }
 
-func reconcileClusterRoleFuncs(clusterRole rbac.ClusterRole) common.ReconcileFunc {
+func reconcileClusterRole(clusterRole rbac.ClusterRole) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		return common.CreateOrUpdate(request).
 			ClusterResource(&clusterRole).
 			WithAppLabels(operandName, operandComponent).
 			UpdateFunc(func(newRes, foundRes client.Object) {
-				newTask := newRes.(*rbac.ClusterRole)
-				foundTask := foundRes.(*rbac.ClusterRole)
-				foundTask.Rules = newTask.Rules
+				newClusterRole := newRes.(*rbac.ClusterRole)
+				foundClusterRole := foundRes.(*rbac.ClusterRole)
+				foundClusterRole.Rules = newClusterRole.Rules
 			}).
 			Reconcile()
 	}
 }
 
-func reconcileClusterRoleBindingFuncs(clusterRoleBinding rbac.ClusterRoleBinding) common.ReconcileFunc {
+func reconcileClusterRoleBinding(clusterRoleBinding rbac.ClusterRoleBinding) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		return common.CreateOrUpdate(request).
 			ClusterResource(&clusterRoleBinding).
@@ -172,7 +159,7 @@ func reconcileClusterRoleBindingFuncs(clusterRoleBinding rbac.ClusterRoleBinding
 	}
 }
 
-func reconcileConfigMapFuncs(configMap core.ConfigMap) common.ReconcileFunc {
+func reconcileConfigMap(configMap core.ConfigMap) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		configMap.Namespace = getVmConsoleProxyNamespace(request)
 		return common.CreateOrUpdate(request).
@@ -189,7 +176,7 @@ func reconcileConfigMapFuncs(configMap core.ConfigMap) common.ReconcileFunc {
 	}
 }
 
-func reconcileServiceFuncs(service core.Service) common.ReconcileFunc {
+func reconcileService(service core.Service) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		service.Namespace = getVmConsoleProxyNamespace(request)
 		return common.CreateOrUpdate(request).
@@ -206,7 +193,7 @@ func reconcileServiceFuncs(service core.Service) common.ReconcileFunc {
 	}
 }
 
-func reconcileDeploymentFuncs(deployment apps.Deployment) common.ReconcileFunc {
+func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
 	numberOfReplicas := *deployment.Spec.Replicas
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		deployment.Namespace = getVmConsoleProxyNamespace(request)
@@ -226,7 +213,7 @@ func reconcileDeploymentFuncs(deployment apps.Deployment) common.ReconcileFunc {
 				}
 				if dep.Status.AvailableReplicas != numberOfReplicas {
 					msg := fmt.Sprintf(
-						"Not all template vm-console-proxy pods are running. Expected: %d, running: %d",
+						"Not all vm-console-proxy pods are running. Expected: %d, running: %d",
 						numberOfReplicas,
 						dep.Status.AvailableReplicas,
 					)
@@ -255,15 +242,12 @@ func isEnabled(request *common.Request) bool {
 	if request.Instance.GetAnnotations() == nil {
 		return false
 	}
-	enabledStr, ok := request.Instance.GetAnnotations()[EnableAnnotation]
-	if !ok {
-		return false
+	if enable, isFound := request.Instance.GetAnnotations()[EnableAnnotation]; isFound {
+		if isEnabled, err := strconv.ParseBool(enable); err == nil {
+			return isEnabled
+		}
 	}
-	isEnabled, err := strconv.ParseBool(enabledStr)
-	if err != nil {
-		return false
-	}
-	return isEnabled
+	return false
 }
 
 func getVmConsoleProxyNamespace(request *common.Request) string {
@@ -271,11 +255,10 @@ func getVmConsoleProxyNamespace(request *common.Request) string {
 	if request.Instance.GetAnnotations() == nil {
 		return defaultNamespace
 	}
-	namespaceStr, ok := request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation]
-	if !ok {
-		return defaultNamespace
+	if namespace, isFound := request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation]; isFound {
+		return namespace
 	}
-	return namespaceStr
+	return defaultNamespace
 }
 
 func getVmConsoleProxyImage() string {
