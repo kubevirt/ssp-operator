@@ -231,7 +231,7 @@ func (v *vmCache) Replace(list []interface{}, _ string) error {
 	}
 
 	v.lock.Lock()
-	v.lock.Unlock()
+	defer v.lock.Unlock()
 
 	v.store = newStore
 	v.vmsForTemplate = newVmsForTemplate
