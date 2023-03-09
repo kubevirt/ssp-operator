@@ -17,13 +17,16 @@ import (
 	kubevirt "kubevirt.io/api/core"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
+	namespace              = "kubevirt"
 	name                   = "vm-console-proxy"
 	vmConsoleProxyName     = "vm-console-proxy"
 	clusterRoleName        = "vm-console-proxy"
@@ -35,33 +38,168 @@ const (
 )
 
 var _ = Describe("VM Console Proxy Operand", func() {
-	var v *vmConsoleProxy
-	var mockedRequest *common.Request
+	const (
+		replicas int32 = 1
+	)
+
+	var (
+		bundle  *vm_console_proxy_bundle.Bundle
+		operand *vmConsoleProxy
+		request common.Request
+	)
 
 	BeforeEach(func() {
-		v = getMockedVmConsoleProxyOperand()
-		mockedRequest = getMockedRequest()
-	})
-
-	It("should return new with test bundle correctly", func() {
-		vmConsoleProxy := New(getMockedTestBundle())
-		Expect(vmConsoleProxy.serviceAccount).ToNot(BeNil(), "service account should not be nil")
-		Expect(vmConsoleProxy.clusterRole).ToNot(BeNil(), "cluster role should not be nil")
-		Expect(vmConsoleProxy.clusterRoleBinding).ToNot(BeNil(), "cluster role binding should not be nil")
-		Expect(vmConsoleProxy.service).ToNot(BeNil(), "service should not be nil")
-		Expect(vmConsoleProxy.deployment).ToNot(BeNil(), "deployment should not be nil")
-		Expect(vmConsoleProxy.configMap).ToNot(BeNil(), "config map should not be nil")
+		bundle = getMockedTestBundle()
+		operand = New(bundle)
+		request = getMockedRequest()
 	})
 
 	It("should return name correctly", func() {
-		name := v.Name()
+		name := operand.Name()
 		Expect(name).To(Equal(operandName), "should return correct name")
 	})
 
 	It("should return functions from reconcile correclty", func() {
-		functions, err := v.Reconcile(mockedRequest)
+		functions, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred(), "should not throw err")
 		Expect(len(functions)).To(Equal(7), "should return correct number of reconcile functions")
+	})
+
+	It("should create vm-console-proxy resources", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		ExpectResourceExists(&bundle.ServiceAccount, request)
+		ExpectResourceExists(&bundle.ClusterRole, request)
+		ExpectResourceExists(&bundle.ClusterRoleBinding, request)
+		ExpectResourceExists(&bundle.ConfigMap, request)
+		ExpectResourceExists(&bundle.Service, request)
+		ExpectResourceExists(&bundle.Deployment, request)
+		ExpectResourceExists(newRoute(namespace, serviceName), request)
+	})
+
+	It("should remove cluster resources on cleanup", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		ExpectResourceExists(&bundle.ServiceAccount, request)
+		ExpectResourceExists(&bundle.ClusterRole, request)
+		ExpectResourceExists(&bundle.ClusterRoleBinding, request)
+		ExpectResourceExists(&bundle.ConfigMap, request)
+		ExpectResourceExists(&bundle.Service, request)
+		ExpectResourceExists(&bundle.Deployment, request)
+		ExpectResourceExists(newRoute(namespace, serviceName), request)
+
+		_, err = operand.Cleanup(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		ExpectResourceNotExists(&bundle.ServiceAccount, request)
+		ExpectResourceNotExists(&bundle.ClusterRole, request)
+		ExpectResourceNotExists(&bundle.ClusterRoleBinding, request)
+		ExpectResourceNotExists(&bundle.ConfigMap, request)
+		ExpectResourceNotExists(&bundle.Service, request)
+		ExpectResourceNotExists(&bundle.Deployment, request)
+		ExpectResourceNotExists(newRoute(namespace, serviceName), request)
+	})
+
+	It("should not update service cluster IP", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		key := client.ObjectKeyFromObject(&bundle.Service)
+		service := &core.Service{}
+		Expect(request.Client.Get(request.Context, key, service)).ToNot(HaveOccurred())
+
+		// This address is from a range of IP addresses reserved for documentation.
+		const testClusterIp = "198.51.100.42"
+
+		service.Spec.ClusterIP = testClusterIp
+		Expect(request.Client.Update(request.Context, service)).ToNot(HaveOccurred())
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		updatedService := &core.Service{}
+		Expect(request.Client.Get(request.Context, key, updatedService)).ToNot(HaveOccurred())
+		Expect(updatedService.Spec.ClusterIP).To(Equal(testClusterIp))
+	})
+
+	It("should report status", func() {
+		reconcileResults, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Set status for deployment
+		key := client.ObjectKeyFromObject(&bundle.Deployment)
+		updateDeployment(key, &request, func(deployment *apps.Deployment) {
+			deployment.Status.Replicas = replicas
+			deployment.Status.ReadyReplicas = 0
+			deployment.Status.AvailableReplicas = 0
+			deployment.Status.UpdatedReplicas = 0
+			deployment.Status.UnavailableReplicas = replicas
+		})
+
+		reconcileResults, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Only deployment should be progressing
+		for _, reconcileResult := range reconcileResults {
+			if _, ok := reconcileResult.Resource.(*apps.Deployment); ok {
+				Expect(reconcileResult.Status.NotAvailable).ToNot(BeNil())
+				Expect(reconcileResult.Status.Progressing).ToNot(BeNil())
+				Expect(reconcileResult.Status.Degraded).ToNot(BeNil())
+			} else {
+				Expect(reconcileResult.Status.NotAvailable).To(BeNil())
+				Expect(reconcileResult.Status.Progressing).To(BeNil())
+				Expect(reconcileResult.Status.Degraded).To(BeNil())
+			}
+		}
+
+		updateDeployment(key, &request, func(deployment *apps.Deployment) {
+			deployment.Status.Replicas = replicas
+			deployment.Status.ReadyReplicas = replicas
+			deployment.Status.AvailableReplicas = replicas
+			deployment.Status.UpdatedReplicas = replicas
+			deployment.Status.UnavailableReplicas = 0
+		})
+
+		reconcileResults, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		// All resources should be available
+		for _, reconcileResult := range reconcileResults {
+			Expect(reconcileResult.Status.NotAvailable).To(BeNil())
+			Expect(reconcileResult.Status.Progressing).To(BeNil())
+			Expect(reconcileResult.Status.Degraded).To(BeNil())
+		}
+	})
+
+	It("should deploy resources in namespace provided by annotation", func() {
+		namespace := "some-namespace"
+		request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation] = namespace
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		ExpectNamespacedResourceExists(&bundle.ServiceAccount, request, namespace)
+		ExpectNamespacedResourceExists(&bundle.ConfigMap, request, namespace)
+		ExpectNamespacedResourceExists(&bundle.Service, request, namespace)
+		ExpectNamespacedResourceExists(&bundle.Deployment, request, namespace)
+		ExpectNamespacedResourceExists(newRoute(getVmConsoleProxyNamespace(&request), serviceName), request, namespace)
+	})
+
+	It("should delete resources when enabled annotation is removed", func() {
+		delete(request.Instance.Annotations, EnableAnnotation)
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		ExpectResourceNotExists(&bundle.ServiceAccount, request)
+		ExpectResourceNotExists(&bundle.ClusterRole, request)
+		ExpectResourceNotExists(&bundle.ClusterRoleBinding, request)
+		ExpectResourceNotExists(&bundle.ConfigMap, request)
+		ExpectResourceNotExists(&bundle.Service, request)
+		ExpectResourceNotExists(&bundle.Deployment, request)
+		ExpectResourceNotExists(newRoute(namespace, serviceName), request)
 	})
 })
 
@@ -70,14 +208,14 @@ func TestVmConsoleProxyBundle(t *testing.T) {
 	RunSpecs(t, "VM Console Proxy Operand Suite")
 }
 
-func getMockedRequest() *common.Request {
-	var log = logf.Log.WithName("metrics_operand")
+func getMockedRequest() common.Request {
+	var log = logf.Log.WithName("vm_console_proxy_operand")
 	client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 
-	return &common.Request{
+	return common.Request{
 		Request: reconcile.Request{
 			NamespacedName: types.NamespacedName{
-				Namespace: "kubevirt",
+				Namespace: namespace,
 				Name:      name,
 			},
 		},
@@ -90,80 +228,15 @@ func getMockedRequest() *common.Request {
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: "kubevirt",
+				Namespace: namespace,
 				Annotations: map[string]string{
 					EnableAnnotation:                  "true",
-					VmConsoleProxyNamespaceAnnotation: "kubevirt",
+					VmConsoleProxyNamespaceAnnotation: namespace,
 				},
 			},
 		},
 		Logger:       log,
 		VersionCache: common.VersionCache{},
-	}
-}
-
-func getMockedVmConsoleProxyOperand() *vmConsoleProxy {
-	replicas := int32(1)
-
-	return &vmConsoleProxy{
-		serviceAccount: &core.ServiceAccount{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      serviceAccountName,
-				Namespace: "",
-				Labels:    map[string]string{"control-plane": "vm-console-proxy"},
-			},
-		},
-		clusterRole: &rbac.ClusterRole{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterRoleName,
-				Namespace: "",
-				Labels:    map[string]string{},
-			},
-		},
-		clusterRoleBinding: &rbac.ClusterRoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterRoleBindingName,
-				Namespace: "",
-				Labels:    map[string]string{},
-			},
-		},
-		service: &core.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      serviceName,
-				Namespace: "",
-				Labels:    map[string]string{},
-				Annotations: map[string]string{
-					"service.beta.openshift.io/serving-cert-secret-name": "vm-console-proxy-cert",
-				},
-			},
-		},
-		deployment: &apps.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      deploymentName,
-				Namespace: "",
-				Labels: map[string]string{
-					"name":                         deploymentName,
-					"vm-console-proxy.kubevirt.io": deploymentName,
-				},
-			},
-			Spec: apps.DeploymentSpec{
-				Replicas: &replicas,
-				Template: core.PodTemplateSpec{
-					Spec: core.PodSpec{
-						Containers: []core.Container{{
-							Name:  "test-container",
-							Image: "test-image",
-						}},
-					},
-				},
-			},
-		},
-		configMap: &core.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      configMapName,
-				Namespace: "",
-			},
-		},
 	}
 }
 
@@ -178,14 +251,14 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 		ServiceAccount: core.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceAccountName,
-				Namespace: "",
+				Namespace: namespace,
 				Labels:    map[string]string{"control-plane": "vm-console-proxy"},
 			},
 		},
 		ClusterRole: rbac.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterRoleName,
-				Namespace: "",
+				Namespace: namespace,
 				Labels:    map[string]string{},
 			},
 			Rules: []rbac.PolicyRule{{
@@ -209,7 +282,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 		ClusterRoleBinding: rbac.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterRoleBindingName,
-				Namespace: "",
+				Namespace: namespace,
 				Labels:    map[string]string{},
 			},
 			RoleRef: rbac.RoleRef{
@@ -220,13 +293,25 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 			Subjects: []rbac.Subject{{
 				Kind:      "ServiceAccount",
 				Name:      serviceAccountName,
-				Namespace: "",
+				Namespace: namespace,
 			}},
+		},
+		ConfigMap: core.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      configMapName,
+				Namespace: namespace,
+			},
+			Data: map[string]string{
+				"tls-profile-v1alpha1.yaml": `
+	type: Intermediate
+	intermediate: {}
+	`,
+			},
 		},
 		Service: core.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceName,
-				Namespace: "",
+				Namespace: namespace,
 				Labels:    map[string]string{},
 				Annotations: map[string]string{
 					"service.beta.openshift.io/serving-cert-secret-name": "vm-console-proxy-cert",
@@ -245,7 +330,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 		Deployment: apps.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      deploymentName,
-				Namespace: "",
+				Namespace: namespace,
 				Labels: map[string]string{
 					"name":                         deploymentName,
 					"vm-console-proxy.kubevirt.io": deploymentName,
@@ -343,4 +428,12 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 			},
 		},
 	}
+}
+
+func updateDeployment(key client.ObjectKey, request *common.Request, updateFunc func(deployment *apps.Deployment)) {
+	deployment := &apps.Deployment{}
+	Expect(request.Client.Get(request.Context, key, deployment)).ToNot(HaveOccurred())
+	updateFunc(deployment)
+	Expect(request.Client.Update(request.Context, deployment)).ToNot(HaveOccurred())
+	Expect(request.Client.Status().Update(request.Context, deployment)).ToNot(HaveOccurred())
 }
