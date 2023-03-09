@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	flag "github.com/spf13/pflag"
-	"k8s.io/klog/v2"
 )
 
 var (
@@ -55,18 +54,8 @@ func Setup(service Service) {
 		panic(fmt.Sprintf("%v", err))
 	}
 
+	// FIXME - Remove call to AddGoFlagSet once glog is no longer an indirect dependency
+	// https://github.com/spf13/pflag/blob/master/README.md#supporting-go-flags-when-using-pflag
+	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
-
-	// borrowed from cdi/apiserver 1.9.5
-	klogFlags := goflag.NewFlagSet("klog", goflag.ExitOnError)
-	klog.InitFlags(klogFlags)
-	flag.CommandLine.VisitAll(func(f1 *flag.Flag) {
-		f2 := klogFlags.Lookup(f1.Name)
-		if f2 != nil {
-			value := f1.Value.String()
-			if err := f2.Value.Set(value); err != nil {
-				panic(fmt.Sprintf("%v", err))
-			}
-		}
-	})
 }
