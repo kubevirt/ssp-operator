@@ -15,9 +15,9 @@ EOF
 # Deploying kuebvirt
 oc apply -n $NAMESPACE -f "https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml"
 
-# Using KubeVirt CR from version v0.35.0
+# Using KubeVirt CR from version v0.59.0
 oc apply -n $NAMESPACE -f - <<EOF
-apiVersion: kubevirt.io/v1alpha3
+apiVersion: kubevirt.io/v1
 kind: KubeVirt
 metadata:
   name: kubevirt
@@ -25,17 +25,18 @@ metadata:
 spec:
   certificateRotateStrategy: {}
   configuration:
-    selinuxLauncherType: "virt_launcher.process"
     developerConfiguration:
       featureGates:
         - DataVolumes
         - CPUManager
         - LiveMigration
-        # - ExperimentalIgnitionSupport
-        # - Sidecar
-        # - Snapshot
+        - KubevirtSeccompProfile
+    seccompConfiguration:
+      virtualMachineInstanceProfile:
+        customProfile:
+          localhostProfile: kubevirt/kubevirt.json
   customizeComponents: {}
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
 EOF
 
 echo "Waiting for Kubevirt to be ready..."
