@@ -1,8 +1,6 @@
 package tests
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -20,7 +18,6 @@ import (
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
@@ -369,22 +366,3 @@ var _ = Describe("RHEL VM creation", func() {
 		Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
 	)
 })
-
-func logObject(key client.ObjectKey, obj client.Object) {
-	gvk, err := apiutil.GVKForObject(obj, testScheme)
-	if err != nil {
-		panic(err)
-	}
-	obj.GetObjectKind().SetGroupVersionKind(gvk)
-
-	err = apiClient.Get(ctx, key, obj)
-	if err != nil {
-		fmt.Fprintf(GinkgoWriter, "Failed to get %s: %s\n", gvk.Kind, err)
-	} else {
-		objJson, err := json.MarshalIndent(obj, "", "    ")
-		if err != nil {
-			panic(err)
-		}
-		fmt.Fprintf(GinkgoWriter, "Found %s:\n%s\n", gvk.Kind, objJson)
-	}
-}

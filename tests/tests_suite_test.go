@@ -491,6 +491,15 @@ func waitUntilDeployed() {
 		Fail("Timed out waiting for SSP to be in phase Deployed.")
 	}
 
+	// If deployment times out, write SSP CR to log
+	defer func() {
+		if !deploymentTimedOut {
+			return
+		}
+		key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
+		logObject(key, &sspv1beta1.SSP{})
+	}()
+
 	// Set to true before waiting. In case Eventually fails,
 	// it will panic and the deploymentTimedOut will be left true
 	deploymentTimedOut = true

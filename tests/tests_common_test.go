@@ -1,8 +1,10 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"time"
 
 	"github.com/onsi/gomega/format"
@@ -395,4 +397,23 @@ func addDomainResourcesToVMI(vmi *kubevirtv1.VirtualMachineInstance, cpuCores ui
 		core.ResourceMemory: resource.MustParse(memory),
 	}
 	return vmi
+}
+
+func logObject(key client.ObjectKey, obj client.Object) {
+	gvk, err := apiutil.GVKForObject(obj, testScheme)
+	if err != nil {
+		panic(err)
+	}
+	obj.GetObjectKind().SetGroupVersionKind(gvk)
+
+	err = apiClient.Get(ctx, key, obj)
+	if err != nil {
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to get %s: %s\n", gvk.Kind, err)
+	} else {
+		objJson, err := json.MarshalIndent(obj, "", "    ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Found %s:\n%s\n", gvk.Kind, objJson)
+	}
 }
