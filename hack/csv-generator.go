@@ -18,7 +18,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -29,7 +28,8 @@ import (
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"kubevirt.io/ssp-operator/internal/common"
 	sigsyaml "sigs.k8s.io/yaml"
@@ -110,27 +110,26 @@ func runGenerator() error {
 	}
 
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(csvFile), 1024)
-	csv := csvv1.ClusterServiceVersion{}
-	err = decoder.Decode(&csv)
+	csv := &csvv1.ClusterServiceVersion{}
+	err = decoder.Decode(csv)
 	if err != nil {
 		return err
 	}
 
-	err = replaceVariables(f, &csv)
+	err = replaceVariables(f, csv)
 	if err != nil {
 		return err
 	}
 
 	if f.removeCerts {
-		removeCerts(&csv)
+		removeCerts(csv)
 	}
 
-	relatedImages, err := buildRelatedImages(f)
-	if err != nil {
-		return err
-	}
+	cleanupCsv(csv)
 
-	err = marshallObject(csv, relatedImages, os.Stdout)
+	csv.Spec.RelatedImages = getRelatedImages(f)
+
+	err = writeObjectYaml(csv, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -142,19 +141,20 @@ func runGenerator() error {
 		return err
 	}
 	for _, file := range files {
-		crd := extv1.CustomResourceDefinition{}
+		crd := &extv1.CustomResourceDefinition{}
 
 		fsInfo, err := file.Info()
 		if err != nil {
 			return err
 		}
 
-		err = readAndDecodeToCRD(fsInfo, &crd)
+		err = readAndDecodeToCRD(fsInfo, crd)
 		if err != nil {
 			return err
 		}
 
-		err = marshallObject(crd, nil, os.Stdout)
+		cleanupCrd(crd)
+		err = writeObjectYaml(crd, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -175,58 +175,26 @@ func readAndDecodeToCRD(file os.FileInfo, crd *extv1.CustomResourceDefinition) e
 	return nil
 }
 
-func buildRelatedImage(imageDesc string, imageName string) (map[string]interface{}, error) {
-	ri := make(map[string]interface{})
-	ri["name"] = imageName
-	ri["image"] = imageDesc
+func getRelatedImages(flags generatorFlags) []csvv1.RelatedImage {
+	var relatedImages []csvv1.RelatedImage
 
-	return ri, nil
+	relatedImages = appendRelatedImage(relatedImages, flags.validatorImage, "template-validator")
+	relatedImages = appendRelatedImage(relatedImages, flags.tektonTasksImage, "tekton-tasks")
+	relatedImages = appendRelatedImage(relatedImages, flags.tektonTasksDiskVirtImage, "tekton-tasks-disk-virt")
+	relatedImages = appendRelatedImage(relatedImages, flags.virtioImage, "virtio-container")
+	relatedImages = appendRelatedImage(relatedImages, flags.vmConsoleProxyImage, "vm-console-proxy")
+
+	return relatedImages
 }
 
-func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
-	var relatedImages = make([]interface{}, 0)
-
-	if flags.validatorImage != "" {
-		relatedImage, err := buildRelatedImage(flags.validatorImage, "template-validator")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
+func appendRelatedImage(slice []csvv1.RelatedImage, image string, name string) []csvv1.RelatedImage {
+	if image != "" {
+		slice = append(slice, csvv1.RelatedImage{
+			Name:  name,
+			Image: image,
+		})
 	}
-
-	if flags.tektonTasksImage != "" {
-		relatedImage, err := buildRelatedImage(flags.tektonTasksImage, "tekton-tasks")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.tektonTasksDiskVirtImage != "" {
-		relatedImage, err := buildRelatedImage(flags.tektonTasksDiskVirtImage, "tekton-tasks-disk-virt")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.virtioImage != "" {
-		relatedImage, err := buildRelatedImage(flags.virtioImage, "virtio-container")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.vmConsoleProxyImage != "" {
-		relatedImage, err := buildRelatedImage(flags.vmConsoleProxyImage, "vm-console-proxy")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	return relatedImages, nil
+	return slice
 }
 
 func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) error {
@@ -319,47 +287,26 @@ func removeCerts(csv *csvv1.ClusterServiceVersion) {
 	templateSpec.Volumes = updatedVolumes
 }
 
-func marshallObject(obj interface{}, relatedImages []interface{}, writer io.Writer) error {
-	jsonBytes, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-
-	var r unstructured.Unstructured
-	if err := json.Unmarshal(jsonBytes, &r.Object); err != nil {
-		return err
-	}
-
+func cleanupCsv(csv *csvv1.ClusterServiceVersion) {
 	// remove status and metadata.creationTimestamp
-	unstructured.RemoveNestedField(r.Object, "metadata", "creationTimestamp")
-	unstructured.RemoveNestedField(r.Object, "template", "metadata", "creationTimestamp")
-	unstructured.RemoveNestedField(r.Object, "spec", "template", "metadata", "creationTimestamp")
-	unstructured.RemoveNestedField(r.Object, "status")
+	csv.Status = csvv1.ClusterServiceVersionStatus{}
+	csv.ObjectMeta.CreationTimestamp = metav1.Time{}
 
-	deployments, exists, err := unstructured.NestedSlice(r.Object, "spec", "install", "spec", "deployments")
-	if err != nil {
-		return err
+	deployments := csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs
+	for i := range deployments {
+		deployment := &deployments[i]
+		deployment.Spec.Template.ObjectMeta.CreationTimestamp = metav1.Time{}
 	}
+}
 
-	if exists {
-		for _, obj := range deployments {
-			deployment := obj.(map[string]interface{})
-			unstructured.RemoveNestedField(deployment, "metadata", "creationTimestamp")
-			unstructured.RemoveNestedField(deployment, "spec", "template", "metadata", "creationTimestamp")
-			unstructured.RemoveNestedField(deployment, "status")
-		}
-		if err = unstructured.SetNestedSlice(r.Object, deployments, "spec", "install", "spec", "deployments"); err != nil {
-			return err
-		}
-	}
+func cleanupCrd(crd *extv1.CustomResourceDefinition) {
+	// remove status and metadata.creationTimestamp
+	crd.Status = extv1.CustomResourceDefinitionStatus{}
+	crd.ObjectMeta.CreationTimestamp = metav1.Time{}
+}
 
-	if len(relatedImages) > 0 {
-		if err = unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages"); err != nil {
-			return err
-		}
-	}
-
-	yamlBytes, err := sigsyaml.Marshal(r.Object)
+func writeObjectYaml(obj runtime.Object, writer io.Writer) error {
+	yamlBytes, err := sigsyaml.Marshal(obj)
 	if err != nil {
 		return err
 	}
