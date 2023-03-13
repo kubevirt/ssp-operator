@@ -98,14 +98,8 @@ func init() {
 }
 
 func runGenerator() error {
-	csvFile, err := os.ReadFile(f.file)
-	if err != nil {
-		return err
-	}
-
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(csvFile), 1024)
 	csv := &csvv1.ClusterServiceVersion{}
-	if err = decoder.Decode(csv); err != nil {
+	if err := readFileToObject(f.file, csv); err != nil {
 		return err
 	}
 
@@ -140,7 +134,7 @@ func runGenerator() error {
 			return err
 		}
 
-		if err := readAndDecodeToCRD(fsInfo, crd); err != nil {
+		if err := readFileToObject(fsInfo.Name(), crd); err != nil {
 			return err
 		}
 
@@ -148,19 +142,6 @@ func runGenerator() error {
 		if err := writeObjectYaml(crd, os.Stdout); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func readAndDecodeToCRD(file os.FileInfo, crd *extv1.CustomResourceDefinition) error {
-	crdFile, err := os.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
-	if err != nil {
-		return err
-	}
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(crdFile), 1024)
-	err = decoder.Decode(&crd)
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -278,6 +259,14 @@ func cleanupCrd(crd *extv1.CustomResourceDefinition) {
 	// remove status and metadata.creationTimestamp
 	crd.Status = extv1.CustomResourceDefinitionStatus{}
 	crd.ObjectMeta.CreationTimestamp = metav1.Time{}
+}
+
+func readFileToObject(filename string, obj runtime.Object) error {
+	fileBytes, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	return yaml.NewYAMLOrJSONDecoder(bytes.NewReader(fileBytes), 1024).Decode(obj)
 }
 
 func writeObjectYaml(obj runtime.Object, writer io.Writer) error {
