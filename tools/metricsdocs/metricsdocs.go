@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"sort"
-	"strings"
+
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 )
 
 const (
@@ -81,14 +81,6 @@ func (m metricList) Less(i, j int) bool {
 // Swap implements sort.Interface.Swap
 func (m metricList) Swap(i, j int) {
 	m[i], m[j] = m[j], m[i]
-}
-
-func (m *metricList) add(line string) {
-	split := strings.Split(line, " ")
-	name := split[2]
-	split[3] = strings.Title(split[3])
-	description := strings.Join(split[3:], " ")
-	*m = append(*m, metric{name: name, description: description})
 }
 
 func (m metricList) writeOut() {

@@ -627,7 +627,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 func updateStatusMissingCrds(request *common.Request, missingCrds []string) error {
 	sspStatus := &request.Instance.Status
 
-	message := fmt.Sprintf("Requred CRDs are missing: %s", strings.Join(missingCrds, ", "))
+	message := fmt.Sprintf("Required CRDs are missing: %s", strings.Join(missingCrds, ", "))
 	conditionsv1.SetStatusCondition(&sspStatus.Conditions, conditionsv1.Condition{
 		Type:    conditionsv1.ConditionAvailable,
 		Status:  v1.ConditionFalse,

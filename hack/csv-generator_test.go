@@ -51,12 +51,12 @@ var _ = Describe("csv generator", func() {
 	}
 	It("should update csv", func() {
 		err := replaceVariables(flags, &csv)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		//test csv name
 		Expect(csv.Name).To(Equal("ssp-operator.v9.9.9"))
 		//test csv version
 		v, err := semver.New(flags.csvVersion)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(csv.Spec.Version).To(Equal(version.OperatorVersion{Version: *v}))
 
 		for _, container := range csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec.Containers {

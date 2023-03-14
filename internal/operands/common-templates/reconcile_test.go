@@ -51,7 +51,7 @@ var _ = Describe("Common-Templates operand", func() {
 		testTemplates = getTestTemplates()
 		operand = New(testTemplates)
 
-		client := fake.NewFakeClientWithScheme(common.Scheme)
+		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -126,7 +126,7 @@ var _ = Describe("Common-Templates operand", func() {
 
 		BeforeEach(func() {
 			// Create a dummy template to act as an owner for the test template
-			// we can't use the SSP CR as an owner for these tests because the tempaltes
+			// we can't use the SSP CR as an owner for these tests because the templates
 			// might be deployed in a different namespace than the CR, and will be immediately
 			// removed by the GC, the choice to use a template as an owner object was arbitrary
 			parentTpl = &templatev1.Template{
@@ -200,7 +200,7 @@ var _ = Describe("Common-Templates operand", func() {
 			err = request.Client.Get(request.Context, key, updatedTpl)
 			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
 
-			Expect(len(updatedTpl.GetOwnerReferences())).To(Equal(0), "ownerReferences exist for an older template")
+			Expect(updatedTpl.GetOwnerReferences()).To(BeEmpty(), "ownerReferences exist for an older template")
 			Expect(updatedTpl.GetAnnotations()[libhandler.NamespacedNameAnnotation]).ToNot(Equal(""), "owner name annotation is empty for an older template")
 			Expect(updatedTpl.GetAnnotations()[libhandler.TypeAnnotation]).ToNot(Equal(""), "owner type annotation is empty for an older template")
 		})

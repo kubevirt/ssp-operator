@@ -1,0 +1,14 @@
+linters:
+  # Disable all linters.
+  disable-all: true
+  # Enable specific linter
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable:
+    - whitespace
+    - misspell
+    - ginkgolinter
+    - errcheck
+    - ineffassign
+    - staticcheck
+    - unused
+    - errname

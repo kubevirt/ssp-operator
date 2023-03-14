@@ -37,7 +37,7 @@ var _ = Describe("Resource", func() {
 		s := scheme.Scheme
 		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
 
-		client := fake.NewFakeClientWithScheme(s)
+		client := fake.NewClientBuilder().WithScheme(s).Build()
 		request = Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{

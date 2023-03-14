@@ -14,7 +14,7 @@ var _ = Describe("Rules", func() {
 			rules, err := ParseRules([]byte(""))
 
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(len(rules)).To(Equal(0))
+			Expect(rules).To(BeEmpty())
 		})
 	})
 
@@ -32,7 +32,7 @@ var _ = Describe("Rules", func() {
 			rules, err := ParseRules([]byte(text))
 
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(len(rules)).To(Equal(1))
+			Expect(rules).To(HaveLen(1))
 		})
 
 		It("Should parse multiple rules", func() {
@@ -54,7 +54,7 @@ var _ = Describe("Rules", func() {
 			rules, err := ParseRules([]byte(text))
 
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(len(rules)).To(Equal(2))
+			Expect(rules).To(HaveLen(2))
 		})
 		It("Should apply on a relevant VM", func() {
 			vm := test_utils.NewVMCirros()

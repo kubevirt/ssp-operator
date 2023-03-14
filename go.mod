@@ -27,7 +27,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.25.0
 	k8s.io/apimachinery v0.25.0
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/klog/v2 v2.70.1
+	k8s.io/klog/v2 v2.70.1 // indirect
 	k8s.io/kube-aggregator v0.24.2
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 	kubevirt.io/api v0.58.0

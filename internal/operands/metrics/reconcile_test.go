@@ -31,7 +31,7 @@ var _ = Describe("Metrics operand", func() {
 	)
 
 	It("should create metrics resources", func() {
-		client := fake.NewFakeClientWithScheme(common.Scheme)
+		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{

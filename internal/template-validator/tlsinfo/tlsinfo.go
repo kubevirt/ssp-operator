@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -151,11 +150,11 @@ func loadCertificates(directory string) (serverCrt *tls.Certificate, err error) 
 	certPath := filepath.Join(directory, CertFilename)
 	keyPath := filepath.Join(directory, KeyFilename)
 
-	certBytes, err := ioutil.ReadFile(certPath)
+	certBytes, err := os.ReadFile(certPath)
 	if err != nil {
 		return nil, err
 	}
-	keyBytes, err := ioutil.ReadFile(keyPath)
+	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
 	}

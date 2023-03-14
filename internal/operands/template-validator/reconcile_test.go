@@ -44,7 +44,7 @@ var _ = Describe("Template validator operand", func() {
 		s := scheme.Scheme
 		Expect(ssp.AddToScheme(s)).ToNot(HaveOccurred())
 
-		client := fake.NewFakeClientWithScheme(s)
+		client := fake.NewClientBuilder().WithScheme(s).Build()
 		request = common.Request{
 			Request: reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -149,7 +149,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("should report status", func() {
-		reconcileResults, err := operand.Reconcile(&request)
+		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Set status for deployment
@@ -162,7 +162,7 @@ var _ = Describe("Template validator operand", func() {
 			deployment.Status.UnavailableReplicas = replicas
 		})
 
-		reconcileResults, err = operand.Reconcile(&request)
+		reconcileResults, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Only deployment should be progressing

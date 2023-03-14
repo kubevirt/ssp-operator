@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/blang/semver/v4"
@@ -65,7 +64,10 @@ var (
 )
 
 func main() {
-	rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 }
 
 func init() {
@@ -79,14 +81,22 @@ func init() {
 	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
 	rootCmd.Flags().BoolVar(&f.dumpCRDs, "dump-crds", false, "Dump crds to stdout")
 
-	rootCmd.MarkFlagRequired("csv-version")
-	rootCmd.MarkFlagRequired("namespace")
-	rootCmd.MarkFlagRequired("operator-image")
-	rootCmd.MarkFlagRequired("operator-version")
+	if err := rootCmd.MarkFlagRequired("csv-version"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
+	if err := rootCmd.MarkFlagRequired("namespace"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
+	if err := rootCmd.MarkFlagRequired("operator-image"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
+	if err := rootCmd.MarkFlagRequired("operator-version"); err != nil {
+		panic(fmt.Sprintf("%v", err))
+	}
 }
 
 func runGenerator() error {
-	csvFile, err := ioutil.ReadFile(f.file)
+	csvFile, err := os.ReadFile(f.file)
 	if err != nil {
 		return err
 	}
@@ -119,14 +129,19 @@ func runGenerator() error {
 	if !f.dumpCRDs {
 		return nil
 	}
-	files, err := ioutil.ReadDir("data/crd")
+	files, err := os.ReadDir("data/crd")
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
 		crd := extv1.CustomResourceDefinition{}
 
-		err := readAndDecodeToCRD(file, &crd)
+		fsInfo, err := file.Info()
+		if err != nil {
+			return err
+		}
+
+		err = readAndDecodeToCRD(fsInfo, &crd)
 		if err != nil {
 			return err
 		}
@@ -140,7 +155,7 @@ func runGenerator() error {
 }
 
 func readAndDecodeToCRD(file os.FileInfo, crd *extv1.CustomResourceDefinition) error {
-	crdFile, err := ioutil.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
+	crdFile, err := os.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
 	if err != nil {
 		return err
 	}
@@ -272,11 +287,15 @@ func marshallObject(obj interface{}, relatedImages []interface{}, writer io.Writ
 			unstructured.RemoveNestedField(deployment, "spec", "template", "metadata", "creationTimestamp")
 			unstructured.RemoveNestedField(deployment, "status")
 		}
-		unstructured.SetNestedSlice(r.Object, deployments, "spec", "install", "spec", "deployments")
+		if err = unstructured.SetNestedSlice(r.Object, deployments, "spec", "install", "spec", "deployments"); err != nil {
+			return err
+		}
 	}
 
 	if len(relatedImages) > 0 {
-		unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages")
+		if err = unstructured.SetNestedSlice(r.Object, relatedImages, "spec", "relatedImages"); err != nil {
+			return err
+		}
 	}
 
 	jsonBytes, err = json.Marshal(r.Object)
