@@ -15,29 +15,32 @@ EOF
 # Deploying kuebvirt
 oc apply -n $NAMESPACE -f "https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml"
 
-# Using KubeVirt CR from version v0.59.0
-oc apply -n $NAMESPACE -f - <<EOF
-apiVersion: kubevirt.io/v1
-kind: KubeVirt
-metadata:
-  name: kubevirt
-  namespace: kubevirt
-spec:
-  certificateRotateStrategy: {}
-  configuration:
-    developerConfiguration:
-      featureGates:
-        - DataVolumes
-        - CPUManager
-        - LiveMigration
-        - KubevirtSeccompProfile
-    seccompConfiguration:
-      virtualMachineInstanceProfile:
-        customProfile:
-          localhostProfile: kubevirt/kubevirt.json
-  customizeComponents: {}
-  imagePullPolicy: Always
-EOF
+oc apply -n $NAMESPACE -f "https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-cr.yaml"
+
+# Patch to enable needed functionality
+oc patch -n $NAMESPACE kubevirt kubevirt --type='json' -p '[{
+  "op": "add",
+  "path": "/spec/configuration/developerConfiguration/featureGates/-",
+  "value": "DataVolumes",
+},{
+  "op": "add",
+  "path": "/spec/configuration/developerConfiguration/featureGates/-",
+  "value": "CPUManager",
+},{
+  "op": "add",
+  "path": "/spec/configuration/developerConfiguration/featureGates/-",
+  "value": "KubevirtSeccompProfile",
+},{
+  "op": "replace",
+  "path": "/spec/configuration/seccompConfiguration",
+  "value": {
+    "virtualMachineInstanceProfile": {
+      "customProfile": {
+        "localhostProfile": "kubevirt/kubevirt.json"
+      }
+    }
+  },
+}]'
 
 echo "Waiting for Kubevirt to be ready..."
 oc wait --for=condition=Available --timeout=600s -n $NAMESPACE kv/kubevirt
