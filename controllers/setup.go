@@ -76,7 +76,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 			template_validator.New(),
 			common_templates.New(templatesBundle.Templates),
 			node_labeller.New(),
-			vm_console_proxy.New(&vmConsoleProxyBundle),
+			vm_console_proxy.New(vmConsoleProxyBundle),
 		)
 	}
 
