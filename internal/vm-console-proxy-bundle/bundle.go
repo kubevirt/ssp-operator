@@ -2,6 +2,7 @@ package vm_console_proxy_bundle
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -124,7 +125,7 @@ func decodeObjectsFromFiles(files [][]byte) (*Bundle, error) {
 					}
 					bundle.ConfigMap = configMap
 				default:
-					continue
+					return nil, fmt.Errorf("unsupported Kind found in vm-console-proxy bundle: %s", kind)
 				}
 			}
 		}
