@@ -65,12 +65,12 @@ var _ operands.Operand = &vmConsoleProxy{}
 
 func New(bundle *vm_console_proxy_bundle.Bundle) *vmConsoleProxy {
 	return &vmConsoleProxy{
-		serviceAccount:     &bundle.ServiceAccount,
-		clusterRole:        &bundle.ClusterRole,
-		clusterRoleBinding: &bundle.ClusterRoleBinding,
-		service:            &bundle.Service,
-		deployment:         &bundle.Deployment,
-		configMap:          &bundle.ConfigMap,
+		serviceAccount:     bundle.ServiceAccount,
+		clusterRole:        bundle.ClusterRole,
+		clusterRoleBinding: bundle.ClusterRoleBinding,
+		service:            bundle.Service,
+		deployment:         bundle.Deployment,
+		configMap:          bundle.ConfigMap,
 	}
 }
 

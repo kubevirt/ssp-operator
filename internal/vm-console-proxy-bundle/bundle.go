@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -28,12 +29,12 @@ const (
 )
 
 type Bundle struct {
-	ServiceAccount     core.ServiceAccount
-	ClusterRole        rbac.ClusterRole
-	ClusterRoleBinding rbac.ClusterRoleBinding
-	Service            core.Service
-	Deployment         apps.Deployment
-	ConfigMap          core.ConfigMap
+	ServiceAccount     *core.ServiceAccount
+	ClusterRole        *rbac.ClusterRole
+	ClusterRoleBinding *rbac.ClusterRoleBinding
+	Service            *core.Service
+	Deployment         *apps.Deployment
+	ConfigMap          *core.ConfigMap
 }
 
 func ReadBundle(path string) (*Bundle, error) {
@@ -42,7 +43,15 @@ func ReadBundle(path string) (*Bundle, error) {
 		return nil, err
 	}
 
-	return loadBundleFromBytes(data)
+	bundle, err := loadBundleFromBytes(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = validateBundle(bundle); err != nil {
+		return nil, err
+	}
+	return bundle, nil
 }
 
 func GetBundlePath() string {
@@ -84,9 +93,39 @@ func loadBundleFromBytes(data []byte) (*Bundle, error) {
 			return nil, fmt.Errorf("unsupported Kind found in vm-console-proxy bundle: %s", kind)
 		}
 
+		if !reflect.ValueOf(destObj).Elem().IsNil() {
+			return nil, fmt.Errorf("duplicate Kind found in vm-console-proxy bundle: %s", kind)
+		}
+
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), destObj)
 		if err != nil {
 			return nil, err
 		}
 	}
+}
+
+func validateBundle(bundle *Bundle) error {
+	missingFields := make([]string, 0, 6)
+	if bundle.ServiceAccount == nil {
+		missingFields = append(missingFields, "ServiceAccount")
+	}
+	if bundle.ClusterRole == nil {
+		missingFields = append(missingFields, "ClusterRole")
+	}
+	if bundle.ClusterRoleBinding == nil {
+		missingFields = append(missingFields, "ClusterRoleBinding")
+	}
+	if bundle.Service == nil {
+		missingFields = append(missingFields, "Service")
+	}
+	if bundle.Deployment == nil {
+		missingFields = append(missingFields, "Deployment")
+	}
+	if bundle.ConfigMap == nil {
+		missingFields = append(missingFields, "ConfigMap")
+	}
+	if len(missingFields) > 0 {
+		return fmt.Errorf("bundle is missing these objects: %v", missingFields)
+	}
+	return nil
 }

@@ -1,0 +1,149 @@
+# This invalid bundle contains duplicate ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    control-plane: vm-console-proxy
+  name: vm-console-proxy
+  namespace: kubevirt
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    control-plane: vm-console-proxy
+  name: vm-console-proxy
+  namespace: kubevirt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-console-proxy
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - kubevirt.io
+  resources:
+  - virtualmachineinstances
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vm-console-proxy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vm-console-proxy
+subjects:
+- kind: ServiceAccount
+  name: vm-console-proxy
+  namespace: kubevirt
+---
+apiVersion: v1
+data:
+  tls-profile-v1alpha1.yaml: |
+    type: Intermediate
+    intermediate: {}
+kind: ConfigMap
+metadata:
+  name: vm-console-proxy
+  namespace: kubevirt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: vm-console-proxy-cert
+  name: vm-console-proxy
+  namespace: kubevirt
+spec:
+  ports:
+  - port: 443
+    targetPort: api
+  selector:
+    vm-console-proxy.kubevirt.io: vm-console-proxy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: vm-console-proxy
+    vm-console-proxy.kubevirt.io: vm-console-proxy
+  name: vm-console-proxy
+  namespace: kubevirt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      vm-console-proxy.kubevirt.io: vm-console-proxy
+  template:
+    metadata:
+      labels:
+        name: vm-console-proxy
+        vm-console-proxy.kubevirt.io: vm-console-proxy
+    spec:
+      containers:
+      - args: []
+        command:
+        - /console
+        image: quay.io/kubevirt/vm-console-proxy:latest
+        imagePullPolicy: Always
+        name: console
+        ports:
+        - containerPort: 8768
+          name: api
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - mountPath: /config
+          name: config
+          readOnly: true
+        - mountPath: /tmp/vm-console-proxy-cert
+          name: vm-console-proxy-cert
+          readOnly: true
+        - mountPath: /etc/virt-handler/clientcertificates
+          name: kubevirt-virt-handler-certs
+          readOnly: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: vm-console-proxy
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - configMap:
+          name: vm-console-proxy
+        name: config
+      - name: vm-console-proxy-cert
+        secret:
+          secretName: vm-console-proxy-cert
+      - name: kubevirt-virt-handler-certs
+        secret:
+          secretName: kubevirt-virt-handler-certs
