@@ -202,6 +202,7 @@ func (s *newSspStrategy) GetSSPWebhookServiceName() string {
 func (s *newSspStrategy) RevertToOriginalSspCr() {
 	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
+	waitUntilDeployed()
 }
 
 func (s *newSspStrategy) SkipSspUpdateTestsIfNeeded() {
@@ -347,6 +348,7 @@ func (s *existingSspStrategy) GetSSPWebhookServiceName() string {
 func (s *existingSspStrategy) RevertToOriginalSspCr() {
 	waitForSspDeletionIfNeeded(s.ssp)
 	createOrUpdateSsp(s.ssp)
+	waitUntilDeployed()
 }
 
 func (s *existingSspStrategy) SkipSspUpdateTestsIfNeeded() {
