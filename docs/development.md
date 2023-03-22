@@ -1,5 +1,29 @@
 # Development
 
+## golangci-lint
+
+A [golangci-lint](https://golangci-lint.run/) [config](../.golangci.yaml) and [Makefile](../Makefile) target are provided to keep the codebase aligned to certain best practices and styles.
+
+The target installs golangci-lint if it is not already present. To run use the following command:
+
+```shell
+make lint
+```
+
+The target is also used when running unit tests locally.
+
+## pre-commit
+
+A [pre-commit](https://pre-commit.com/) [config](../.pre-commit-config.yaml) is provided to help developers catch any simple mistakes prior to committing their changes.
+
+To install and use the tool please run the following commands:
+
+```shell
+pip install --user pre-commit
+pre-commit install
+git commit -s
+```
+
 ## Running locally
 
 The operator can run locally on the developer's machine.
