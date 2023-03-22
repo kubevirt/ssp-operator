@@ -95,12 +95,17 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 	var reconcileFunc []common.ReconcileFunc
 
 	if !isEnabled(request) {
-		_, err := v.Cleanup(request)
+		cleanupResults, err := v.Cleanup(request)
 		if err != nil {
-			return []common.ReconcileResult{}, err
+			return nil, err
 		}
-
-		return []common.ReconcileResult{}, nil
+		var results []common.ReconcileResult
+		for _, cleanupResult := range cleanupResults {
+			if !cleanupResult.Deleted {
+				results = append(results, common.ResourceDeletedResult(cleanupResult.Resource, common.OperationResultDeleted))
+			}
+		}
+		return results, nil
 	}
 
 	reconcileFunc = append(reconcileFunc, reconcileServiceAccountsFuncs(*v.serviceAccount.DeepCopy()))
