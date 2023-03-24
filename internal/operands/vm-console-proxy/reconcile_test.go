@@ -69,12 +69,12 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectResourceExists(&bundle.ServiceAccount, request)
-		ExpectResourceExists(&bundle.ClusterRole, request)
-		ExpectResourceExists(&bundle.ClusterRoleBinding, request)
-		ExpectResourceExists(&bundle.ConfigMap, request)
-		ExpectResourceExists(&bundle.Service, request)
-		ExpectResourceExists(&bundle.Deployment, request)
+		ExpectResourceExists(bundle.ServiceAccount, request)
+		ExpectResourceExists(bundle.ClusterRole, request)
+		ExpectResourceExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceExists(bundle.ConfigMap, request)
+		ExpectResourceExists(bundle.Service, request)
+		ExpectResourceExists(bundle.Deployment, request)
 		ExpectResourceExists(newRoute(namespace, serviceName), request)
 	})
 
@@ -82,23 +82,23 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectResourceExists(&bundle.ServiceAccount, request)
-		ExpectResourceExists(&bundle.ClusterRole, request)
-		ExpectResourceExists(&bundle.ClusterRoleBinding, request)
-		ExpectResourceExists(&bundle.ConfigMap, request)
-		ExpectResourceExists(&bundle.Service, request)
-		ExpectResourceExists(&bundle.Deployment, request)
+		ExpectResourceExists(bundle.ServiceAccount, request)
+		ExpectResourceExists(bundle.ClusterRole, request)
+		ExpectResourceExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceExists(bundle.ConfigMap, request)
+		ExpectResourceExists(bundle.Service, request)
+		ExpectResourceExists(bundle.Deployment, request)
 		ExpectResourceExists(newRoute(namespace, serviceName), request)
 
 		_, err = operand.Cleanup(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectResourceNotExists(&bundle.ServiceAccount, request)
-		ExpectResourceNotExists(&bundle.ClusterRole, request)
-		ExpectResourceNotExists(&bundle.ClusterRoleBinding, request)
-		ExpectResourceNotExists(&bundle.ConfigMap, request)
-		ExpectResourceNotExists(&bundle.Service, request)
-		ExpectResourceNotExists(&bundle.Deployment, request)
+		ExpectResourceNotExists(bundle.ServiceAccount, request)
+		ExpectResourceNotExists(bundle.ClusterRole, request)
+		ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceNotExists(bundle.ConfigMap, request)
+		ExpectResourceNotExists(bundle.Service, request)
+		ExpectResourceNotExists(bundle.Deployment, request)
 		ExpectResourceNotExists(newRoute(namespace, serviceName), request)
 	})
 
@@ -106,7 +106,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		key := client.ObjectKeyFromObject(&bundle.Service)
+		key := client.ObjectKeyFromObject(bundle.Service)
 		service := &core.Service{}
 		Expect(request.Client.Get(request.Context, key, service)).ToNot(HaveOccurred())
 
@@ -129,7 +129,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Set status for deployment
-		key := client.ObjectKeyFromObject(&bundle.Deployment)
+		key := client.ObjectKeyFromObject(bundle.Deployment)
 		updateDeployment(key, &request, func(deployment *apps.Deployment) {
 			deployment.Status.Replicas = replicas
 			deployment.Status.ReadyReplicas = 0
@@ -180,10 +180,10 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectNamespacedResourceExists(&bundle.ServiceAccount, request, namespace)
-		ExpectNamespacedResourceExists(&bundle.ConfigMap, request, namespace)
-		ExpectNamespacedResourceExists(&bundle.Service, request, namespace)
-		ExpectNamespacedResourceExists(&bundle.Deployment, request, namespace)
+		ExpectNamespacedResourceExists(bundle.ServiceAccount, request, namespace)
+		ExpectNamespacedResourceExists(bundle.ConfigMap, request, namespace)
+		ExpectNamespacedResourceExists(bundle.Service, request, namespace)
+		ExpectNamespacedResourceExists(bundle.Deployment, request, namespace)
 		ExpectNamespacedResourceExists(newRoute(getVmConsoleProxyNamespace(&request), serviceName), request, namespace)
 	})
 
@@ -193,12 +193,12 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectResourceNotExists(&bundle.ServiceAccount, request)
-		ExpectResourceNotExists(&bundle.ClusterRole, request)
-		ExpectResourceNotExists(&bundle.ClusterRoleBinding, request)
-		ExpectResourceNotExists(&bundle.ConfigMap, request)
-		ExpectResourceNotExists(&bundle.Service, request)
-		ExpectResourceNotExists(&bundle.Deployment, request)
+		ExpectResourceNotExists(bundle.ServiceAccount, request)
+		ExpectResourceNotExists(bundle.ClusterRole, request)
+		ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceNotExists(bundle.ConfigMap, request)
+		ExpectResourceNotExists(bundle.Service, request)
+		ExpectResourceNotExists(bundle.Deployment, request)
 		ExpectResourceNotExists(newRoute(namespace, serviceName), request)
 	})
 })
@@ -248,14 +248,14 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 	terminationGracePeriodSecondsValue := int64(10)
 
 	return &vm_console_proxy_bundle.Bundle{
-		ServiceAccount: core.ServiceAccount{
+		ServiceAccount: &core.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceAccountName,
 				Namespace: namespace,
 				Labels:    map[string]string{"control-plane": "vm-console-proxy"},
 			},
 		},
-		ClusterRole: rbac.ClusterRole{
+		ClusterRole: &rbac.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterRoleName,
 				Namespace: namespace,
@@ -279,7 +279,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 				Verbs:     []string{"create"},
 			}},
 		},
-		ClusterRoleBinding: rbac.ClusterRoleBinding{
+		ClusterRoleBinding: &rbac.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterRoleBindingName,
 				Namespace: namespace,
@@ -296,7 +296,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 				Namespace: namespace,
 			}},
 		},
-		ConfigMap: core.ConfigMap{
+		ConfigMap: &core.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      configMapName,
 				Namespace: namespace,
@@ -308,7 +308,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 	`,
 			},
 		},
-		Service: core.Service{
+		Service: &core.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      serviceName,
 				Namespace: namespace,
@@ -327,7 +327,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 				},
 			},
 		},
-		Deployment: apps.Deployment{
+		Deployment: &apps.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      deploymentName,
 				Namespace: namespace,
