@@ -92,11 +92,17 @@ func (v *vmConsoleProxy) RequiredCrds() []string {
 
 func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	if !isEnabled(request) {
-		if _, err := v.Cleanup(request); err != nil {
+		cleanupResults, err := v.Cleanup(request)
+		if err != nil {
 			return nil, err
 		}
-
-		return nil, nil
+		var results []common.ReconcileResult
+		for _, cleanupResult := range cleanupResults {
+			if !cleanupResult.Deleted {
+				results = append(results, common.ResourceDeletedResult(cleanupResult.Resource, common.OperationResultDeleted))
+			}
+		}
+		return results, nil
 	}
 
 	return common.CollectResourceStatus(request,
