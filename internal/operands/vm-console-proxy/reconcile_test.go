@@ -355,7 +355,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 						Containers: []core.Container{{
 							Name:            "console",
 							Image:           image,
-							ImagePullPolicy: core.PullAlways,
+							ImagePullPolicy: core.PullIfNotPresent,
 							Resources: core.ResourceRequirements{
 								Requests: core.ResourceList{
 									core.ResourceCPU:    resource.MustParse("200m"),
