@@ -184,7 +184,7 @@ func newDeployment(namespace string, replicas int32, image string, sspTLSOptions
 					Containers: []core.Container{{
 						Name:            "webhook",
 						Image:           image,
-						ImagePullPolicy: core.PullAlways,
+						ImagePullPolicy: core.PullIfNotPresent,
 						Resources: core.ResourceRequirements{
 							Requests: core.ResourceList{
 								core.ResourceCPU:    resource.MustParse("50m"),
