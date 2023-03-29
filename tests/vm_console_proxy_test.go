@@ -3,9 +3,11 @@ package tests
 import (
 	"crypto/tls"
 	"io"
+	"kubevirt.io/ssp-operator/tests/env"
 	"net/http"
 	"net/url"
 	"reflect"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -236,16 +238,19 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			url, err := url.JoinPath(routeApiUrl, strategy.GetNamespace(), "non-existing-vm", "token")
 			Expect(err).ToNot(HaveOccurred())
 
-			response, err := httpClient.Get(url)
-			Expect(err).ToNot(HaveOccurred())
-			defer func() { _ = response.Body.Close() }()
+			// It may take a moment for the service to be reachable through route
+			Eventually(func(g Gomega) {
+				response, err := httpClient.Get(url)
+				g.Expect(err).ToNot(HaveOccurred())
+				defer func() { _ = response.Body.Close() }()
 
-			Expect(response.StatusCode).To(Equal(http.StatusUnauthorized))
+				g.Expect(response.StatusCode).To(Equal(http.StatusUnauthorized))
 
-			body, err := io.ReadAll(response.Body)
-			Expect(err).ToNot(HaveOccurred())
+				body, err := io.ReadAll(response.Body)
+				g.Expect(err).ToNot(HaveOccurred())
 
-			Expect(body).To(ContainSubstring("authenticating token cannot be empty"))
+				g.Expect(body).To(ContainSubstring("authenticating token cannot be empty"))
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 	})
 })
