@@ -286,7 +286,7 @@ var _ = Describe("RHEL VM creation", func() {
 										Disk: &kubevirtv1.DiskTarget{Bus: "virtio"},
 									},
 								}},
-								NetworkInterfaceMultiQueue: pointer.BoolPtr(true),
+								NetworkInterfaceMultiQueue: pointer.Bool(true),
 							},
 						},
 						TerminationGracePeriodSeconds: &terminateGracePeriod,

@@ -13,11 +13,11 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-	"kubevirt.io/client-go/log"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
+	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 )
 
 type Informers struct {
@@ -31,12 +31,12 @@ func (inf *Informers) Start() {
 	go inf.templateInformer.Run(inf.stopCh)
 	go inf.vmCacheReflector.Run(inf.stopCh)
 
-	log.Log.Infof("validator app: started informers")
+	logger.Log.Info("started informers")
 	cache.WaitForCacheSync(
 		inf.stopCh,
 		inf.templateInformer.HasSynced,
 	)
-	log.Log.Infof("validator app: synced informers")
+	logger.Log.Info("synced informers")
 }
 
 func (inf *Informers) Stop() {
@@ -54,7 +54,7 @@ func (inf *Informers) VmCache() VmCache {
 func NewInformers(scheme *runtime.Scheme) (*Informers, error) {
 	config, err := ctrl.GetConfig()
 	if err != nil {
-		log.Log.Errorf("unable to get kubeconfig: %v", err)
+		logger.Log.Error(err, "unable to get kubeconfig")
 		return nil, err
 	}
 
@@ -96,7 +96,7 @@ func createTemplateInformer(restConfig *rest.Config, scheme *runtime.Scheme) (ca
 
 	_, err = lw.List(metav1.ListOptions{Limit: 1})
 	if err != nil {
-		log.Log.Errorf("error probing the template resource: %v", err)
+		logger.Log.Error(err, "error probing the template resource")
 		return nil, err
 	}
 
@@ -115,7 +115,7 @@ func createVmCacheReflector(restConfig *rest.Config, scheme *runtime.Scheme, sto
 
 	_, err = lw.List(metav1.ListOptions{Limit: 1})
 	if err != nil {
-		log.Log.Errorf("error probing the virtual machine resource: %v", err)
+		logger.Log.Error(err, "error probing the virtual machine resource")
 		return nil, err
 	}
 
@@ -135,7 +135,7 @@ func restClientForObject(obj runtime.Object, restConfig *rest.Config, scheme *ru
 
 	restClient, err := apiutil.RESTClientForGVK(gvk, false, restConfig, serializer.NewCodecFactory(scheme))
 	if err != nil {
-		log.Log.Errorf("error creating client: %v", err)
+		logger.Log.Error(err, "error creating client")
 		return nil, err
 	}
 	return restClient, nil

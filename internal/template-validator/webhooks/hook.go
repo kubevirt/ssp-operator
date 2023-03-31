@@ -24,16 +24,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"kubevirt.io/client-go/log"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
+	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 	"kubevirt.io/ssp-operator/internal/template-validator/virtinformers"
 )
 
@@ -89,8 +88,17 @@ func (w *webhooks) admitVm(ar *admissionv1.AdmissionReview) *admissionv1.Admissi
 		return ToAdmissionResponseError(err)
 	}
 
-	log.Log.V(8).Infof("admission vm:\n%s", spew.Sdump(vm))
-	log.Log.V(8).Infof("admission rules:\n%s", spew.Sdump(rules))
+	if vmJson, err := json.Marshal(vm); err == nil {
+		logger.Log.V(8).Info("admission vm", "json", vmJson)
+	} else {
+		logger.Log.V(8).Info("cold not marshal admission vm to json", "error", err.Error())
+	}
+
+	if rulesJson, err := json.Marshal(rules); err == nil {
+		logger.Log.V(8).Info("admission rules", "json", rulesJson)
+	} else {
+		logger.Log.V(8).Info("cold not marshal admission rules to json", "error", err.Error())
+	}
 
 	causes := ValidateVm(rules, vm)
 	if len(causes) > 0 {
@@ -146,19 +154,27 @@ func (w *webhooks) admitTemplate(ar *admissionv1.AdmissionReview) *admissionv1.A
 func serve(resp http.ResponseWriter, req *http.Request, admit admitFunc) {
 	review, err := GetAdmissionReview(req)
 
-	log.Log.V(8).Infof("evaluating admission")
-	defer log.Log.V(8).Infof("evaluated admission")
+	logger.Log.V(8).Info("evaluating admission")
+	defer logger.Log.V(8).Info("evaluated admission")
 
 	if err != nil {
 		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	log.Log.V(8).Infof("admission review:\n%s", spew.Sdump(review))
+	if reviewJson, err := json.Marshal(review); err == nil {
+		logger.Log.V(8).Info("admission review", "json", string(reviewJson))
+	} else {
+		logger.Log.V(8).Info("could not marshall admission review to json", "error", err.Error())
+	}
 
 	reviewResponse := admit(review)
 
-	log.Log.V(8).Infof("admission review response:\n%s", spew.Sdump(reviewResponse))
+	if reviewResponseJson, err := json.Marshal(reviewResponse); err == nil {
+		logger.Log.V(8).Info("admission review response", "json", string(reviewResponseJson))
+	} else {
+		logger.Log.V(8).Info("could not marshall admission response to json", "error", err)
+	}
 
 	response := admissionv1.AdmissionReview{
 		TypeMeta: metav1.TypeMeta{
@@ -174,12 +190,12 @@ func serve(resp http.ResponseWriter, req *http.Request, admit admitFunc) {
 
 	responseBytes, err := json.Marshal(response)
 	if err != nil {
-		log.Log.Errorf("failed json encode webhook response: %v", err)
+		logger.Log.Error(err, "failed json encode webhook response")
 		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if _, err := resp.Write(responseBytes); err != nil {
-		log.Log.Errorf("failed to write webhook response: %v", err)
+		logger.Log.Error(err, "failed to write webhook response")
 		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}

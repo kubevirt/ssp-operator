@@ -65,7 +65,7 @@ var _ = Describe("Template validator operand", func() {
 				},
 				Spec: ssp.SSPSpec{
 					TemplateValidator: &ssp.TemplateValidator{
-						Replicas: pointer.Int32Ptr(replicas),
+						Replicas: pointer.Int32(replicas),
 						Placement: &lifecycleapi.NodePlacement{
 							Affinity: &core.Affinity{},
 						},

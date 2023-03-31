@@ -6,9 +6,9 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/client-go/tools/cache"
 	k6tv1 "kubevirt.io/api/core/v1"
-	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
+	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 	"kubevirt.io/ssp-operator/internal/template-validator/validation"
 )
 
@@ -16,24 +16,26 @@ func getParentTemplateForVM(vm *k6tv1.VirtualMachine, templateGetter cache.KeyGe
 	templateKeys := labels.GetTemplateKeys(vm)
 	logVmTemplateKeys(vm.Name, templateKeys)
 	if !templateKeys.IsValid() {
-		log.Log.V(8).Infof("detected %s as baked (no parent template)", vm.Name)
+		logger.Log.V(8).Info("detected VM as baked (no parent template)", "vm", vm.Name)
 		return nil, nil
 	}
 
 	cacheKey := templateKeys.Get().String()
 	obj, exists, err := templateGetter.GetByKey(cacheKey)
 	if err != nil {
-		log.Log.V(8).Infof("parent template (key=%s) not found for %s: %v", cacheKey, vm.Name, err)
+		logger.Log.V(8).Info("parent template not found",
+			"key", cacheKey,
+			"vm", vm.Name,
+			"error", err)
 		return nil, err
 	}
 
 	if !exists {
-		msg := fmt.Sprintf("missing parent template (key=%s) for %s", cacheKey, vm.Name)
-		log.Log.V(4).Warning(msg)
-		return nil, fmt.Errorf("%s", msg)
+		logger.Log.V(4).Info("Missing parent template", "key", cacheKey, "vm", vm.Name)
+		return nil, fmt.Errorf("missing parent template (key=%s) for %s", cacheKey, vm.Name)
 	}
 
-	log.Log.V(8).Infof("found parent template for %s", vm.Name)
+	logger.Log.V(8).Info("found parent template for VM", "vm", vm.Name)
 	tmpl := obj.(*templatev1.Template)
 	// We must copy what is retrieved from the cache to allow modifying it.
 	// Modifying tmpl without DeepCopy would break the cache on modification.
@@ -50,13 +52,13 @@ func logVmTemplateKeys(vmName string, templateKeys labels.TemplateKeys) {
 
 func logVmTemplateKey(vmName string, targetName string, templateKey labels.TemplateKey) {
 	if templateKey.OldNamespace != "" {
-		log.Log.V(5).Warningf("VM %s has old-style template namespace %s '%s', should be updated to '%s'", vmName, targetName, labels.AnnotationTemplateNamespaceOldKey, labels.AnnotationTemplateNamespaceKey)
+		logger.Log.V(5).Info(fmt.Sprintf("VM %s has old-style template namespace %s '%s', should be updated to '%s'", vmName, targetName, labels.AnnotationTemplateNamespaceOldKey, labels.AnnotationTemplateNamespaceKey))
 	}
 	if templateKey.AnyNamespace() == "" {
-		log.Log.V(4).Infof("VM %s missing template namespace %s", vmName, targetName)
+		logger.Log.V(4).Info(fmt.Sprintf("VM %s missing template namespace %s", vmName, targetName))
 	}
 	if templateKey.Name == "" {
-		log.Log.V(4).Infof("VM %s missing template %s", vmName, targetName)
+		logger.Log.V(4).Info(fmt.Sprintf("VM %s missing template %s", vmName, targetName))
 	}
 }
 
@@ -71,7 +73,7 @@ func getValidationRulesFromVM(vm *k6tv1.VirtualMachine) ([]validation.Rule, erro
 func getValidationRulesForVM(vm *k6tv1.VirtualMachine, templateGetter cache.KeyGetter) ([]validation.Rule, error) {
 	// If the VM has the 'vm.kubevirt.io/skip-validations' annotations, skip validation
 	if _, skip := vm.Annotations[labels.VmSkipValidationAnnotationKey]; skip {
-		log.Log.V(8).Infof("skipped validation for VM [%s] in namespace [%s]", vm.Name, vm.Namespace)
+		logger.Log.V(8).Info(fmt.Sprintf("skipped validation for VM [%s] in namespace [%s]", vm.Name, vm.Namespace))
 		return []validation.Rule{}, nil
 	}
 

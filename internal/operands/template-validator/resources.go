@@ -192,7 +192,6 @@ func newDeployment(namespace string, replicas int32, image string, sspTLSOptions
 							},
 						},
 						Args: []string{
-							"-v=2",
 							fmt.Sprintf("--port=%d", ContainerPort),
 							fmt.Sprintf("--cert-dir=%s", certMountPath),
 						},
@@ -287,7 +286,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
 					Namespace: serviceNamespace,
-					Path:      pointer.StringPtr(webhook.VmValidatePath),
+					Path:      pointer.String(webhook.VmValidatePath),
 				},
 			},
 			Rules:                   vmRules,
@@ -300,7 +299,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
 					Namespace: serviceNamespace,
-					Path:      pointer.StringPtr(webhook.TemplateValidatePath),
+					Path:      pointer.String(webhook.TemplateValidatePath),
 				},
 			},
 			ObjectSelector: &metav1.LabelSelector{
