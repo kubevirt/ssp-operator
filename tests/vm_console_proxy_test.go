@@ -37,7 +37,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		routeResource              testResource
 	)
 
-	BeforeEach(func() {
+	BeforeEach(OncePerOrdered, func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
 
 		updateSsp(func(foundSsp *ssp.SSP) {
@@ -144,7 +144,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		waitUntilDeployed()
 	})
 
-	AfterEach(func() {
+	AfterEach(OncePerOrdered, func() {
 		strategy.RevertToOriginalSspCr()
 
 		// Similar workaround as in BeforeEach().
@@ -169,7 +169,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		waitUntilDeployed()
 	})
 
-	Context("Resource creation", func() {
+	Context("Resource creation", Ordered, func() {
 		DescribeTable("created cluster resource", func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
