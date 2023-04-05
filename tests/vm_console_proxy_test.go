@@ -176,46 +176,46 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hasOwnerAnnotations(resource.GetAnnotations())).To(BeTrue(), "owner annotations are missing")
 		},
-			Entry("[test_id:TODO] cluster role", &clusterRoleResource),
-			Entry("[test_id:TODO] cluster role binding", &clusterRoleBindingResource),
-			Entry("[test_id:TODO] service account", &serviceAccountResource),
-			Entry("[test_id:TODO] service", &serviceResource),
-			Entry("[test_id:TODO] deployment", &deploymentResource),
-			Entry("[test_id:TODO] config map", &configMapResource),
-			Entry("[test_id:TODO] route", &routeResource),
+			Entry("[test_id:9888] cluster role", &clusterRoleResource),
+			Entry("[test_id:9847] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:9848] service account", &serviceAccountResource),
+			Entry("[test_id:9849] service", &serviceResource),
+			Entry("[test_id:9850] deployment", &deploymentResource),
+			Entry("[test_id:9852] config map", &configMapResource),
+			Entry("[test_id:9854] route", &routeResource),
 		)
 
 		DescribeTable("should set app labels", expectAppLabels,
-			Entry("[test_id:TODO] cluster role", &clusterRoleResource),
-			Entry("[test_id:TODO] cluster role binding", &clusterRoleBindingResource),
-			Entry("[test_id:TODO] service account", &serviceAccountResource),
-			Entry("[test_id:TODO] service", &serviceResource),
-			Entry("[test_id:TODO] deployment", &deploymentResource),
-			Entry("[test_id:TODO] config map", &configMapResource),
-			Entry("[test_id:TODO] route", &routeResource),
+			Entry("[test_id:9887] cluster role", &clusterRoleResource),
+			Entry("[test_id:9851] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:9853] service account", &serviceAccountResource),
+			Entry("[test_id:9855] service", &serviceResource),
+			Entry("[test_id:9856] deployment", &deploymentResource),
+			Entry("[test_id:9857] config map", &configMapResource),
+			Entry("[test_id:9859] route", &routeResource),
 		)
 	})
 
 	Context("Resource deletion", func() {
 		DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			Entry("[test_id:TODO] cluster role", &clusterRoleResource),
-			Entry("[test_id:TODO] cluster role binding", &clusterRoleBindingResource),
-			Entry("[test_id:TODO] service account", &serviceAccountResource),
-			Entry("[test_id:TODO] service", &serviceResource),
-			Entry("[test_id:TODO] deployment", &deploymentResource),
-			Entry("[test_id:TODO] config map", &configMapResource),
-			Entry("[test_id:TODO] route", &routeResource),
+			Entry("[test_id:9858] cluster role", &clusterRoleResource),
+			Entry("[test_id:9860] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:9861] service account", &serviceAccountResource),
+			Entry("[test_id:9862] service", &serviceResource),
+			Entry("[test_id:9864] deployment", &deploymentResource),
+			Entry("[test_id:9866] config map", &configMapResource),
+			Entry("[test_id:9867] route", &routeResource),
 		)
 	})
 
 	Context("Resource change", func() {
 		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			Entry("[test_id:TODO] cluster role", &clusterRoleResource),
-			Entry("[test_id:TODO] cluster role binding", &clusterRoleBindingResource),
-			Entry("[test_id:TODO] service", &serviceResource),
-			Entry("[test_id:TODO] deployment", &deploymentResource),
-			Entry("[test_id:TODO] config map", &configMapResource),
-			Entry("[test_id:TODO] route", &routeResource),
+			Entry("[test_id:9863] cluster role", &clusterRoleResource),
+			Entry("[test_id:9865] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:9869] service", &serviceResource),
+			Entry("[test_id:9870] deployment", &deploymentResource),
+			Entry("[test_id:9871] config map", &configMapResource),
+			Entry("[test_id:9872] route", &routeResource),
 		)
 
 		Context("With pause", func() {
@@ -224,23 +224,23 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			})
 
 			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
-				Entry("[test_id:TODO] cluster role", &clusterRoleResource),
-				Entry("[test_id:TODO] cluster role binding", &clusterRoleBindingResource),
-				Entry("[test_id:TODO] service", &serviceResource),
-				Entry("[test_id:TODO] deployment", &deploymentResource),
-				Entry("[test_id:TODO] config map", &configMapResource),
-				Entry("[test_id:TODO] route", &routeResource),
+				Entry("[test_id:9873] cluster role", &clusterRoleResource),
+				Entry("[test_id:9874] cluster role binding", &clusterRoleBindingResource),
+				Entry("[test_id:9876] service", &serviceResource),
+				Entry("[test_id:9877] deployment", &deploymentResource),
+				Entry("[test_id:9878] config map", &configMapResource),
+				Entry("[test_id:9879] route", &routeResource),
 			)
 		})
 
 		DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
-			Entry("[test_id:TODO] cluster role", &clusterRoleResource),
-			Entry("[test_id:TODO] cluster role binding", &clusterRoleBindingResource),
-			Entry("[test_id:TODO] service account", &serviceAccountResource),
-			Entry("[test_id:TODO] service", &serviceResource),
-			Entry("[test_id:TODO] deployment", &deploymentResource),
-			Entry("[test_id:TODO] config map", &configMapResource),
-			Entry("[test_id:TODO] route", &routeResource),
+			Entry("[test_id:9880] cluster role", &clusterRoleResource),
+			Entry("[test_id:9881] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:9882] service account", &serviceAccountResource),
+			Entry("[test_id:9886] service", &serviceResource),
+			Entry("[test_id:9883] deployment", &deploymentResource),
+			Entry("[test_id:9884] config map", &configMapResource),
+			Entry("[test_id:9885] route", &routeResource),
 		)
 	})
 
@@ -262,7 +262,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			routeApiUrl = "https://" + route.Spec.Host + "/api/v1alpha1"
 		})
 
-		It("[test_id:TODO] should be able to access /token endpoint", func() {
+		It("[test_id:9889] should be able to access /token endpoint", func() {
 			url, err := url.JoinPath(routeApiUrl, strategy.GetNamespace(), "non-existing-vm", "token")
 			Expect(err).ToNot(HaveOccurred())
 
