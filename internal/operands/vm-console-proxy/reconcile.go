@@ -1,6 +1,7 @@
 package vm_console_proxy
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -23,6 +24,8 @@ const (
 
 	operandName      = "vm-console-proxy"
 	operandComponent = "vm-console-proxy"
+
+	routeName = "vm-console-proxy"
 )
 
 // Define RBAC rules needed by this operand:
@@ -116,14 +119,71 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 }
 
 func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	return common.DeleteAll(request,
-		v.serviceAccount.DeepCopy(),
+	// We need to use labels to find resources that were deployed by this operand,
+	// because namespace annotation may not be present.
+
+	var objectsToDelete []client.Object
+
+	serviceAccounts, err := findResourcesUsingLabels(
+		request.Context,
+		v.serviceAccount.Name,
+		request.Client,
+		func(list *core.ServiceAccountList) []core.ServiceAccount { return list.Items },
+	)
+	if err != nil {
+		return nil, err
+	}
+	objectsToDelete = append(objectsToDelete, serviceAccounts...)
+
+	configMaps, err := findResourcesUsingLabels(
+		request.Context,
+		v.configMap.Name,
+		request.Client,
+		func(list *core.ConfigMapList) []core.ConfigMap { return list.Items },
+	)
+	if err != nil {
+		return nil, err
+	}
+	objectsToDelete = append(objectsToDelete, configMaps...)
+
+	services, err := findResourcesUsingLabels(
+		request.Context,
+		v.service.Name,
+		request.Client,
+		func(list *core.ServiceList) []core.Service { return list.Items },
+	)
+	if err != nil {
+		return nil, err
+	}
+	objectsToDelete = append(objectsToDelete, services...)
+
+	deployments, err := findResourcesUsingLabels(
+		request.Context,
+		v.deployment.Name,
+		request.Client,
+		func(list *apps.DeploymentList) []apps.Deployment { return list.Items },
+	)
+	if err != nil {
+		return nil, err
+	}
+	objectsToDelete = append(objectsToDelete, deployments...)
+
+	routes, err := findResourcesUsingLabels(
+		request.Context,
+		routeName,
+		request.Client,
+		func(list *routev1.RouteList) []routev1.Route { return list.Items },
+	)
+	if err != nil {
+		return nil, err
+	}
+	objectsToDelete = append(objectsToDelete, routes...)
+
+	objectsToDelete = append(objectsToDelete,
 		v.clusterRole.DeepCopy(),
-		v.clusterRoleBinding.DeepCopy(),
-		v.configMap.DeepCopy(),
-		v.service.DeepCopy(),
-		v.deployment.DeepCopy(),
-		newRoute(getVmConsoleProxyNamespace(request), v.service.GetName()))
+		v.clusterRoleBinding.DeepCopy())
+
+	return common.DeleteAll(request, objectsToDelete...)
 }
 
 func reconcileServiceAccount(serviceAccount core.ServiceAccount) common.ReconcileFunc {
@@ -271,10 +331,43 @@ func getVmConsoleProxyImage() string {
 	return common.EnvOrDefault("VM_CONSOLE_PROXY_IMAGE", "quay.io/kubevirt/vm-console-proxy:v0.1.0")
 }
 
+func findResourcesUsingLabels[PtrL interface {
+	*L
+	client.ObjectList
+}, PtrT interface {
+	*T
+	client.Object
+}, L any, T any](ctx context.Context, name string, cli client.Client, itemsFunc func(list PtrL) []T) ([]client.Object, error) {
+	listObj := PtrL(new(L))
+	err := cli.List(ctx, listObj,
+		client.MatchingLabels{
+			common.AppKubernetesNameLabel:      operandName,
+			common.AppKubernetesComponentLabel: operandComponent,
+			common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByLabelValue,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error listing objects: %w", err)
+	}
+
+	// Filtering in a loop instead of using a FieldSelector in the List() call.
+	// It is only slightly inefficient, because all objects are already cached locally, so there is no API call.
+	// Adding an Indexer to the cache for each object type that we want to list here would be a larger change.
+	items := itemsFunc(listObj)
+	var filteredItems []client.Object
+	for i := range items {
+		item := PtrT(&items[i])
+		if item.GetName() == name {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+	return filteredItems, nil
+}
+
 func newRoute(namespace string, serviceName string) *routev1.Route {
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "vm-console-proxy",
+			Name:      routeName,
 			Namespace: namespace,
 		},
 		Spec: routev1.RouteSpec{

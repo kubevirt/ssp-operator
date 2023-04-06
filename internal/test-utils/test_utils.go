@@ -19,12 +19,3 @@ func ExpectResourceNotExists(resource client.Object, request common.Request) {
 	ExpectWithOffset(1, err).To(HaveOccurred())
 	ExpectWithOffset(1, errors.IsNotFound(err)).To(BeTrue())
 }
-
-func ExpectNamespacedResourceExists(resource client.Object, request common.Request, namespace string) {
-	key := client.ObjectKey{
-		Namespace: namespace,
-		Name:      resource.GetName(),
-	}
-	err := request.Client.Get(request.Context, key, resource)
-	Expect(err).ToNot(HaveOccurred())
-}

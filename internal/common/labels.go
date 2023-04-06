@@ -15,6 +15,10 @@ const (
 	AppKubernetesComponentLabel = "app.kubernetes.io/component"
 )
 
+const (
+	AppKubernetesManagedByLabelValue = "ssp-operator"
+)
+
 type AppComponent string
 
 func (a AppComponent) String() string {
@@ -37,7 +41,7 @@ func AddAppLabels(requestInstance *v1beta1.SSP, name string, component AppCompon
 
 	labels[AppKubernetesNameLabel] = name
 	labels[AppKubernetesComponentLabel] = component.String()
-	labels[AppKubernetesManagedByLabel] = "ssp-operator"
+	labels[AppKubernetesManagedByLabel] = AppKubernetesManagedByLabelValue
 
 	return obj
 }
