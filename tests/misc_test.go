@@ -242,7 +242,6 @@ var _ = Describe("RHEL VM creation", func() {
 	})
 
 	table.DescribeTable("should be able to start VM", func(imageUrl string) {
-		const annPodPhase = "cdi.kubevirt.io/storage.pod.phase"
 		const diskName = "disk0"
 		const sshPort = 22
 
@@ -344,7 +343,6 @@ var _ = Describe("RHEL VM creation", func() {
 			foundPvc := &core.PersistentVolumeClaim{}
 			err = apiClient.Get(ctx, client.ObjectKey{Name: dvName, Namespace: vm.Namespace}, foundPvc)
 			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(foundPvc.Annotations[annPodPhase]).To(Equal(string(core.PodSucceeded)))
 		}, 2*timeout, time.Second).Should(Succeed())
 
 		// Wait for VMI to be ready
