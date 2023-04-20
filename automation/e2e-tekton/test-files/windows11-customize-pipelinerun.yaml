@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: windows11-customize-run-
+  labels: 
+    pipelinerun: windows11-customize-run
+spec:
+  params:
+    - name: sourceTemplateName
+      value: windows11-desktop-large
+    - name: customizeTemplateName
+      value: windows11-desktop-large-customize-sqlserver
+    - name: goldenTemplateName
+      value: windows11-desktop-large-golden-sqlserver
+  pipelineRef:
+    name: windows-customize
+  taskRunSpecs:
+    - pipelineTaskName: copy-template-customize
+      taskServiceAccountName: copy-template-task
+    - pipelineTaskName: modify-vm-template-customize
+      taskServiceAccountName: modify-vm-template-task
+    - pipelineTaskName: create-vm-from-template
+      taskServiceAccountName: create-vm-from-template-task
+    - pipelineTaskName: wait-for-vmi-status
+      taskServiceAccountName: wait-for-vmi-status-task
+    - pipelineTaskName: create-base-dv
+      taskServiceAccountName: modify-data-object-task
+    - pipelineTaskName: cleanup-vm
+      taskServiceAccountName: cleanup-vm-task
+    - pipelineTaskName: copy-template-golden
+      taskServiceAccountName: copy-template-task
+    - pipelineTaskName: modify-vm-template-golden
+      taskServiceAccountName: modify-vm-template-task
+status: {}
