@@ -8,6 +8,7 @@ The operator deploys and manages resources needed by these four components:
 - [Template Validator](https://github.com/kubevirt/ssp-operator/tree/master/internal/template-validator) (You can read more about it here: [Template Validator old repository](https://github.com/kubevirt/kubevirt-template-validator))
 - [Common Templates Bundle](https://github.com/kubevirt/common-templates)
 - [VM Console Proxy](https://github.com/kubevirt/vm-console-proxy)
+- [KubeVirt Tekton Tasks](https://github.com/kubevirt/kubevirt-tekton-tasks)
 - Metrics rules - Currently it is only a single Prometheus rule containing the count of all running VMs.
 
 ## Installation
@@ -28,6 +29,8 @@ The following resource types and CRDs are needed by `ssp-operator` when deployed
 | `template.openshift.io/v1`                                              | `common-templates` operand (Kind `Template`)                              |
 | `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1alpha2` | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
 | `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1alpha2`   | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
+| `pipelines.tekton.dev`                                                  | `tekton-pipelines` operand (Kind `Pipeline`)                              |
+| `tasks.tekton.dev`                                                      | `tekton-tasks` operand (Kind `Task`)                                      |
 
 The following resource types and CRDs are needed by `ssp-operator` when deployed on a vanilla k8s environment:
 
@@ -35,6 +38,8 @@ The following resource types and CRDs are needed by `ssp-operator` when deployed
 | ------------------------------------------------------------------------| --------------------------------------------------------------------------|
 | `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1alpha2` | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
 | `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1alpha2`   | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
+| `pipelines.tekton.dev`                                                  | `tekton-pipelines` operand (Kind `Pipeline`)                              |
+| `tasks.tekton.dev`                                                      | `tekton-tasks` operand (Kind `Task`)                                      |
 
 ### Using HCO
 

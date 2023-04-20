@@ -157,3 +157,11 @@ for more docs.
 #### `vm-console-proxy` operand
 
 Installs the VM console proxy found in `data/vm-console-proxy-bundle`. A PR for updating the bundle is automatically created when a new version of the [vm-console-proxy](https://github.com/kubevirt/vm-console-proxy) is released.
+
+#### `tekton-pipelines` operand
+
+Installs the Tekton Pipelines found in `data/tekton-pipelines`. A PR for updating the bundle is automatically created when a new version of the [kubevirt-tekton-tasks](https://github.com/kubevirt/kubevirt-tekton-tasks) is released.
+
+#### `tekton-tasks` operand
+
+Installs the Tekton Tasks found in `data/tekton-tasks`. A PR for updating the bundle is automatically created when a new version of the [kubevirt-tekton-tasks](https://github.com/kubevirt/kubevirt-tekton-tasks) is released.
