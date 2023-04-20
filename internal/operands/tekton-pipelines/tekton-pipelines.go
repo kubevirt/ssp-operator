@@ -5,15 +5,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kubevirt/tekton-tasks-operator/pkg/common"
-	"github.com/kubevirt/tekton-tasks-operator/pkg/environment"
-	"github.com/kubevirt/tekton-tasks-operator/pkg/operands"
-	tektonbundle "github.com/kubevirt/tekton-tasks-operator/pkg/tekton-bundle"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands"
+	tektonbundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -25,11 +23,10 @@ const (
 	namespacePattern = "^(openshift|kube)-"
 	operandName      = "tekton-pipelines"
 	operandComponent = common.AppComponentTektonPipelines
+	tektonCrd        = "tasks.tekton.dev"
 )
 
 var namespaceRegex = regexp.MustCompile(namespacePattern)
-
-var requiredCRDs = []string{"tasks.tekton.dev"}
 
 func init() {
 	utilruntime.Must(pipeline.AddToScheme(common.Scheme))
@@ -45,46 +42,48 @@ type tektonPipelines struct {
 
 var _ operands.Operand = &tektonPipelines{}
 
-func New(bundle *tektonbundle.Bundle) *tektonPipelines {
-	tp := &tektonPipelines{
+func New(bundle *tektonbundle.Bundle) operands.Operand {
+	return &tektonPipelines{
 		pipelines:       bundle.Pipelines,
 		configMaps:      bundle.ConfigMaps,
 		roleBindings:    bundle.RoleBindings,
 		serviceAccounts: bundle.ServiceAccounts,
 		clusterRoles:    bundle.ClusterRoles,
 	}
-	return tp
 }
 
 func (t *tektonPipelines) Name() string {
 	return operandName
 }
 
-func (t *tektonPipelines) WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&pipeline.Pipeline{},
-		&v1.ConfigMap{},
-		&rbac.RoleBinding{},
-		&v1.ServiceAccount{},
-		&rbac.ClusterRole{},
+func (t *tektonPipelines) WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &pipeline.Pipeline{}, Crd: tektonCrd, WatchFullObject: true},
+		{Object: &v1.ConfigMap{}},
+		{Object: &rbac.RoleBinding{}},
+		{Object: &v1.ServiceAccount{}},
+		{Object: &rbac.ClusterRole{}},
 	}
 }
 
-func (t *tektonPipelines) WatchTypes() []client.Object {
+func (t *tektonPipelines) WatchTypes() []operands.WatchType {
 	return nil
 }
 
-func (t *tektonPipelines) RequiredCrds() []string {
-	return requiredCRDs
-}
-
 func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	var results []common.ReconcileResult
+	if !request.Instance.Spec.FeatureGates.DeployTektonTaskResources {
+		request.Logger.V(1).Info("Tekton Pipelines resources were not deployed, because spec.featureGates.deployTektonTaskResources is set to false")
+		return nil, nil
+	}
+	if !request.CrdList.CrdExists(tektonCrd) {
+		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
+	}
+
 	var reconcileFunc []common.ReconcileFunc
-	reconcileFunc = append(reconcileFunc, reconcileClusterRolesFuncs(request, t.clusterRoles)...)
+	reconcileFunc = append(reconcileFunc, reconcileClusterRolesFuncs(t.clusterRoles)...)
 	reconcileFunc = append(reconcileFunc, reconcileTektonPipelinesFuncs(t.pipelines)...)
 	reconcileFunc = append(reconcileFunc, reconcileConfigMapsFuncs(t.configMaps)...)
-	reconcileFunc = append(reconcileFunc, reconcileRoleBindingsFuncs(request, t.roleBindings)...)
+	reconcileFunc = append(reconcileFunc, reconcileRoleBindingsFuncs(t.roleBindings)...)
 	reconcileFunc = append(reconcileFunc, reconcileServiceAccountsFuncs(request, t.serviceAccounts)...)
 
 	reconcileTektonBundleResults, err := common.CollectResourceStatus(request, reconcileFunc...)
@@ -98,7 +97,7 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 			request.Logger.Info(fmt.Sprintf("Changes reverted in tekton pipeline: %s", r.Resource.GetName()))
 		}
 	}
-	return append(results, reconcileTektonBundleResults...), nil
+	return reconcileTektonBundleResults, nil
 }
 
 func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
@@ -128,7 +127,7 @@ func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResu
 }
 
 func isUpgradingNow(request *common.Request) bool {
-	return request.Instance.Status.ObservedVersion != environment.GetOperatorVersion()
+	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
 }
 
 func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.ReconcileFunc {
@@ -136,8 +135,9 @@ func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.Recon
 	for i := range pipelines {
 		p := &pipelines[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			namespace := request.Instance.Spec.Pipelines.Namespace
-			p.Namespace = namespace
+			if request.Instance.Spec.TektonPipelines != nil && request.Instance.Spec.TektonPipelines.Namespace != "" {
+				p.Namespace = request.Instance.Spec.TektonPipelines.Namespace
+			}
 			return common.CreateOrUpdate(request).
 				ClusterResource(p).
 				WithAppLabels(operandName, operandComponent).
@@ -147,9 +147,9 @@ func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.Recon
 					foundPipeline.Spec = newPipeline.Spec
 					for i, param := range foundPipeline.Spec.Params {
 						if strings.HasPrefix(param.Name, "virtioContainer") {
-							foundPipeline.Spec.Params[i].Default = &v1beta1.ArrayOrString{
-								Type:      v1beta1.ParamTypeString,
-								StringVal: environment.GetVirtioImage(),
+							foundPipeline.Spec.Params[i].Default = &pipeline.ParamValue{
+								Type:      pipeline.ParamTypeString,
+								StringVal: common.GetVirtioImage(),
 							}
 						}
 					}
@@ -165,16 +165,12 @@ func reconcileConfigMapsFuncs(configMaps []v1.ConfigMap) []common.ReconcileFunc 
 	for i := range configMaps {
 		cm := &configMaps[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			namespace := request.Instance.Spec.Pipelines.Namespace
-			cm.Namespace = namespace
+			if request.Instance.Spec.TektonPipelines != nil && request.Instance.Spec.TektonPipelines.Namespace != "" {
+				cm.Namespace = request.Instance.Spec.TektonPipelines.Namespace
+			}
 			return common.CreateOrUpdate(request).
 				ClusterResource(cm).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					newCM := newRes.(*v1.ConfigMap)
-					foundCM := foundRes.(*v1.ConfigMap)
-					foundCM.Data = newCM.Data
-				}).
 				Reconcile()
 		})
 	}
@@ -185,9 +181,12 @@ func reconcileServiceAccountsFuncs(r *common.Request, sas []v1.ServiceAccount) [
 	funcs := make([]common.ReconcileFunc, 0, len(sas))
 	for i := range sas {
 		sa := &sas[i]
-		// deploy pipeline SA only in `^(openshift|kube)-` namespaces
-		if !namespaceRegex.MatchString(r.Instance.Spec.Pipelines.Namespace) && sa.Name == "pipeline" {
-			continue
+
+		if r.Instance.Spec.TektonPipelines != nil && r.Instance.Spec.TektonPipelines.Namespace != "" {
+			// deploy pipeline SA only in `^(openshift|kube)-` namespaces
+			if !namespaceRegex.MatchString(r.Instance.Spec.TektonPipelines.Namespace) && sa.Name == "pipeline" {
+				continue
+			}
 		}
 
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
@@ -198,19 +197,13 @@ func reconcileServiceAccountsFuncs(r *common.Request, sas []v1.ServiceAccount) [
 			return common.CreateOrUpdate(request).
 				ClusterResource(sa).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					newSA := newRes.(*v1.ServiceAccount)
-					foundSA := foundRes.(*v1.ServiceAccount)
-					foundSA.Labels = newSA.Labels
-					foundSA.Annotations = newSA.Annotations
-				}).
 				Reconcile()
 		})
 	}
 	return funcs
 }
 
-func reconcileClusterRolesFuncs(r *common.Request, crs []rbac.ClusterRole) []common.ReconcileFunc {
+func reconcileClusterRolesFuncs(crs []rbac.ClusterRole) []common.ReconcileFunc {
 	funcs := make([]common.ReconcileFunc, 0, len(crs))
 	for i := range crs {
 		cr := &crs[i]
@@ -218,20 +211,13 @@ func reconcileClusterRolesFuncs(r *common.Request, crs []rbac.ClusterRole) []com
 			return common.CreateOrUpdate(request).
 				ClusterResource(cr).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					newCR := newRes.(*rbac.ClusterRole)
-					foundCR := foundRes.(*rbac.ClusterRole)
-					foundCR.Labels = newCR.Labels
-					foundCR.Annotations = newCR.Annotations
-					foundCR.Rules = newCR.Rules
-				}).
 				Reconcile()
 		})
 	}
 	return funcs
 }
 
-func reconcileRoleBindingsFuncs(r *common.Request, rbs []rbac.RoleBinding) []common.ReconcileFunc {
+func reconcileRoleBindingsFuncs(rbs []rbac.RoleBinding) []common.ReconcileFunc {
 	funcs := make([]common.ReconcileFunc, 0, len(rbs))
 	for i := range rbs {
 		rb := &rbs[i]
@@ -247,12 +233,6 @@ func reconcileRoleBindingsFuncs(r *common.Request, rbs []rbac.RoleBinding) []com
 			return common.CreateOrUpdate(request).
 				ClusterResource(rb).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					newTask := newRes.(*rbac.RoleBinding)
-					foundTask := foundRes.(*rbac.RoleBinding)
-					foundTask.RoleRef = newTask.RoleRef
-					foundTask.Subjects = newTask.Subjects
-				}).
 				Reconcile()
 		})
 	}

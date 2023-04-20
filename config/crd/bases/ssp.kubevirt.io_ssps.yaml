@@ -908,6 +908,12 @@ spec:
                 required:
                 - namespace
                 type: object
+              featureGates:
+                description: FeatureGates is the configuration of the tekton operands
+                properties:
+                  deployTektonTaskResources:
+                    type: boolean
+                type: object
               nodeLabeller:
                 description: NodeLabeller is configuration of the node-labeller operand
                 properties:
@@ -1875,6 +1881,13 @@ spec:
                           type: object
                         type: array
                     type: object
+                type: object
+              tektonPipelines:
+                description: TektonPipelines is the configuration of the tekton-pipelines
+                  operand
+                properties:
+                  namespace:
+                    type: string
                 type: object
               templateValidator:
                 description: TemplateValidator is configuration of the template validator

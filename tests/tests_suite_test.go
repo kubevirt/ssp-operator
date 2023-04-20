@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
@@ -61,6 +62,7 @@ type TestSuiteStrategy interface {
 	GetNamespace() string
 	GetTemplatesNamespace() string
 	GetVmConsoleProxyNamespace() string
+	GetTektonPipelinesNamespace() string
 	GetValidatorReplicas() int
 	GetSSPDeploymentName() string
 	GetSSPDeploymentNameSpace() string
@@ -101,6 +103,11 @@ func (s *newSspStrategy) Init() {
 		return apiClient.Create(ctx, namespaceObj)
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
+	Eventually(func() error {
+		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTektonPipelinesNamespace()}}
+		return apiClient.Create(ctx, namespaceObj)
+	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
+
 	newSsp := &sspv1beta1.SSP{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.GetName(),
@@ -123,6 +130,12 @@ func (s *newSspStrategy) Init() {
 			},
 			CommonTemplates: sspv1beta1.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),
+			},
+			TektonPipelines: &sspv1beta1.TektonPipelines{
+				Namespace: s.GetTektonPipelinesNamespace(),
+			},
+			FeatureGates: &sspv1beta1.FeatureGates{
+				DeployTektonTaskResources: false,
 			},
 		},
 	}
@@ -149,11 +162,14 @@ func (s *newSspStrategy) Cleanup() {
 
 	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}})
 	err2 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}})
+	err3 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTektonPipelinesNamespace()}})
 	expectSuccessOrNotFound(err1)
 	expectSuccessOrNotFound(err2)
+	expectSuccessOrNotFound(err3)
 
 	waitForDeletion(client.ObjectKey{Name: s.GetNamespace()}, &v1.Namespace{})
 	waitForDeletion(client.ObjectKey{Name: s.GetTemplatesNamespace()}, &v1.Namespace{})
+	waitForDeletion(client.ObjectKey{Name: s.GetTektonPipelinesNamespace()}, &v1.Namespace{})
 }
 
 func (s *newSspStrategy) GetName() string {
@@ -173,6 +189,11 @@ func (s *newSspStrategy) GetTemplatesNamespace() string {
 func (s *newSspStrategy) GetVmConsoleProxyNamespace() string {
 	const vmConsoleProxyNamespace = "kubevirt"
 	return vmConsoleProxyNamespace
+}
+
+func (s *newSspStrategy) GetTektonPipelinesNamespace() string {
+	const tektonPipelinesNamespace = "openshift-ssp-functests"
+	return tektonPipelinesNamespace
 }
 
 func (s *newSspStrategy) GetValidatorReplicas() int {
@@ -319,6 +340,13 @@ func (s *existingSspStrategy) GetVmConsoleProxyNamespace() string {
 	return namespace
 }
 
+func (s *existingSspStrategy) GetTektonPipelinesNamespace() string {
+	if s.ssp == nil || s.ssp.Spec.TektonPipelines == nil {
+		panic("Strategy is not initialized")
+	}
+	return s.ssp.Spec.TektonPipelines.Namespace
+}
+
 func (s *existingSspStrategy) GetValidatorReplicas() int {
 	if s.ssp == nil || s.ssp.Spec.TemplateValidator == nil || s.ssp.Spec.TemplateValidator.Replicas == nil {
 		panic("Strategy is not initialized")
@@ -450,6 +478,7 @@ func setupApiClient() {
 	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(instancetypev1alpha2.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(routev1.Install(testScheme)).ToNot(HaveOccurred())
+	Expect(pipeline.AddToScheme(testScheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
