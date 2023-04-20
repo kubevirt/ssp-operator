@@ -16,6 +16,12 @@ metadata:
             "commonTemplates": {
               "namespace": "kubevirt"
             },
+            "featureGates": {
+              "deployTektonTaskResources": true
+            },
+            "tektonPipelines": {
+              "namespace": "kubevirt"
+            },
             "templateValidator": {
               "replicas": 2
             }
@@ -69,6 +75,15 @@ spec:
           - get
           - list
           - update
+          - watch
+        - apiGroups:
+          - '*'
+          resources:
+          - configmaps
+          verbs:
+          - create
+          - delete
+          - list
           - watch
         - apiGroups:
           - admissionregistration.k8s.io
@@ -339,6 +354,18 @@ spec:
           - update
           - watch
         - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - rolebindings
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - rbac.authorization.k8s.io/v1
           resources:
           - role
@@ -458,6 +485,18 @@ spec:
           - get
           - patch
           - update
+        - apiGroups:
+          - tekton.dev
+          resources:
+          - pipelines
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - template.openshift.io
           resources:

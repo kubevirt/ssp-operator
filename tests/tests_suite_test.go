@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
@@ -123,6 +124,12 @@ func (s *newSspStrategy) Init() {
 			},
 			CommonTemplates: sspv1beta1.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),
+			},
+			TektonPipelines: &sspv1beta1.TektonPipelines{
+				Namespace: s.GetNamespace(),
+			},
+			FeatureGates: &sspv1beta1.FeatureGates{
+				DeployTektonTaskResources: false,
 			},
 		},
 	}
@@ -450,6 +457,7 @@ func setupApiClient() {
 	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(instancetypev1alpha2.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(routev1.Install(testScheme)).ToNot(HaveOccurred())
+	Expect(pipeline.AddToScheme(testScheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())

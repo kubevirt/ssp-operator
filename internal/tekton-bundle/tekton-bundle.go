@@ -2,22 +2,16 @@ package tekton_bundle
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"os"
 
 	"path/filepath"
 
-	openshiftconfigv1 "github.com/openshift/api/config/v1"
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -34,6 +28,7 @@ var (
 )
 
 type Bundle struct {
+	Tasks           []pipeline.Task
 	ServiceAccounts []v1.ServiceAccount
 	RoleBindings    []rbac.RoleBinding
 	ClusterRoles    []rbac.ClusterRole
@@ -41,12 +36,7 @@ type Bundle struct {
 	ConfigMaps      []v1.ConfigMap
 }
 
-func ReadPipelineBundle(cl client.Reader, ctx context.Context) (*Bundle, error) {
-	isOpenshift, err := runningOnOpenshift(cl, ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func ReadPipelineBundle(isOpenshift bool) (*Bundle, error) {
 	path := getPipelineBundlePath(isOpenshift)
 	files, err := readFolder(path)
 	if err != nil {
@@ -66,23 +56,6 @@ func getPipelineBundlePath(isOpenshift bool) string {
 		return tektonPipelinesOKDBundleDir
 	}
 	return tektonPipelinesKubernetesBundleDir
-}
-
-func runningOnOpenshift(cl client.Reader, ctx context.Context) (bool, error) {
-	clusterVersion := &openshiftconfigv1.ClusterVersion{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "version",
-		},
-	}
-	if err := cl.Get(ctx, client.ObjectKeyFromObject(clusterVersion), clusterVersion); err != nil {
-		if meta.IsNoMatchError(err) || apierrors.IsNotFound(err) {
-			// Not on OpenShift
-			return false, nil
-		} else {
-			return false, err
-		}
-	}
-	return true, nil
 }
 
 func readFolder(folderPath string) ([][]byte, error) {

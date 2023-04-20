@@ -8,3 +8,7 @@ spec:
     namespace: kubevirt
   templateValidator:
     replicas: 2
+  featureGates:
+    deployTektonTaskResources: true
+  tektonPipelines:
+    namespace: kubevirt
