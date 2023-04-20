@@ -13,10 +13,9 @@ const (
 	AppKubernetesVersionLabel   = "app.kubernetes.io/version"
 	AppKubernetesManagedByLabel = "app.kubernetes.io/managed-by"
 	AppKubernetesComponentLabel = "app.kubernetes.io/component"
-)
 
-const (
-	AppKubernetesManagedByLabelValue = "ssp-operator"
+	AppComponentTektonPipelines AppComponent = "tektonPipelines"
+	AppKubernetesManagedByValue string       = "ssp-operator"
 )
 
 type AppComponent string
@@ -41,7 +40,7 @@ func AddAppLabels(requestInstance *v1beta1.SSP, name string, component AppCompon
 
 	labels[AppKubernetesNameLabel] = name
 	labels[AppKubernetesComponentLabel] = component.String()
-	labels[AppKubernetesManagedByLabel] = AppKubernetesManagedByLabelValue
+	labels[AppKubernetesManagedByLabel] = AppKubernetesManagedByValue
 
 	return obj
 }
