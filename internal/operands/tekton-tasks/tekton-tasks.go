@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubevirt/tekton-tasks-operator/pkg/common"
-	"github.com/kubevirt/tekton-tasks-operator/pkg/environment"
-	"github.com/kubevirt/tekton-tasks-operator/pkg/operands"
-	tektonbundle "github.com/kubevirt/tekton-tasks-operator/pkg/tekton-bundle"
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands"
+	tektonbundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -33,6 +32,7 @@ import (
 const (
 	operandName      = "tekton-tasks"
 	operandComponent = common.AppComponentTektonTasks
+	tektonCrd        = "tasks.tekton.dev"
 
 	cleanVMTaskName              = "cleanup-vm"
 	copyTemplateTaskName         = "copy-template"
@@ -48,21 +48,19 @@ const (
 	modifyWindowsVMIsoFileName   = "modify-windows-iso-file"
 )
 
-var requiredCRDs = []string{"tasks.tekton.dev"}
-
 var AllowedTasks = map[string]func() string{
-	createVMFromManifestTaskName: environment.GetCreateVMImage,
-	cleanVMTaskName:              environment.GetCleanupVMImage,
-	copyTemplateTaskName:         environment.GetCopyTemplateImage,
-	modifyDataObjectTaskName:     environment.GetModifyDataObjectImage,
-	createVMFromTemplateTaskName: environment.GetCreateVMImage,
-	diskVirtCustomizeTaskName:    environment.GetDiskVirtCustomizeImage,
-	diskVirtSysprepTaskName:      environment.GetDiskVirtSysprepImage,
-	modifyTemplateTaskName:       environment.GetModifyVMTemplateImage,
-	waitForVMITaskName:           environment.GetWaitForVMIStatusImage,
-	generateSSHKeysTaskName:      environment.GetSSHKeysStatusImage,
-	executeInVMTaskName:          environment.GetCleanupVMImage,
-	modifyWindowsVMIsoFileName:   environment.GetCleanupVMImage,
+	createVMFromManifestTaskName: common.GetCreateVMImage,
+	cleanVMTaskName:              common.GetCleanupVMImage,
+	copyTemplateTaskName:         common.GetCopyTemplateImage,
+	modifyDataObjectTaskName:     common.GetModifyDataObjectImage,
+	createVMFromTemplateTaskName: common.GetCreateVMImage,
+	diskVirtCustomizeTaskName:    common.GetDiskVirtCustomizeImage,
+	diskVirtSysprepTaskName:      common.GetDiskVirtSysprepImage,
+	modifyTemplateTaskName:       common.GetModifyVMTemplateImage,
+	waitForVMITaskName:           common.GetWaitForVMIStatusImage,
+	generateSSHKeysTaskName:      common.GetSSHKeysStatusImage,
+	executeInVMTaskName:          common.GetCleanupVMImage,
+	modifyWindowsVMIsoFileName:   common.GetCleanupVMImage,
 }
 
 func init() {
@@ -78,76 +76,73 @@ type tektonTasks struct {
 
 var _ operands.Operand = &tektonTasks{}
 
-func New(bundle *tektonbundle.Bundle) *tektonTasks {
-	tt := &tektonTasks{
+func New(bundle *tektonbundle.Bundle) operands.Operand {
+	newTasks := []pipeline.Task{}
+	for _, task := range bundle.Tasks {
+		if _, ok := AllowedTasks[task.Name]; ok {
+			newTasks = append(newTasks, task)
+		}
+	}
+	bundle.Tasks = newTasks
+
+	newServiceAccounts := []v1.ServiceAccount{}
+	for _, serviceAccount := range bundle.ServiceAccounts {
+		if _, ok := AllowedTasks[strings.TrimSuffix(serviceAccount.Name, "-task")]; ok {
+			newServiceAccounts = append(newServiceAccounts, serviceAccount)
+		}
+	}
+	bundle.ServiceAccounts = newServiceAccounts
+
+	newRoleBinding := []rbac.RoleBinding{}
+	for _, roleBinding := range bundle.RoleBindings {
+		if _, ok := AllowedTasks[strings.TrimSuffix(roleBinding.Name, "-task")]; ok {
+			newRoleBinding = append(newRoleBinding, roleBinding)
+		}
+	}
+	bundle.RoleBindings = newRoleBinding
+
+	newClusterRole := []rbac.ClusterRole{}
+	for _, clusterRole := range bundle.ClusterRoles {
+		if _, ok := AllowedTasks[strings.TrimSuffix(clusterRole.Name, "-task")]; ok {
+			newClusterRole = append(newClusterRole, clusterRole)
+		}
+	}
+	bundle.ClusterRoles = newClusterRole
+
+	return &tektonTasks{
 		tasks:           bundle.Tasks,
 		serviceAccounts: bundle.ServiceAccounts,
 		roleBindings:    bundle.RoleBindings,
 		clusterRoles:    bundle.ClusterRoles,
 	}
-
-	tt.filterUnusedObjects()
-
-	return tt
 }
 
 func (t *tektonTasks) Name() string {
 	return operandName
 }
 
-func (t *tektonTasks) WatchClusterTypes() []client.Object {
-	return []client.Object{
-		&rbac.ClusterRole{},
-		&pipeline.ClusterTask{},
-		&rbac.RoleBinding{},
-		&v1.ServiceAccount{},
+func (t *tektonTasks) WatchClusterTypes() []operands.WatchType {
+	return []operands.WatchType{
+		{Object: &rbac.ClusterRole{}},
+		{Object: &pipeline.ClusterTask{}, Crd: tektonCrd, WatchFullObject: true},
+		{Object: &rbac.RoleBinding{}},
+		{Object: &v1.ServiceAccount{}},
 	}
 }
 
-func (t *tektonTasks) WatchTypes() []client.Object {
+func (t *tektonTasks) WatchTypes() []operands.WatchType {
 	return nil
 }
 
-func (t *tektonTasks) RequiredCrds() []string {
-	return requiredCRDs
-}
-
-func (t *tektonTasks) filterUnusedObjects() {
-	newTasks := []pipeline.Task{}
-	for _, task := range t.tasks {
-		if _, ok := AllowedTasks[task.Name]; ok {
-			newTasks = append(newTasks, task)
-		}
-	}
-	t.tasks = newTasks
-
-	newSA := []v1.ServiceAccount{}
-	for _, sa := range t.serviceAccounts {
-		if _, ok := AllowedTasks[strings.TrimSuffix(sa.Name, "-task")]; ok {
-			newSA = append(newSA, sa)
-		}
-	}
-	t.serviceAccounts = newSA
-
-	newRB := []rbac.RoleBinding{}
-	for _, rb := range t.roleBindings {
-		if _, ok := AllowedTasks[strings.TrimSuffix(rb.Name, "-task")]; ok {
-			newRB = append(newRB, rb)
-		}
-	}
-	t.roleBindings = newRB
-
-	newCR := []rbac.ClusterRole{}
-	for _, cr := range t.clusterRoles {
-		if _, ok := AllowedTasks[strings.TrimSuffix(cr.Name, "-task")]; ok {
-			newCR = append(newCR, cr)
-		}
-	}
-	t.clusterRoles = newCR
-}
-
 func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	var results []common.ReconcileResult
+	if !request.Instance.Spec.FeatureGates.DeployTektonTaskResources {
+		request.Logger.V(1).Info("Tekton Tasks resources were not deployed, because spec.featureGates.deployTektonTaskResources is set to false")
+		return nil, nil
+	}
+	if !request.CrdList.CrdExists(tektonCrd) {
+		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
+	}
+
 	var reconcileFunc []common.ReconcileFunc
 	reconcileFunc = append(reconcileFunc, reconcileTektonTasksFuncs(t.tasks)...)
 	reconcileFunc = append(reconcileFunc, reconcileClusterRoleFuncs(t.clusterRoles)...)
@@ -165,12 +160,11 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 			request.Logger.Info(fmt.Sprintf("Changes reverted in tekton tasks: %s", r.Resource.GetName()))
 		}
 	}
-	return append(results, reconcileTektonBundleResults...), nil
+	return reconcileTektonBundleResults, nil
 }
 
 func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
-
 	for _, t := range t.tasks {
 		o := t.DeepCopy()
 		objects = append(objects, o)
@@ -187,20 +181,19 @@ func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, 
 		o := sa.DeepCopy()
 		objects = append(objects, o)
 	}
-
 	clusterTasks, err := listDeprecatedClusterTasks(request)
 	if err != nil {
 		return nil, err
 	}
-
 	for _, ct := range clusterTasks {
 		o := ct.DeepCopy()
 		objects = append(objects, o)
 	}
-
 	return common.DeleteAll(request, objects...)
 }
 
+// Note: ClusterTasks are deprecated and replaced by Tasks [1].
+// [1] https://tekton.dev/docs/pipelines/tasks/#task-vs-clustertask
 func listDeprecatedClusterTasks(request *common.Request) ([]pipeline.ClusterTask, error) {
 	deprecatedClusterTasks := &pipeline.ClusterTaskList{}
 	err := request.Client.List(request.Context, deprecatedClusterTasks, &client.MatchingLabels{
@@ -209,12 +202,11 @@ func listDeprecatedClusterTasks(request *common.Request) ([]pipeline.ClusterTask
 	if err != nil {
 		return nil, err
 	}
-
 	return deprecatedClusterTasks.Items, nil
-
 }
+
 func isUpgradingNow(request *common.Request) bool {
-	return request.Instance.Status.ObservedVersion != environment.GetOperatorVersion()
+	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
 }
 
 func reconcileTektonTasksFuncs(tasks []pipeline.Task) []common.ReconcileFunc {
@@ -223,11 +215,9 @@ func reconcileTektonTasksFuncs(tasks []pipeline.Task) []common.ReconcileFunc {
 		task := &tasks[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			task.Namespace = request.Instance.Namespace
-
-			if request.Instance.Spec.Tasks != nil && request.Instance.Spec.Tasks.Namespace != "" {
-				task.Namespace = request.Instance.Spec.Tasks.Namespace
+			if request.Instance.Spec.TektonTasks != nil && request.Instance.Spec.TektonTasks.Namespace != "" {
+				task.Namespace = request.Instance.Spec.TektonTasks.Namespace
 			}
-
 			if task.Name == modifyWindowsVMIsoFileName {
 				for i, step := range task.Spec.Steps {
 					if step.Name == "create-iso-file" {
@@ -240,15 +230,10 @@ func reconcileTektonTasksFuncs(tasks []pipeline.Task) []common.ReconcileFunc {
 			} else {
 				task.Spec.Steps[0].Image = AllowedTasks[task.Name]()
 			}
-			task.Labels[TektonTasksVersionLabel] = operands.TektonTasksVersion
+			task.Labels[TektonTasksVersionLabel] = common.TektonTasksVersion
 			return common.CreateOrUpdate(request).
 				ClusterResource(task).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					newTask := newRes.(*pipeline.Task)
-					foundTask := foundRes.(*pipeline.Task)
-					foundTask.Spec = newTask.Spec
-				}).
 				Reconcile()
 		})
 	}
@@ -263,11 +248,6 @@ func reconcileClusterRoleFuncs(crs []rbac.ClusterRole) []common.ReconcileFunc {
 			return common.CreateOrUpdate(request).
 				ClusterResource(cr).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					newTask := newRes.(*rbac.ClusterRole)
-					foundTask := foundRes.(*rbac.ClusterRole)
-					foundTask.Rules = newTask.Rules
-				}).
 				Reconcile()
 		})
 	}
@@ -300,12 +280,6 @@ func reconcileRoleBindingFuncs(rbs []rbac.RoleBinding) []common.ReconcileFunc {
 			return common.CreateOrUpdate(request).
 				ClusterResource(rb).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					newTask := newRes.(*rbac.RoleBinding)
-					foundTask := foundRes.(*rbac.RoleBinding)
-					foundTask.RoleRef = newTask.RoleRef
-					foundTask.Subjects = newTask.Subjects
-				}).
 				Reconcile()
 		})
 	}

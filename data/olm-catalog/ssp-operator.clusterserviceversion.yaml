@@ -22,6 +22,9 @@ metadata:
             "tektonPipelines": {
               "namespace": "kubevirt"
             },
+            "tektonTasks": {
+              "namespace": "kubevirt"
+            },
             "templateValidator": {
               "replicas": 2
             }
@@ -85,6 +88,24 @@ spec:
           - delete
           - list
           - watch
+        - apiGroups:
+          - '*'
+          resources:
+          - persistentvolumeclaims
+          verbs:
+          - '*'
+        - apiGroups:
+          - '*'
+          resources:
+          - pods
+          verbs:
+          - create
+        - apiGroups:
+          - '*'
+          resources:
+          - secrets
+          verbs:
+          - '*'
         - apiGroups:
           - admissionregistration.k8s.io
           resources:
@@ -170,6 +191,7 @@ spec:
           resources:
           - datavolumes
           verbs:
+          - '*'
           - create
           - delete
           - get
@@ -263,6 +285,18 @@ spec:
           - ""
           resources:
           - serviceaccounts
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
           - services
           verbs:
           - create
@@ -307,11 +341,29 @@ spec:
         - apiGroups:
           - kubevirt.io
           resources:
+          - virtualmachineinstances
+          - virtualmachines
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - kubevirt.io
+          resources:
           - virtualmachines
           verbs:
           - get
           - list
           - watch
+        - apiGroups:
+          - kubevirt.io
+          resources:
+          - virtualmachines/finalizers
+          verbs:
+          - '*'
         - apiGroups:
           - monitoring.coreos.com
           resources:
@@ -331,6 +383,19 @@ spec:
           resources:
           - clusterrolebindings
           - clusterroles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterroles
+          - rolebindings
           verbs:
           - create
           - delete
@@ -486,6 +551,26 @@ spec:
           - patch
           - update
         - apiGroups:
+          - subresources.kubevirt.io
+          resources:
+          - virtualmachines/restart
+          - virtualmachines/start
+          - virtualmachines/stop
+          verbs:
+          - update
+        - apiGroups:
+          - tekton.dev
+          resources:
+          - clustertasks
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - tekton.dev
           resources:
           - pipelines
@@ -497,6 +582,24 @@ spec:
           - patch
           - update
           - watch
+        - apiGroups:
+          - tekton.dev
+          resources:
+          - tasks
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - template.openshift.io
+          resources:
+          - processedtemplates
+          verbs:
+          - create
         - apiGroups:
           - template.openshift.io
           resources:

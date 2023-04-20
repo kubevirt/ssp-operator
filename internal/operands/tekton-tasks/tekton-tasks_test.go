@@ -2,21 +2,25 @@ package tekton_tasks
 
 import (
 	"context"
-	"strings"
 	"testing"
 
-	tekton "github.com/kubevirt/tekton-tasks-operator/api/v1alpha1"
-	"github.com/kubevirt/tekton-tasks-operator/pkg/common"
-	tektonbundle "github.com/kubevirt/tekton-tasks-operator/pkg/tekton-bundle"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	internalmeta "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	"kubevirt.io/ssp-operator/internal/common"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
+	"kubevirt.io/ssp-operator/internal/operands"
+	tektonbundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -27,79 +31,154 @@ const (
 )
 
 var _ = Describe("environments", func() {
-	var tt *tektonTasks
-	var mockedRequest *common.Request
-	BeforeEach(func() {
-		tt = getMockedTektonTasksOperand()
-		mockedRequest = getMockedRequest()
-	})
+	var (
+		operand operands.Operand
+		bundle  *tektonbundle.Bundle
+		request *common.Request
+	)
 
-	It("New function should return object with correct tasks", func() {
-		res := New(getMockedTestBundle())
-		Expect(len(res.tasks)).To(Equal(11), "should return correct number of tasks")
-		Expect(len(res.serviceAccounts)).To(Equal(11), "should return correct number of service accounts")
-		Expect(len(res.roleBindings)).To(Equal(11), "should return correct number of role bindings")
-		Expect(len(res.clusterRoles)).To(Equal(11), "should return correct number of cluster roles")
-		for _, task := range res.tasks {
-			if _, ok := AllowedTasks[task.Name]; !ok {
-				Expect(ok).To(BeTrue(), "only allowed task is deployed - "+task.Name)
-			}
-		}
-		for _, sa := range res.serviceAccounts {
-			if _, ok := AllowedTasks[strings.TrimSuffix(sa.Name, "-task")]; !ok {
-				Expect(ok).To(BeTrue(), "only allowed service accounts is deployed - "+sa.Name)
-			}
-		}
-		for _, rb := range res.roleBindings {
-			if _, ok := AllowedTasks[strings.TrimSuffix(rb.Name, "-task")]; !ok {
-				Expect(ok).To(BeTrue(), "only allowed role bindings is deployed - "+rb.Name)
-			}
-		}
-		for _, cr := range res.clusterRoles {
-			if _, ok := AllowedTasks[strings.TrimSuffix(cr.Name, "-task")]; !ok {
-				Expect(ok).To(BeTrue(), "only allowed role bindings is deployed - "+cr.Name)
-			}
-		}
+	BeforeEach(func() {
+		bundle = getMockedTestBundle()
+		operand = New(bundle)
+		request = getMockedRequest()
 	})
 
 	It("Name function should return correct name", func() {
-		name := tt.Name()
+		name := operand.Name()
 		Expect(name).To(Equal(operandName), "should return correct name")
 	})
 
-	It("Reconcile function should return correct functions", func() {
-		functions, err := tt.Reconcile(mockedRequest)
-		Expect(err).ToNot(HaveOccurred(), "should not throw err")
-		Expect(len(functions)).To(Equal(8), "should return correct number of reconcile functions")
-	})
+	Context("With feature gate enabled", func() {
+		BeforeEach(func() {
+			request.Instance.Spec.FeatureGates.DeployTektonTaskResources = true
+		})
 
-	It("RequiredCrds function should return required crds", func() {
-		tt := getMockedTektonTasksOperand()
-		crds := tt.RequiredCrds()
+		It("Reconcile function should return correct functions", func() {
+			functions, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred(), "should not throw err")
+			Expect(functions).To(HaveLen(8), "should return correct number of reconcile functions")
+		})
 
-		Expect(len(crds) > 0).To(BeTrue(), "should return required crds")
+		It("Should create tekton-tasks resources", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
 
-		for _, crd := range crds {
-			found := false
-			for _, c := range requiredCRDs {
-				if crd == c {
-					found = true
-				}
+			for _, task := range bundle.Tasks {
+				ExpectResourceExists(&task, *request)
 			}
-			Expect(found).To(BeTrue(), "should return correct required crd")
-		}
+
+			for _, clusterRole := range bundle.ClusterRoles {
+				ExpectResourceExists(&clusterRole, *request)
+			}
+
+			for _, serviceAccount := range bundle.ServiceAccounts {
+				ExpectResourceExists(&serviceAccount, *request)
+			}
+
+			for _, roleBinding := range bundle.RoleBindings {
+				ExpectResourceExists(&roleBinding, *request)
+			}
+		})
+
+		It("should remove tekton-tasks resources on cleanup", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, task := range bundle.Tasks {
+				ExpectResourceExists(&task, *request)
+			}
+
+			for _, clusterRole := range bundle.ClusterRoles {
+				ExpectResourceExists(&clusterRole, *request)
+			}
+
+			for _, serviceAccount := range bundle.ServiceAccounts {
+				ExpectResourceExists(&serviceAccount, *request)
+			}
+
+			for _, roleBinding := range bundle.RoleBindings {
+				ExpectResourceExists(&roleBinding, *request)
+			}
+
+			_, err = operand.Cleanup(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, task := range bundle.Tasks {
+				ExpectResourceNotExists(&task, *request)
+			}
+
+			for _, clusterRole := range bundle.ClusterRoles {
+				ExpectResourceNotExists(&clusterRole, *request)
+			}
+
+			for _, serviceAccount := range bundle.ServiceAccounts {
+				ExpectResourceNotExists(&serviceAccount, *request)
+			}
+
+			for _, roleBinding := range bundle.RoleBindings {
+				ExpectResourceNotExists(&roleBinding, *request)
+			}
+		})
 	})
 
+	Context("With feature gate disabled", func() {
+		BeforeEach(func() {
+			request.Instance.Spec.FeatureGates.DeployTektonTaskResources = false
+		})
+
+		It("Should not create tekton-tasks resources", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, task := range bundle.Tasks {
+				ExpectResourceNotExists(&task, *request)
+			}
+
+			for _, clusterRole := range bundle.ClusterRoles {
+				ExpectResourceNotExists(&clusterRole, *request)
+			}
+
+			for _, serviceAccount := range bundle.ServiceAccounts {
+				ExpectResourceNotExists(&serviceAccount, *request)
+			}
+
+			for _, roleBinding := range bundle.RoleBindings {
+				ExpectResourceNotExists(&roleBinding, *request)
+			}
+		})
+	})
 })
 
-func TestTektonBundle(t *testing.T) {
+func TestTektonTasks(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "tekton tasks Suite")
+	RunSpecs(t, "Tekton Tasks Suite")
 }
 
 func getMockedRequest() *common.Request {
 	log := logf.Log.WithName("tekton-tasks-operand")
-	clientBuilder := fake.NewClientBuilder().WithScheme(common.Scheme)
+
+	Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
+	Expect(apiextensions.AddToScheme(scheme.Scheme)).To(Succeed())
+	Expect(common.AddConversionFunctions(scheme.Scheme)).To(Succeed())
+	Expect(pipeline.AddToScheme(scheme.Scheme)).To(Succeed())
+	Expect(ssp.AddToScheme(scheme.Scheme)).To(Succeed())
+
+	client := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
+
+	tektonCrdObj := &apiextensions.CustomResourceDefinition{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: apiextensions.SchemeGroupVersion.String(),
+			Kind:       "CustomResourceDefinition",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: tektonCrd,
+		},
+	}
+	Expect(client.Create(context.Background(), tektonCrdObj)).To(Succeed())
+
+	crdWatch := crd_watch.New(tektonCrd)
+	Expect(crdWatch.Init(context.Background(), client)).To(Succeed())
+
 	return &common.Request{
 		Request: reconcile.Request{
 			NamespacedName: types.NamespacedName{
@@ -107,26 +186,35 @@ func getMockedRequest() *common.Request {
 				Name:      name,
 			},
 		},
-		Client:  clientBuilder.Build(),
+		Client:  client,
 		Context: context.Background(),
-		Instance: &tekton.TektonTasks{
+		Instance: &ssp.SSP{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "TetktonTasks",
-				APIVersion: tekton.GroupVersion.String(),
+				APIVersion: ssp.GroupVersion.String(),
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
 			},
+			Spec: ssp.SSPSpec{
+				FeatureGates: &ssp.FeatureGates{
+					DeployTektonTaskResources: false,
+				},
+				TektonTasks: &ssp.TektonTasks{
+					Namespace: namespace,
+				},
+			},
 		},
 		Logger:       log,
 		VersionCache: common.VersionCache{},
+		CrdList:      crdWatch,
 	}
 }
 
-func getMockedTektonTasksOperand() *tektonTasks {
-	return &tektonTasks{
-		tasks: []pipeline.Task{
+func getMockedTestBundle() *tektonbundle.Bundle {
+	return &tektonbundle.Bundle{
+		Tasks: []pipeline.Task{
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{},
@@ -135,9 +223,7 @@ func getMockedTektonTasksOperand() *tektonTasks {
 				Spec: pipeline.TaskSpec{
 					Steps: []pipeline.Step{
 						{
-							Container: v1.Container{
-								Name: "test",
-							},
+							Image: "test",
 						},
 					},
 				},
@@ -149,262 +235,42 @@ func getMockedTektonTasksOperand() *tektonTasks {
 				Spec: pipeline.TaskSpec{
 					Steps: []pipeline.Step{
 						{
-							Container: v1.Container{
-								Name: "test",
-							},
+							Image: "test",
 						},
 					},
-				},
-			},
-		},
-		serviceAccounts: []v1.ServiceAccount{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtSysprepTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyTemplateTaskName + "-task",
-				},
-			},
-		},
-		roleBindings: []rbac.RoleBinding{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtSysprepTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyTemplateTaskName + "-task",
-				},
-			},
-		},
-		clusterRoles: []rbac.ClusterRole{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtSysprepTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyTemplateTaskName + "-task",
-				},
-			},
-		},
-	}
-}
-
-func getMockedTestBundle() *tektonbundle.Bundle {
-	return &tektonbundle.Bundle{
-		Tasks: []pipeline.Task{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "wrong-task",
-				},
-				Spec: pipeline.TaskSpec{
-					Steps: []pipeline.Step{
-						{
-							Container: v1.Container{
-								Name: "test",
-							},
-						},
-					},
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: cleanVMTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: copyTemplateTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyDataObjectTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: waitForVMITaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtCustomizeTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtSysprepTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyTemplateTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: generateSSHKeysTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName,
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: executeInVMTaskName,
 				},
 			},
 		},
 		ServiceAccounts: []v1.ServiceAccount{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "wrong-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: cleanVMTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: copyTemplateTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyDataObjectTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: waitForVMITaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtCustomizeTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
 					Name: diskVirtSysprepTaskName + "-task",
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: modifyTemplateTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: generateSSHKeysTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: executeInVMTaskName + "-task",
 				},
 			},
 		},
 		RoleBindings: []rbac.RoleBinding{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "wrong-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: cleanVMTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: copyTemplateTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyDataObjectTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: waitForVMITaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtCustomizeTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
 					Name: diskVirtSysprepTaskName + "-task",
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: modifyTemplateTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: generateSSHKeysTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: executeInVMTaskName + "-task",
 				},
 			},
 		},
 		ClusterRoles: []rbac.ClusterRole{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "wrong-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: cleanVMTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: copyTemplateTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyDataObjectTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: waitForVMITaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtCustomizeTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
 					Name: diskVirtSysprepTaskName + "-task",
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: modifyTemplateTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: generateSSHKeysTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: createVMFromManifestTaskName + "-task",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: executeInVMTaskName + "-task",
 				},
 			},
 		},
