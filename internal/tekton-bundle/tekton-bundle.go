@@ -12,14 +12,18 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
+	tektonTasksKubernetesBundleDir     = "/data/tekton-tasks/kubernetes/"
+	tektonTasksOKDBundleDir            = "/data/tekton-tasks/okd/"
 	tektonPipelinesKubernetesBundleDir = "/data/tekton-pipelines/kubernetes/"
 	tektonPipelinesOKDBundleDir        = "/data/tekton-pipelines/okd/"
 )
 
 var (
+	tasksString        = string(pipeline.NamespacedTaskKind)
 	pipelineKindString = "Pipeline"
 	serviceAccountKind = rbac.ServiceAccountKind
 	roleBindingKind    = "RoleBinding"
@@ -34,6 +38,23 @@ type Bundle struct {
 	ClusterRoles    []rbac.ClusterRole
 	Pipelines       []pipeline.Pipeline
 	ConfigMaps      []v1.ConfigMap
+}
+
+func ReadTasksBundle(isOpenshift bool) (*Bundle, error) {
+	var files [][]byte
+	path := getTasksBundlePath(isOpenshift)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	files = append(files, data)
+
+	tektonObjs, err := decodeObjectsFromFiles(files)
+	if err != nil {
+		return nil, err
+	}
+
+	return tektonObjs, nil
 }
 
 func ReadPipelineBundle(isOpenshift bool) (*Bundle, error) {
@@ -56,6 +77,13 @@ func getPipelineBundlePath(isOpenshift bool) string {
 		return tektonPipelinesOKDBundleDir
 	}
 	return tektonPipelinesKubernetesBundleDir
+}
+
+func getTasksBundlePath(isOpenshift bool) string {
+	if isOpenshift {
+		return filepath.Join(tektonTasksOKDBundleDir, "kubevirt-tekton-tasks-okd-"+common.TektonTasksVersion+".yaml")
+	}
+	return filepath.Join(tektonTasksKubernetesBundleDir, "kubevirt-tekton-tasks-kubernetes-"+common.TektonTasksVersion+".yaml")
 }
 
 func readFolder(folderPath string) ([][]byte, error) {
@@ -98,6 +126,13 @@ func decodeObjectsFromFiles(files [][]byte) (*Bundle, error) {
 				}
 
 				switch kind {
+				case tasksString:
+					task := pipeline.Task{}
+					err = getObject(obj, &task)
+					if err != nil {
+						return nil, err
+					}
+					bundle.Tasks = append(bundle.Tasks, task)
 				case pipelineKindString:
 					p := pipeline.Pipeline{}
 					err = getObject(obj, &p)
