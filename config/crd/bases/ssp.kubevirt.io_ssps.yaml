@@ -1889,6 +1889,13 @@ spec:
                   namespace:
                     type: string
                 type: object
+              tektonTasks:
+                description: TektonTasks is the configuration of the tekton-tasks
+                  operand
+                properties:
+                  namespace:
+                    type: string
+                type: object
               templateValidator:
                 description: TemplateValidator is configuration of the template validator
                   operand

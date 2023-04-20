@@ -15,6 +15,7 @@ const (
 	AppKubernetesComponentLabel = "app.kubernetes.io/component"
 
 	AppComponentTektonPipelines AppComponent = "tektonPipelines"
+	AppComponentTektonTasks     AppComponent = "tektonTasks"
 	AppKubernetesManagedByValue string       = "ssp-operator"
 )
 

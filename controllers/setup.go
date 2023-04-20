@@ -16,6 +16,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	node_labeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
+	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 	tekton_bundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
@@ -68,7 +69,13 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return err
 	}
 
+	tektonTasksBundle, err := tekton_bundle.ReadTasksBundle(runningOnOpenShift)
+	if err != nil {
+		return err
+	}
+
 	tektonPipelinesOperand := tekton_pipelines.New(tektonPipelinesBundle)
+	tektonTasksOperand := tekton_tasks.New(tektonTasksBundle)
 
 	sspOperands := []operands.Operand{
 		// The bundle paths are not hardcoded within New to allow tests to use a different path
@@ -77,6 +84,8 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 			common_instancetypes.BundleDir+common_instancetypes.ClusterPreferencesBundle,
 		),
 		data_sources.New(templatesBundle.DataSources),
+		// Tekton Tasks Operand should be before Pipelines to avoid errors
+		tektonTasksOperand,
 		tektonPipelinesOperand,
 	}
 

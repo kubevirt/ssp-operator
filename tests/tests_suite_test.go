@@ -128,6 +128,9 @@ func (s *newSspStrategy) Init() {
 			TektonPipelines: &sspv1beta1.TektonPipelines{
 				Namespace: s.GetNamespace(),
 			},
+			TektonTasks: &sspv1beta1.TektonTasks{
+				Namespace: s.GetNamespace(),
+			},
 			FeatureGates: &sspv1beta1.FeatureGates{
 				DeployTektonTaskResources: false,
 			},

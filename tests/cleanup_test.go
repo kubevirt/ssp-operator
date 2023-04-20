@@ -17,6 +17,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
+	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 )
@@ -44,6 +45,7 @@ var _ = Describe("Cleanup", func() {
 			template_validator.WatchClusterTypes,
 			vm_console_proxy.WatchClusterTypes,
 			tekton_pipelines.WatchClusterTypes,
+			tekton_tasks.WatchClusterTypes,
 		} {
 			allWatchTypes = append(allWatchTypes, f()...)
 		}

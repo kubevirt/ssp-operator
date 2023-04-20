@@ -12,3 +12,5 @@ spec:
     deployTektonTaskResources: true
   tektonPipelines:
     namespace: kubevirt
+  tektonTasks:
+    namespace: kubevirt
