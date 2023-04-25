@@ -111,8 +111,13 @@ func reconcileMonitoringRbacRoleBinding(request *common.Request) (common.Reconci
 }
 
 func reconcilePrometheusRule(request *common.Request) (common.ReconcileResult, error) {
+	prometheusRule, err := newPrometheusRule(request.Namespace)
+	if err != nil {
+		return common.ReconcileResult{}, err
+	}
+
 	return common.CreateOrUpdate(request).
-		NamespacedResource(newPrometheusRule(request.Namespace)).
+		NamespacedResource(prometheusRule).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(newRes, foundRes client.Object) {
 			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec

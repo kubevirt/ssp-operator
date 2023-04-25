@@ -1,6 +1,11 @@
 package metrics
 
 import (
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -11,7 +16,8 @@ import (
 const (
 	PrometheusRuleName           = "prometheus-k8s-rules-cnv"
 	MonitorNamespace             = "openshift-monitoring"
-	runbookURLBasePath           = "https://kubevirt.io/monitoring/runbooks/"
+	defaultRunbookURLTemplate    = "https://kubevirt.io/monitoring/runbooks/%s"
+	runbookURLTemplateEnv        = "RUNBOOK_URL_TEMPLATE"
 	severityAlertLabelKey        = "severity"
 	healthImpactAlertLabelKey    = "operator_health_impact"
 	partOfAlertLabelKey          = "kubernetes_operator_part_of"
@@ -73,100 +79,107 @@ var RecordRulesDescList = []RecordRulesDesc{
 	},
 }
 
-var alertRulesList = []promv1.Rule{
-	{
-		Expr:   intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by (node,os,workload,flavor)"),
-		Record: "cnv:vmi_status_running:count",
-	},
-	{
-		Alert: "SSPDown",
-		Expr:  intstr.FromString("kubevirt_ssp_operator_up_total == 0"),
-		For:   "5m",
-		Annotations: map[string]string{
-			"summary":     "All SSP operator pods are down.",
-			"runbook_url": runbookURLBasePath + "SSPOperatorDown",
+func getAlertRules() ([]promv1.Rule, error) {
+	runbookURLTemplate, err := getRunbookURLTemplate()
+	if err != nil {
+		return nil, err
+	}
+
+	return []promv1.Rule{
+		{
+			Expr:   intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by (node,os,workload,flavor)"),
+			Record: "cnv:vmi_status_running:count",
 		},
-		Labels: map[string]string{
-			severityAlertLabelKey:     "critical",
-			healthImpactAlertLabelKey: "critical",
-			partOfAlertLabelKey:       partOfAlertLabelValue,
-			componentAlertLabelKey:    componentAlertLabelValue,
+		{
+			Alert: "SSPDown",
+			Expr:  intstr.FromString("kubevirt_ssp_operator_up_total == 0"),
+			For:   "5m",
+			Annotations: map[string]string{
+				"summary":     "All SSP operator pods are down.",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPDown"),
+			},
+			Labels: map[string]string{
+				severityAlertLabelKey:     "critical",
+				healthImpactAlertLabelKey: "critical",
+				partOfAlertLabelKey:       partOfAlertLabelValue,
+				componentAlertLabelKey:    componentAlertLabelValue,
+			},
 		},
-	},
-	{
-		Alert: "SSPTemplateValidatorDown",
-		Expr:  intstr.FromString("kubevirt_ssp_template_validator_up_total == 0"),
-		For:   "5m",
-		Annotations: map[string]string{
-			"summary":     "All Template Validator pods are down.",
-			"runbook_url": runbookURLBasePath + "SSPTemplateValidatorDown",
+		{
+			Alert: "SSPTemplateValidatorDown",
+			Expr:  intstr.FromString("kubevirt_ssp_template_validator_up_total == 0"),
+			For:   "5m",
+			Annotations: map[string]string{
+				"summary":     "All Template Validator pods are down.",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPTemplateValidatorDown"),
+			},
+			Labels: map[string]string{
+				severityAlertLabelKey:     "critical",
+				healthImpactAlertLabelKey: "critical",
+				partOfAlertLabelKey:       partOfAlertLabelValue,
+				componentAlertLabelKey:    componentAlertLabelValue,
+			},
 		},
-		Labels: map[string]string{
-			severityAlertLabelKey:     "critical",
-			healthImpactAlertLabelKey: "critical",
-			partOfAlertLabelKey:       partOfAlertLabelValue,
-			componentAlertLabelKey:    componentAlertLabelValue,
+		{
+			Alert: "SSPFailingToReconcile",
+			Expr:  intstr.FromString("(kubevirt_ssp_num_of_operator_reconciling_properly == 0) and (kubevirt_ssp_operator_up_total > 0)"),
+			For:   "5m",
+			Annotations: map[string]string{
+				"summary":     "The ssp-operator pod is up but failing to reconcile",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPFailingToReconcile"),
+			},
+			Labels: map[string]string{
+				severityAlertLabelKey:     "critical",
+				healthImpactAlertLabelKey: "critical",
+				partOfAlertLabelKey:       partOfAlertLabelValue,
+				componentAlertLabelKey:    componentAlertLabelValue,
+			},
 		},
-	},
-	{
-		Alert: "SSPFailingToReconcile",
-		Expr:  intstr.FromString("(kubevirt_ssp_num_of_operator_reconciling_properly == 0) and (kubevirt_ssp_operator_up_total > 0)"),
-		For:   "5m",
-		Annotations: map[string]string{
-			"summary":     "The ssp-operator pod is up but failing to reconcile",
-			"runbook_url": runbookURLBasePath + "SSPFailingToReconcile",
+		{
+			Alert: "SSPHighRateRejectedVms",
+			Expr:  intstr.FromString("kubevirt_ssp_rejected_vms_total > 5"),
+			For:   "5m",
+			Annotations: map[string]string{
+				"summary":     "High rate of rejected Vms",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPHighRateRejectedVms"),
+			},
+			Labels: map[string]string{
+				severityAlertLabelKey:     "warning",
+				healthImpactAlertLabelKey: "warning",
+				partOfAlertLabelKey:       partOfAlertLabelValue,
+				componentAlertLabelKey:    componentAlertLabelValue,
+			},
 		},
-		Labels: map[string]string{
-			severityAlertLabelKey:     "critical",
-			healthImpactAlertLabelKey: "critical",
-			partOfAlertLabelKey:       partOfAlertLabelValue,
-			componentAlertLabelKey:    componentAlertLabelValue,
+		{
+			Alert: "SSPCommonTemplatesModificationReverted",
+			Expr:  intstr.FromString("kubevirt_ssp_common_templates_restored_total > 0"),
+			For:   "0m",
+			Annotations: map[string]string{
+				"summary":     "Common Templates manual modifications were reverted by the operator",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPCommonTemplatesModificationReverted"),
+			},
+			Labels: map[string]string{
+				severityAlertLabelKey:     "warning",
+				healthImpactAlertLabelKey: "none",
+				partOfAlertLabelKey:       partOfAlertLabelValue,
+				componentAlertLabelKey:    componentAlertLabelValue,
+			},
 		},
-	},
-	{
-		Alert: "SSPHighRateRejectedVms",
-		Expr:  intstr.FromString("kubevirt_ssp_rejected_vms_total > 5"),
-		For:   "5m",
-		Annotations: map[string]string{
-			"summary":     "High rate of rejected Vms",
-			"runbook_url": runbookURLBasePath + "SSPHighRateRejectedVms",
+		{
+			Alert: Rhel6AlertName,
+			Expr:  intstr.FromString("sum by (namespace, name) (kubevirt_vm_rhel6) > 0"),
+			Annotations: map[string]string{
+				"summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is based on RHEL6 template, and this will not be supported in the next release",
+				//"runbook_url": fmt.Sprintf(runbookURLTemplate, Rhel6AlertName),
+			},
+			Labels: map[string]string{
+				severityAlertLabelKey:     "warning",
+				healthImpactAlertLabelKey: "none",
+				partOfAlertLabelKey:       partOfAlertLabelValue,
+				componentAlertLabelKey:    componentAlertLabelValue,
+			},
 		},
-		Labels: map[string]string{
-			severityAlertLabelKey:     "warning",
-			healthImpactAlertLabelKey: "warning",
-			partOfAlertLabelKey:       partOfAlertLabelValue,
-			componentAlertLabelKey:    componentAlertLabelValue,
-		},
-	},
-	{
-		Alert: "SSPCommonTemplatesModificationReverted",
-		Expr:  intstr.FromString("kubevirt_ssp_common_templates_restored_total > 0"),
-		For:   "0m",
-		Annotations: map[string]string{
-			"summary":     "Common Templates manual modifications were reverted by the operator",
-			"runbook_url": runbookURLBasePath + "SSPCommonTemplatesModificationReverted",
-		},
-		Labels: map[string]string{
-			severityAlertLabelKey:     "warning",
-			healthImpactAlertLabelKey: "none",
-			partOfAlertLabelKey:       partOfAlertLabelValue,
-			componentAlertLabelKey:    componentAlertLabelValue,
-		},
-	},
-	{
-		Alert: Rhel6AlertName,
-		Expr:  intstr.FromString("sum by (namespace, name) (kubevirt_vm_rhel6) > 0"),
-		Annotations: map[string]string{
-			"summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is based on RHEL6 template, and this will not be supported in the next release",
-			//"runbook_url": runbookURLBasePath + Rhel6AlertName,
-		},
-		Labels: map[string]string{
-			severityAlertLabelKey:     "warning",
-			healthImpactAlertLabelKey: "none",
-			partOfAlertLabelKey:       partOfAlertLabelValue,
-			componentAlertLabelKey:    componentAlertLabelValue,
-		},
-	},
+	}, nil
 }
 
 func getRecordRules() []promv1.Rule {
@@ -252,7 +265,12 @@ func newServiceMonitorCR(namespace string) *promv1.ServiceMonitor {
 	}
 }
 
-func newPrometheusRule(namespace string) *promv1.PrometheusRule {
+func newPrometheusRule(namespace string) (*promv1.PrometheusRule, error) {
+	alertRules, err := getAlertRules()
+	if err != nil {
+		return nil, err
+	}
+
 	return &promv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      PrometheusRuleName,
@@ -268,9 +286,22 @@ func newPrometheusRule(namespace string) *promv1.PrometheusRule {
 			Groups: []promv1.RuleGroup{
 				{
 					Name:  "cnv.rules",
-					Rules: append(alertRulesList, getRecordRules()...),
+					Rules: append(alertRules, getRecordRules()...),
 				},
 			},
 		},
+	}, nil
+}
+
+func getRunbookURLTemplate() (string, error) {
+	runbookURLTemplate, exists := os.LookupEnv(runbookURLTemplateEnv)
+	if !exists {
+		runbookURLTemplate = defaultRunbookURLTemplate
 	}
+
+	if strings.Count(runbookURLTemplate, "%s") != 1 || strings.Count(runbookURLTemplate, "%") != 1 {
+		return "", errors.New("runbook URL template must have exactly 1 %s substring")
+	}
+
+	return runbookURLTemplate, nil
 }
