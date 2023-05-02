@@ -5,10 +5,16 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
+	routev1 "github.com/openshift/api/route/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -208,14 +214,9 @@ func CreateOrUpdate(request *Request) ReconcileBuilder {
 	}
 
 	return &reconcileBuilder{
-		request: request,
-		updateFunc: func(_, _ client.Object) {
-			// Empty function
-		},
-		statusFunc: func(_ client.Object) ResourceStatus {
-			return ResourceStatus{}
-		},
-
+		request:       request,
+		updateFunc:    defaultUpdateFunc,
+		statusFunc:    defaultStatusFunc,
 		immutableSpec: false,
 		specGetter: func(_ client.Object) interface{} {
 			return nil
@@ -430,4 +431,109 @@ func ResourceDeletedResult(resource client.Object, res OperationResult) Reconcil
 		Resource:        resource,
 		OperationResult: res,
 	}
+}
+
+func defaultUpdateFunc(newObj, foundObj client.Object) {
+	switch newTyped := newObj.(type) {
+	case *core.ConfigMap:
+		foundConfigMap := foundObj.(*core.ConfigMap)
+		foundConfigMap.Immutable = newTyped.Immutable
+		foundConfigMap.Data = newTyped.Data
+		foundConfigMap.BinaryData = newTyped.BinaryData
+
+	case *core.Namespace:
+		// Intentionally empty
+
+	case *core.Service:
+		foundService := foundObj.(*core.Service)
+		// ClusterIP should not be updated
+		newTyped.Spec.ClusterIP = foundService.Spec.ClusterIP
+		foundService.Spec = newTyped.Spec
+
+	case *core.ServiceAccount:
+		// Intentionally empty
+
+	case *rbac.ClusterRole:
+		foundObj.(*rbac.ClusterRole).Rules = newTyped.Rules
+
+	case *rbac.ClusterRoleBinding:
+		foundBinding := foundObj.(*rbac.ClusterRoleBinding)
+		foundBinding.RoleRef = newTyped.RoleRef
+		foundBinding.Subjects = newTyped.Subjects
+
+	case *rbac.Role:
+		foundObj.(*rbac.Role).Rules = newTyped.Rules
+
+	case *rbac.RoleBinding:
+		foundBinding := foundObj.(*rbac.RoleBinding)
+		foundBinding.RoleRef = newTyped.RoleRef
+		foundBinding.Subjects = newTyped.Subjects
+
+	case *apps.DaemonSet:
+		foundObj.(*apps.DaemonSet).Spec = newTyped.Spec
+
+	case *apps.Deployment:
+		foundObj.(*apps.Deployment).Spec = newTyped.Spec
+
+	case *instancetypev1alpha2.VirtualMachineClusterInstancetype:
+		foundObj.(*instancetypev1alpha2.VirtualMachineClusterInstancetype).Spec = newTyped.Spec
+
+	case *instancetypev1alpha2.VirtualMachineClusterPreference:
+		foundObj.(*instancetypev1alpha2.VirtualMachineClusterPreference).Spec = newTyped.Spec
+
+	case *routev1.Route:
+		foundObj.(*routev1.Route).Spec = newTyped.Spec
+
+	case *promv1.PrometheusRule:
+		foundObj.(*promv1.PrometheusRule).Spec = newTyped.Spec
+
+	case *promv1.ServiceMonitor:
+		foundObj.(*promv1.ServiceMonitor).Spec = newTyped.Spec
+
+	default:
+		panic(fmt.Sprintf("Default update is not supported for type: %T", newObj))
+	}
+}
+
+func defaultStatusFunc(obj client.Object) ResourceStatus {
+	status := ResourceStatus{}
+
+	switch objTyped := obj.(type) {
+	case *apps.DaemonSet:
+		if objTyped.Status.NumberReady != objTyped.Status.DesiredNumberScheduled {
+			msg := fmt.Sprintf("Not all pods for daemonset %s/%s are ready. (ready pods: %d, desired pods: %d)",
+				objTyped.Namespace,
+				objTyped.Name,
+				objTyped.Status.NumberReady,
+				objTyped.Status.DesiredNumberScheduled)
+			status.NotAvailable = &msg
+			status.Progressing = &msg
+			status.Degraded = &msg
+		}
+
+	case *apps.Deployment:
+		numberOfReplicas := *objTyped.Spec.Replicas
+		if numberOfReplicas > 0 && objTyped.Status.AvailableReplicas == 0 {
+			msg := fmt.Sprintf("No pods for deployment %s/%s are running. Expected: %d",
+				objTyped.Namespace,
+				objTyped.Name,
+				objTyped.Status.Replicas)
+			status.NotAvailable = &msg
+		}
+		if objTyped.Status.AvailableReplicas != numberOfReplicas {
+			msg := fmt.Sprintf(
+				"Not all pods for deployment %s/%s are running. Expected: %d, running: %d",
+				objTyped.Namespace,
+				objTyped.Name,
+				numberOfReplicas,
+				objTyped.Status.AvailableReplicas,
+			)
+			status.Progressing = &msg
+			status.Degraded = &msg
+		}
+
+	default:
+		// Do nothing
+	}
+	return status
 }

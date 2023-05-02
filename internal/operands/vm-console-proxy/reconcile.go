@@ -201,11 +201,6 @@ func reconcileClusterRole(clusterRole rbac.ClusterRole) common.ReconcileFunc {
 		return common.CreateOrUpdate(request).
 			ClusterResource(&clusterRole).
 			WithAppLabels(operandName, operandComponent).
-			UpdateFunc(func(newRes, foundRes client.Object) {
-				newClusterRole := newRes.(*rbac.ClusterRole)
-				foundClusterRole := foundRes.(*rbac.ClusterRole)
-				foundClusterRole.Rules = newClusterRole.Rules
-			}).
 			Reconcile()
 	}
 }
@@ -215,12 +210,6 @@ func reconcileClusterRoleBinding(clusterRoleBinding rbac.ClusterRoleBinding) com
 		return common.CreateOrUpdate(request).
 			ClusterResource(&clusterRoleBinding).
 			WithAppLabels(operandName, operandComponent).
-			UpdateFunc(func(newRes, foundRes client.Object) {
-				newBinding := newRes.(*rbac.ClusterRoleBinding)
-				foundBinding := foundRes.(*rbac.ClusterRoleBinding)
-				foundBinding.RoleRef = newBinding.RoleRef
-				foundBinding.Subjects = newBinding.Subjects
-			}).
 			Reconcile()
 	}
 }
@@ -231,13 +220,6 @@ func reconcileConfigMap(configMap core.ConfigMap) common.ReconcileFunc {
 		return common.CreateOrUpdate(request).
 			ClusterResource(&configMap).
 			WithAppLabels(operandName, operandComponent).
-			UpdateFunc(func(newRes, foundRes client.Object) {
-				newConfigMap := newRes.(*core.ConfigMap)
-				foundConfigMap := foundRes.(*core.ConfigMap)
-				foundConfigMap.Immutable = newConfigMap.Immutable
-				foundConfigMap.Data = newConfigMap.Data
-				foundConfigMap.BinaryData = newConfigMap.BinaryData
-			}).
 			Reconcile()
 	}
 }
@@ -248,46 +230,17 @@ func reconcileService(service core.Service) common.ReconcileFunc {
 		return common.CreateOrUpdate(request).
 			ClusterResource(&service).
 			WithAppLabels(operandName, operandComponent).
-			UpdateFunc(func(newRes, foundRes client.Object) {
-				newService := newRes.(*core.Service)
-				foundService := foundRes.(*core.Service)
-				// ClusterIP should not be updated
-				newService.Spec.ClusterIP = foundService.Spec.ClusterIP
-				foundService.Spec = newService.Spec
-			}).
 			Reconcile()
 	}
 }
 
 func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
-	numberOfReplicas := *deployment.Spec.Replicas
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		deployment.Namespace = getVmConsoleProxyNamespace(request)
 		deployment.Spec.Template.Spec.Containers[0].Image = getVmConsoleProxyImage()
 		return common.CreateOrUpdate(request).
 			ClusterResource(&deployment).
 			WithAppLabels(operandName, operandComponent).
-			UpdateFunc(func(newRes, foundRes client.Object) {
-				foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
-			}).
-			StatusFunc(func(res client.Object) common.ResourceStatus {
-				dep := res.(*apps.Deployment)
-				status := common.ResourceStatus{}
-				if numberOfReplicas > 0 && dep.Status.AvailableReplicas == 0 {
-					msg := fmt.Sprintf("No vm-console-proxy pods are running. Expected: %d", dep.Status.Replicas)
-					status.NotAvailable = &msg
-				}
-				if dep.Status.AvailableReplicas != numberOfReplicas {
-					msg := fmt.Sprintf(
-						"Not all vm-console-proxy pods are running. Expected: %d, running: %d",
-						numberOfReplicas,
-						dep.Status.AvailableReplicas,
-					)
-					status.Progressing = &msg
-					status.Degraded = &msg
-				}
-				return status
-			}).
 			Reconcile()
 	}
 }
@@ -297,9 +250,6 @@ func reconcileRoute(serviceName string) common.ReconcileFunc {
 		return common.CreateOrUpdate(request).
 			ClusterResource(newRoute(getVmConsoleProxyNamespace(request), serviceName)).
 			WithAppLabels(operandName, operandComponent).
-			UpdateFunc(func(newRes, foundRes client.Object) {
-				foundRes.(*routev1.Route).Spec = newRes.(*routev1.Route).Spec
-			}).
 			Reconcile()
 	}
 }
