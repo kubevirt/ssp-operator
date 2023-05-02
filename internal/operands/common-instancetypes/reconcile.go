@@ -56,8 +56,8 @@ func (c *CommonInstancetypes) Name() string {
 
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
-		{Object: &instancetypev1alpha2.VirtualMachineClusterInstancetype{}, Crd: instancetypeapi.ClusterPluralResourceName, WatchFullObject: true},
-		{Object: &instancetypev1alpha2.VirtualMachineClusterPreference{}, Crd: instancetypeapi.ClusterPluralPreferenceResourceName, WatchFullObject: true},
+		{Object: &instancetypev1alpha2.VirtualMachineClusterInstancetype{}, Crd: virtualMachineClusterInstancetypeCrd, WatchFullObject: true},
+		{Object: &instancetypev1alpha2.VirtualMachineClusterPreference{}, Crd: virtualMachineClusterPreferenceCrd, WatchFullObject: true},
 	}
 }
 
@@ -67,13 +67,6 @@ func (c *CommonInstancetypes) WatchClusterTypes() []operands.WatchType {
 
 func (c *CommonInstancetypes) WatchTypes() []operands.WatchType {
 	return nil
-}
-
-func (c *CommonInstancetypes) RequiredCrds() []string {
-	return []string{
-		virtualMachineClusterInstancetypeCrd,
-		virtualMachineClusterPreferenceCrd,
-	}
 }
 
 func New(virtualMachineClusterInstancetypeBundlePath, virtualMachineClusterPreferenceBundlePath string) *CommonInstancetypes {
@@ -298,12 +291,12 @@ func (c *CommonInstancetypes) Cleanup(request *common.Request) ([]common.Cleanup
 	var objects []client.Object
 
 	// Before collecting resources to clean up ensure the corresponding CRD is available
-	if request.CrdWatch.CrdExists(virtualMachineClusterInstancetypeCrd) {
+	if request.CrdList.CrdExists(virtualMachineClusterInstancetypeCrd) {
 		for i := range c.virtualMachineClusterInstancetypes {
 			objects = append(objects, &c.virtualMachineClusterInstancetypes[i])
 		}
 	}
-	if request.CrdWatch.CrdExists(virtualMachineClusterPreferenceCrd) {
+	if request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd) {
 		for i := range c.virtualMachineClusterPreferences {
 			objects = append(objects, &c.virtualMachineClusterPreferences[i])
 		}

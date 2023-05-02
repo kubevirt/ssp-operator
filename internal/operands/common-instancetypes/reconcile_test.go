@@ -133,22 +133,28 @@ var _ = Describe("Common-Instancetypes operand", func() {
 			},
 			Logger:       log,
 			VersionCache: common.VersionCache{},
-			CrdWatch:     crdWatch,
+			CrdList:      crdWatch,
 		}
 	})
 
 	It("should not fail cleanup if CRDs do not exist", func() {
 		// Replace the client with a new one without the CRDs or instancetype schema present
-		Expect(internalmeta.AddToScheme(common.Scheme)).To(Succeed())
-		Expect(apiextensions.AddToScheme(common.Scheme)).To(Succeed())
-		request.Client = fake.NewClientBuilder().WithScheme(common.Scheme).Build()
-		Expect(request.CrdWatch.Init(request.Context, request.Client)).To(Succeed())
+		testScheme := runtime.NewScheme()
+		Expect(internalmeta.AddToScheme(testScheme)).To(Succeed())
+		Expect(apiextensions.AddToScheme(testScheme)).To(Succeed())
+
+		request.Client = fake.NewClientBuilder().WithScheme(testScheme).Build()
+
+		crdWatch := crd_watch.New(virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
+		Expect(crdWatch.Init(request.Context, request.Client)).To(Succeed())
+
+		request.CrdList = crdWatch
 
 		// Assert that the CRDs are not present before we call Cleanup
-		Expect(request.CrdWatch.CrdExists(virtualMachineClusterInstancetypeCrd)).To(BeFalse())
-		Expect(request.CrdWatch.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeFalse())
-		Expect(request.CrdWatch.MissingCrds()).To(HaveLen(2))
-		Expect(request.CrdWatch.MissingCrds()).To(ContainElements(virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd))
+		Expect(request.CrdList.CrdExists(virtualMachineClusterInstancetypeCrd)).To(BeFalse())
+		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeFalse())
+		Expect(request.CrdList.MissingCrds()).To(HaveLen(2))
+		Expect(request.CrdList.MissingCrds()).To(ContainElements(virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd))
 
 		// Cleanup should not fail without the CRDs present
 		cleanupResult, err := operand.Cleanup(&request)
@@ -170,9 +176,9 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		assertResoucesExist(request, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences)
 
-		// Assert that CrdWatch can see the required CRDs before we call Cleanup
-		Expect(request.CrdWatch.CrdExists(virtualMachineClusterInstancetypeCrd)).To(BeTrue())
-		Expect(request.CrdWatch.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
+		// Assert that CrdList can see the required CRDs before we call Cleanup
+		Expect(request.CrdList.CrdExists(virtualMachineClusterInstancetypeCrd)).To(BeTrue())
+		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
 
 		_, err = operand.Cleanup(&request)
 		Expect(err).ToNot(HaveOccurred())

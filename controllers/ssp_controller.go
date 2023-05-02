@@ -77,11 +77,11 @@ type sspReconciler struct {
 	lastSspSpec      ssp.SSPSpec
 	subresourceCache common.VersionCache
 	topologyMode     osconfv1.TopologyMode
-	crdWatch         *crd_watch.CrdWatch
+	crdList          crd_watch.CrdList
 	areCrdsMissing   bool
 }
 
-func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, crdWatch *crd_watch.CrdWatch) *sspReconciler {
+func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, crdList crd_watch.CrdList) *sspReconciler {
 	return &sspReconciler{
 		client:           client,
 		uncachedReader:   uncachedReader,
@@ -89,7 +89,7 @@ func NewSspReconciler(client client.Client, uncachedReader client.Reader, infras
 		operands:         operands,
 		subresourceCache: common.VersionCache{},
 		topologyMode:     infrastructureTopology,
-		crdWatch:         crdWatch,
+		crdList:          crdList,
 	}
 }
 
@@ -117,11 +117,11 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 	builder := ctrl.NewControllerManagedBy(mgr)
 	watchSspResource(builder)
 
-	r.areCrdsMissing = len(r.crdWatch.MissingCrds()) > 0
+	r.areCrdsMissing = len(r.crdList.MissingCrds()) > 0
 
 	// Register watches for created objects only if all required CRDs exist
-	watchClusterResources(builder, r.crdWatch, r.operands, eventHandlerHook)
-	watchNamespacedResources(builder, r.crdWatch, r.operands, eventHandlerHook)
+	watchClusterResources(builder, r.crdList, r.operands, eventHandlerHook)
+	watchNamespacedResources(builder, r.crdList, r.operands, eventHandlerHook)
 
 	return builder.Complete(r)
 }
@@ -165,7 +165,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		Logger:         reqLogger,
 		VersionCache:   r.subresourceCache,
 		TopologyMode:   r.topologyMode,
-		CrdWatch:       r.crdWatch,
+		CrdList:        r.crdList,
 	}
 
 	if restartNeeded {
@@ -205,7 +205,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	}
 
 	if r.areCrdsMissing {
-		err := updateStatusMissingCrds(sspRequest, r.crdWatch.MissingCrds())
+		err := updateStatusMissingCrds(sspRequest, r.crdList.MissingCrds())
 		return ctrl.Result{}, err
 	}
 
@@ -723,9 +723,9 @@ func watchSspResource(bldr *ctrl.Builder) {
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
-func watchNamespacedResources(builder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
+func watchNamespacedResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
-		crdWatch,
+		crdList,
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &ssp.SSP{},
@@ -736,9 +736,9 @@ func watchNamespacedResources(builder *ctrl.Builder, crdWatch *crd_watch.CrdWatc
 	)
 }
 
-func watchClusterResources(builder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
+func watchClusterResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
-		crdWatch,
+		crdList,
 		&libhandler.EnqueueRequestForAnnotation{
 			Type: schema.GroupKind{
 				Group: ssp.GroupVersion.Group,
@@ -751,7 +751,7 @@ func watchClusterResources(builder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, 
 	)
 }
 
-func watchResources(ctrlBuilder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []operands.WatchType, hookFunc handler_hook.HookFunc) {
+func watchResources(ctrlBuilder *ctrl.Builder, crdList crd_watch.CrdList, handler handler.EventHandler, sspOperands []operands.Operand, watchTypesFunc func(operands.Operand) []operands.WatchType, hookFunc handler_hook.HookFunc) {
 	// Deduplicate watches
 	watchedTypes := make(map[reflect.Type]operands.WatchType)
 	for _, operand := range sspOperands {
@@ -767,7 +767,7 @@ func watchResources(ctrlBuilder *ctrl.Builder, crdWatch *crd_watch.CrdWatch, han
 	}
 
 	for _, watchType := range watchedTypes {
-		if watchType.Crd != "" && !crdWatch.CrdExists(watchType.Crd) {
+		if watchType.Crd != "" && !crdList.CrdExists(watchType.Crd) {
 			// Do not watch resources without CRD
 			continue
 		}
