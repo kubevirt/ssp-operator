@@ -82,7 +82,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 
 	var requiredCrds []string
 	for i := range sspOperands {
-		requiredCrds = append(requiredCrds, sspOperands[i].RequiredCrds()...)
+		requiredCrds = append(requiredCrds, getRequiredCrds(sspOperands[i])...)
 	}
 
 	crdWatch := crd_watch.New(requiredCrds...)
@@ -133,6 +133,21 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
 
 	return reconciler.setupController(mgr)
+}
+
+func getRequiredCrds(operand operands.Operand) []string {
+	var result []string
+	for _, watchType := range operand.WatchTypes() {
+		if watchType.Crd != "" {
+			result = append(result, watchType.Crd)
+		}
+	}
+	for _, watchType := range operand.WatchClusterTypes() {
+		if watchType.Crd != "" {
+			result = append(result, watchType.Crd)
+		}
+	}
+	return result
 }
 
 func getRunnable(mgr controllerruntime.Manager, ctrl ControllerReconciler) manager.Runnable {

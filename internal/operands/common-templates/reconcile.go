@@ -73,10 +73,6 @@ func (c *commonTemplates) WatchTypes() []operands.WatchType {
 	return nil
 }
 
-func (c *commonTemplates) RequiredCrds() []string {
-	return nil
-}
-
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(c.templatesBundle)...)
 	if err != nil {

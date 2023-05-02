@@ -54,10 +54,6 @@ func (t *templateValidator) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 
-func (t *templateValidator) RequiredCrds() []string {
-	return nil
-}
-
 func (t *templateValidator) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	return common.CollectResourceStatus(request,
 		reconcileClusterRole,

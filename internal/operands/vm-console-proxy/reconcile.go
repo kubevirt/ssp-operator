@@ -89,10 +89,6 @@ func (v *vmConsoleProxy) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 
-func (v *vmConsoleProxy) RequiredCrds() []string {
-	return nil
-}
-
 func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	if !isEnabled(request) {
 		cleanupResults, err := v.Cleanup(request)

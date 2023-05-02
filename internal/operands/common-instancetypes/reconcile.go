@@ -56,8 +56,8 @@ func (c *CommonInstancetypes) Name() string {
 
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
-		{Object: &instancetypev1alpha2.VirtualMachineClusterInstancetype{}, Crd: instancetypeapi.ClusterPluralResourceName, WatchFullObject: true},
-		{Object: &instancetypev1alpha2.VirtualMachineClusterPreference{}, Crd: instancetypeapi.ClusterPluralPreferenceResourceName, WatchFullObject: true},
+		{Object: &instancetypev1alpha2.VirtualMachineClusterInstancetype{}, Crd: virtualMachineClusterInstancetypeCrd, WatchFullObject: true},
+		{Object: &instancetypev1alpha2.VirtualMachineClusterPreference{}, Crd: virtualMachineClusterPreferenceCrd, WatchFullObject: true},
 	}
 }
 
@@ -67,13 +67,6 @@ func (c *CommonInstancetypes) WatchClusterTypes() []operands.WatchType {
 
 func (c *CommonInstancetypes) WatchTypes() []operands.WatchType {
 	return nil
-}
-
-func (c *CommonInstancetypes) RequiredCrds() []string {
-	return []string{
-		virtualMachineClusterInstancetypeCrd,
-		virtualMachineClusterPreferenceCrd,
-	}
 }
 
 func New(virtualMachineClusterInstancetypeBundlePath, virtualMachineClusterPreferenceBundlePath string) *CommonInstancetypes {

@@ -81,14 +81,6 @@ func (d *dataSources) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 
-func (d *dataSources) RequiredCrds() []string {
-	return []string{
-		dataVolumeCrd,
-		dataSourceCrd,
-		dataImportCronCrd,
-	}
-}
-
 type dataSourceInfo struct {
 	dataSource         *cdiv1beta1.DataSource
 	autoUpdateEnabled  bool
