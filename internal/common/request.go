@@ -22,7 +22,7 @@ type Request struct {
 	VersionCache   VersionCache
 	TopologyMode   osconfv1.TopologyMode
 
-	CrdWatch *crd_watch.CrdWatch
+	CrdList crd_watch.CrdList
 }
 
 func (r *Request) IsSingleReplicaTopologyMode() bool {

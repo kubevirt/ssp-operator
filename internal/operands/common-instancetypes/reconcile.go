@@ -298,12 +298,12 @@ func (c *CommonInstancetypes) Cleanup(request *common.Request) ([]common.Cleanup
 	var objects []client.Object
 
 	// Before collecting resources to clean up ensure the corresponding CRD is available
-	if request.CrdWatch.CrdExists(virtualMachineClusterInstancetypeCrd) {
+	if request.CrdList.CrdExists(virtualMachineClusterInstancetypeCrd) {
 		for i := range c.virtualMachineClusterInstancetypes {
 			objects = append(objects, &c.virtualMachineClusterInstancetypes[i])
 		}
 	}
-	if request.CrdWatch.CrdExists(virtualMachineClusterPreferenceCrd) {
+	if request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd) {
 		for i := range c.virtualMachineClusterPreferences {
 			objects = append(objects, &c.virtualMachineClusterPreferences[i])
 		}

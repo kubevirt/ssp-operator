@@ -14,6 +14,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
+type CrdList interface {
+	CrdExists(crdName string) bool
+	MissingCrds() []string
+}
+
 type CrdWatch struct {
 	AllCrdsAddedHandler   func()
 	SomeCrdRemovedHandler func()

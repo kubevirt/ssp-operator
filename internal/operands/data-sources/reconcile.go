@@ -141,7 +141,7 @@ func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResu
 }
 
 func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	if request.CrdWatch.CrdExists(dataImportCronCrd) {
+	if request.CrdList.CrdExists(dataImportCronCrd) {
 		ownedCrons, err := listAllOwnedDataImportCrons(request)
 		if err != nil {
 			return nil, err
@@ -167,7 +167,7 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 	}
 
 	var objects []client.Object
-	if request.CrdWatch.CrdExists(dataSourceCrd) {
+	if request.CrdList.CrdExists(dataSourceCrd) {
 		for i := range d.sources {
 			ds := d.sources[i]
 			ds.Namespace = internal.GoldenImagesNamespace
