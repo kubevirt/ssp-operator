@@ -125,9 +125,6 @@ func reconcileClusterRole(request *common.Request) (common.ReconcileResult, erro
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRole()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
-		}).
 		Reconcile()
 }
 
@@ -142,12 +139,6 @@ func reconcileClusterRoleBinding(request *common.Request) (common.ReconcileResul
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRoleBinding(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			newBinding := newRes.(*rbac.ClusterRoleBinding)
-			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
-			foundBinding.RoleRef = newBinding.RoleRef
-			foundBinding.Subjects = newBinding.Subjects
-		}).
 		Reconcile()
 }
 
@@ -155,9 +146,6 @@ func reconcileConfigMap(request *common.Request) (common.ReconcileResult, error)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newConfigMap(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*v1.ConfigMap).Data = newRes.(*v1.ConfigMap).Data
-		}).
 		Reconcile()
 }
 
@@ -172,22 +160,6 @@ func createOrUpdateDaemonSet(request *common.Request, daemonSet *apps.DaemonSet)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(daemonSet).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*apps.DaemonSet).Spec = newRes.(*apps.DaemonSet).Spec
-		}).
-		StatusFunc(func(res client.Object) common.ResourceStatus {
-			ds := res.(*apps.DaemonSet)
-			status := common.ResourceStatus{}
-			if ds.Status.NumberReady != ds.Status.DesiredNumberScheduled {
-				msg := fmt.Sprintf("Not all node-labeler pods are ready. (ready pods: %d, desired pods: %d)",
-					ds.Status.NumberReady,
-					ds.Status.DesiredNumberScheduled)
-				status.NotAvailable = &msg
-				status.Progressing = &msg
-				status.Degraded = &msg
-			}
-			return status
-		}).
 		Reconcile()
 }
 

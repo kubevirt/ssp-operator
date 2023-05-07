@@ -6,7 +6,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Define RBAC rules needed by this operand:
@@ -79,9 +78,6 @@ func reconcilePrometheusMonitor(request *common.Request) (common.ReconcileResult
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newServiceMonitorCR(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*promv1.ServiceMonitor).Spec = newRes.(*promv1.ServiceMonitor).Spec
-		}).
 		Reconcile()
 }
 
@@ -89,9 +85,6 @@ func reconcileMonitoringRbacRole(request *common.Request) (common.ReconcileResul
 	return common.CreateOrUpdate(request).
 		ClusterResource(newMonitoringClusterRole()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
-		}).
 		Reconcile()
 }
 
@@ -99,10 +92,6 @@ func reconcileMonitoringRbacRoleBinding(request *common.Request) (common.Reconci
 	return common.CreateOrUpdate(request).
 		ClusterResource(newMonitoringClusterRoleBinding()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*rbac.ClusterRoleBinding).Subjects = newRes.(*rbac.ClusterRoleBinding).Subjects
-			foundRes.(*rbac.ClusterRoleBinding).RoleRef = newRes.(*rbac.ClusterRoleBinding).RoleRef
-		}).
 		Reconcile()
 }
 
@@ -115,8 +104,5 @@ func reconcilePrometheusRule(request *common.Request) (common.ReconcileResult, e
 	return common.CreateOrUpdate(request).
 		NamespacedResource(prometheusRule).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*promv1.PrometheusRule).Spec = newRes.(*promv1.PrometheusRule).Spec
-		}).
 		Reconcile()
 }

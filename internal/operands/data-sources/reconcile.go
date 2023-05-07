@@ -187,11 +187,6 @@ func reconcileViewRole(request *common.Request) (common.ReconcileResult, error) 
 	return common.CreateOrUpdate(request).
 		ClusterResource(newViewRole(internal.GoldenImagesNamespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRole := foundRes.(*rbac.Role)
-			newRole := newRes.(*rbac.Role)
-			foundRole.Rules = newRole.Rules
-		}).
 		Reconcile()
 }
 
@@ -199,12 +194,6 @@ func reconcileViewRoleBinding(request *common.Request) (common.ReconcileResult, 
 	return common.CreateOrUpdate(request).
 		ClusterResource(newViewRoleBinding(internal.GoldenImagesNamespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			newBinding := newRes.(*rbac.RoleBinding)
-			foundBinding := foundRes.(*rbac.RoleBinding)
-			foundBinding.Subjects = newBinding.Subjects
-			foundBinding.RoleRef = newBinding.RoleRef
-		}).
 		Reconcile()
 }
 
@@ -212,11 +201,6 @@ func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) 
 	return common.CreateOrUpdate(request).
 		ClusterResource(newEditRole()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			newRole := newRes.(*rbac.ClusterRole)
-			foundRole := foundRes.(*rbac.ClusterRole)
-			foundRole.Rules = newRole.Rules
-		}).
 		Reconcile()
 }
 

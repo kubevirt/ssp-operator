@@ -1,8 +1,6 @@
 package template_validator
 
 import (
-	"fmt"
-
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -89,9 +87,6 @@ func reconcileClusterRole(request *common.Request) (common.ReconcileResult, erro
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRole()).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*rbac.ClusterRole).Rules = newRes.(*rbac.ClusterRole).Rules
-		}).
 		Reconcile()
 }
 
@@ -106,12 +101,6 @@ func reconcileClusterRoleBinding(request *common.Request) (common.ReconcileResul
 	return common.CreateOrUpdate(request).
 		ClusterResource(newClusterRoleBinding(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			newBinding := newRes.(*rbac.ClusterRoleBinding)
-			foundBinding := foundRes.(*rbac.ClusterRoleBinding)
-			foundBinding.RoleRef = newBinding.RoleRef
-			foundBinding.Subjects = newBinding.Subjects
-		}).
 		Reconcile()
 }
 
@@ -119,25 +108,13 @@ func reconcileService(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newService(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(updateServiceSpec).
 		Reconcile()
-}
-
-func updateServiceSpec(newRes, foundRes client.Object) {
-	newService := newRes.(*v1.Service)
-	foundService := foundRes.(*v1.Service)
-
-	// ClusterIP should not be updated
-	newService.Spec.ClusterIP = foundService.Spec.ClusterIP
-
-	foundService.Spec = newService.Spec
 }
 
 func reconcilePrometheusService(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
 		NamespacedResource(newPrometheusService(request.Namespace)).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(updateServiceSpec).
 		Reconcile()
 }
 
@@ -165,27 +142,6 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 	return common.CreateOrUpdate(request).
 		NamespacedResource(deployment).
 		WithAppLabels(operandName, operandComponent).
-		UpdateFunc(func(newRes, foundRes client.Object) {
-			foundRes.(*apps.Deployment).Spec = newRes.(*apps.Deployment).Spec
-		}).
-		StatusFunc(func(res client.Object) common.ResourceStatus {
-			dep := res.(*apps.Deployment)
-			status := common.ResourceStatus{}
-			if numberOfReplicas > 0 && dep.Status.AvailableReplicas == 0 {
-				msg := fmt.Sprintf("No validator pods are running. Expected: %d", dep.Status.Replicas)
-				status.NotAvailable = &msg
-			}
-			if dep.Status.AvailableReplicas != numberOfReplicas {
-				msg := fmt.Sprintf(
-					"Not all template validator pods are running. Expected: %d, running: %d",
-					numberOfReplicas,
-					dep.Status.AvailableReplicas,
-				)
-				status.Progressing = &msg
-				status.Degraded = &msg
-			}
-			return status
-		}).
 		Reconcile()
 }
 

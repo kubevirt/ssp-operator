@@ -324,9 +324,6 @@ func (c *CommonInstancetypes) reconcileVirtualMachineClusterInstancetypesFuncs()
 			return common.CreateOrUpdate(request).
 				ClusterResource(clusterInstancetype).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					foundRes.(*instancetypev1alpha2.VirtualMachineClusterInstancetype).Spec = newRes.(*instancetypev1alpha2.VirtualMachineClusterInstancetype).Spec
-				}).
 				Reconcile()
 		})
 	}
@@ -341,9 +338,6 @@ func (c *CommonInstancetypes) reconcileVirtualMachineClusterPreferencesFuncs() [
 			return common.CreateOrUpdate(request).
 				ClusterResource(clusterPreference).
 				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(newRes, foundRes client.Object) {
-					foundRes.(*instancetypev1alpha2.VirtualMachineClusterPreference).Spec = newRes.(*instancetypev1alpha2.VirtualMachineClusterPreference).Spec
-				}).
 				Reconcile()
 		})
 	}
