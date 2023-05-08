@@ -1,14 +1,15 @@
 # SSP Operator
-Operator that manages Scheduling, Scale and Performance addons for [KubeVirt](https://kubevirt.io)
+Operator that deploys resources for [KubeVirt](https://kubevirt.io)
 
 ## Functionality
 
-The operator deploys and manages resources needed by these four components:
+The operator deploys and manages resources needed by these six components:
 
-- [Template Validator](https://github.com/kubevirt/ssp-operator/tree/master/internal/template-validator) (You can read more about it here: [Template Validator old repository](https://github.com/kubevirt/kubevirt-template-validator))
+- [Common Instancetypes and Preferences Bundle](https://github.com/kubevirt/common-instancetypes/)
 - [Common Templates Bundle](https://github.com/kubevirt/common-templates)
 - [VM Console Proxy](https://github.com/kubevirt/vm-console-proxy)
 - [KubeVirt Tekton Tasks](https://github.com/kubevirt/kubevirt-tekton-tasks)
+- [Template Validator](https://github.com/kubevirt/ssp-operator/tree/master/internal/template-validator)
 - Metrics rules - Currently it is only a single Prometheus rule containing the count of all running VMs.
 
 ## Installation
