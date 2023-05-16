@@ -36,25 +36,18 @@ import (
 )
 
 type generatorFlags struct {
-	file                   string
-	dumpCRDs               bool
-	removeCerts            bool
-	webhookPort            int32
-	csvVersion             string
-	namespace              string
-	operatorImage          string
-	operatorVersion        string
-	validatorImage         string
-	waitForVMIStatusImage  string
-	modifyVMTemplateImage  string
-	diskVirtSysprepImage   string
-	diskVirtCustomizeImage string
-	createVMImage          string
-	modifyDataObjectImage  string
-	copyTemplateImage      string
-	cleanupVMImage         string
-	generateSSHKeys        string
-	virtioImage            string
+	file                     string
+	dumpCRDs                 bool
+	removeCerts              bool
+	webhookPort              int32
+	csvVersion               string
+	namespace                string
+	operatorImage            string
+	operatorVersion          string
+	validatorImage           string
+	tektonTasksImage         string
+	tektonTasksDiskVirtImage string
+	virtioImage              string
 }
 
 var (
@@ -87,15 +80,8 @@ func init() {
 	rootCmd.Flags().StringVar(&f.operatorImage, "operator-image", "", "Link to operator image (required)")
 	rootCmd.Flags().StringVar(&f.operatorVersion, "operator-version", "", "Operator version (required)")
 	rootCmd.Flags().StringVar(&f.validatorImage, "validator-image", "", "Link to template-validator image")
-	rootCmd.Flags().StringVar(&f.waitForVMIStatusImage, "wait-for-vmi-status-image", "", "Link to wait-for-vmi-status task image")
-	rootCmd.Flags().StringVar(&f.modifyVMTemplateImage, "modify-vm-template-image", "", "Link to modify-vm-template task image")
-	rootCmd.Flags().StringVar(&f.diskVirtSysprepImage, "disk-virt-sysprep-image", "", "Link to disk-virt-sysprep task image")
-	rootCmd.Flags().StringVar(&f.diskVirtCustomizeImage, "disk-virt-customize-image", "", "Link to disk-virt-customize task image")
-	rootCmd.Flags().StringVar(&f.createVMImage, "create-vm-image", "", "Link to create-vm task image")
-	rootCmd.Flags().StringVar(&f.modifyDataObjectImage, "modify-data-object-image", "", "Link to modify-data-object task image")
-	rootCmd.Flags().StringVar(&f.copyTemplateImage, "copy-template-image", "", "Link to copy-template-image task image")
-	rootCmd.Flags().StringVar(&f.generateSSHKeys, "generate-ssh-keys", "", "Link to generate-ssh-keys task image")
-	rootCmd.Flags().StringVar(&f.cleanupVMImage, "cleanup-vm-image", "", "Link to cleanup-vm-image task image")
+	rootCmd.Flags().StringVar(&f.tektonTasksImage, "tekton-tasks-image", "", "Link to tekton tasks image")
+	rootCmd.Flags().StringVar(&f.tektonTasksDiskVirtImage, "tekton-tasks-disk-virt-image", "", "Link to tekton tasks disk virt image")
 	rootCmd.Flags().StringVar(&f.virtioImage, "virtio-image", "", "Link to virtio image")
 	rootCmd.Flags().Int32Var(&f.webhookPort, "webhook-port", 0, "Container port for the admission webhook")
 	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
@@ -206,78 +192,16 @@ func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
 		relatedImages = append(relatedImages, relatedImage)
 	}
 
-	if flags.cleanupVMImage != "" {
-		relatedImage, err := buildRelatedImage(flags.cleanupVMImage, "cleanup-vm")
+	if flags.tektonTasksImage != "" {
+		relatedImage, err := buildRelatedImage(flags.tektonTasksImage, "tekton-tasks")
 		if err != nil {
 			return nil, err
 		}
 		relatedImages = append(relatedImages, relatedImage)
 	}
 
-	if flags.copyTemplateImage != "" {
-		relatedImage, err := buildRelatedImage(flags.copyTemplateImage, "copy-template")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.generateSSHKeys != "" {
-		relatedImage, err := buildRelatedImage(flags.generateSSHKeys, "generate-ssh-keys")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.modifyDataObjectImage != "" {
-		relatedImage, err := buildRelatedImage(flags.modifyDataObjectImage, "modify-data-object")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.createVMImage != "" {
-		relatedImage, err := buildRelatedImage(flags.createVMImage, "create-vm-from-manifest")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-
-		relatedImage, err = buildRelatedImage(flags.createVMImage, "create-vm-from-template")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.diskVirtCustomizeImage != "" {
-		relatedImage, err := buildRelatedImage(flags.diskVirtCustomizeImage, "disk-virt-customize")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.waitForVMIStatusImage != "" {
-		relatedImage, err := buildRelatedImage(flags.waitForVMIStatusImage, "wait-for-vmi-status")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.modifyVMTemplateImage != "" {
-		relatedImage, err := buildRelatedImage(flags.modifyVMTemplateImage, "modify-vm-template")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.diskVirtSysprepImage != "" {
-		relatedImage, err := buildRelatedImage(flags.diskVirtSysprepImage, "disk-virt-sysprep")
+	if flags.tektonTasksDiskVirtImage != "" {
+		relatedImage, err := buildRelatedImage(flags.tektonTasksDiskVirtImage, "tekton-tasks-disk-virt")
 		if err != nil {
 			return nil, err
 		}
@@ -335,41 +259,13 @@ func updateContainerEnvVars(flags generatorFlags, container v1.Container) []v1.E
 			if flags.operatorVersion != "" {
 				envVariable.Value = flags.operatorVersion
 			}
-		case common.CleanupVMImageKey:
-			if flags.cleanupVMImage != "" {
-				envVariable.Value = flags.cleanupVMImage
+		case common.TektonTasksImageKey:
+			if flags.tektonTasksImage != "" {
+				envVariable.Value = flags.tektonTasksImage
 			}
-		case common.CopyTemplateImageKey:
-			if flags.copyTemplateImage != "" {
-				envVariable.Value = flags.copyTemplateImage
-			}
-		case common.ModifyDataObjectImageKey:
-			if flags.modifyDataObjectImage != "" {
-				envVariable.Value = flags.modifyDataObjectImage
-			}
-		case common.CreateVMImageKey:
-			if flags.createVMImage != "" {
-				envVariable.Value = flags.createVMImage
-			}
-		case common.DiskVirtCustomizeImageKey:
-			if flags.diskVirtCustomizeImage != "" {
-				envVariable.Value = flags.diskVirtCustomizeImage
-			}
-		case common.DiskVirtSysprepImageKey:
-			if flags.diskVirtSysprepImage != "" {
-				envVariable.Value = flags.diskVirtSysprepImage
-			}
-		case common.ModifyVMTemplateImageKey:
-			if flags.modifyVMTemplateImage != "" {
-				envVariable.Value = flags.modifyVMTemplateImage
-			}
-		case common.WaitForVMISTatusImageKey:
-			if flags.waitForVMIStatusImage != "" {
-				envVariable.Value = flags.waitForVMIStatusImage
-			}
-		case common.GenerateSSHKeysImageKey:
-			if flags.generateSSHKeys != "" {
-				envVariable.Value = flags.generateSSHKeys
+		case common.TektonTasksDiskVirtImageKey:
+			if flags.tektonTasksDiskVirtImage != "" {
+				envVariable.Value = flags.tektonTasksDiskVirtImage
 			}
 		case common.VirtioImageKey:
 			if flags.virtioImage != "" {
