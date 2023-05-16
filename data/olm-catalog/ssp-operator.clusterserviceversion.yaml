@@ -647,6 +647,8 @@ spec:
                 - name: CPU_PLUGIN_IMAGE
                 - name: OPERATOR_VERSION
                   value: 0.14.0
+                - name: TEKTON_TASKS_IMAGE
+                - name: TEKTON_TASKS_DISK_VIRT_IMAGE
                 image: quay.io/kubevirt/ssp-operator:latest
                 livenessProbe:
                   httpGet:
