@@ -92,11 +92,14 @@ wait_until_exists "pods -n kubevirt -l app=http-server"
 echo "Waiting for http server to be ready"
 oc wait -n kubevirt --for=condition=Ready pod -l app=http-server --timeout=10m
 
-echo "Deploy SSP and create sample"
+echo "Deploy SSP operator"
 make deploy
+oc wait -n kubevirt deployment ssp-operator --for condition=Available --timeout 10m
 
-# Deploy tekton task sample
+# Deploy sample SSP CR
 oc apply -f "config/samples/ssp_v1beta1_ssp.yaml"
+oc wait -n kubevirt ssp ssp-sample --for condition=Available --timeout 10m
+
 wait_until_exists "pipeline windows-efi-installer -n kubevirt" wait_until_exists "pipeline windows-customize -n kubevirt"
 
 # Run windows10/11/2022-installer pipeline
