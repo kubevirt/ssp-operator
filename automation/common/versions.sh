@@ -42,10 +42,11 @@ function latest_patch_version() {
 }
 
 function latest_version() {
-  local repo="$1"
+  local org="$1"
+  local repo="$2"
 
   # The API call sorts releases by creation timestamp, so it is enough to request only a few latest ones.
-  curl --fail -s "https://api.github.com/repos/kubevirt/${repo}/releases" | \
+  curl --fail -s "https://api.github.com/repos/${org}/${repo}/releases" | \
     jq '.[] | select(.prerelease==false) | .tag_name' | \
     tr -d '"' | \
     sort --version-sort | \
@@ -53,7 +54,10 @@ function latest_version() {
 }
 
 # Latest released Kubevirt version
-KUBEVIRT_VERSION=$(latest_version "kubevirt")
+KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
 
 # Latest released CDI version
-CDI_VERSION=$(latest_version "containerized-data-importer")
+CDI_VERSION=$(latest_version "kubevirt" "containerized-data-importer")
+
+# Latest released Tekton version
+TEKTON_VERSION=$(latest_version "tektoncd" "operator")

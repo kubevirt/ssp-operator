@@ -289,7 +289,7 @@ func findResourcesUsingLabels[PtrL interface {
 		client.MatchingLabels{
 			common.AppKubernetesNameLabel:      operandName,
 			common.AppKubernetesComponentLabel: operandComponent,
-			common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByLabelValue,
+			common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
 		},
 	)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	tekton "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -489,6 +490,9 @@ func defaultUpdateFunc(newObj, foundObj client.Object) {
 
 	case *promv1.ServiceMonitor:
 		foundObj.(*promv1.ServiceMonitor).Spec = newTyped.Spec
+
+	case *tekton.Task:
+		foundObj.(*tekton.Task).Spec = newTyped.Spec
 
 	default:
 		panic(fmt.Sprintf("Default update is not supported for type: %T", newObj))

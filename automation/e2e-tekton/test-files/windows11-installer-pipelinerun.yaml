@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: windows11-installer-run-
+  labels:
+    pipelinerun: windows11-installer-run
+spec:
+  params:
+  - name: winImageDownloadURL
+    value: http://http-server/disk.img
+  pipelineRef:
+    name: windows-efi-installer
+  taskRunSpecs:
+    - pipelineTaskName: copy-template
+      taskServiceAccountName: copy-template-task
+    - pipelineTaskName: modify-vm-template
+      taskServiceAccountName: modify-vm-template-task
+    - pipelineTaskName: create-vm-from-template
+      taskServiceAccountName: create-vm-from-template-task
+    - pipelineTaskName: wait-for-vmi-status
+      taskServiceAccountName: wait-for-vmi-status-task
+    - pipelineTaskName: create-base-dv
+      taskServiceAccountName: modify-data-object-task
+    - pipelineTaskName: cleanup-vm
+      taskServiceAccountName: cleanup-vm-task
+    - pipelineTaskName: "modify-windows-iso-file"
+      taskPodTemplate:
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 1001
+          fsGroup: 1001     
