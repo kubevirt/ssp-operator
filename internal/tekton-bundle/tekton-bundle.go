@@ -12,7 +12,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"kubevirt.io/ssp-operator/internal/common"
 )
 
 const (
@@ -81,9 +80,9 @@ func getPipelineBundlePath(isOpenshift bool) string {
 
 func getTasksBundlePath(isOpenshift bool) string {
 	if isOpenshift {
-		return filepath.Join(tektonTasksOKDBundleDir, "kubevirt-tekton-tasks-okd-"+common.TektonTasksVersion+".yaml")
+		return filepath.Join(tektonTasksOKDBundleDir, "kubevirt-tekton-tasks-okd.yaml")
 	}
-	return filepath.Join(tektonTasksKubernetesBundleDir, "kubevirt-tekton-tasks-kubernetes-"+common.TektonTasksVersion+".yaml")
+	return filepath.Join(tektonTasksKubernetesBundleDir, "kubevirt-tekton-tasks-kubernetes.yaml")
 }
 
 func readFolder(folderPath string) ([][]byte, error) {

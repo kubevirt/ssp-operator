@@ -1,0 +1,45 @@
+name: Release KubeVirt Tekton Tasks
+
+on:
+  repository_dispatch:
+    types: [release-tekton-tasks]
+
+jobs:
+  release-tekton-tasks:
+    name: Release KubeVirt Tekton Tasks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        if: ${{ github.event.client_payload.release_version }} != ''
+        uses: actions/checkout@v3
+      - run: |
+          RELEASE_VERSION=${{ github.event.client_payload.release_version }}
+          KUBERNETES_OUTPUT_FILE=./data/tekton-tasks/kubevirt-tekton-tasks-kubernetes.yaml
+          OKD_OUTPUT_FILE=./data/tekton-tasks/kubevirt-tekton-tasks-okd.yaml
+
+          mkdir -p ./data/tekton-tasks/kubernetes
+          mkdir -p ./data/tekton-tasks/okd
+
+          curl -L https://github.com/kubevirt/kubevirt-tekton-tasks/releases/download/${RELEASE_VERSION}/kubevirt-tekton-tasks-okd.yaml > ${OKD_OUTPUT_FILE}
+          curl -L https://github.com/kubevirt/kubevirt-tekton-tasks/releases/download/${RELEASE_VERSION}/kubevirt-tekton-tasks-kubernetes.yaml > ${KUBERNETES_OUTPUT_FILE}
+
+      - name: Create pull request
+        if: ${{ github.event.client_payload.release_version }} != ''
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ github.token }}
+          commit-message: "chore: update tekton-tasks manifests to ${{ github.event.client_payload.release_version }}"
+          committer: GitHub <noreply@github.com>
+          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+          signoff: true
+          branch: "tekton-tasks-${{ github.event.client_payload.release_version }}"
+          delete-branch: true
+          title: "Update tekton-tasks manifests to ${{ github.event.client_payload.release_version }}"
+          body: |
+            Update tekton-tasks manifests to version ${{ github.event.client_payload.release_version }}
+
+            **Release note**:
+            ```release-note
+            Update tekton-tasks-bundle to ${{ github.event.client_payload.release_version }}
+            ```
+          draft: false
