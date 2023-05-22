@@ -1,0 +1,62 @@
+name: Update virtio version
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+jobs:
+  update-virtio-version:
+    name: Update virtio version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for new release of virtio and create PR if necessary
+        run: |
+          # If GITHUB_FORK_USER is changed, a new access token should be set as a repo secret (ACTIONS_TOKEN)
+          GITHUB_FORK_USER=ksimon1
+
+          # Set git configs to sign the commit
+          git config --global user.email "ksimon@redhat.com"
+          git config --global user.name "Kubevirt tekton tasks operator Update Automation"
+
+          # Clone the ssp-operator repo with a token to allow pushing before creating a PR
+          git clone "https://${GITHUB_FORK_USER}:${{ secrets.ACTIONS_TOKEN }}@github.com/${GITHUB_FORK_USER}/ssp-operator"
+
+          # Authenticate with gh cli
+          echo "${{ secrets.ACTIONS_TOKEN }}" > token.txt
+          gh auth login --with-token < token.txt
+          rm token.txt
+
+          # Fetch ssp-operator changes
+          cd ssp-operator || exit
+          git remote add upstream https://github.com/kubevirt/ssp-operator
+          git fetch upstream
+          git reset --hard upstream/main
+
+          # Fetch kubevirt version
+          KUBEVIRT_VERSION=$(curl -s https://api.github.com/repos/kubevirt/kubevirt/releases | \
+            jq '.[] | select(.prerelease==false) | .tag_name' | sort -V | tail -n1 | tr -d '"')
+
+          LOCAL_KUBEVIRT_VERSION=$(grep -Po '(?<=virtio-container-disk:)[^"]+' pkg/environment/environment.go)
+
+          if [[ ${LOCAL_KUBEVIRT_VERSION} != ${KUBEVIRT_VERSION} ]]; then
+            sed -i "s/${LOCAL_KUBEVIRT_VERSION}/${KUBEVIRT_VERSION}/g" internal/common/environment.go
+
+            PATCH_BRANCH="update-virtio-version-${KUBEVIRT_VERSION}"
+
+            git checkout -b "${PATCH_BRANCH}"
+            git add pkg/environment/environment.go
+            git commit -sm "Update virtio image version to ${KUBEVIRT_VERSION}"
+            git push --set-upstream --force origin "${PATCH_BRANCH}"
+
+            # Create a new PR in the ssp-operator repo
+            gh pr create --repo kubevirt/ssp-operator \
+              --base main \
+              --head "${GITHUB_FORK_USER}:${PATCH_BRANCH}" \
+              --title "chore: Update virtio image version to ${KUBEVIRT_VERSION}" \
+              --body "$(cat <<- EOF
+          		Update virtio image version to ${KUBEVIRT_VERSION}
+          		**Release note**:
+          		\`\`\`release-note
+          		chore: Update virtio image version to ${KUBEVIRT_VERSION}
+          		\`\`\`
+          		EOF
+              )"
+          fi
