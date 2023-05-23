@@ -22,6 +22,7 @@ jobs:
 
           curl -L https://github.com/kubevirt/kubevirt-tekton-tasks/releases/download/${RELEASE_VERSION}/kubevirt-tekton-tasks-okd.yaml > ${OKD_OUTPUT_FILE}
           curl -L https://github.com/kubevirt/kubevirt-tekton-tasks/releases/download/${RELEASE_VERSION}/kubevirt-tekton-tasks-kubernetes.yaml > ${KUBERNETES_OUTPUT_FILE}
+          sed -i "s/\bTektonTasksVersion\s*=.*/TektonTasksVersion = \"${RELEASE_VERSION}\"/g" internal/common/version.go
 
       - name: Create pull request
         if: ${{ github.event.client_payload.release_version }} != ''
