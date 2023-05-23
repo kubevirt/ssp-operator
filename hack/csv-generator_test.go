@@ -22,29 +22,17 @@ var _ = Describe("csv generator", func() {
 		namespace:       "testOperatorNamespace",
 		operatorVersion: "testOperatorVersion",
 
-		operatorImage:          "test",
-		validatorImage:         "test",
-		waitForVMIStatusImage:  "testWaitImage",
-		modifyVMTemplateImage:  "testModifyImage",
-		diskVirtSysprepImage:   "testSysprepImage",
-		diskVirtCustomizeImage: "testCustomizeImage",
-		createVMImage:          "testCreateVMImage",
-		modifyDataObjectImage:  "testDataObjectImage",
-		copyTemplateImage:      "testCopyTemplateImage",
-		cleanupVMImage:         "testCleanupImage",
-		virtioImage:            "testVirtioImage",
+		operatorImage:            "test",
+		validatorImage:           "test",
+		tektonTasksImage:         "testTektonTasksImage",
+		tektonTasksDiskVirtImage: "testTektonTasksDiskVirtImage",
+		virtioImage:              "testVirtioImage",
 	}
 	envValues := []v1.EnvVar{
 		{Name: common.TemplateValidatorImageKey},
 		{Name: common.OperatorVersionKey},
-		{Name: common.CleanupVMImageKey},
-		{Name: common.CopyTemplateImageKey},
-		{Name: common.ModifyDataObjectImageKey},
-		{Name: common.CreateVMImageKey},
-		{Name: common.DiskVirtCustomizeImageKey},
-		{Name: common.DiskVirtSysprepImageKey},
-		{Name: common.ModifyVMTemplateImageKey},
-		{Name: common.WaitForVMISTatusImageKey},
+		{Name: common.TektonTasksImageKey},
+		{Name: common.TektonTasksDiskVirtImageKey},
 		{Name: common.VirtioImageKey},
 	}
 
@@ -93,29 +81,11 @@ var _ = Describe("csv generator", func() {
 					if envVariable.Name == common.OperatorVersionKey {
 						Expect(envVariable.Value).To(Equal(flags.operatorVersion))
 					}
-					if envVariable.Name == common.CleanupVMImageKey {
-						Expect(envVariable.Value).To(Equal(flags.cleanupVMImage))
+					if envVariable.Name == common.TektonTasksImageKey {
+						Expect(envVariable.Value).To(Equal(flags.tektonTasksImage))
 					}
-					if envVariable.Name == common.CopyTemplateImageKey {
-						Expect(envVariable.Value).To(Equal(flags.copyTemplateImage))
-					}
-					if envVariable.Name == common.ModifyDataObjectImageKey {
-						Expect(envVariable.Value).To(Equal(flags.modifyDataObjectImage))
-					}
-					if envVariable.Name == common.CreateVMImageKey {
-						Expect(envVariable.Value).To(Equal(flags.createVMImage))
-					}
-					if envVariable.Name == common.DiskVirtCustomizeImageKey {
-						Expect(envVariable.Value).To(Equal(flags.diskVirtCustomizeImage))
-					}
-					if envVariable.Name == common.DiskVirtSysprepImageKey {
-						Expect(envVariable.Value).To(Equal(flags.diskVirtSysprepImage))
-					}
-					if envVariable.Name == common.ModifyVMTemplateImageKey {
-						Expect(envVariable.Value).To(Equal(flags.modifyVMTemplateImage))
-					}
-					if envVariable.Name == common.WaitForVMISTatusImageKey {
-						Expect(envVariable.Value).To(Equal(flags.waitForVMIStatusImage))
+					if envVariable.Name == common.TektonTasksDiskVirtImageKey {
+						Expect(envVariable.Value).To(Equal(flags.tektonTasksDiskVirtImage))
 					}
 					if envVariable.Name == common.VirtioImageKey {
 						Expect(envVariable.Value).To(Equal(flags.virtioImage))

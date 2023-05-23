@@ -49,18 +49,18 @@ const (
 )
 
 var AllowedTasks = map[string]func() string{
-	createVMFromManifestTaskName: common.GetCreateVMImage,
-	cleanVMTaskName:              common.GetCleanupVMImage,
-	copyTemplateTaskName:         common.GetCopyTemplateImage,
-	modifyDataObjectTaskName:     common.GetModifyDataObjectImage,
-	createVMFromTemplateTaskName: common.GetCreateVMImage,
-	diskVirtCustomizeTaskName:    common.GetDiskVirtCustomizeImage,
-	diskVirtSysprepTaskName:      common.GetDiskVirtSysprepImage,
-	modifyTemplateTaskName:       common.GetModifyVMTemplateImage,
-	waitForVMITaskName:           common.GetWaitForVMIStatusImage,
-	generateSSHKeysTaskName:      common.GetSSHKeysStatusImage,
-	executeInVMTaskName:          common.GetCleanupVMImage,
-	modifyWindowsVMIsoFileName:   common.GetCleanupVMImage,
+	createVMFromManifestTaskName: common.GetTektonTasksImage,
+	cleanVMTaskName:              common.GetTektonTasksImage,
+	copyTemplateTaskName:         common.GetTektonTasksImage,
+	modifyDataObjectTaskName:     common.GetTektonTasksImage,
+	createVMFromTemplateTaskName: common.GetTektonTasksImage,
+	diskVirtCustomizeTaskName:    common.GetTektonTasksDiskVirtImage,
+	diskVirtSysprepTaskName:      common.GetTektonTasksDiskVirtImage,
+	modifyTemplateTaskName:       common.GetTektonTasksImage,
+	waitForVMITaskName:           common.GetTektonTasksImage,
+	generateSSHKeysTaskName:      common.GetTektonTasksImage,
+	executeInVMTaskName:          common.GetTektonTasksImage,
+	modifyWindowsVMIsoFileName:   common.GetTektonTasksImage,
 }
 
 func init() {
