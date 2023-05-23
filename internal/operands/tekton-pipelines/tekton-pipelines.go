@@ -229,7 +229,9 @@ func reconcileRoleBindingsFuncs(rolebindings []rbac.RoleBinding) []common.Reconc
 		roleBinding := &rolebindings[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			namespace := getTektonPipelinesNamespace(request)
-			roleBinding.Namespace = namespace
+			if roleBinding.Namespace == "" {
+				roleBinding.Namespace = namespace
+			}
 			for j := range roleBinding.Subjects {
 				subject := &roleBinding.Subjects[j]
 				subject.Namespace = namespace
