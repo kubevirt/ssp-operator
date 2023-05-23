@@ -2,6 +2,7 @@
 
 cp -L $KUBECONFIG /tmp/kubeconfig && export KUBECONFIG=/tmp/kubeconfig
 export IMG=${CI_OPERATOR_IMG}
+export VALIDATOR_IMG=${CI_VALIDATOR_IMG}
 
 # switch to faster storage class for example pipelines tests (slower storage class is causing timeouts due 
 # to not able to copy whole windows disk)
