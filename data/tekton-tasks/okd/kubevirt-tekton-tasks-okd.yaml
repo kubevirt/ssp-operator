@@ -53,7 +53,7 @@ spec:
       default: ""
   steps:
     - name: execute-in-vm
-      image: "quay.io/kubevirt/tekton-task-execute-in-vm:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - entrypoint
       args:
@@ -67,6 +67,8 @@ spec:
         - $(params.command)
         - $(params.args)
       env:
+        - name: COMMAND
+          value: execute-in-vm
         - name: VM_NAME
           value: $(params.vmName)
         - name: VM_NAMESPACE
@@ -174,7 +176,7 @@ spec:
       description: The namespace of a template that was created.
   steps:
     - name: copytemplate
-      image: "quay.io/kubevirt/tekton-task-copy-template:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - copy-template
       args:
@@ -253,6 +255,11 @@ spec:
   params:
     - name: manifest
       description: YAML manifest of a VirtualMachine resource to be created.
+      default: ""
+      type: string
+    - name: virtctl
+      description: "Parameters for virtctl create vm command that will be used to create VirtualMachine."
+      default: ""
       type: string
     - name: namespace
       description: Namespace where to create the VM. (defaults to manifest namespace or active namespace)
@@ -266,22 +273,6 @@ spec:
       description: Set runStrategy to VM. If runStrategy is set, vm.spec.running attribute is set to nil.
       default: ""
       type: string
-    - name: dataVolumes
-      description: Add DVs to VM Volumes. Replaces a particular volume if in VOLUME_NAME:DV_NAME format. Eg. ["rootdisk:my-dv", "my-dv2"]
-      default: []
-      type: array
-    - name: ownDataVolumes
-      description: Add DVs to VM Volumes and add VM to DV ownerReferences. These DataVolumes will be deleted once the created VM gets deleted. Replaces a particular volume if in VOLUME_NAME:DV_NAME format. Eg. ["rootdisk:my-dv", "my-dv2"]
-      default: []
-      type: array
-    - name: persistentVolumeClaims
-      description: Add PVCs to VM Volumes. Replaces a particular volume if in VOLUME_NAME:PVC_NAME format. Eg. ["rootdisk:my-pvc", "my-pvc2"]
-      default: []
-      type: array
-    - name: ownPersistentVolumeClaims
-      description: Add PVCs to VM Volumes and add VM to PVC ownerReferences. These PVCs will be deleted once the created VM gets deleted. Replaces a particular volume if in VOLUME_NAME:PVC_NAME format. Eg. ["rootdisk:my-pvc", "my-pvc2"]
-      default: []
-      type: array
   results:
     - name: name
       description: The name of a VM that was created.
@@ -289,24 +280,18 @@ spec:
       description: The namespace of a VM that was created.
   steps:
     - name: createvm
-      image: "quay.io/kubevirt/tekton-task-create-vm:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - create-vm
       args:
         - "--output=yaml"
-        - '--dvs'
-        - $(params.dataVolumes)
-        - '--own-dvs'
-        - $(params.ownDataVolumes)
-        - '--pvcs'
-        - $(params.persistentVolumeClaims)
-        - '--own-pvcs'
-        - $(params.ownPersistentVolumeClaims)
       env:
         - name: VM_MANIFEST
           value: $(params.manifest)
         - name: VM_NAMESPACE
           value: $(params.namespace)
+        - name: VIRTCTL
+          value: $(params.virtctl)
         - name: START_VM
           value: $(params.startVM)
         - name: RUN_STRATEGY
@@ -423,22 +408,6 @@ spec:
       description: Set runStrategy to VM. If runStrategy is set, vm.spec.running attribute is set to nil.
       default: ""
       type: string
-    - name: dataVolumes
-      description: Add DVs to VM Volumes. Replaces a particular volume if in VOLUME_NAME:DV_NAME format. Eg. ["rootdisk:my-dv", "my-dv2"]
-      default: []
-      type: array
-    - name: ownDataVolumes
-      description: Add DVs to VM Volumes and add VM to DV ownerReferences. These DataVolumes will be deleted once the created VM gets deleted. Replaces a particular volume if in VOLUME_NAME:DV_NAME format. Eg. ["rootdisk:my-dv", "my-dv2"]
-      default: []
-      type: array
-    - name: persistentVolumeClaims
-      description: Add PVCs to VM Volumes. Replaces a particular volume if in VOLUME_NAME:PVC_NAME format. Eg. ["rootdisk:my-pvc", "my-pvc2"]
-      default: []
-      type: array
-    - name: ownPersistentVolumeClaims
-      description: Add PVCs to VM Volumes and add VM to PVC ownerReferences. These PVCs will be deleted once the created VM gets deleted. Replaces a particular volume if in VOLUME_NAME:PVC_NAME format. Eg. ["rootdisk:my-pvc", "my-pvc2"]
-      default: []
-      type: array
   results:
     - name: name
       description: The name of a VM that was created.
@@ -446,19 +415,11 @@ spec:
       description: The namespace of a VM that was created.
   steps:
     - name: createvm
-      image: "quay.io/kubevirt/tekton-task-create-vm:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - create-vm
       args:
         - "--output=yaml"
-        - '--dvs'
-        - $(params.dataVolumes)
-        - '--own-dvs'
-        - $(params.ownDataVolumes)
-        - '--pvcs'
-        - $(params.persistentVolumeClaims)
-        - '--own-pvcs'
-        - $(params.ownPersistentVolumeClaims)
         - '--template-params'
         - $(params.templateParams)
       env:
@@ -579,13 +540,15 @@ spec:
       default: ""
   steps:
     - name: run-virt-customize
-      image: "quay.io/kubevirt/tekton-task-disk-virt-customize:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
       command:
         - entrypoint
       args:
         - '--verbose'
         - $(params.verbose)
       env:
+        - name: COMMAND
+          value: disk-virt-customize
         - name: CUSTOMIZE_COMMANDS
           value: $(params.customizeCommands)
         - name: ADDITIONAL_VIRT_CUSTOMIZE_OPTIONS
@@ -705,13 +668,15 @@ spec:
       default: ""
   steps:
     - name: run-virt-sysprep
-      image: "quay.io/kubevirt/tekton-task-disk-virt-sysprep:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
       command:
         - entrypoint
       args:
         - '--verbose'
         - $(params.verbose)
       env:
+        - name: COMMAND
+          value: disk-virt-sysprep
         - name: SYSPREP_COMMANDS
           value: $(params.sysprepCommands)
         - name: ADDITIONAL_VIRT_SYSPREP_OPTIONS
@@ -839,7 +804,7 @@ spec:
       default: ""
   steps:
     - name: execute-in-vm
-      image: "quay.io/kubevirt/tekton-task-execute-in-vm:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - entrypoint
       args:
@@ -847,6 +812,8 @@ spec:
         - $(params.command)
         - $(params.args)
       env:
+        - name: COMMAND
+          value: execute-in-vm
         - name: VM_NAME
           value: $(params.vmName)
         - name: VM_NAMESPACE
@@ -961,12 +928,15 @@ spec:
       description: The namespace of a private key secret.
   steps:
     - name: generate-ssh-keys
-      image: "quay.io/kubevirt/tekton-task-generate-ssh-keys:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - entrypoint
+      args:
         - '--'
         - $(params.privateKeyConnectionOptions)
       env:
+        - name: COMMAND
+          value: generate-ssh-keys
         - name: PUBLIC_KEY_SECRET_NAME
           value: $(params.publicKeySecretName)
         - name: PUBLIC_KEY_SECRET_NAMESPACE
@@ -1061,7 +1031,7 @@ spec:
       description: The namespace of the data object that was created.
   steps:
     - name: modify-data-object
-      image: "quay.io/kubevirt/tekton-task-modify-data-object:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - modify-data-object
       args:
@@ -1235,7 +1205,7 @@ spec:
       description: The namespace of a template that was updated.
   steps:
     - name: modifyvmtemplate
-      image: "quay.io/kubevirt/tekton-task-modify-vm-template:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - modify-vm-template
       args:
@@ -1337,7 +1307,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-task-disk-virt-customize:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
       script: |
         #!/bin/bash
         set -x
@@ -1348,7 +1318,12 @@ spec:
         export TARGET_IMG_FILE_PATH="tmp/target-pvc/disk.img"
 
         guestfish -a ${TARGET_IMG_FILE_PATH} -m /dev/sda tar-out / - | tar xvf - -C ${ISO_FILES_PATH} -m --no-overwrite-dir --owner=$(id -u) --group=$(id -g) --no-same-permissions
- 
+
+        if [ ! -f ${EFI_BOOT}/efisys_noprompt.bin ] || [ ! -f ${EFI_BOOT}/cdboot_noprompt.efi ]; then
+          echo "${EFI_BOOT}/efisys_noprompt.bin or ${EFI_BOOT}/cdboot_noprompt.efi not found in the iso file! Exiting"
+          exit 1
+        fi
+
         chmod u+w "${ISO_FILES_PATH}/efi" "${ISO_FILES_PATH}/efi/microsoft" "${ISO_FILES_PATH}/efi/microsoft/boot"
         chmod u+w "${EFI_BOOT}/efisys.bin" "${EFI_BOOT}/cdboot.efi" "${EFI_BOOT}/efisys_noprompt.bin" "${EFI_BOOT}/cdboot_noprompt.efi"
 
@@ -1377,7 +1352,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-task-modify-data-object:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       script: |
         #!/bin/bash
         set -ex
@@ -1404,7 +1379,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-task-disk-virt-customize:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
       script: |
         #!/bin/bash
         set -x
@@ -1456,10 +1431,12 @@ spec:
       description: A label selector expression to decide if the VirtualMachineInstance (VMI) is in a failed state. Eg. "status.phase in (Failed, Unknown)". It is evaluated on each VMI update and will result in this task failing if true.
   steps:
     - name: wait-for-vmi-status
-      image: "quay.io/kubevirt/tekton-task-wait-for-vmi-status:v0.14.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
       command:
         - entrypoint
       env:
+        - name: COMMAND
+          value: wait-for-vmi-status
         - name: VMI_NAME
           value: $(params.vmiName)
         - name: VMI_NAMESPACE
