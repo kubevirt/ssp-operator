@@ -8,6 +8,8 @@ spec:
   params:
   - name: winImageDownloadURL
     value: http://http-server/disk.img
+  - name: sourceTemplateNamespace
+    value: kubevirt
   pipelineRef:
     name: windows-bios-installer
   taskRunSpecs:

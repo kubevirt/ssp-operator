@@ -12,6 +12,8 @@ spec:
     value: windows2k22-autounattend
   - name: sourceTemplateName
     value: windows2k22-server-large
+  - name: sourceTemplateNamespace
+    value: kubevirt
   - name: baseDvName
     value: win2k22
   pipelineRef:

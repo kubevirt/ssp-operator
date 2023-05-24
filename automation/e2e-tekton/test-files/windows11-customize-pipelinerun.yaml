@@ -8,6 +8,8 @@ spec:
   params:
     - name: sourceTemplateName
       value: windows11-desktop-large
+    - name: sourceTemplateNamespace
+      value: kubevirt
     - name: customizeTemplateName
       value: windows11-desktop-large-customize-sqlserver
     - name: goldenTemplateName
