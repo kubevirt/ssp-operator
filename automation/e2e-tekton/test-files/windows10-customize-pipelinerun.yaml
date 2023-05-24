@@ -10,6 +10,8 @@ spec:
       value: true
     - name: allowReplaceCustomizationTemplate
       value: true
+    - name: sourceTemplateNamespace
+      value: kubevirt
   pipelineRef:
     name: windows-customize
   taskRunSpecs:
