@@ -51,6 +51,9 @@ import (
 	"kubevirt.io/ssp-operator/internal/controller/predicates"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
+	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
+	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
+	tekton_bundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
 )
 
 const (
@@ -70,26 +73,28 @@ var kvsspCRDs = map[string]string{
 
 // sspReconciler reconciles a SSP object
 type sspReconciler struct {
-	client           client.Client
-	uncachedReader   client.Reader
-	log              logr.Logger
-	operands         []operands.Operand
-	lastSspSpec      ssp.SSPSpec
-	subresourceCache common.VersionCache
-	topologyMode     osconfv1.TopologyMode
-	crdList          crd_watch.CrdList
-	areCrdsMissing   bool
+	client             client.Client
+	uncachedReader     client.Reader
+	log                logr.Logger
+	operands           []operands.Operand
+	lastSspSpec        ssp.SSPSpec
+	subresourceCache   common.VersionCache
+	topologyMode       osconfv1.TopologyMode
+	crdList            crd_watch.CrdList
+	areCrdsMissing     bool
+	runningOnOpenShift bool
 }
 
-func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, crdList crd_watch.CrdList) *sspReconciler {
+func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, crdList crd_watch.CrdList, runningOnOpenShift bool) *sspReconciler {
 	return &sspReconciler{
-		client:           client,
-		uncachedReader:   uncachedReader,
-		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
-		operands:         operands,
-		subresourceCache: common.VersionCache{},
-		topologyMode:     infrastructureTopology,
-		crdList:          crdList,
+		client:             client,
+		uncachedReader:     uncachedReader,
+		log:                ctrl.Log.WithName("controllers").WithName("SSP"),
+		operands:           operands,
+		subresourceCache:   common.VersionCache{},
+		topologyMode:       infrastructureTopology,
+		crdList:            crdList,
+		runningOnOpenShift: runningOnOpenShift,
 	}
 }
 
@@ -202,6 +207,29 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		instance.Status.ObservedGeneration = instance.Generation
 		err := r.client.Status().Update(ctx, instance)
 		return ctrl.Result{}, err
+	}
+
+	if sspRequest.Instance.Spec.FeatureGates != nil && sspRequest.Instance.Spec.FeatureGates.DeployTektonTaskResources {
+		tektonPipelinesBundle, err := tekton_bundle.ReadPipelineBundle(r.runningOnOpenShift)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		tektonTasksBundle, err := tekton_bundle.ReadTasksBundle(r.runningOnOpenShift)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		tektonTasksOperand := tekton_tasks.New(tektonTasksBundle)
+		tektonPipelinesOperand := tekton_pipelines.New(tektonPipelinesBundle)
+
+		r.operands = append(r.operands,
+			// Tekton Tasks Operand should be before Pipelines to avoid errors
+			tektonTasksOperand,
+			tektonPipelinesOperand)
+
+		r.crdList.AddCrd(getRequiredCrds(tektonTasksOperand))
+		r.crdList.AddCrd(getRequiredCrds(tektonPipelinesOperand))
 	}
 
 	if r.areCrdsMissing {

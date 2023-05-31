@@ -15,6 +15,7 @@ import (
 )
 
 type CrdList interface {
+	AddCrd(crdNames []string)
 	CrdExists(crdName string) bool
 	MissingCrds() []string
 }
@@ -54,6 +55,20 @@ func (c *CrdWatch) Init(ctx context.Context, reader client.Reader) error {
 
 	c.initialized = true
 	return nil
+}
+
+func (c *CrdWatch) AddCrd(crdNames []string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if !c.initialized {
+		panic("crd watch not initialized")
+	}
+
+	for _, crdName := range crdNames {
+		c.requiredCrds[crdName] = struct{}{}
+		c.missingCrds[crdName] = struct{}{}
+	}
 }
 
 func (c *CrdWatch) CrdExists(crdName string) bool {
