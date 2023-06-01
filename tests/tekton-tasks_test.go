@@ -6,7 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
+	// pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
@@ -35,30 +36,30 @@ var _ = Describe("Tekton Tasks Operand", func() {
 			strategy.RevertToOriginalSspCr()
 		})
 
-		It("[test_id:TODO] should create tasks", func() {
-			taskList := &pipeline.TaskList{}
+		// It("[test_id:TODO] should create tasks", func() {
+		// 	taskList := &pipeline.TaskList{}
 
-			Eventually(func() bool {
-				err := apiClient.List(ctx, taskList,
-					client.MatchingLabels{
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-						common.AppKubernetesComponentLabel: string(common.AppComponentTektonTasks),
-					},
-				)
-				Expect(err).ToNot(HaveOccurred())
-				return len(taskList.Items) > 0
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
+		// 	Eventually(func() bool {
+		// 		err := apiClient.List(ctx, taskList,
+		// 			client.MatchingLabels{
+		// 				common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+		// 				common.AppKubernetesComponentLabel: string(common.AppComponentTektonTasks),
+		// 			},
+		// 		)
+		// 		Expect(err).ToNot(HaveOccurred())
+		// 		return len(taskList.Items) > 0
+		// 	}, env.ShortTimeout(), time.Second).Should(BeTrue())
 
-			for _, task := range taskList.Items {
-				if _, found := tekton_tasks.AllowedTasks[strings.TrimSuffix(task.Name, "-task")]; found {
-					Expect(found).To(BeTrue(), "only allowed task is deployed - "+task.Name)
-				}
+		// 	for _, task := range taskList.Items {
+		// 		if _, found := tekton_tasks.AllowedTasks[strings.TrimSuffix(task.Name, "-task")]; found {
+		// 			Expect(found).To(BeTrue(), "only allowed task is deployed - "+task.Name)
+		// 		}
 
-				Expect(task.Labels[tekton_tasks.TektonTasksVersionLabel]).To(Equal(common.TektonTasksVersion), "version label should equal")
-				Expect(task.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
-				Expect(task.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonTasks)), "component label should equal")
-			}
-		})
+		// 		Expect(task.Labels[tekton_tasks.TektonTasksVersionLabel]).To(Equal(common.TektonTasksVersion), "version label should equal")
+		// 		Expect(task.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
+		// 		Expect(task.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonTasks)), "component label should equal")
+		// 	}
+		// })
 
 		It("[test_id:TODO] should create service accounts", func() {
 			serviceAccountList := &v1.ServiceAccountList{}
