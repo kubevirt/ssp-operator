@@ -34,7 +34,9 @@ func init() {
 
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
-		{Object: &pipeline.Pipeline{}, Crd: tektonCrd, WatchFullObject: true},
+		// Solution to optional Tekton CRD is not implemented yet.
+		// Until then, do not watch to Tekton CRD.
+		// {Object: &pipeline.Pipeline{}, Crd: tektonCrd, WatchFullObject: true},
 		{Object: &v1.ConfigMap{}},
 		{Object: &rbac.RoleBinding{}},
 		{Object: &v1.ServiceAccount{}},
@@ -83,9 +85,11 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 		request.Logger.V(1).Info("Tekton Pipelines resources were not deployed, because spec.featureGates.deployTektonTaskResources is set to false")
 		return nil, nil
 	}
-	if !request.CrdList.CrdExists(tektonCrd) {
-		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
-	}
+	// Solution to optional Tekton CRD is not implemented yet.
+	// Until then, do not check if Tekton CRD exists.
+	// if !request.CrdList.CrdExists(tektonCrd) {
+	// 	return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
+	// }
 
 	var reconcileFunc []common.ReconcileFunc
 	reconcileFunc = append(reconcileFunc, reconcileClusterRolesFuncs(t.clusterRoles)...)

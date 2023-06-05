@@ -5,7 +5,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
+	// pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta1"
@@ -33,25 +34,25 @@ var _ = Describe("Tekton Pipelines Operand", func() {
 			strategy.RevertToOriginalSspCr()
 		})
 
-		It("[test_id:TODO] should create pipelines", func() {
-			pipelineList := &pipeline.PipelineList{}
+		// It("[test_id:TODO] should create pipelines", func() {
+		// 	pipelineList := &pipeline.PipelineList{}
 
-			Eventually(func() bool {
-				err := apiClient.List(ctx, pipelineList,
-					client.MatchingLabels{
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-						common.AppKubernetesComponentLabel: string(common.AppComponentTektonPipelines),
-					},
-				)
-				Expect(err).ToNot(HaveOccurred())
-				return len(pipelineList.Items) > 0
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
+		// 	Eventually(func() bool {
+		// 		err := apiClient.List(ctx, pipelineList,
+		// 			client.MatchingLabels{
+		// 				common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+		// 				common.AppKubernetesComponentLabel: string(common.AppComponentTektonPipelines),
+		// 			},
+		// 		)
+		// 		Expect(err).ToNot(HaveOccurred())
+		// 		return len(pipelineList.Items) > 0
+		// 	}, env.ShortTimeout(), time.Second).Should(BeTrue())
 
-			for _, pipeline := range pipelineList.Items {
-				Expect(pipeline.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
-				Expect(pipeline.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonPipelines)), "component label should equal")
-			}
-		})
+		// 	for _, pipeline := range pipelineList.Items {
+		// 		Expect(pipeline.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
+		// 		Expect(pipeline.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonPipelines)), "component label should equal")
+		// 	}
+		// })
 
 		It("[test_id:TODO] should create cluster roles", func() {
 			clusterRoleList := &rbac.ClusterRoleList{}
@@ -133,31 +134,31 @@ var _ = Describe("Tekton Pipelines Operand", func() {
 			strategy.RevertToOriginalSspCr()
 		})
 
-		It("[test_id:TODO] should revert user update on pipeline", func() {
-			pipelineList := &pipeline.PipelineList{}
+		// It("[test_id:TODO] should revert user update on pipeline", func() {
+		// 	pipelineList := &pipeline.PipelineList{}
 
-			Eventually(func() bool {
-				err := apiClient.List(ctx, pipelineList,
-					client.MatchingLabels{
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-						common.AppKubernetesComponentLabel: string(common.AppComponentTektonPipelines),
-					},
-				)
-				Expect(err).ToNot(HaveOccurred())
-				return len(pipelineList.Items) > 0
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
+		// 	Eventually(func() bool {
+		// 		err := apiClient.List(ctx, pipelineList,
+		// 			client.MatchingLabels{
+		// 				common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+		// 				common.AppKubernetesComponentLabel: string(common.AppComponentTektonPipelines),
+		// 			},
+		// 		)
+		// 		Expect(err).ToNot(HaveOccurred())
+		// 		return len(pipelineList.Items) > 0
+		// 	}, env.ShortTimeout(), time.Second).Should(BeTrue())
 
-			pipeline := pipelineList.Items[0]
-			pipeline.Spec.Description = "test"
-			err := apiClient.Update(ctx, &pipeline)
-			Expect(err).ToNot(HaveOccurred())
+		// 	pipeline := pipelineList.Items[0]
+		// 	pipeline.Spec.Description = "test"
+		// 	err := apiClient.Update(ctx, &pipeline)
+		// 	Expect(err).ToNot(HaveOccurred())
 
-			Eventually(func() bool {
-				err := apiClient.Get(ctx, client.ObjectKeyFromObject(&pipeline), &pipeline)
-				Expect(err).ToNot(HaveOccurred())
-				return pipeline.Spec.Description != "test"
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
-		})
+		// 	Eventually(func() bool {
+		// 		err := apiClient.Get(ctx, client.ObjectKeyFromObject(&pipeline), &pipeline)
+		// 		Expect(err).ToNot(HaveOccurred())
+		// 		return pipeline.Spec.Description != "test"
+		// 	}, env.ShortTimeout(), time.Second).Should(BeTrue())
+		// })
 
 		It("[test_id:TODO] should revert user update on configMap", func() {
 			configMapList := &v1.ConfigMapList{}
