@@ -1,0 +1,178 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: windows-bios-installer
+spec:
+  params:
+    - name: winImageDownloadURL
+      description: Download URL to Windows installation ISO (English United States x64 version is needed). You can follow e.g. https://www.microsoft.com/en-us/software-download/windows10ISO to get windows 10 iso.
+      type: string
+    - name: instanceTypeName
+      type: string
+      description: Name of VirtualMachineClusterInstancetype object
+      default: n1.large
+    - name: instanceTypeKind
+      type: string
+      description: Kind of VirtualMachineInstancetype object
+      default: VirtualMachineClusterInstancetype
+    - name: preferenceName
+      type: string
+      description: Name of VirtualMachineClusterPreference object
+      default: windows.10
+    - name: virtualMachinePreferenceKind
+      type: string
+      description: Kind of virtualMachinePreference object
+      default: VirtualMachineClusterPreference
+    - name: autounattendConfigMapName
+      description: Name of the ConfigMap containing the sysprep configuration files (autounattend.xml, etc.).
+      type: string
+      default: windows10-bios-autounattend
+    - name: virtioContainerDiskName
+      description: Reference to the containerdisk containing the virtio-win drivers ISO.
+      type: string
+      default: quay.io/kubevirt/virtio-container-disk:v0.59.0
+    - name: installCDRomName
+      description: Name of datavolume which contains iso file.
+      type: string
+      default: windows-bios-installer-cd-rom
+    - name: baseDvName
+      description: Name of the base DataVolume which is created. Pre-installed Windows VMs can be created from this DataVolume.
+      type: string
+      default: win10
+    - name: baseDvNamespace
+      description: Namespace of the base DataVolume which is created.
+      type: string
+      default: kubevirt-os-images
+  tasks:
+    - name: create-vm-root-disk
+      taskRef:
+        kind: Task
+        name: modify-data-object
+      params:
+        - name: manifest
+          value: |-
+            apiVersion: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            metadata:
+              annotations:
+                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
+              name: $(params.baseDvName)
+              namespace: $(params.baseDvNamespace)
+            spec:
+              storage:
+                resources:
+                  requests:
+                    storage: 20Gi
+              source:
+                blank: {}
+        - name: waitForSuccess
+          value: true
+        - name: allowReplace
+          value: true
+    - name: create-vm
+      params:
+        - name: runStrategy
+          value: RerunOnFailure
+        - name: manifest
+          value: |-          
+            apiVersion: kubevirt.io/v1
+            kind: VirtualMachine
+            metadata:
+              generateName: windows-bios-installer-
+              namespace: $(params.baseDvNamespace)
+            spec:
+              instancetype:
+                kind: $(params.instanceTypeKind)
+                name: $(params.instanceTypeName)
+              preference:
+                kind: $(params.virtualMachinePreferenceKind)
+                name: $(params.preferenceName)
+              dataVolumeTemplates:
+                - apiVersion: cdi.kubevirt.io/v1beta1
+                  kind: DataVolume
+                  metadata:
+                    name: $(params.installCDRomName)
+                  spec:
+                    storage:
+                      resources:
+                        requests:
+                          storage: 7Gi
+                    source:
+                      http:
+                        url: $(params.winImageDownloadURL)
+              template:
+                spec:
+                  domain:
+                    devices:
+                      disks:
+                        - cdrom:
+                            bus: sata
+                          name: installcdrom
+                          bootOrder: 1
+                        - disk:
+                            bus: virtio
+                          name: rootdisk
+                          bootOrder: 2
+                        - cdrom:
+                            bus: sata
+                          name: virtiocontainerdisk
+                        - cdrom:
+                            bus: sata
+                          name: sysprep
+                  terminationGracePeriodSeconds: 3600
+                  volumes:
+                  - name: installcdrom
+                    dataVolume:
+                      name: $(params.installCDRomName)
+                  - name: virtiocontainerdisk
+                    containerDisk:
+                      image: $(params.virtioContainerDiskName)
+                  - name: sysprep
+                    sysprep:
+                      configMap: 
+                        name: $(params.autounattendConfigMapName)
+                  - dataVolume:
+                      name:  $(tasks.create-vm-root-disk.results.name)
+                    name: rootdisk
+      taskRef:
+        kind: Task
+        name: create-vm-from-manifest
+      runAfter:
+        - create-vm-root-disk
+    - name: wait-for-vmi-status
+      params:
+        - name: vmiName
+          value: $(tasks.create-vm.results.name)
+        - name: vmiNamespace
+          value: $(tasks.create-vm.results.namespace)
+        - name: successCondition
+          value: status.phase == Succeeded
+        - name: failureCondition
+          value: status.phase in (Failed, Unknown)
+      runAfter:
+        - create-vm
+      timeout: 2h
+      taskRef:
+        kind: Task
+        name: wait-for-vmi-status
+  finally:
+    - name: cleanup-vm
+      params:
+        - name: vmName
+          value: $(tasks.create-vm.results.name)
+        - name: vmNamespace
+          value: $(tasks.create-vm.results.namespace)
+        - name: delete
+          value: true
+      timeout: 10m
+      taskRef:
+        kind: Task
+        name: cleanup-vm
+  results:
+    - name: baseDvName
+      description: Name of the created base DataVolume
+      value: $(tasks.create-vm-root-disk.results.name)
+    - name: baseDvNamespace
+      description: Namespace of the created base DataVolume
+      value: $(tasks.create-vm-root-disk.results.name)

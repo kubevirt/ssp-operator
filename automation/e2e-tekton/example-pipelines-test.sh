@@ -29,17 +29,22 @@ done
 # SECRET
 accessKeyId="/tmp/secrets/accessKeyId"
 secretKey="/tmp/secrets/secretKey"
+namespace="kubevirt"
+if [[ $TARGET =~ windows10.* ]]; then
+  namespace="kubevirt-os-images"
+  oc create namespace ${namespace}
+fi
 
 if test -f "$accessKeyId" && test -f "$secretKey"; then
   id=$(cat $accessKeyId | tr -d '\n' | base64)
   token=$(cat $secretKey | tr -d '\n' | base64 | tr -d ' \n')
 
-  oc apply -n kubevirt -f - <<EOF
+  oc apply -n ${namespace} -f - <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
   name: tekton-operator-container-disk-puller
-  namespace: kubevirt
+  namespace: ${namespace}
 type: Opaque
 data:
   accessKeyId: "${id}"
@@ -76,22 +81,22 @@ function wait_for_pipelinerun() {
 oc patch cdi cdi --type merge -p '{"spec":{"cloneStrategyOverride":"copy"}}'
 
 echo "Creating datavolume with windows iso"
-oc apply -f "automation/e2e-tekton/test-files/${TARGET}-dv.yaml"
+oc apply -n ${namespace} -f "automation/e2e-tekton/test-files/${TARGET}-dv.yaml"
 
 echo "Waiting for pvc to be created"
-wait_until_exists "pvc -n kubevirt iso-dv -o jsonpath='{.metadata.annotations.cdi\.kubevirt\.io/storage\.pod\.phase}'"
-oc wait -n kubevirt pvc iso-dv --timeout=10m --for=jsonpath='{.metadata.annotations.cdi\.kubevirt\.io/storage\.pod\.phase}'='Succeeded'
+wait_until_exists "pvc -n ${namespace} iso-dv -o jsonpath='{.metadata.annotations.cdi\.kubevirt\.io/storage\.pod\.phase}'"
+oc wait -n ${namespace}  pvc iso-dv --timeout=10m --for=jsonpath='{.metadata.annotations.cdi\.kubevirt\.io/storage\.pod\.phase}'='Succeeded'
 
 echo "Create config map for http server"
-oc apply -f "automation/e2e-tekton/test-files/configmap.yaml"
+oc apply -n ${namespace} -f "automation/e2e-tekton/test-files/configmap.yaml"
 
 echo "Deploying http-server to serve iso file to pipeline"
-oc apply -f "automation/e2e-tekton/test-files/http-server.yaml"
+oc apply -n ${namespace} -f "automation/e2e-tekton/test-files/http-server.yaml"
 
-wait_until_exists "pods -n kubevirt -l app=http-server"
+wait_until_exists "pods -n ${namespace} -l app=http-server"
 
 echo "Waiting for http server to be ready"
-oc wait -n kubevirt --for=condition=Ready pod -l app=http-server --timeout=10m
+oc wait -n ${namespace}  --for=condition=Ready pod -l app=http-server --timeout=10m
 
 echo "Deploy SSP operator"
 make deploy

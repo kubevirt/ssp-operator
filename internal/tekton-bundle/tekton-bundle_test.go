@@ -19,14 +19,9 @@ const (
 )
 
 var _ = Describe("Tekton bundle", func() {
-	It("should return correct pipeline folder path on okd", func() {
-		path := getPipelineBundlePath(true)
-		Expect(path).To(Equal("/data/tekton-pipelines/okd/"))
-	})
-
-	It("should return correct pipeline folder path on kubernetes", func() {
-		path := getPipelineBundlePath(false)
-		Expect(path).To(Equal("/data/tekton-pipelines/kubernetes/"))
+	It("should return correct pipeline folder path ", func() {
+		path := getPipelineBundlePath()
+		Expect(path).To(Equal("/data/tekton-pipelines/"))
 	})
 
 	It("should return correct task path on okd", func() {
