@@ -169,8 +169,8 @@ func getAlertRules() ([]promv1.Rule, error) {
 			Alert: Rhel6AlertName,
 			Expr:  intstr.FromString("sum by (namespace, name) (kubevirt_vm_rhel6) > 0"),
 			Annotations: map[string]string{
-				"summary": "VM {{ $labels.namespace }}/{{ $labels.name }} is based on RHEL6 template, and this will not be supported in the next release",
-				//"runbook_url": fmt.Sprintf(runbookURLTemplate, Rhel6AlertName),
+				"summary":     "VM {{ $labels.namespace }}/{{ $labels.name }} is based on RHEL6 template, and this will not be supported in the next release",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, Rhel6AlertName),
 			},
 			Labels: map[string]string{
 				severityAlertLabelKey:     "warning",
