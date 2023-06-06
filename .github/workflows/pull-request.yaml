@@ -32,3 +32,10 @@ jobs:
 
     - name: Build and Test csv-generator
       run: make container-build && ./tests/e2e-test-csv-generator.sh
+
+  check_commited_files:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Check commited files
+      run: hack/check-commited-changes.sh
