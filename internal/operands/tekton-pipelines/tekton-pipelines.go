@@ -91,6 +91,14 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 	// 	return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
 	// }
 
+	upgradingNow := isUpgradingNow(request)
+	if upgradingNow {
+		err := removeResourcesManagedByTTO(request)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var reconcileFunc []common.ReconcileFunc
 	reconcileFunc = append(reconcileFunc, reconcileClusterRolesFuncs(t.clusterRoles)...)
 	reconcileFunc = append(reconcileFunc, reconcileTektonPipelinesFuncs(t.pipelines)...)
@@ -103,7 +111,6 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 		return nil, err
 	}
 
-	upgradingNow := isUpgradingNow(request)
 	for _, r := range reconcileTektonBundleResults {
 		if !upgradingNow && (r.OperationResult == common.OperationResultUpdated) {
 			request.Logger.Info(fmt.Sprintf("Changes reverted in tekton pipeline: %s", r.Resource.GetName()))
@@ -254,4 +261,53 @@ func getTektonPipelinesNamespace(request *common.Request) string {
 		return request.Instance.Spec.TektonPipelines.Namespace
 	}
 	return request.Instance.Namespace
+}
+
+func removeResourcesManagedByTTO(request *common.Request) error {
+	var objects []client.Object
+
+	pipelines, err := common.GetPipelinesManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, pipeline := range pipelines {
+		objects = append(objects, pipeline.DeepCopy())
+	}
+
+	configMaps, err := common.GetConfigMapsManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, configMap := range configMaps {
+		objects = append(objects, configMap.DeepCopy())
+	}
+
+	serviceAccounts, err := common.GetServiceAccountsManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, serviceAccount := range serviceAccounts {
+		objects = append(objects, serviceAccount.DeepCopy())
+	}
+
+	clusterRoles, err := common.GetClusterRolesManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, clusterRole := range clusterRoles {
+		objects = append(objects, clusterRole.DeepCopy())
+	}
+
+	roleBindings, err := common.GetRoleBindingsManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, roleBinding := range roleBindings {
+		objects = append(objects, roleBinding.DeepCopy())
+	}
+
+	if err = common.RemoveTektonResource(objects, request); err != nil {
+		return err
+	}
+	return nil
 }

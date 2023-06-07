@@ -155,6 +155,14 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 	// 	return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
 	// }
 
+	upgradingNow := isUpgradingNow(request)
+	if upgradingNow {
+		err := removeResourcesManagedByTTO(request)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var reconcileFunc []common.ReconcileFunc
 	reconcileFunc = append(reconcileFunc, reconcileTektonTasksFuncs(t.tasks)...)
 	reconcileFunc = append(reconcileFunc, reconcileClusterRoleFuncs(t.clusterRoles)...)
@@ -166,7 +174,6 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 		return nil, err
 	}
 
-	upgradingNow := isUpgradingNow(request)
 	for _, r := range reconcileTektonBundleResults {
 		if !upgradingNow && (r.OperationResult == common.OperationResultUpdated) {
 			request.Logger.Info(fmt.Sprintf("Changes reverted in tekton tasks: %s", r.Resource.GetName()))
@@ -304,4 +311,37 @@ func getTektonTasksNamespace(request *common.Request) string {
 		return request.Instance.Spec.TektonTasks.Namespace
 	}
 	return request.Instance.Namespace
+}
+
+func removeResourcesManagedByTTO(request *common.Request) error {
+	var objects []client.Object
+
+	clusterRoles, err := common.GetClusterRolesManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, clusterRole := range clusterRoles {
+		objects = append(objects, clusterRole.DeepCopy())
+	}
+
+	serviceAccounts, err := common.GetServiceAccountsManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, serviceAccount := range serviceAccounts {
+		objects = append(objects, serviceAccount.DeepCopy())
+	}
+
+	roleBindings, err := common.GetRoleBindingsManagedByTTO(request)
+	if err != nil {
+		return err
+	}
+	for _, roleBinding := range roleBindings {
+		objects = append(objects, roleBinding.DeepCopy())
+	}
+
+	if err = common.RemoveTektonResource(objects, request); err != nil {
+		return err
+	}
+	return nil
 }
