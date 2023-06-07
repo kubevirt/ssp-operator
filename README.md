@@ -6,7 +6,7 @@ Operator that deploying and controlling additional [KubeVirt](https://kubevirt.i
 - [Common Templates Bundle](https://github.com/kubevirt/common-templates)
 - [VM Console Proxy](https://github.com/kubevirt/vm-console-proxy)
 - [KubeVirt Tekton Tasks](https://github.com/kubevirt/kubevirt-tekton-tasks)
-- [Template Validator](https://github.com/kubevirt/ssp-operator/tree/master/internal/template-validator)
+- [Template Validator](https://github.com/kubevirt/ssp-operator/tree/main/internal/template-validator)
 - Metrics Rules (Currently there is just a single Prometheus rule that counts the number of running Virtual Machines.)
 
 ## Installation
