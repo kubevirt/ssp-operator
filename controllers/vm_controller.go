@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"strings"
+
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -12,12 +14,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
 )
 
 const (
 	vmControllerName = "vm-controller"
 	rhel6MetricName  = "kubevirt_vm_rhel6"
+	kubevirtVMCRD    = "virtualmachines.kubevirt.io"
 )
 
 var (
@@ -37,6 +39,10 @@ var (
 
 func CreateVmController(mgr ctrl.Manager) (*vmReconciler, error) {
 	return newVmReconciler(mgr)
+}
+
+func getVMControllerRequiredCRD() string {
+	return kubevirtVMCRD
 }
 
 func (r *vmReconciler) Name() string {
