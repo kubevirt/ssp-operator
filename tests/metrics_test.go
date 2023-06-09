@@ -261,7 +261,7 @@ var _ = Describe("Metrics", func() {
 		It("[test_id:7851]should have all the required annotations", func() {
 			for _, group := range promRule.Spec.Groups {
 				for _, rule := range group.Rules {
-					if rule.Alert != "" && rule.Alert != metrics.Rhel6AlertName {
+					if rule.Alert != "" {
 						Expect(rule.Annotations).To(HaveKeyWithValue("summary", Not(BeEmpty())),
 							fmt.Sprintf("%s summary is missing or empty", rule.Alert))
 						Expect(rule.Annotations).To(HaveKeyWithValue("runbook_url", Not(BeEmpty())),

@@ -23,8 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"k8s.io/utils/pointer"
-	kubevirtv1 "kubevirt.io/api/core/v1"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/tests/env"
@@ -158,44 +156,6 @@ var _ = Describe("Prometheus Alerts", func() {
 			waitForAlertToActivate("SSPDown")
 		})
 	})
-
-	Context("DeprecatedRHEL6Vm Alert", func() {
-		var (
-			vm  *kubevirtv1.VirtualMachine
-			vmi *kubevirtv1.VirtualMachineInstance
-		)
-
-		BeforeEach(func() {
-			vmi = NewRandomVMIWithBridgeInterface(strategy.GetNamespace())
-			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Labels = map[string]string{
-				"vm.kubevirt.io/template": "rhel6-desktop-large",
-			}
-			vm.Spec.Running = pointer.Bool(true)
-			eventuallyCreateVm(vm)
-		})
-
-		AfterEach(func() {
-			Expect(apiClient.Delete(ctx, vm)).ToNot(HaveOccurred(), "Failed to delete vm: %s", vm.Name)
-		})
-
-		It("Should fire the DeprecatedRHEL6Vm alert if there is a rhel6 running vm", func() {
-			waitForAlertToActivate(metrics.Rhel6AlertName)
-		})
-
-		It("Should deactivate the DeprecatedRHEL6Vm alert if the rhel6 running vm is stopped", func() {
-			waitForAlertToActivate(metrics.Rhel6AlertName)
-			Eventually(func() error {
-				foundVm := &kubevirtv1.VirtualMachine{}
-				err := apiClient.Get(ctx, client.ObjectKeyFromObject(vm), foundVm)
-				Expect(err).ToNot(HaveOccurred())
-				foundVm.Spec.Running = pointer.Bool(false)
-				return apiClient.Update(ctx, foundVm)
-			}, env.Timeout(), time.Second).Should(Succeed())
-
-			waitForAlertToDeactivate(metrics.Rhel6AlertName)
-		})
-	})
 })
 
 func waitForAlertToActivate(alertName string) {
@@ -205,15 +165,6 @@ func waitForAlertToActivate(alertName string) {
 		alert := getAlertByName(alerts, alertName)
 		return alert
 	}, env.Timeout(), time.Second).ShouldNot(BeNil())
-}
-
-func waitForAlertToDeactivate(alertName string) {
-	Eventually(func() *promApiv1.Alert {
-		alerts, err := getPrometheusClient().Alerts(context.TODO())
-		Expect(err).ShouldNot(HaveOccurred())
-		alert := getAlertByName(alerts, alertName)
-		return alert
-	}, env.Timeout(), time.Second).Should(BeNil())
 }
 
 func waitForSeriesToBeDetected(seriesName string) {
