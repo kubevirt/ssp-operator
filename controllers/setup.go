@@ -99,7 +99,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		)
 	}
 
-	requiredCrds := []string{getVMControllerRequiredCRD()}
+	var requiredCrds []string
 
 	for i := range sspOperands {
 		requiredCrds = append(requiredCrds, getRequiredCrds(sspOperands[i])...)
@@ -139,17 +139,6 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 
 	if err = mgr.Add(getRunnable(mgr, serviceController)); err != nil {
 		return fmt.Errorf("error adding service controller: %w", err)
-	}
-
-	vmController, err := CreateVmController(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to create vm controller: %w", err)
-	}
-
-	if crdWatch.CrdExists(getVMControllerRequiredCRD()) {
-		if err = mgr.Add(getRunnable(mgr, vmController)); err != nil {
-			return fmt.Errorf("error adding vm controller: %w", err)
-		}
 	}
 
 	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)

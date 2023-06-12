@@ -32,7 +32,6 @@ The following resource types and CRDs are needed by `ssp-operator` when deployed
 | `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1alpha2`   | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
 | `pipelines.tekton.dev`                                                  | `tekton-pipelines` operand (Kind `Pipeline`)                              |
 | `tasks.tekton.dev`                                                      | `tekton-tasks` operand (Kind `Task`)                                      |
-| `virtualMachine.kubevirt.io`                                            | `vm-controller` operand (Kind `VirtualMachine`)                           |
 
 The following resource types and CRDs are needed by `ssp-operator` when deployed on a vanilla k8s environment:
 
