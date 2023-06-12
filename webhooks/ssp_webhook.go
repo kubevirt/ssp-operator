@@ -44,7 +44,7 @@ func Setup(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta2,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta1;v1beta2,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
 
 type sspValidator struct {
 	apiClient client.Client
