@@ -149,11 +149,9 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 		request.Logger.V(1).Info("Tekton Tasks resources were not deployed, because spec.featureGates.deployTektonTaskResources is set to false")
 		return nil, nil
 	}
-	// Solution to optional Tekton CRD is not implemented yet.
-	// Until then, do not check if Tekton CRD exists.
-	// if !request.CrdList.CrdExists(tektonCrd) {
-	// 	return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
-	// }
+	if !request.CrdList.CrdExists(tektonCrd) {
+		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
+	}
 
 	var reconcileFunc []common.ReconcileFunc
 	reconcileFunc = append(reconcileFunc, reconcileTektonTasksFuncs(t.tasks)...)
@@ -177,9 +175,11 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 
 func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
-	for _, t := range t.tasks {
-		o := t.DeepCopy()
-		objects = append(objects, o)
+	if request.CrdList.CrdExists(tektonCrd) {
+		for _, t := range t.tasks {
+			o := t.DeepCopy()
+			objects = append(objects, o)
+		}
 	}
 	for _, rb := range t.roleBindings {
 		o := rb.DeepCopy()
@@ -199,14 +199,17 @@ func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, 
 		objects = append(objects, o)
 	}
 
-	clusterTasks, err := listDeprecatedClusterTasks(request)
-	if err != nil {
-		return nil, err
+	if request.CrdList.CrdExists(tektonCrd) {
+		clusterTasks, err := listDeprecatedClusterTasks(request)
+		if err != nil {
+			return nil, err
+		}
+		for _, ct := range clusterTasks {
+			o := ct.DeepCopy()
+			objects = append(objects, o)
+		}
 	}
-	for _, ct := range clusterTasks {
-		o := ct.DeepCopy()
-		objects = append(objects, o)
-	}
+
 	return common.DeleteAll(request, objects...)
 }
 
@@ -215,7 +218,7 @@ func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, 
 func listDeprecatedClusterTasks(request *common.Request) ([]pipeline.ClusterTask, error) {
 	deprecatedClusterTasks := &pipeline.ClusterTaskList{}
 	err := request.Client.List(request.Context, deprecatedClusterTasks, &client.MatchingLabels{
-		common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+		common.AppKubernetesManagedByLabel: common.TektonAppKubernetesManagedByValue,
 	})
 	if err != nil {
 		return nil, err

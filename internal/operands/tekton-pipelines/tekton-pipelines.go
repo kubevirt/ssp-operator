@@ -85,11 +85,9 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 		request.Logger.V(1).Info("Tekton Pipelines resources were not deployed, because spec.featureGates.deployTektonTaskResources is set to false")
 		return nil, nil
 	}
-	// Solution to optional Tekton CRD is not implemented yet.
-	// Until then, do not check if Tekton CRD exists.
-	// if !request.CrdList.CrdExists(tektonCrd) {
-	// 	return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
-	// }
+	if !request.CrdList.CrdExists(tektonCrd) {
+		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
+	}
 
 	var reconcileFunc []common.ReconcileFunc
 	reconcileFunc = append(reconcileFunc, reconcileClusterRolesFuncs(t.clusterRoles)...)
@@ -114,9 +112,11 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 
 func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
-	for _, p := range t.pipelines {
-		o := p.DeepCopy()
-		objects = append(objects, o)
+	if request.CrdList.CrdExists(tektonCrd) {
+		for _, p := range t.pipelines {
+			o := p.DeepCopy()
+			objects = append(objects, o)
+		}
 	}
 	for _, cm := range t.configMaps {
 		o := cm.DeepCopy()
