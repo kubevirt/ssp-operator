@@ -29,7 +29,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -38,6 +37,7 @@ import (
 
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/webhooks"
 	// +kubebuilder:scaffold:imports
 )

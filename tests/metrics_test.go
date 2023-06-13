@@ -2,17 +2,16 @@ package tests
 
 import (
 	"fmt"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"net/http"
 	"reflect"
 	"time"
 
-	templatev1 "github.com/openshift/api/template/v1"
-	"kubevirt.io/ssp-operator/tests/env"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	apps "k8s.io/api/apps/v1"
 	rbac "k8s.io/api/rbac/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -30,13 +29,6 @@ func mergeMaps(maps ...map[string]string) map[string]string {
 		}
 	}
 	return targetMap
-}
-
-func getDeployment(name string, namespace string) *apps.Deployment {
-	deployment := &apps.Deployment{}
-	err := apiClient.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, deployment)
-	Expect(err).ToNot(HaveOccurred())
-	return deployment
 }
 
 var _ = Describe("Metrics", func() {
@@ -167,87 +159,37 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("SSP metrics", func() {
-		var originalVersion string
-
-		waitForVersionUpdate := func(version string) {
-			Eventually(func() error {
-				rsList := &apps.ReplicaSetList{}
-				err := apiClient.List(ctx, rsList, client.InNamespace(sspDeploymentNamespace),
-					client.MatchingLabels{"name": "ssp-operator"})
-				Expect(err).ToNot(HaveOccurred())
-
-				for _, rs := range rsList.Items {
-					for _, env := range rs.Spec.Template.Spec.Containers[0].Env {
-						if env.Name == common.OperatorVersionKey &&
-							env.Value == version &&
-							*rs.Spec.Replicas > 0 &&
-							rs.Status.ReadyReplicas == *rs.Spec.Replicas {
-							return nil
-						}
-					}
-				}
-
-				return fmt.Errorf("operator version not yet updated")
-			}, env.ShortTimeout(), time.Second).Should(Succeed())
-		}
-
-		updateVersion := func(version string) {
-			Eventually(func() error {
-				deployment := getDeployment(sspDeploymentName, sspDeploymentNamespace)
-
-				envs := deployment.Spec.Template.Spec.Containers[0].Env
-
-				for i, env := range envs {
-					if env.Name == common.OperatorVersionKey {
-						envs[i].Value = version
-						break
-					}
-				}
-
-				return apiClient.Update(ctx, deployment)
-			}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
-
-			waitForVersionUpdate(version)
-		}
+		var template *templatev1.Template
 
 		BeforeEach(func() {
-			strategy.SkipSspUpdateTestsIfNeeded()
-
-			By("saving original version")
-			originalVersion = ""
-			deployment := getDeployment(sspDeploymentName, sspDeploymentNamespace)
-			envs := deployment.Spec.Template.Spec.Containers[0].Env
-			for _, env := range envs {
-				if env.Name == common.OperatorVersionKey {
-					originalVersion = env.Value
-				}
-			}
-
 			waitUntilDeployed()
+			template = &getTemplates().Items[0]
 		})
 
-		AfterEach(func() {
-			updateVersion(originalVersion)
-			strategy.RevertToOriginalSspCr()
+		It("[test_id:TODO]should increment total_restored_common_templates during normal reconcile", func() {
+			skipIfUpgradeLane()
+
+			restoredCount := totalRestoredTemplatesCount()
+
+			template.Labels[common_templates.TemplateTypeLabel] = "test"
+			Expect(apiClient.Update(ctx, template)).To(Succeed())
+
+			Eventually(func() int {
+				return totalRestoredTemplatesCount()
+			}, 5*time.Minute, 10*time.Second).Should(Equal(restoredCount + 1))
 		})
 
 		It("[test_id:TODO]should not increment total_restored_common_templates during upgrades", func() {
-			testTemplate := createTestTemplate()
+			restoredCount := totalRestoredTemplatesCount()
 
-			pauseSsp()
-			version := "test-" + rand.String(5)
-			updateVersion(version)
-
-			template := &templatev1.Template{}
-			Expect(apiClient.Get(ctx, testTemplate.GetKey(), template)).To(Succeed())
-			testTemplate.Update(template)
+			template.Labels[common_templates.TemplateTypeLabel] = "test"
+			template.Labels[common_templates.TemplateVersionLabel] = "v" + rand.String(5)
 			Expect(apiClient.Update(ctx, template)).To(Succeed())
 
-			unpauseSsp()
-			waitUntilDeployed()
-
-			newRestoredCount := totalRestoredTemplatesCount()
-			Expect(newRestoredCount).To(BeZero())
+			// TODO: replace 'Consistently' with a direct wait for the template update
+			Consistently(func() int {
+				return totalRestoredTemplatesCount()
+			}, 2*time.Minute, 20*time.Second).Should(Equal(restoredCount))
 		})
 	})
 
@@ -292,3 +234,18 @@ var _ = Describe("Metrics", func() {
 		})
 	})
 })
+
+func getTemplates() *templatev1.TemplateList {
+	templates := &templatev1.TemplateList{}
+	err := apiClient.List(ctx, templates,
+		client.InNamespace(strategy.GetTemplatesNamespace()),
+		client.MatchingLabels{
+			common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+		},
+	)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(templates.Items).ToNot(BeEmpty())
+
+	return templates
+}
