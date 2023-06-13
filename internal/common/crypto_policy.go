@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	ocpv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/library-go/pkg/crypto"
-	"kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -86,7 +86,7 @@ func GetSspTlsOptions(ctx context.Context) (*SSPTLSOptions, error) {
 		return nil, err
 	}
 
-	var sspList v1beta1.SSPList
+	var sspList ssp.SSPList
 	if err := apiReader.List(ctx, &sspList, &client.ListOptions{}); err != nil {
 		return nil, err
 	}

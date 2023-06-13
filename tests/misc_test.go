@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -50,14 +50,14 @@ var _ = Describe("Observed generation", func() {
 		defer watch.Stop()
 
 		var newValidatorReplicas int32 = 0
-		updateSsp(func(foundSsp *sspv1beta1.SSP) {
-			foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+		updateSsp(func(foundSsp *ssp.SSP) {
+			foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 				Replicas: &newValidatorReplicas,
 			}
 		})
 
 		// Watch changes until above change
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.Spec.TemplateValidator != nil &&
 				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
@@ -65,7 +65,7 @@ var _ = Describe("Observed generation", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.Spec.TemplateValidator != nil &&
 				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration
@@ -78,18 +78,18 @@ var _ = Describe("Observed generation", func() {
 		Expect(err).ToNot(HaveOccurred())
 		defer watch.Stop()
 
-		ssp := getSsp()
-		Expect(apiClient.Delete(ctx, ssp)).ToNot(HaveOccurred())
+		sspObj := getSsp()
+		Expect(apiClient.Delete(ctx, sspObj)).ToNot(HaveOccurred())
 
 		// Check for deletion timestamp before the SSP operator notices change
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.DeletionTimestamp != nil &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
 		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
 
 		// SSP operator enters Deleting phase
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.DeletionTimestamp != nil &&
 				updatedSsp.Status.Phase == lifecycleapi.PhaseDeleting &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration
@@ -161,8 +161,8 @@ func deleteDeployment(deploymentRes testResource) {
 func validateSspIsFailingToReconcileMetric() {
 	// try to change the number of validator pods
 	var newValidatorReplicas int32 = 3
-	updateSsp(func(foundSsp *sspv1beta1.SSP) {
-		foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+	updateSsp(func(foundSsp *ssp.SSP) {
+		foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 			Replicas: &newValidatorReplicas,
 		}
 	})

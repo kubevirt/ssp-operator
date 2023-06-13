@@ -14,7 +14,6 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	node_labeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
 	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
@@ -94,7 +93,6 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 			metrics.New(),
 			template_validator.New(),
 			common_templates.New(templatesBundle.Templates),
-			node_labeller.New(),
 			vm_console_proxy.New(vmConsoleProxyBundle),
 		)
 	}

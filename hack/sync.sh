@@ -17,7 +17,7 @@
 source ./hack/common.sh
 
 # Please note that the validation webhooks are not currently deployed so take care when using a custom SSP CR
-export KUBEVIRT_SSP=${KUBEVIRT_SSP:-./config/samples/ssp_v1beta1_ssp.yaml}
+export KUBEVIRT_SSP=${KUBEVIRT_SSP:-./config/samples/ssp_v1beta2_ssp.yaml}
 
 if [ -z "${KUBECTL}" ] || [ -z "${KUBESSH}" ] || [ -z "${KUSTOMIZE}" ] || [ -z "${KUBEVIRTCI_REGISTERY}" ]; then
     echo "${BASH_SOURCE[0]} expects the following env variables to be provided: KUBECTL, KUBESSH, KUSTOMIZE and KUBEVIRTCI_REGISTERY."

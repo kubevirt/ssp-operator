@@ -18,7 +18,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 )
 
 var log = logf.Log.WithName("common_operand_package")

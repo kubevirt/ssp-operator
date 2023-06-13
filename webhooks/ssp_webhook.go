@@ -32,19 +32,19 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 )
 
 var ssplog = logf.Log.WithName("ssp-resource")
 
 func Setup(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&sspv1beta1.SSP{}).
+		For(&ssp.SSP{}).
 		WithValidator(newSspValidator(mgr.GetClient())).
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta1-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta1,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta2,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
 
 type sspValidator struct {
 	apiClient client.Client
@@ -53,12 +53,12 @@ type sspValidator struct {
 var _ admission.CustomValidator = &sspValidator{}
 
 func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) error {
-	ssp := obj.(*sspv1beta1.SSP)
+	sspObj := obj.(*ssp.SSP)
 
-	var ssps sspv1beta1.SSPList
+	var ssps ssp.SSPList
 
 	// Check if no other SSP resources are present in the cluster
-	ssplog.Info("validate create", "name", ssp.Name)
+	ssplog.Info("validate create", "name", sspObj.Name)
 	err := s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
@@ -68,22 +68,22 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 	}
 
 	// Check if the common templates namespace exists
-	namespaceName := ssp.Spec.CommonTemplates.Namespace
+	namespaceName := sspObj.Spec.CommonTemplates.Namespace
 	var namespace v1.Namespace
 	err = s.apiClient.Get(ctx, client.ObjectKey{Name: namespaceName}, &namespace)
 	if err != nil {
 		return fmt.Errorf("creation failed, the configured namespace for common templates does not exist: %v", namespaceName)
 	}
 
-	if err = s.validatePlacement(ctx, ssp); err != nil {
+	if err = s.validatePlacement(ctx, sspObj); err != nil {
 		return fmt.Errorf("placement api validation error: %w", err)
 	}
 
-	if err := validateDataImportCronTemplates(ssp); err != nil {
+	if err := validateDataImportCronTemplates(sspObj); err != nil {
 		return fmt.Errorf("dataImportCronTemplates validation error: %w", err)
 	}
 
-	if err := validateCommonInstancetypes(ssp); err != nil {
+	if err := validateCommonInstancetypes(sspObj); err != nil {
 		return fmt.Errorf("commonInstancetypes validation error: %w", err)
 	}
 
@@ -91,7 +91,7 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 }
 
 func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) error {
-	newSsp := newObj.(*sspv1beta1.SSP)
+	newSsp := newObj.(*ssp.SSP)
 
 	ssplog.Info("validate update", "name", newSsp.Name)
 
@@ -114,7 +114,7 @@ func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) error
 	return nil
 }
 
-func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta1.SSP) error {
+func (s *sspValidator) validatePlacement(ctx context.Context, ssp *ssp.SSP) error {
 	if ssp.Spec.TemplateValidator == nil {
 		return nil
 	}
@@ -173,7 +173,7 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 }
 
 // TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation
-func validateDataImportCronTemplates(ssp *sspv1beta1.SSP) error {
+func validateDataImportCronTemplates(ssp *ssp.SSP) error {
 	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
 		if cron.Name == "" {
 			return fmt.Errorf("missing name in DataImportCronTemplate")
@@ -182,7 +182,7 @@ func validateDataImportCronTemplates(ssp *sspv1beta1.SSP) error {
 	return nil
 }
 
-func validateCommonInstancetypes(ssp *sspv1beta1.SSP) error {
+func validateCommonInstancetypes(ssp *ssp.SSP) error {
 	if ssp.Spec.CommonInstancetypes == nil || ssp.Spec.CommonInstancetypes.URL == nil {
 		return nil
 	}

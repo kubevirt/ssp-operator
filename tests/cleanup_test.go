@@ -8,14 +8,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	nodelabeller "kubevirt.io/ssp-operator/internal/operands/node-labeller"
 	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
 	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
@@ -39,8 +38,6 @@ var _ = Describe("Cleanup", func() {
 			data_sources.WatchClusterTypes,
 			metrics.WatchTypes,
 			metrics.WatchClusterTypes,
-			nodelabeller.WatchTypes,
-			nodelabeller.WatchClusterTypes,
 			template_validator.WatchTypes,
 			template_validator.WatchClusterTypes,
 			vm_console_proxy.WatchClusterTypes,
@@ -50,10 +47,10 @@ var _ = Describe("Cleanup", func() {
 			allWatchTypes = append(allWatchTypes, f()...)
 		}
 
-		ssp := getSsp()
+		sspObj := getSsp()
 
-		Expect(apiClient.Delete(ctx, ssp)).To(Succeed())
-		waitForDeletion(client.ObjectKeyFromObject(ssp), &sspv1beta1.SSP{})
+		Expect(apiClient.Delete(ctx, sspObj)).To(Succeed())
+		waitForDeletion(client.ObjectKeyFromObject(sspObj), &ssp.SSP{})
 
 		// Check that all deployed resources were deleted
 		for _, watchType := range allWatchTypes {

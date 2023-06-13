@@ -98,7 +98,7 @@ make deploy
 oc wait -n kubevirt deployment ssp-operator --for condition=Available --timeout 10m
 
 # Deploy sample SSP CR
-oc apply -f "config/samples/ssp_v1beta1_ssp.yaml"
+oc apply -f "config/samples/ssp_v1beta2_ssp.yaml"
 oc wait -n kubevirt ssp ssp-sample --for condition=Available --timeout 10m
 
 wait_until_exists "pipeline windows-efi-installer -n kubevirt" wait_until_exists "pipeline windows-customize -n kubevirt"

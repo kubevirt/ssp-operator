@@ -6,7 +6,7 @@ import (
 	"kubevirt.io/ssp-operator/tests/env"
 
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 )
 
 var _ = Describe("Single Node Topology", func() {
@@ -25,14 +25,14 @@ var _ = Describe("Single Node Topology", func() {
 		defer watch.Stop()
 
 		var newValidatorReplicas int32 = 3
-		updateSsp(func(foundSsp *sspv1beta1.SSP) {
-			foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+		updateSsp(func(foundSsp *ssp.SSP) {
+			foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 				Replicas: &newValidatorReplicas,
 			}
 		})
 
 		// Watch changes until above change
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.Spec.TemplateValidator != nil &&
 				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
@@ -40,7 +40,7 @@ var _ = Describe("Single Node Topology", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.Spec.TemplateValidator != nil &&
 				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration && updatedSsp.Status.Phase == api.PhaseDeployed
@@ -57,13 +57,13 @@ var _ = Describe("Single Node Topology", func() {
 		defer watch.Stop()
 
 		var newValidatorReplicas int32 = 0
-		updateSsp(func(foundSsp *sspv1beta1.SSP) {
-			foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+		updateSsp(func(foundSsp *ssp.SSP) {
+			foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 				Replicas: &newValidatorReplicas,
 			}
 		})
 
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.Spec.TemplateValidator != nil &&
 				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation > updatedSsp.Status.ObservedGeneration
@@ -71,7 +71,7 @@ var _ = Describe("Single Node Topology", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Watch changes until SSP operator updates ObservedGeneration
-		err = WatchChangesUntil(watch, func(updatedSsp *sspv1beta1.SSP) bool {
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
 			return updatedSsp.Spec.TemplateValidator != nil &&
 				*updatedSsp.Spec.TemplateValidator.Replicas == newValidatorReplicas &&
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration && updatedSsp.Status.Phase == api.PhaseDeployed

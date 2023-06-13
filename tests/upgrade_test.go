@@ -11,7 +11,6 @@ var kvsspCRDs = map[string]string{
 	"kubevirtmetricsaggregations.ssp.kubevirt.io":    "KubevirtMetricsAggregation",
 	"kubevirttemplatevalidators.ssp.kubevirt.io":     "KubevirtTemplateValidator",
 	"kubevirtcommontemplatesbundles.ssp.kubevirt.io": "KubevirtCommonTemplatesBundle",
-	"kubevirtnodelabellerbundles.ssp.kubevirt.io":    "KubevirtNodeLabellerBundle",
 }
 
 func listExistingCRDKinds() []string {

@@ -5,7 +5,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	"kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -146,7 +146,7 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 }
 
 // Merge all Tolerations, Affinity and NodeSelectors from NodePlacement into pod spec
-func injectPlacementMetadata(podSpec *v1.PodSpec, componentConfig *v1beta1.TemplateValidator) {
+func injectPlacementMetadata(podSpec *v1.PodSpec, componentConfig *ssp.TemplateValidator) {
 	if componentConfig == nil || componentConfig.Placement == nil {
 		return
 	}

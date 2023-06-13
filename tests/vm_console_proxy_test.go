@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 	"kubevirt.io/ssp-operator/tests/env"
 )
