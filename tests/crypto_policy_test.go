@@ -17,7 +17,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/tests/env"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -253,7 +253,7 @@ func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {
 	Expect(err).ToNot(HaveOccurred())
 	defer watch.Stop()
 
-	updateSsp(func(foundSsp *sspv1beta1.SSP) {
+	updateSsp(func(foundSsp *ssp.SSP) {
 		foundSsp.Spec.TLSSecurityProfile = tlsSecurityProfile
 	})
 	err = WatchChangesUntil(watch, isStatusDeploying, env.Timeout())

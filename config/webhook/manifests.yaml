@@ -11,7 +11,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-ssp-kubevirt-io-v1beta1-ssp
+      path: /validate-ssp-kubevirt-io-v1beta2-ssp
   failurePolicy: Fail
   name: validation.ssp.kubevirt.io
   rules:
@@ -19,6 +19,7 @@ webhooks:
     - ssp.kubevirt.io
     apiVersions:
     - v1beta1
+    - v1beta2
     operations:
     - CREATE
     - UPDATE

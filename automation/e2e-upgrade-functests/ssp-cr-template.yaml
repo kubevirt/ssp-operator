@@ -13,3 +13,7 @@ spec:
     namespace: %%_COMMON_TEMPLATES_NAMESPACE_%%
   templateValidator:
     replicas: 2
+  nodeLabeller:
+    placement:
+      nodeSelector: 
+        "test": "test"

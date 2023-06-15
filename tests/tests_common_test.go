@@ -22,7 +22,7 @@ import (
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -230,7 +230,7 @@ func hasOwnerAnnotations(annotations map[string]string) bool {
 		annotations[handler.NamespacedNameAnnotation] == namespacedName
 }
 
-func updateSsp(updateFunc func(foundSsp *v1beta1.SSP)) {
+func updateSsp(updateFunc func(foundSsp *ssp.SSP)) {
 	Eventually(func() error {
 		foundSsp := getSsp()
 		updateFunc(foundSsp)
@@ -239,11 +239,11 @@ func updateSsp(updateFunc func(foundSsp *v1beta1.SSP)) {
 }
 
 func pauseSsp() {
-	updateSsp(func(foundSsp *v1beta1.SSP) {
+	updateSsp(func(foundSsp *ssp.SSP) {
 		if foundSsp.Annotations == nil {
 			foundSsp.Annotations = map[string]string{}
 		}
-		foundSsp.Annotations[v1beta1.OperatorPausedAnnotation] = "true"
+		foundSsp.Annotations[ssp.OperatorPausedAnnotation] = "true"
 	})
 	Eventually(func() bool {
 		return getSsp().Status.Paused
@@ -251,15 +251,15 @@ func pauseSsp() {
 }
 
 func unpauseSsp() {
-	updateSsp(func(foundSsp *v1beta1.SSP) {
-		delete(foundSsp.Annotations, v1beta1.OperatorPausedAnnotation)
+	updateSsp(func(foundSsp *ssp.SSP) {
+		delete(foundSsp.Annotations, ssp.OperatorPausedAnnotation)
 	})
 	Eventually(func() bool {
 		return getSsp().Status.Paused
 	}, env.ShortTimeout(), time.Second).Should(BeFalse())
 }
 
-func isStatusDeploying(obj *v1beta1.SSP) bool {
+func isStatusDeploying(obj *ssp.SSP) bool {
 	available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
 	progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
 	degraded := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionDegraded)
@@ -270,7 +270,7 @@ func isStatusDeploying(obj *v1beta1.SSP) bool {
 		degraded.Status == core.ConditionTrue
 }
 
-func isStatusDeployed(obj *v1beta1.SSP) bool {
+func isStatusDeployed(obj *ssp.SSP) bool {
 	available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
 	progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
 	degraded := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionDegraded)

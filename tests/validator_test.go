@@ -28,7 +28,7 @@ import (
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
@@ -322,8 +322,8 @@ var _ = Describe("Template validator operand", func() {
 
 			waitUntilDeployed()
 
-			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 					Placement: &lifecycleapi.NodePlacement{
 						Affinity:     affinity,
 						NodeSelector: nodeSelector,
@@ -346,8 +346,8 @@ var _ = Describe("Template validator operand", func() {
 					reflect.DeepEqual(podSpec.Tolerations, tolerations)
 			}, env.Timeout(), 1*time.Second).Should(BeTrue(), "placement is different")
 
-			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 					Placement: &lifecycleapi.NodePlacement{
 						Affinity:     nil,
 						NodeSelector: nil,
@@ -379,8 +379,8 @@ var _ = Describe("Template validator operand", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer watch.Stop()
 
-			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 					Replicas: pointer.Int32(replicas),
 				}
 			})
@@ -388,7 +388,7 @@ var _ = Describe("Template validator operand", func() {
 			err = WatchChangesUntil(watch, isStatusDeploying, env.Timeout())
 			Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
 
-			err = WatchChangesUntil(watch, func(obj *sspv1beta1.SSP) bool {
+			err = WatchChangesUntil(watch, func(obj *ssp.SSP) bool {
 				available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
 				progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
 

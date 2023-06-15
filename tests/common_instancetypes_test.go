@@ -4,12 +4,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/utils/pointer"
+	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kustomize/api/krusty"
-
-	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
-	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 )
 
 var _ = Describe("Common Instance Types", func() {
@@ -39,11 +38,11 @@ var _ = Describe("Common Instance Types", func() {
 		})
 		It("should reconcile from URL when provided", func() {
 			URL := "https://github.com/kubevirt/common-instancetypes//VirtualMachineClusterPreferences?ref=v0.1.0"
-			ssp := getSsp()
-			ssp.Spec.CommonInstancetypes = &sspv1beta1.CommonInstancetypes{
+			sspObj := getSsp()
+			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 				URL: pointer.String(URL),
 			}
-			createOrUpdateSsp(ssp)
+			createOrUpdateSsp(sspObj)
 			k := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
 			c := common_instancetypes.CommonInstancetypes{
 				KustomizeRunFunc: k.Run,
@@ -62,11 +61,11 @@ var _ = Describe("Common Instance Types", func() {
 	})
 	Context("webhook", func() {
 		DescribeTable("should reject URL", func(URL string) {
-			ssp := getSsp()
-			ssp.Spec.CommonInstancetypes = &sspv1beta1.CommonInstancetypes{
+			sspObj := getSsp()
+			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 				URL: pointer.String(URL),
 			}
-			err := apiClient.Update(ctx, ssp)
+			err := apiClient.Update(ctx, sspObj)
 			Expect(err).To(HaveOccurred())
 		},
 			Entry("with file://", "file://foo/bar"),

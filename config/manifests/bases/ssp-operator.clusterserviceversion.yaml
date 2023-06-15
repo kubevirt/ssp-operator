@@ -17,7 +17,7 @@ spec:
       displayName: SSP
       kind: SSP
       name: ssps.ssp.kubevirt.io
-      version: v1beta1
+      version: v1beta2
   description: KubeVirt Schedule, Scale and Performance Operator
   displayName: ssp-operator
   icon:

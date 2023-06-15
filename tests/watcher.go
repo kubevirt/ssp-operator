@@ -13,12 +13,12 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 )
 
 type SspWatch interface {
 	Stop()
-	Updates() <-chan *sspv1beta1.SSP
+	Updates() <-chan *ssp.SSP
 	Error() error
 }
 
@@ -36,7 +36,7 @@ func StartWatch(listerWatcher cache.ListerWatcher) (SspWatch, error) {
 	watch := &sspWatch{
 		listerWatcher: listerWatcher,
 		stopCh:        make(chan struct{}),
-		updateCh:      make(chan *sspv1beta1.SSP),
+		updateCh:      make(chan *ssp.SSP),
 		lastVersion:   list.GetResourceVersion(),
 	}
 	go watch.startWatch()
@@ -46,7 +46,7 @@ func StartWatch(listerWatcher cache.ListerWatcher) (SspWatch, error) {
 type sspWatch struct {
 	listerWatcher cache.ListerWatcher
 	stopCh        chan struct{}
-	updateCh      chan *sspv1beta1.SSP
+	updateCh      chan *ssp.SSP
 	atomicError   atomic.Value
 	lastVersion   string
 }
@@ -55,7 +55,7 @@ func (s *sspWatch) Stop() {
 	close(s.stopCh)
 }
 
-func (s *sspWatch) Updates() <-chan *sspv1beta1.SSP {
+func (s *sspWatch) Updates() <-chan *ssp.SSP {
 	return s.updateCh
 }
 
@@ -109,7 +109,7 @@ func (s *sspWatch) handleWatch(w watch.Interface) error {
 				err := apierrors.FromObject(event.Object)
 				return err
 			}
-			sspObj, ok := event.Object.(*sspv1beta1.SSP)
+			sspObj, ok := event.Object.(*ssp.SSP)
 			if !ok {
 				panic("Watch should receive SSP type.")
 			}
@@ -129,7 +129,7 @@ func (s *sspWatch) handleWatch(w watch.Interface) error {
 
 var ErrTimeout = fmt.Errorf("timed out")
 
-func WatchChangesUntil(watch SspWatch, predicate func(updatedSsp *sspv1beta1.SSP) bool, timeout time.Duration) error {
+func WatchChangesUntil(watch SspWatch, predicate func(updatedSsp *ssp.SSP) bool, timeout time.Duration) error {
 	timeoutCh := time.After(timeout)
 	for {
 		select {

@@ -6,7 +6,7 @@ metadata:
     alm-examples: |-
       [
         {
-          "apiVersion": "ssp.kubevirt.io/v1beta1",
+          "apiVersion": "ssp.kubevirt.io/v1beta2",
           "kind": "SSP",
           "metadata": {
             "name": "ssp-sample",
@@ -45,11 +45,14 @@ spec:
     enabled: false
   customresourcedefinitions:
     owned:
+    - kind: SSP
+      name: ssps.ssp.kubevirt.io
+      version: v1beta1
     - description: SSP is the Schema for the ssps API
       displayName: SSP
       kind: SSP
       name: ssps.ssp.kubevirt.io
-      version: v1beta1
+      version: v1beta2
   description: KubeVirt Schedule, Scale and Performance Operator
   displayName: ssp-operator
   icon:
@@ -125,18 +128,6 @@ spec:
           verbs:
           - get
           - list
-          - watch
-        - apiGroups:
-          - apps
-          resources:
-          - daemonsets
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
           - watch
         - apiGroups:
           - apps
@@ -219,19 +210,6 @@ spec:
           resources:
           - configmaps
           - serviceaccounts
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - configmaps
-          - serviceaccounts
           - services
           verbs:
           - create
@@ -253,14 +231,6 @@ spec:
           - patch
           - update
           - watch
-        - apiGroups:
-          - ""
-          resources:
-          - nodes
-          verbs:
-          - get
-          - patch
-          - update
         - apiGroups:
           - ""
           resources:
@@ -457,26 +427,6 @@ spec:
           - update
           - watch
         - apiGroups:
-          - security.openshift.io
-          resources:
-          - securitycontextconstraints
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - security.openshift.io
-          resourceNames:
-          - privileged
-          resources:
-          - securitycontextconstraints
-          verbs:
-          - use
-        - apiGroups:
           - ssp.kubevirt.io
           resources:
           - kubevirtcommontemplatesbundles
@@ -492,18 +442,6 @@ spec:
           - ssp.kubevirt.io
           resources:
           - kubevirtmetricsaggregations
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ssp.kubevirt.io
-          resources:
-          - kubevirtnodelabellerbundles
           verbs:
           - create
           - delete
@@ -638,12 +576,9 @@ spec:
                 command:
                 - /manager
                 env:
-                - name: KVM_INFO_IMAGE
                 - name: VALIDATOR_IMAGE
                   value: quay.io/kubevirt/kubevirt-template-validator:latest
                 - name: VIRT_LAUNCHER_IMAGE
-                - name: NODE_LABELLER_IMAGE
-                - name: CPU_PLUGIN_IMAGE
                 - name: OPERATOR_VERSION
                   value: 0.14.0
                 - name: TEKTON_TASKS_IMAGE
@@ -768,6 +703,7 @@ spec:
       - ssp.kubevirt.io
       apiVersions:
       - v1beta1
+      - v1beta2
       operations:
       - CREATE
       - UPDATE
@@ -776,4 +712,4 @@ spec:
     sideEffects: None
     targetPort: 9443
     type: ValidatingAdmissionWebhook
-    webhookPath: /validate-ssp-kubevirt-io-v1beta1-ssp
+    webhookPath: /validate-ssp-kubevirt-io-v1beta2-ssp

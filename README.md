@@ -26,7 +26,6 @@ The following resource types and CRDs are needed by `ssp-operator` when deployed
 | `datavolumes.cdi.kubevirt.io/v1beta1`                                   | `data-sources` operand (Kind `DataVolume` and `DataVolumeSource`)         |
 | `datasources.cdi.kubevirt.io/v1beta1`                                   | `data-sources` operand (Kind `DataSource`)                                |
 | `prometheusrules.monitoring.coreos.com`                                 | `metrics` operand (Kind `PrometheusRule`)                                 |
-| `securitycontextconstraints.security.openshift.io`                      | `node-labeller` operand (Kind `SecurityContextConstraints`)               |
 | `template.openshift.io/v1`                                              | `common-templates` operand (Kind `Template`)                              |
 | `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1alpha2` | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
 | `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1alpha2`   | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
@@ -61,7 +60,7 @@ oc apply -f https://github.com/kubevirt/ssp-operator/releases/download/${SSP_VER
 ```
 
 To activate the operator, a CR needs to be created.
-An example is in [config/samples/ssp_v1beta1_ssp.yaml](config/samples/ssp_v1beta1_ssp.yaml).
+An example is in [config/samples/ssp_v1beta2_ssp.yaml](config/samples/ssp_v1beta2_ssp.yaml).
 
 ## Building
 

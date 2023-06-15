@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -85,8 +85,8 @@ var _ = Describe("Prometheus Alerts", func() {
 		It("[test_id:8376] Should fire SSPTemplateValidatorDown", func() {
 			strategy.SkipSspUpdateTestsIfNeeded()
 			var replicas int32 = 0
-			updateSsp(func(foundSsp *sspv1beta1.SSP) {
-				foundSsp.Spec.TemplateValidator = &sspv1beta1.TemplateValidator{
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
 					Replicas: &replicas,
 				}
 			})
