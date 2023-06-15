@@ -6,29 +6,13 @@ metadata:
     pipelinerun: windows10-customize-run
 spec:
   params:
-    - name: allowReplaceGoldenTemplate
-      value: true
-    - name: allowReplaceCustomizationTemplate
-      value: true
-    - name: sourceTemplateNamespace
-      value: kubevirt
+    - name: sourceDiskImageName
+      value: win10
+    - name: baseDvName
+      value: win10-customized
+    - name: preferenceName
+      value: "windows.10"
   pipelineRef:
     name: windows-customize
-  taskRunSpecs:
-    - pipelineTaskName: copy-template-customize
-      taskServiceAccountName: copy-template-task
-    - pipelineTaskName: modify-vm-template-customize
-      taskServiceAccountName: modify-vm-template-task
-    - pipelineTaskName: create-vm-from-template
-      taskServiceAccountName: create-vm-from-template-task
-    - pipelineTaskName: wait-for-vmi-status
-      taskServiceAccountName: wait-for-vmi-status-task
-    - pipelineTaskName: create-base-dv
-      taskServiceAccountName: modify-data-object-task
-    - pipelineTaskName: cleanup-vm
-      taskServiceAccountName: cleanup-vm-task
-    - pipelineTaskName: copy-template-golden
-      taskServiceAccountName: copy-template-task
-    - pipelineTaskName: modify-vm-template-golden
-      taskServiceAccountName: modify-vm-template-task
+  serviceAccountName: pipeline
 status: {}

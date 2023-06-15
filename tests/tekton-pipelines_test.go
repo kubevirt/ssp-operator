@@ -54,26 +54,6 @@ var _ = Describe("Tekton Pipelines Operand", func() {
 		// 	}
 		// })
 
-		It("[test_id:TODO] should create cluster roles", func() {
-			clusterRoleList := &rbac.ClusterRoleList{}
-
-			Eventually(func() bool {
-				err := apiClient.List(ctx, clusterRoleList,
-					client.MatchingLabels{
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-						common.AppKubernetesComponentLabel: string(common.AppComponentTektonPipelines),
-					},
-				)
-				Expect(err).ToNot(HaveOccurred())
-				return len(clusterRoleList.Items) > 0
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
-
-			for _, clusterRole := range clusterRoleList.Items {
-				Expect(clusterRole.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
-				Expect(clusterRole.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonPipelines)), "component label should equal")
-			}
-		})
-
 		It("[test_id:TODO] should create role bindings", func() {
 			roleBindingList := &rbac.RoleBindingList{}
 
@@ -92,6 +72,18 @@ var _ = Describe("Tekton Pipelines Operand", func() {
 				Expect(roleBinding.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
 				Expect(roleBinding.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonPipelines)), "component label should equal")
 			}
+		})
+
+		It("[test_id:TODO] should not update pipeline SA when deployed in non openshift|kube namespace", func() {
+			existingSA := &v1.ServiceAccount{}
+
+			Eventually(func() bool {
+				err := apiClient.Get(ctx, client.ObjectKey{Name: "pipeline", Namespace: strategy.GetNamespace()}, existingSA)
+				Expect(err).ToNot(HaveOccurred())
+				return existingSA != nil
+			}, env.ShortTimeout(), time.Second).Should(BeTrue())
+
+			Expect(existingSA.Annotations[common.AppKubernetesComponentLabel]).ToNot(Equal(common.AppComponentTektonPipelines))
 		})
 
 		It("[test_id:TODO] should create config maps", func() {

@@ -1,0 +1,248 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: windows-efi-installer
+spec:
+  params:
+    - description: Download URL to Windows 11 or server 2022 installation ISO (English United States x64 version is needed). You can follow https://www.microsoft.com/en-us/software-download/windows11 or https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2022 to get one.
+      name: winImageDownloadURL
+      type: string
+    - name: instanceTypeName
+      type: string
+      description: Name of VirtualMachineClusterInstancetype object
+      default: n1.large
+    - name: instanceTypeKind
+      type: string
+      description: Kind of VirtualMachineInstancetype object
+      default: VirtualMachineClusterInstancetype
+    - name: preferenceName
+      type: string
+      description: Name of VirtualMachineClusterPreference object
+      default: windows.11
+    - name: virtualMachinePreferenceKind
+      type: string
+      description: Kind of virtualMachinePreference object
+      default: VirtualMachineClusterPreference
+    - default: windows11-autounattend
+      description: Name of the ConfigMap containing the sysprep configuration files (autounattend.xml, etc.). For example windows11-autounattend or windows2022-autounattend. It is possible to provide customize ConfigMaps created by the user too.
+      name: autounattendConfigMapName
+      type: string
+    - default: quay.io/kubevirt/virtio-container-disk:v0.59.0
+      description: Reference to the containerdisk containing the virtio-win drivers ISO.
+      name: virtioContainerDiskName
+      type: string
+    - default: win11
+      description: Name of the base DataVolume which is created. Pre-installed Windows VMs can be created from this DataVolume.
+      name: baseDvName
+      type: string
+    - default: kubevirt-os-images
+      description: Namespace of the base DataVolume which is created.
+      name: baseDvNamespace
+      type: string
+    - default: win11
+      description: Name of Windows ISO datavolume
+      name: isoDVName
+      type: string
+  tasks:
+    - name: import-win-iso
+      params:
+        - name: manifest
+          value: |-
+            apiVersion: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            metadata:
+              annotations:
+                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
+              generateName: $(params.isoDVName)-
+            spec:
+              source:
+                http:
+                  url: $(params.winImageDownloadURL)
+              storage:
+                volumeMode: Filesystem
+                resources:
+                  requests:
+                    storage: 9Gi
+        - name: waitForSuccess
+          value: true
+        - name: allowReplace
+          value: true
+      taskRef:
+        kind: Task
+        name: modify-data-object
+    - name: modify-windows-iso-file
+      params:
+        - name: pvcName
+          value: $(tasks.import-win-iso.results.name)
+      runAfter:
+        - import-win-iso
+        - create-vm-root-disk
+      taskRef:
+        kind: Task
+        name: modify-windows-iso-file
+    - name: create-vm-root-disk
+      taskRef:
+        kind: Task
+        name: modify-data-object
+      params:
+        - name: manifest
+          value: |-
+            apiVersion: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            metadata:
+              annotations:
+                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
+              generateName: windows-efi-root-disk-
+            spec:
+              storage:
+                resources:
+                  requests:
+                    storage: 20Gi
+              source:
+                blank: {}
+        - name: waitForSuccess
+          value: true
+    - name: create-vm
+      params:
+        - name: runStrategy
+          value: RerunOnFailure
+        - name: manifest
+          value: |-          
+            apiVersion: kubevirt.io/v1
+            kind: VirtualMachine
+            metadata:
+              generateName: windows-efi-
+            spec:
+              instancetype:
+                kind: $(params.instanceTypeKind)
+                name: $(params.instanceTypeName)
+              preference:
+                kind: $(params.virtualMachinePreferenceKind)
+                name: $(params.preferenceName)
+              template:
+                spec:
+                  domain:
+                    devices:
+                      disks:
+                        - cdrom:
+                            bus: sata
+                          name: installcdrom
+                          bootOrder: 2
+                        - disk:
+                            bus: virtio
+                          name: rootdisk
+                          bootOrder: 1
+                        - cdrom:
+                            bus: sata
+                          name: virtiocontainerdisk
+                        - cdrom:
+                            bus: sata
+                          name: sysprep
+                  volumes:
+                  - name: installcdrom
+                    persistentVolumeClaim:
+                      claimName: $(tasks.import-win-iso.results.name)
+                  - name: virtiocontainerdisk
+                    containerDisk:
+                      image: $(params.virtioContainerDiskName)
+                  - name: sysprep
+                    sysprep:
+                      configMap: 
+                        name: $(params.autounattendConfigMapName)
+                  - dataVolume:
+                      name:  $(tasks.create-vm-root-disk.results.name)
+                    name: rootdisk
+      runAfter:
+        - modify-windows-iso-file
+      taskRef:
+        kind: Task
+        name: create-vm-from-manifest
+    - name: wait-for-vmi-status
+      params:
+        - name: vmiName
+          value: $(tasks.create-vm.results.name)
+        - name: vmiNamespace
+          value: $(tasks.create-vm.results.namespace)
+        - name: successCondition
+          value: status.phase == Succeeded
+        - name: failureCondition
+          value: status.phase in (Failed, Unknown)
+      runAfter:
+        - create-vm
+      taskRef:
+        kind: Task
+        name: wait-for-vmi-status
+      timeout: 2h0m0s
+    - name: create-base-dv
+      params:
+        - name: manifest
+          value: |
+            apiVersion: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            metadata:
+              name: $(params.baseDvName)
+              namespace: $(params.baseDvNamespace)
+              annotations:
+                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
+            spec:
+              storage: {}
+              source:
+                pvc:
+                  name: $(tasks.create-vm-root-disk.results.name)
+                  namespace: $(tasks.create-vm-root-disk.results.namespace)
+        - name: waitForSuccess
+          value: true
+        - name: allowReplace
+          value: true
+      runAfter:
+        - wait-for-vmi-status
+      taskRef:
+        kind: Task
+        name:  modify-data-object
+  finally:
+    - name: cleanup-vm
+      params:
+        - name: vmName
+          value: $(tasks.create-vm.results.name)
+        - name: vmNamespace
+          value: $(tasks.create-vm.results.namespace)
+        - name: delete
+          value: true
+      taskRef:
+        kind: Task
+        name: cleanup-vm
+      timeout: 10m0s
+    - name: delete-imported-iso
+      params:
+        - name: deleteObject
+          value: true
+        - name: deleteObjectKind
+          value: PersistentVolumeClaim
+        - name: deleteObjectName
+          value: $(tasks.import-win-iso.results.name)
+        - name: namespace
+          value: $(tasks.import-win-iso.results.namespace)
+      taskRef:
+        kind: Task
+        name: modify-data-object
+    - name: delete-vm-rootdisk
+      params:
+        - name: deleteObject
+          value: true
+        - name: deleteObjectKind
+          value: PersistentVolumeClaim
+        - name: deleteObjectName
+          value: $(tasks.create-vm-root-disk.results.name)
+        - name: namespace
+          value: $(tasks.create-vm-root-disk.results.namespace)
+      taskRef:
+        kind: Task
+        name: modify-data-object
+  results:
+    - description: Name of the created base DataVolume
+      name: baseDvName
+      value: $(tasks.create-base-dv.results.name)
+    - description: Namespace of the created base DataVolume
+      name: baseDvNamespace
+      value: $(tasks.create-base-dv.results.namespace)

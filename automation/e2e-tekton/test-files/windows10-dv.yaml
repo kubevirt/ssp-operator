@@ -2,7 +2,6 @@ apiVersion: cdi.kubevirt.io/v1beta1
 kind: DataVolume
 metadata:
   name: "iso-dv"
-  namespace: kubevirt
   annotations:
     cdi.kubevirt.io/storage.bind.immediate.requested: "true"
 spec:

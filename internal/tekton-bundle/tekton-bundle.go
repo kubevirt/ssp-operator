@@ -15,10 +15,9 @@ import (
 )
 
 const (
-	tektonTasksKubernetesBundleDir     = "/data/tekton-tasks/kubernetes/"
-	tektonTasksOKDBundleDir            = "/data/tekton-tasks/okd/"
-	tektonPipelinesKubernetesBundleDir = "/data/tekton-pipelines/kubernetes/"
-	tektonPipelinesOKDBundleDir        = "/data/tekton-pipelines/okd/"
+	tektonTasksKubernetesBundleDir = "/data/tekton-tasks/kubernetes/"
+	tektonTasksOKDBundleDir        = "/data/tekton-tasks/okd/"
+	tektonPipelinesBundleDir       = "/data/tekton-pipelines/"
 )
 
 var (
@@ -56,8 +55,8 @@ func ReadTasksBundle(isOpenshift bool) (*Bundle, error) {
 	return tektonObjs, nil
 }
 
-func ReadPipelineBundle(isOpenshift bool) (*Bundle, error) {
-	path := getPipelineBundlePath(isOpenshift)
+func ReadPipelineBundle() (*Bundle, error) {
+	path := getPipelineBundlePath()
 	files, err := readFolder(path)
 	if err != nil {
 		return nil, err
@@ -71,11 +70,8 @@ func ReadPipelineBundle(isOpenshift bool) (*Bundle, error) {
 	return tektonObjs, nil
 }
 
-func getPipelineBundlePath(isOpenshift bool) string {
-	if isOpenshift {
-		return tektonPipelinesOKDBundleDir
-	}
-	return tektonPipelinesKubernetesBundleDir
+func getPipelineBundlePath() string {
+	return tektonPipelinesBundleDir
 }
 
 func getTasksBundlePath(isOpenshift bool) string {

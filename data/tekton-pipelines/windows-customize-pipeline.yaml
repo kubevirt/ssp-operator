@@ -1,0 +1,149 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: windows-customize
+  annotations:
+    description: windows-customize pipeline provides functionality for windows VMs to e.g. install sql server, or install VS Code into windows VM. This pipeline can be reused for customizing Windows 10 and 11.
+spec:
+  params:
+    - name: instanceTypeName
+      type: string
+      description: Name of VirtualMachineClusterInstancetype object
+      default: n1.large
+    - name: instanceTypeKind
+      type: string
+      description: Kind of VirtualMachineInstancetype object
+      default: VirtualMachineClusterInstancetype
+    - name: preferenceName
+      type: string
+      description: Name of VirtualMachineClusterPreference object
+      default: windows.11
+    - name: virtualMachinePreferenceKind
+      type: string
+      description: Kind of virtualMachinePreference object
+      default: VirtualMachineClusterPreference
+    - name: customizeConfigMapName
+      description: Name of the ConfigMap containing the customization and sysprep configuration files (unattend.xml, etc.). For example windows10-sqlserver or windows11-vs-code. It is possible to provide customize ConfigMaps created by the user too.
+      type: string
+      default: windows-vs-code
+    - name: sourceDiskImageName
+      description: Name of the windows source disk which will be copied and modified with sysprep
+      type: string
+      default: win11
+    - name: sourceDiskImageNamespace
+      description: Namespace of the windows source disk which will be copied and modified with sysprep
+      type: string
+      default: kubevirt-os-images
+    - name: baseDvName
+      description: Name of the result windows disk
+      type: string
+      default: win11-customized
+    - name: baseDvNamespace
+      description: Namespace of the result windows disk
+      type: string
+      default: kubevirt-os-images
+  tasks:
+    - name: copy-vm-root-disk
+      taskRef:
+        kind: Task
+        name: modify-data-object
+      params:
+        - name: manifest
+          value: |-
+            apiVersion: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            metadata:
+              annotations:
+                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
+              name: $(params.baseDvName)
+              namespace: $(params.baseDvNamespace)
+            spec:
+              storage: {}
+              source: 
+                pvc:
+                  name: $(params.sourceDiskImageName)
+                  namespace: $(params.sourceDiskImageNamespace)
+        - name: waitForSuccess
+          value: true
+        - name: allowReplace
+          value: true
+    - name: create-vm
+      params:
+        - name: runStrategy
+          value: RerunOnFailure
+        - name: manifest
+          value: |-          
+            apiVersion: kubevirt.io/v1
+            kind: VirtualMachine
+            metadata:
+              generateName: windows-customize-
+              namespace: $(params.baseDvNamespace)
+            spec:
+              instancetype:
+                kind: $(params.instanceTypeKind)
+                name: $(params.instanceTypeName)
+              preference:
+                kind: $(params.virtualMachinePreferenceKind)
+                name: $(params.preferenceName)
+              template:
+                spec:
+                  domain:
+                    devices:
+                      disks:
+                        - disk:
+                            bus: virtio
+                          name: rootdisk
+                          bootOrder: 1
+                        - cdrom:
+                            bus: sata
+                          name: sysprep
+                  volumes:
+                  - name: sysprep
+                    sysprep:
+                      configMap: 
+                        name: $(params.customizeConfigMapName)
+                  - dataVolume:
+                      name:  $(tasks.copy-vm-root-disk.results.name)
+                    name: rootdisk
+      taskRef:
+        kind: Task
+        name: create-vm-from-manifest
+      runAfter:
+        - copy-vm-root-disk
+    - name: wait-for-vmi-status
+      params:
+        - name: vmiName
+          value: $(tasks.create-vm.results.name)
+        - name: vmiNamespace
+          value: $(tasks.create-vm.results.namespace)
+        - name: successCondition
+          value: status.phase == Succeeded
+        - name: failureCondition
+          value: status.phase in (Failed, Unknown)
+      runAfter:
+        - create-vm
+      timeout: 2h
+      taskRef:
+        kind: Task
+        name: wait-for-vmi-status
+  finally:
+    - name: cleanup-vm
+      params:
+        - name: vmName
+          value: $(tasks.create-vm.results.name)
+        - name: vmNamespace
+          value: $(tasks.create-vm.results.namespace)
+        - name: delete
+          value: true
+      timeout: 10m
+      taskRef:
+        kind: Task
+        name: cleanup-vm
+  results:
+    - name: baseDvName
+      description: Name of the created base DataVolume
+      value: $(tasks.copy-vm-root-disk.results.name)
+    - name: baseDvNamespace
+      description: Namespace of the created base DataVolume
+      value: $(tasks.copy-vm-root-disk.results.namespace)

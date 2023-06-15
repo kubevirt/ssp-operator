@@ -8,6 +8,7 @@ import (
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -20,10 +21,12 @@ import (
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
 const (
-	namespacePattern = "^(openshift|kube)-"
-	operandName      = "tekton-pipelines"
-	operandComponent = common.AppComponentTektonPipelines
-	tektonCrd        = "tasks.tekton.dev"
+	namespacePattern           = "^(openshift|kube)-"
+	operandName                = "tekton-pipelines"
+	operandComponent           = common.AppComponentTektonPipelines
+	tektonCrd                  = "tasks.tekton.dev"
+	deployNamespaceAnnotation  = "kubevirt.io/deploy-namespace"
+	pipelineServiceAccountName = "pipeline"
 )
 
 var namespaceRegex = regexp.MustCompile(namespacePattern)
@@ -180,7 +183,11 @@ func reconcileConfigMapsFuncs(configMaps []v1.ConfigMap) []common.ReconcileFunc 
 	for i := range configMaps {
 		configMap := &configMaps[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			configMap.Namespace = getTektonPipelinesNamespace(request)
+			if value, ok := configMap.Annotations[deployNamespaceAnnotation]; ok {
+				configMap.Namespace = value
+			} else {
+				configMap.Namespace = getTektonPipelinesNamespace(request)
+			}
 			return common.CreateOrUpdate(request).
 				ClusterResource(configMap).
 				WithAppLabels(operandName, operandComponent).
@@ -190,6 +197,15 @@ func reconcileConfigMapsFuncs(configMaps []v1.ConfigMap) []common.ReconcileFunc 
 	return funcs
 }
 
+func getServiceAccount(request *common.Request, name string) (*v1.ServiceAccount, error) {
+	existingSA := &v1.ServiceAccount{}
+	err := request.Client.Get(request.Context, client.ObjectKey{Name: name}, existingSA)
+	if err != nil {
+		return nil, err
+	}
+	return existingSA, nil
+}
+
 func reconcileServiceAccountsFuncs(request *common.Request, serviceAccounts []v1.ServiceAccount) []common.ReconcileFunc {
 	funcs := make([]common.ReconcileFunc, 0, len(serviceAccounts))
 	for i := range serviceAccounts {
@@ -197,13 +213,26 @@ func reconcileServiceAccountsFuncs(request *common.Request, serviceAccounts []v1
 
 		if request.Instance.Spec.TektonPipelines != nil && request.Instance.Spec.TektonPipelines.Namespace != "" {
 			// deploy pipeline SA only in `^(openshift|kube)-` namespaces
-			if !namespaceRegex.MatchString(request.Instance.Spec.TektonPipelines.Namespace) && serviceAccount.Name == "pipeline" {
+			if !namespaceRegex.MatchString(request.Instance.Spec.TektonPipelines.Namespace) && serviceAccount.Name == pipelineServiceAccountName {
 				continue
 			}
 		}
 
 		funcs = append(funcs, func(r *common.Request) (common.ReconcileResult, error) {
 			serviceAccount.Namespace = getTektonPipelinesNamespace(r)
+			//check if pipeline SA already exists from tekton deployment
+			if serviceAccount.Name == pipelineServiceAccountName {
+				existingSA, err := getServiceAccount(request, serviceAccount.Name)
+				if err != nil && !errors.IsNotFound(err) {
+					return common.ReconcileResult{}, err
+				}
+				if existingSA != nil {
+					if val, ok := existingSA.Annotations[common.AppKubernetesComponentLabel]; !ok || val != string(common.AppComponentTektonPipelines) {
+						return common.ReconcileResult{}, nil
+					}
+				}
+			}
+
 			return common.CreateOrUpdate(r).
 				ClusterResource(serviceAccount).
 				WithAppLabels(operandName, operandComponent).
@@ -233,7 +262,9 @@ func reconcileRoleBindingsFuncs(rolebindings []rbac.RoleBinding) []common.Reconc
 		roleBinding := &rolebindings[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			namespace := getTektonPipelinesNamespace(request)
-			if roleBinding.Namespace == "" {
+			if value, ok := roleBinding.Annotations[deployNamespaceAnnotation]; ok {
+				roleBinding.Namespace = value
+			} else {
 				roleBinding.Namespace = namespace
 			}
 			for j := range roleBinding.Subjects {
