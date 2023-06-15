@@ -1,5 +1,5 @@
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -18,7 +18,7 @@ spec:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -37,7 +37,7 @@ spec:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -59,7 +59,7 @@ spec:
     preferredInputType: tablet
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -78,7 +78,7 @@ spec:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -100,7 +100,7 @@ spec:
     preferredInputType: tablet
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -126,7 +126,7 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -155,7 +155,7 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -174,7 +174,7 @@ spec:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -200,7 +200,7 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -219,7 +219,7 @@ spec:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -241,7 +241,7 @@ spec:
     preferredInputType: tablet
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -260,7 +260,7 @@ spec:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -282,7 +282,7 @@ spec:
     preferredInputType: tablet
     preferredInterfaceModel: virtio
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -308,7 +308,7 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -337,7 +337,7 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -357,7 +357,7 @@ spec:
     preferredInterfaceModel: virtio
     preferredRng: {}
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -407,8 +407,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -460,8 +461,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -516,8 +518,9 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -574,8 +577,9 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -625,8 +629,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -678,8 +683,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -729,8 +735,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -782,8 +789,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -833,8 +841,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -886,8 +895,9 @@ spec:
       tlbflush: {}
       vapic: {}
       vpindex: {}
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -942,8 +952,9 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  preferredTerminationGracePeriodSeconds: 3600
 ---
-apiVersion: instancetype.kubevirt.io/v1alpha2
+apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
 metadata:
   annotations:
@@ -1000,3 +1011,4 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  preferredTerminationGracePeriodSeconds: 3600
