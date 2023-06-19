@@ -18,6 +18,7 @@ package webhooks
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -25,13 +26,15 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal"
 )
 
@@ -47,7 +50,8 @@ var _ = Describe("SSP Validation", func() {
 	JustBeforeEach(func() {
 		scheme := runtime.NewScheme()
 		// add our own scheme
-		Expect(ssp.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
+		Expect(sspv1beta2.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
+		Expect(sspv1beta1.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
 		// add more schemes
 		Expect(v1.AddToScheme(scheme)).To(Succeed())
 
@@ -78,14 +82,14 @@ var _ = Describe("SSP Validation", func() {
 		Context("when one is already present", func() {
 			BeforeEach(func() {
 				// add an SSP CR to fake client
-				objects = append(objects, &ssp.SSP{
+				objects = append(objects, &sspv1beta2.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:            "test-ssp",
 						Namespace:       "test-ns",
 						ResourceVersion: "1",
 					},
-					Spec: ssp.SSPSpec{
-						CommonTemplates: ssp.CommonTemplates{
+					Spec: sspv1beta2.SSPSpec{
+						CommonTemplates: sspv1beta2.CommonTemplates{
 							Namespace: templatesNamespace,
 						},
 					},
@@ -93,18 +97,19 @@ var _ = Describe("SSP Validation", func() {
 			})
 
 			It("should be rejected", func() {
-				ssp := &ssp.SSP{
+				ssp := &sspv1beta2.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-ssp2",
 						Namespace: "test-ns2",
 					},
-					Spec: ssp.SSPSpec{
-						CommonTemplates: ssp.CommonTemplates{
+					Spec: sspv1beta2.SSPSpec{
+						CommonTemplates: sspv1beta2.CommonTemplates{
 							Namespace: templatesNamespace,
 						},
 					},
 				}
-				err := validator.ValidateCreate(ctx, ssp)
+
+				err := validator.ValidateCreate(ctx, toUnstructured(ssp))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp"))
 			})
@@ -112,31 +117,63 @@ var _ = Describe("SSP Validation", func() {
 
 		It("should fail if template namespace does not exist", func() {
 			const nonexistingNamespace = "nonexisting-namespace"
-			ssp := &ssp.SSP{
+			ssp := &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
 					Namespace: "test-ns",
 				},
-				Spec: ssp.SSPSpec{
-					CommonTemplates: ssp.CommonTemplates{
+				Spec: sspv1beta2.SSPSpec{
+					CommonTemplates: sspv1beta2.CommonTemplates{
 						Namespace: nonexistingNamespace,
 					},
 				},
 			}
-			err := validator.ValidateCreate(ctx, ssp)
+			err := validator.ValidateCreate(ctx, toUnstructured(ssp))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("creation failed, the configured namespace for common templates does not exist: " + nonexistingNamespace))
+		})
+
+		It("should accept old v1beta1 SSP CR", func() {
+			ssp := &sspv1beta1.SSP{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ssp",
+					Namespace: "test-ns",
+				},
+				Spec: sspv1beta1.SSPSpec{
+					TemplateValidator: &sspv1beta1.TemplateValidator{
+						Replicas: pointer.Int32(2),
+					},
+					CommonTemplates: sspv1beta1.CommonTemplates{
+						Namespace: templatesNamespace,
+					},
+					NodeLabeller: &sspv1beta1.NodeLabeller{},
+					CommonInstancetypes: &sspv1beta1.CommonInstancetypes{
+						URL: pointer.String("https://foo.com/bar?ref=1234"),
+					},
+					TektonPipelines: &sspv1beta1.TektonPipelines{
+						Namespace: "test-pipelines-ns",
+					},
+					TektonTasks: &sspv1beta1.TektonTasks{
+						Namespace: "test-tasks-ns",
+					},
+					FeatureGates: &sspv1beta1.FeatureGates{
+						DeployTektonTaskResources: true,
+					},
+				},
+			}
+
+			Expect(validator.ValidateCreate(ctx, toUnstructured(ssp))).To(Succeed())
 		})
 	})
 
 	It("should allow update of commonTemplates.namespace", func() {
-		oldSsp := &ssp.SSP{
+		oldSsp := &sspv1beta2.SSP{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-ssp",
 				Namespace: "test-ns",
 			},
-			Spec: ssp.SSPSpec{
-				CommonTemplates: ssp.CommonTemplates{
+			Spec: sspv1beta2.SSPSpec{
+				CommonTemplates: sspv1beta2.CommonTemplates{
 					Namespace: "old-ns",
 				},
 			},
@@ -145,7 +182,7 @@ var _ = Describe("SSP Validation", func() {
 		newSsp := oldSsp.DeepCopy()
 		newSsp.Spec.CommonTemplates.Namespace = "new-ns"
 
-		err := validator.ValidateUpdate(ctx, oldSsp, newSsp)
+		err := validator.ValidateUpdate(ctx, toUnstructured(oldSsp), toUnstructured(newSsp))
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -155,8 +192,8 @@ var _ = Describe("SSP Validation", func() {
 		)
 
 		var (
-			oldSSP *ssp.SSP
-			newSSP *ssp.SSP
+			oldSSP *sspv1beta2.SSP
+			newSSP *sspv1beta2.SSP
 		)
 
 		BeforeEach(func() {
@@ -167,15 +204,15 @@ var _ = Describe("SSP Validation", func() {
 				},
 			})
 
-			oldSSP = &ssp.SSP{
+			oldSSP = &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
 					Namespace: "test-ns",
 				},
-				Spec: ssp.SSPSpec{
-					CommonTemplates: ssp.CommonTemplates{
+				Spec: sspv1beta2.SSPSpec{
+					CommonTemplates: sspv1beta2.CommonTemplates{
 						Namespace: templatesNamespace,
-						DataImportCronTemplates: []ssp.DataImportCronTemplate{
+						DataImportCronTemplates: []sspv1beta2.DataImportCronTemplate{
 							{
 								ObjectMeta: metav1.ObjectMeta{
 									Namespace: internal.GoldenImagesNamespace,
@@ -194,15 +231,15 @@ var _ = Describe("SSP Validation", func() {
 		})
 
 		It("should validate dataImportCronTemplates on create", func() {
-			Expect(validator.ValidateCreate(ctx, newSSP)).To(HaveOccurred())
+			Expect(validator.ValidateCreate(ctx, toUnstructured(newSSP))).To(HaveOccurred())
 			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
-			Expect(validator.ValidateCreate(ctx, newSSP)).ToNot(HaveOccurred())
+			Expect(validator.ValidateCreate(ctx, toUnstructured(newSSP))).ToNot(HaveOccurred())
 		})
 
 		It("should validate dataImportCronTemplates on update", func() {
-			Expect(validator.ValidateUpdate(ctx, oldSSP, newSSP)).To(HaveOccurred())
+			Expect(validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))).To(HaveOccurred())
 			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
-			Expect(validator.ValidateUpdate(ctx, oldSSP, newSSP)).ToNot(HaveOccurred())
+			Expect(validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))).ToNot(HaveOccurred())
 		})
 	})
 
@@ -212,7 +249,7 @@ var _ = Describe("SSP Validation", func() {
 			templatesNamespace = "test-templates-ns"
 		)
 
-		var sspObj *ssp.SSP
+		var sspObj *sspv1beta2.SSP
 
 		BeforeEach(func() {
 			objects = append(objects, &v1.Namespace{
@@ -221,15 +258,15 @@ var _ = Describe("SSP Validation", func() {
 					ResourceVersion: "1",
 				},
 			})
-			sspObj = &ssp.SSP{
+			sspObj = &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "ssp",
 				},
-				Spec: ssp.SSPSpec{
-					CommonTemplates: ssp.CommonTemplates{
+				Spec: sspv1beta2.SSPSpec{
+					CommonTemplates: sspv1beta2.CommonTemplates{
 						Namespace: templatesNamespace,
 					},
-					CommonInstancetypes: &ssp.CommonInstancetypes{},
+					CommonInstancetypes: &sspv1beta2.CommonInstancetypes{},
 				},
 			}
 		})
@@ -240,17 +277,17 @@ var _ = Describe("SSP Validation", func() {
 
 		It("should reject URL without https:// or ssh://", func() {
 			sspObj.Spec.CommonInstancetypes.URL = pointer.String("file://foo/bar")
-			Expect(validator.ValidateCreate(ctx, sspObj)).ShouldNot(Succeed())
+			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).ShouldNot(Succeed())
 		})
 
 		It("should reject URL without ?ref= or ?version=", func() {
 			sspObj.Spec.CommonInstancetypes.URL = pointer.String("https://foo.com/bar")
-			Expect(validator.ValidateCreate(ctx, sspObj)).ShouldNot(Succeed())
+			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).ShouldNot(Succeed())
 		})
 
 		DescribeTable("should accept a valid remote kustomize target URL", func(url string) {
 			sspObj.Spec.CommonInstancetypes.URL = pointer.String(url)
-			Expect(validator.ValidateCreate(ctx, sspObj)).Should(Succeed())
+			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).Should(Succeed())
 		},
 			Entry("https:// with ?ref=", "https://foo.com/bar?ref=1234"),
 			Entry("https:// with ?target=", "https://foo.com/bar?version=1234"),
@@ -259,10 +296,27 @@ var _ = Describe("SSP Validation", func() {
 		)
 
 		It("should accept when no URL is provided", func() {
-			Expect(validator.ValidateCreate(ctx, sspObj)).Should(Succeed())
+			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).Should(Succeed())
 		})
 	})
 })
+
+func toUnstructured(obj runtime.Object) *unstructured.Unstructured {
+	switch t := obj.(type) {
+	case *sspv1beta1.SSP:
+		t.APIVersion = sspv1beta1.GroupVersion.String()
+		t.Kind = "SSP"
+	case *sspv1beta2.SSP:
+		t.APIVersion = sspv1beta2.GroupVersion.String()
+		t.Kind = "SSP"
+	}
+
+	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		panic(fmt.Sprintf("cannot convert object to unstructured: %s", err))
+	}
+	return &unstructured.Unstructured{Object: data}
+}
 
 func TestWebhook(t *testing.T) {
 	RegisterFailHandler(Fail)

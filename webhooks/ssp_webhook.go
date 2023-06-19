@@ -24,6 +24,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
@@ -32,14 +33,22 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 )
 
 var ssplog = logf.Log.WithName("ssp-resource")
 
 func Setup(mgr ctrl.Manager) error {
+	// This is a hack. Using Unstructured allows the webhook to correctly decode different versions of objects.
+	// Controller-runtime currently does not support a single webhook for multiple versions.
+
+	obj := &unstructured.Unstructured{}
+	obj.SetAPIVersion(sspv1beta2.GroupVersion.String())
+	obj.SetKind("SSP")
+
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&ssp.SSP{}).
+		For(obj).
 		WithValidator(newSspValidator(mgr.GetClient())).
 		Complete()
 }
@@ -53,13 +62,16 @@ type sspValidator struct {
 var _ admission.CustomValidator = &sspValidator{}
 
 func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) error {
-	sspObj := obj.(*ssp.SSP)
+	sspObj, err := getSspWithConversion(obj)
+	if err != nil {
+		return err
+	}
 
-	var ssps ssp.SSPList
+	var ssps sspv1beta2.SSPList
 
 	// Check if no other SSP resources are present in the cluster
 	ssplog.Info("validate create", "name", sspObj.Name)
-	err := s.apiClient.List(ctx, &ssps, &client.ListOptions{})
+	err = s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
 	}
@@ -91,7 +103,10 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 }
 
 func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) error {
-	newSsp := newObj.(*ssp.SSP)
+	newSsp, err := getSspWithConversion(newObj)
+	if err != nil {
+		return err
+	}
 
 	ssplog.Info("validate update", "name", newSsp.Name)
 
@@ -114,7 +129,7 @@ func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) error
 	return nil
 }
 
-func (s *sspValidator) validatePlacement(ctx context.Context, ssp *ssp.SSP) error {
+func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta2.SSP) error {
 	if ssp.Spec.TemplateValidator == nil {
 		return nil
 	}
@@ -172,8 +187,39 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 	return s.apiClient.Create(ctx, deployment, &client.CreateOptions{DryRun: []string{metav1.DryRunAll}})
 }
 
+func getSspWithConversion(obj runtime.Object) (*sspv1beta2.SSP, error) {
+	unstructuredSsp, ok := obj.(*unstructured.Unstructured)
+	if !ok {
+		return nil, fmt.Errorf("expected unstructured object, got %T", obj)
+	}
+
+	if unstructuredSsp.GetKind() != "SSP" {
+		return nil, fmt.Errorf("expected SSP kind, got %s", unstructuredSsp.GetKind())
+	}
+
+	switch unstructuredSsp.GetAPIVersion() {
+	case sspv1beta1.GroupVersion.String():
+		// Currently the two versions differ only in one removed field.
+		// We can decode the v1beta1 object into v1beta2.
+		// TODO: Use proper conversion logic.
+		unstructuredSsp.SetAPIVersion(sspv1beta2.GroupVersion.String())
+
+	case sspv1beta2.GroupVersion.String():
+		break
+	default:
+		return nil, fmt.Errorf("unexpected group version %s", unstructuredSsp.GetAPIVersion())
+	}
+
+	ssp := &sspv1beta2.SSP{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredSsp.UnstructuredContent(), ssp)
+	if err != nil {
+		return nil, fmt.Errorf("error converting unstructured object to SSP: %w", err)
+	}
+	return ssp, nil
+}
+
 // TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation
-func validateDataImportCronTemplates(ssp *ssp.SSP) error {
+func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
 	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
 		if cron.Name == "" {
 			return fmt.Errorf("missing name in DataImportCronTemplate")
@@ -182,7 +228,7 @@ func validateDataImportCronTemplates(ssp *ssp.SSP) error {
 	return nil
 }
 
-func validateCommonInstancetypes(ssp *ssp.SSP) error {
+func validateCommonInstancetypes(ssp *sspv1beta2.SSP) error {
 	if ssp.Spec.CommonInstancetypes == nil || ssp.Spec.CommonInstancetypes.URL == nil {
 		return nil
 	}

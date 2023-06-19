@@ -1,6 +1,6 @@
 # This custom resource is used by upgrade tests
 
-apiVersion: ssp.kubevirt.io/v1beta1
+apiVersion: ssp.kubevirt.io/v1beta2
 kind: SSP
 metadata:
   name: %%_SSP_NAME_%%
@@ -15,5 +15,5 @@ spec:
     replicas: 2
   nodeLabeller:
     placement:
-      nodeSelector: 
+      nodeSelector:
         "test": "test"
