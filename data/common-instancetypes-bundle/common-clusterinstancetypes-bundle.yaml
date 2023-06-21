@@ -543,157 +543,127 @@ apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterInstancetype
 metadata:
   annotations:
-    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The N Series is quite neutral and provides resources for
-      general purpose applications.
+      The O Series is based on the N Series, with the only difference
+      being that memory is overcommitted.
 
-      *N* is the abbreviation for "Neutral", hinting at the neutral
-      attitude towards workloads.
-
-      VMs of instance types will share physical CPU cores on a
-      time-slice basis with other VMs.
+      *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
-    instancetype.kubevirt.io/cpu: "8"
-    instancetype.kubevirt.io/memory: 32Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-  name: n1.2xlarge
+  name: o1.2xlarge
 spec:
   cpu:
     guest: 8
   memory:
     guest: 32Gi
+    overcommitPercent: 50
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterInstancetype
 metadata:
   annotations:
-    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The N Series is quite neutral and provides resources for
-      general purpose applications.
+      The O Series is based on the N Series, with the only difference
+      being that memory is overcommitted.
 
-      *N* is the abbreviation for "Neutral", hinting at the neutral
-      attitude towards workloads.
-
-      VMs of instance types will share physical CPU cores on a
-      time-slice basis with other VMs.
+      *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
-    instancetype.kubevirt.io/cpu: "16"
-    instancetype.kubevirt.io/memory: 64Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-  name: n1.4xlarge
+  name: o1.4xlarge
 spec:
   cpu:
     guest: 16
   memory:
     guest: 64Gi
+    overcommitPercent: 50
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterInstancetype
 metadata:
   annotations:
-    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The N Series is quite neutral and provides resources for
-      general purpose applications.
+      The O Series is based on the N Series, with the only difference
+      being that memory is overcommitted.
 
-      *N* is the abbreviation for "Neutral", hinting at the neutral
-      attitude towards workloads.
-
-      VMs of instance types will share physical CPU cores on a
-      time-slice basis with other VMs.
+      *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
-    instancetype.kubevirt.io/cpu: "32"
-    instancetype.kubevirt.io/memory: 128Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-  name: n1.8xlarge
+  name: o1.8xlarge
 spec:
   cpu:
     guest: 32
   memory:
     guest: 128Gi
+    overcommitPercent: 50
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterInstancetype
 metadata:
   annotations:
-    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The N Series is quite neutral and provides resources for
-      general purpose applications.
+      The O Series is based on the N Series, with the only difference
+      being that memory is overcommitted.
 
-      *N* is the abbreviation for "Neutral", hinting at the neutral
-      attitude towards workloads.
-
-      VMs of instance types will share physical CPU cores on a
-      time-slice basis with other VMs.
+      *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
-    instancetype.kubevirt.io/cpu: "2"
-    instancetype.kubevirt.io/memory: 8Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-  name: n1.large
+  name: o1.large
 spec:
   cpu:
     guest: 2
   memory:
     guest: 8Gi
+    overcommitPercent: 50
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterInstancetype
 metadata:
   annotations:
-    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The N Series is quite neutral and provides resources for
-      general purpose applications.
+      The O Series is based on the N Series, with the only difference
+      being that memory is overcommitted.
 
-      *N* is the abbreviation for "Neutral", hinting at the neutral
-      attitude towards workloads.
-
-      VMs of instance types will share physical CPU cores on a
-      time-slice basis with other VMs.
+      *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
-    instancetype.kubevirt.io/cpu: "1"
-    instancetype.kubevirt.io/memory: 4Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-  name: n1.medium
+  name: o1.medium
 spec:
   cpu:
     guest: 1
   memory:
     guest: 4Gi
+    overcommitPercent: 50
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterInstancetype
 metadata:
   annotations:
-    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The N Series is quite neutral and provides resources for
-      general purpose applications.
+      The O Series is based on the N Series, with the only difference
+      being that memory is overcommitted.
 
-      *N* is the abbreviation for "Neutral", hinting at the neutral
-      attitude towards workloads.
-
-      VMs of instance types will share physical CPU cores on a
-      time-slice basis with other VMs.
+      *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
-    instancetype.kubevirt.io/cpu: "4"
-    instancetype.kubevirt.io/memory: 16Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-  name: n1.xlarge
+  name: o1.xlarge
 spec:
   cpu:
     guest: 4
   memory:
     guest: 16Gi
+    overcommitPercent: 50
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterInstancetype
@@ -764,3 +734,159 @@ spec:
     guest: 1
   memory:
     guest: 1.5Gi
+---
+apiVersion: instancetype.kubevirt.io/v1beta1
+kind: VirtualMachineClusterInstancetype
+metadata:
+  annotations:
+    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/description: |-
+      The U Series is quite neutral and provides resources for
+      general purpose applications.
+
+      *U* is the abbreviation for "Universal", hinting at the universal
+      attitude towards workloads.
+
+      VMs of instance types will share physical CPU cores on a
+      time-slice basis with other VMs.
+    instancetype.kubevirt.io/version: "1"
+  labels:
+    instancetype.kubevirt.io/cpu: "8"
+    instancetype.kubevirt.io/memory: 32Gi
+    instancetype.kubevirt.io/vendor: kubevirt.io
+  name: u1.2xlarge
+spec:
+  cpu:
+    guest: 8
+  memory:
+    guest: 32Gi
+---
+apiVersion: instancetype.kubevirt.io/v1beta1
+kind: VirtualMachineClusterInstancetype
+metadata:
+  annotations:
+    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/description: |-
+      The U Series is quite neutral and provides resources for
+      general purpose applications.
+
+      *U* is the abbreviation for "Universal", hinting at the universal
+      attitude towards workloads.
+
+      VMs of instance types will share physical CPU cores on a
+      time-slice basis with other VMs.
+    instancetype.kubevirt.io/version: "1"
+  labels:
+    instancetype.kubevirt.io/cpu: "16"
+    instancetype.kubevirt.io/memory: 64Gi
+    instancetype.kubevirt.io/vendor: kubevirt.io
+  name: u1.4xlarge
+spec:
+  cpu:
+    guest: 16
+  memory:
+    guest: 64Gi
+---
+apiVersion: instancetype.kubevirt.io/v1beta1
+kind: VirtualMachineClusterInstancetype
+metadata:
+  annotations:
+    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/description: |-
+      The U Series is quite neutral and provides resources for
+      general purpose applications.
+
+      *U* is the abbreviation for "Universal", hinting at the universal
+      attitude towards workloads.
+
+      VMs of instance types will share physical CPU cores on a
+      time-slice basis with other VMs.
+    instancetype.kubevirt.io/version: "1"
+  labels:
+    instancetype.kubevirt.io/cpu: "32"
+    instancetype.kubevirt.io/memory: 128Gi
+    instancetype.kubevirt.io/vendor: kubevirt.io
+  name: u1.8xlarge
+spec:
+  cpu:
+    guest: 32
+  memory:
+    guest: 128Gi
+---
+apiVersion: instancetype.kubevirt.io/v1beta1
+kind: VirtualMachineClusterInstancetype
+metadata:
+  annotations:
+    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/description: |-
+      The U Series is quite neutral and provides resources for
+      general purpose applications.
+
+      *U* is the abbreviation for "Universal", hinting at the universal
+      attitude towards workloads.
+
+      VMs of instance types will share physical CPU cores on a
+      time-slice basis with other VMs.
+    instancetype.kubevirt.io/version: "1"
+  labels:
+    instancetype.kubevirt.io/cpu: "2"
+    instancetype.kubevirt.io/memory: 8Gi
+    instancetype.kubevirt.io/vendor: kubevirt.io
+  name: u1.large
+spec:
+  cpu:
+    guest: 2
+  memory:
+    guest: 8Gi
+---
+apiVersion: instancetype.kubevirt.io/v1beta1
+kind: VirtualMachineClusterInstancetype
+metadata:
+  annotations:
+    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/description: |-
+      The U Series is quite neutral and provides resources for
+      general purpose applications.
+
+      *U* is the abbreviation for "Universal", hinting at the universal
+      attitude towards workloads.
+
+      VMs of instance types will share physical CPU cores on a
+      time-slice basis with other VMs.
+    instancetype.kubevirt.io/version: "1"
+  labels:
+    instancetype.kubevirt.io/cpu: "1"
+    instancetype.kubevirt.io/memory: 4Gi
+    instancetype.kubevirt.io/vendor: kubevirt.io
+  name: u1.medium
+spec:
+  cpu:
+    guest: 1
+  memory:
+    guest: 4Gi
+---
+apiVersion: instancetype.kubevirt.io/v1beta1
+kind: VirtualMachineClusterInstancetype
+metadata:
+  annotations:
+    instancetype.kubevirt.io/class: General Purpose
+    instancetype.kubevirt.io/description: |-
+      The U Series is quite neutral and provides resources for
+      general purpose applications.
+
+      *U* is the abbreviation for "Universal", hinting at the universal
+      attitude towards workloads.
+
+      VMs of instance types will share physical CPU cores on a
+      time-slice basis with other VMs.
+    instancetype.kubevirt.io/version: "1"
+  labels:
+    instancetype.kubevirt.io/cpu: "4"
+    instancetype.kubevirt.io/memory: 16Gi
+    instancetype.kubevirt.io/vendor: kubevirt.io
+  name: u1.xlarge
+spec:
+  cpu:
+    guest: 4
+  memory:
+    guest: 16Gi

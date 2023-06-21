@@ -17,6 +17,11 @@ spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 512Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -36,6 +41,11 @@ spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -58,6 +68,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -77,6 +92,11 @@ spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -99,6 +119,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -125,6 +150,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -154,6 +184,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -173,6 +208,11 @@ spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 256Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -199,6 +239,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -218,6 +263,11 @@ spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -240,6 +290,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -259,6 +314,11 @@ spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -281,6 +341,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -307,6 +372,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -336,6 +406,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -356,6 +431,11 @@ spec:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
     preferredRng: {}
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -408,6 +488,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -462,6 +547,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -630,6 +720,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 512Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -684,6 +779,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 512Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -842,6 +942,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -896,6 +1001,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -953,6 +1063,11 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -1012,3 +1127,8 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
