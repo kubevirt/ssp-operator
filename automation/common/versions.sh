@@ -52,8 +52,8 @@ function latest_version() {
     tail -n1
 }
 
-# Latest released Kubevirt version
-KUBEVIRT_VERSION=$(latest_version "kubevirt")
+# The version is fixed for release branch, because newer Kubevirt versions may be incompatible
+KUBEVIRT_VERSION=$(latest_patch_version "kubevirt" "v0.59")
 
-# Latest released CDI version
-CDI_VERSION=$(latest_version "containerized-data-importer")
+# The version is fixed for release branch, because newer CDI versions may be incompatible
+CDI_VERSION=$(latest_patch_version "containerized-data-importer" "v1.56")
