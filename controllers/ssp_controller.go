@@ -94,14 +94,11 @@ func NewSspReconciler(client client.Client, uncachedReader client.Reader, infras
 
 var _ reconcile.Reconciler = &sspReconciler{}
 
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=list;watch;update
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=update
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/finalizers,verbs=update
-// +kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures;clusterversions,verbs=get;list;watch
+// +kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures;clusterversions,verbs=get
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtcommontemplatesbundles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirtmetricsaggregations,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=kubevirttemplatevalidators,verbs=get;list;watch;create;update;patch;delete
 
 func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 	eventHandlerHook := func(request ctrl.Request, obj client.Object) {
