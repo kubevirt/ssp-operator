@@ -12,11 +12,17 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: alpine
 spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 512Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -31,11 +37,17 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.7
 spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -50,6 +62,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.7.desktop
 spec:
   devices:
@@ -58,6 +71,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -72,11 +90,17 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.8.stream
 spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -91,6 +115,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.8.stream.desktop
 spec:
   devices:
@@ -99,6 +124,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -113,6 +143,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.9.stream
 spec:
   devices:
@@ -125,6 +156,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -139,6 +175,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.9.stream.desktop
 spec:
   devices:
@@ -154,6 +191,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -168,11 +210,17 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cirros
 spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 256Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -187,6 +235,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: fedora
 spec:
   devices:
@@ -199,6 +248,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -213,11 +267,17 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.7
 spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -232,6 +292,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.7.desktop
 spec:
   devices:
@@ -240,6 +301,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -254,11 +320,17 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.8
 spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -273,6 +345,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.8.desktop
 spec:
   devices:
@@ -281,6 +354,11 @@ spec:
     preferredInputBus: virtio
     preferredInputType: tablet
     preferredInterfaceModel: virtio
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -295,6 +373,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.9
 spec:
   devices:
@@ -307,6 +386,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -321,6 +405,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.9.desktop
 spec:
   devices:
@@ -336,6 +421,11 @@ spec:
   firmware:
     preferredUseEfi: true
     preferredUseSecureBoot: true
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 1.5Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -350,12 +440,18 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: ubuntu
 spec:
   devices:
     preferredDiskBus: virtio
     preferredInterfaceModel: virtio
     preferredRng: {}
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -370,6 +466,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.10
 spec:
   clock:
@@ -408,6 +505,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -422,6 +524,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.10.virtio
 spec:
   clock:
@@ -462,6 +565,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -476,6 +584,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.11
 spec:
   clock:
@@ -533,6 +642,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.11.virtio
 spec:
   clock:
@@ -592,6 +702,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k12
 spec:
   clock:
@@ -630,6 +741,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 512Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -644,6 +760,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k12.virtio
 spec:
   clock:
@@ -684,6 +801,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 512Mi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -698,6 +820,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k16
 spec:
   clock:
@@ -750,6 +873,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k16.virtio
 spec:
   clock:
@@ -804,6 +928,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k19
 spec:
   clock:
@@ -842,6 +967,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -856,6 +986,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k19.virtio
 spec:
   clock:
@@ -896,6 +1027,11 @@ spec:
       vapic: {}
       vpindex: {}
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -910,6 +1046,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k22
 spec:
   clock:
@@ -953,6 +1090,11 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
 ---
 apiVersion: instancetype.kubevirt.io/v1beta1
 kind: VirtualMachineClusterPreference
@@ -967,6 +1109,7 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
+    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k22.virtio
 spec:
   clock:
@@ -1012,3 +1155,8 @@ spec:
     preferredUseEfi: true
     preferredUseSecureBoot: true
   preferredTerminationGracePeriodSeconds: 3600
+  requirements:
+    cpu:
+      guest: 1
+    memory:
+      guest: 2Gi
