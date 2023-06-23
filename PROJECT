@@ -17,6 +17,20 @@ resources:
     # defaulting: true
     validation: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: kubevirt.io
+  group: ssp
+  kind: SSP
+  path: kubevirt.io/ssp-operator/api/v1beta1
+  version: v1beta1
+  webhooks:
+    # conversion: true
+    # defaulting: true
+    validation: true
+    webhookVersion: v1
 version: "3"
 plugins:
   manifests.sdk.operatorframework.io/v2: {}

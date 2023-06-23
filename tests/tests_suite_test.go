@@ -41,7 +41,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
+	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 )
@@ -78,7 +79,7 @@ type TestSuiteStrategy interface {
 }
 
 type newSspStrategy struct {
-	ssp *ssp.SSP
+	ssp *sspv1beta2.SSP
 }
 
 var _ TestSuiteStrategy = &newSspStrategy{}
@@ -102,7 +103,7 @@ func (s *newSspStrategy) Init() {
 		return apiClient.Create(ctx, namespaceObj)
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
-	newSsp := &ssp.SSP{
+	newSsp := &sspv1beta2.SSP{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.GetName(),
 			Namespace: s.GetNamespace(),
@@ -118,20 +119,20 @@ func (s *newSspStrategy) Init() {
 				vm_console_proxy.VmConsoleProxyNamespaceAnnotation: s.GetVmConsoleProxyNamespace(),
 			},
 		},
-		Spec: ssp.SSPSpec{
-			TemplateValidator: &ssp.TemplateValidator{
+		Spec: sspv1beta2.SSPSpec{
+			TemplateValidator: &sspv1beta2.TemplateValidator{
 				Replicas: pointer.Int32(int32(s.GetValidatorReplicas())),
 			},
-			CommonTemplates: ssp.CommonTemplates{
+			CommonTemplates: sspv1beta2.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),
 			},
-			TektonPipelines: &ssp.TektonPipelines{
+			TektonPipelines: &sspv1beta2.TektonPipelines{
 				Namespace: s.GetNamespace(),
 			},
-			TektonTasks: &ssp.TektonTasks{
+			TektonTasks: &sspv1beta2.TektonTasks{
 				Namespace: s.GetNamespace(),
 			},
-			FeatureGates: &ssp.FeatureGates{
+			FeatureGates: &sspv1beta2.FeatureGates{
 				DeployTektonTaskResources: false,
 			},
 		},
@@ -154,7 +155,7 @@ func (s *newSspStrategy) Cleanup() {
 		waitForDeletion(client.ObjectKey{
 			Name:      s.GetName(),
 			Namespace: s.GetNamespace(),
-		}, &ssp.SSP{})
+		}, &sspv1beta2.SSP{})
 	}
 
 	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}})
@@ -245,13 +246,13 @@ type existingSspStrategy struct {
 	Name      string
 	Namespace string
 
-	ssp *ssp.SSP
+	ssp *sspv1beta2.SSP
 }
 
 var _ TestSuiteStrategy = &existingSspStrategy{}
 
 func (s *existingSspStrategy) Init() {
-	existingSsp := &ssp.SSP{}
+	existingSsp := &sspv1beta2.SSP{}
 	err := apiClient.Get(ctx, client.ObjectKey{Name: s.Name, Namespace: s.Namespace}, existingSsp)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -273,11 +274,11 @@ func (s *existingSspStrategy) Init() {
 	if existingSsp.Spec.TemplateValidator != nil && existingSsp.Spec.TemplateValidator.Replicas != nil {
 		newReplicasCount = *existingSsp.Spec.TemplateValidator.Replicas + int32(1)
 	}
-	updateSsp(func(foundSsp *ssp.SSP) {
+	updateSsp(func(foundSsp *sspv1beta2.SSP) {
 		if existingSsp.Spec.TemplateValidator != nil {
 			foundSsp.Spec.TemplateValidator.Replicas = &newReplicasCount
 		} else {
-			foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+			foundSsp.Spec.TemplateValidator = &sspv1beta2.TemplateValidator{
 				Replicas: &newReplicasCount,
 			}
 		}
@@ -449,7 +450,8 @@ func expectSuccessOrNotFound(err error) {
 }
 
 func setupApiClient() {
-	Expect(ssp.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(sspv1beta1.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(sspv1beta2.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(promv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(templatev1.Install(testScheme)).ToNot(HaveOccurred())
 	Expect(secv1.Install(testScheme)).ToNot(HaveOccurred())
@@ -476,7 +478,7 @@ func setupApiClient() {
 }
 
 func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
-	sspGvk, err := apiutil.GVKForObject(&ssp.SSP{}, testScheme)
+	sspGvk, err := apiutil.GVKForObject(&sspv1beta2.SSP{}, testScheme)
 	Expect(err).ToNot(HaveOccurred())
 
 	restClient, err := apiutil.RESTClientForGVK(sspGvk, false, cfg, serializer.NewCodecFactory(testScheme))
@@ -485,9 +487,9 @@ func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
 	return cache.NewListWatchFromClient(restClient, "ssps", strategy.GetNamespace(), fields.Everything())
 }
 
-func getSsp() *ssp.SSP {
+func getSsp() *sspv1beta2.SSP {
 	key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
-	foundSsp := &ssp.SSP{}
+	foundSsp := &sspv1beta2.SSP{}
 	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
 	return foundSsp
 }
@@ -522,10 +524,10 @@ func waitForDeletion(key client.ObjectKey, obj client.Object) {
 	}, env.Timeout(), time.Second).Should(BeTrue())
 }
 
-func waitForSspDeletionIfNeeded(sspObj *ssp.SSP) {
+func waitForSspDeletionIfNeeded(sspObj *sspv1beta2.SSP) {
 	key := client.ObjectKey{Name: sspObj.Name, Namespace: sspObj.Namespace}
 	Eventually(func() error {
-		foundSsp := &ssp.SSP{}
+		foundSsp := &sspv1beta2.SSP{}
 		err := apiClient.Get(ctx, key, foundSsp)
 		if errors.IsNotFound(err) {
 			return nil
@@ -546,13 +548,13 @@ func validateDeploymentExists() {
 		env.SspDeploymentName(), env.SspDeploymentNamespace()))
 }
 
-func createOrUpdateSsp(sspObj *ssp.SSP) {
+func createOrUpdateSsp(sspObj *sspv1beta2.SSP) {
 	key := client.ObjectKey{
 		Name:      sspObj.Name,
 		Namespace: sspObj.Namespace,
 	}
 	Eventually(func() error {
-		foundSsp := &ssp.SSP{}
+		foundSsp := &sspv1beta2.SSP{}
 		err := apiClient.Get(ctx, key, foundSsp)
 		if err == nil {
 			isEqual := reflect.DeepEqual(foundSsp.Spec, sspObj.Spec) &&
@@ -567,7 +569,7 @@ func createOrUpdateSsp(sspObj *ssp.SSP) {
 			return apiClient.Update(ctx, foundSsp)
 		}
 		if errors.IsNotFound(err) {
-			newSsp := &ssp.SSP{
+			newSsp := &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        sspObj.Name,
 					Namespace:   sspObj.Namespace,
@@ -583,7 +585,7 @@ func createOrUpdateSsp(sspObj *ssp.SSP) {
 }
 
 func triggerReconciliation() {
-	updateSsp(func(foundSsp *ssp.SSP) {
+	updateSsp(func(foundSsp *sspv1beta2.SSP) {
 		if foundSsp.GetAnnotations() == nil {
 			foundSsp.SetAnnotations(map[string]string{})
 		}
@@ -591,7 +593,7 @@ func triggerReconciliation() {
 		foundSsp.GetAnnotations()["forceReconciliation"] = ""
 	})
 
-	updateSsp(func(foundSsp *ssp.SSP) {
+	updateSsp(func(foundSsp *sspv1beta2.SSP) {
 		delete(foundSsp.GetAnnotations(), "forceReconciliation")
 	})
 

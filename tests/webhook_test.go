@@ -10,10 +10,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 )
 
 // Placement API tests variables
@@ -91,7 +92,7 @@ var _ = Describe("Validation webhook", func() {
 
 		Context("removed existing SSP CR", func() {
 			var (
-				newSsp *ssp.SSP
+				newSsp *sspv1beta2.SSP
 			)
 
 			BeforeEach(func() {
@@ -99,7 +100,7 @@ var _ = Describe("Validation webhook", func() {
 
 				foundSsp := getSsp()
 				Expect(apiClient.Delete(ctx, foundSsp)).ToNot(HaveOccurred())
-				waitForDeletion(client.ObjectKey{Name: foundSsp.GetName(), Namespace: foundSsp.GetNamespace()}, &ssp.SSP{})
+				waitForDeletion(client.ObjectKey{Name: foundSsp.GetName(), Namespace: foundSsp.GetNamespace()}, &sspv1beta2.SSP{})
 
 				foundSsp.ObjectMeta = v1.ObjectMeta{
 					Name:      foundSsp.GetName(),
@@ -129,7 +130,7 @@ var _ = Describe("Validation webhook", func() {
 
 			Context("Placement API validation", func() {
 				It("[test_id:5988]should succeed with valid template-validator placement fields", func() {
-					newSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+					newSsp.Spec.TemplateValidator = &sspv1beta2.TemplateValidator{
 						Placement: &placementAPIValidationValidPlacement,
 					}
 
@@ -138,7 +139,7 @@ var _ = Describe("Validation webhook", func() {
 				})
 
 				It("[test_id:5987]should fail with invalid template-validator placement fields", func() {
-					newSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+					newSsp.Spec.TemplateValidator = &sspv1beta2.TemplateValidator{
 						Placement: &placementAPIValidationInvalidPlacement,
 					}
 
@@ -148,18 +149,34 @@ var _ = Describe("Validation webhook", func() {
 			})
 
 			It("[test_id:TODO] should fail when DataImportCronTemplate does not have a name", func() {
-				newSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{{
+				newSsp.Spec.CommonTemplates.DataImportCronTemplates = []sspv1beta2.DataImportCronTemplate{{
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
 				err := apiClient.Create(ctx, newSsp, client.DryRunAll)
 				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+			})
+
+			It("[test_id:TODO] should accept v1beta1 SSP object", func() {
+				ssp := &sspv1beta1.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      newSsp.GetName(),
+						Namespace: newSsp.GetNamespace(),
+					},
+					Spec: sspv1beta1.SSPSpec{
+						CommonTemplates: sspv1beta1.CommonTemplates{
+							Namespace: newSsp.Spec.CommonTemplates.Namespace,
+						},
+					},
+				}
+
+				Expect(apiClient.Create(ctx, ssp, client.DryRunAll)).To(Succeed())
 			})
 		})
 	})
 
 	Context("update", func() {
 		var (
-			foundSsp *ssp.SSP
+			foundSsp *sspv1beta2.SSP
 		)
 
 		BeforeEach(func() {
@@ -174,7 +191,7 @@ var _ = Describe("Validation webhook", func() {
 			It("[test_id:5990]should succeed with valid template-validator placement fields", func() {
 				Eventually(func() error {
 					foundSsp = getSsp()
-					foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+					foundSsp.Spec.TemplateValidator = &sspv1beta2.TemplateValidator{
 						Placement: &placementAPIValidationValidPlacement,
 					}
 					return apiClient.Update(ctx, foundSsp, client.DryRunAll)
@@ -184,7 +201,7 @@ var _ = Describe("Validation webhook", func() {
 			It("[test_id:5989]should fail with invalid template-validator placement fields", func() {
 				Eventually(func() v1.StatusReason {
 					foundSsp = getSsp()
-					foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+					foundSsp.Spec.TemplateValidator = &sspv1beta2.TemplateValidator{
 						Placement: &placementAPIValidationInvalidPlacement,
 					}
 					err := apiClient.Update(ctx, foundSsp, client.DryRunAll)
@@ -196,7 +213,7 @@ var _ = Describe("Validation webhook", func() {
 		It("[test_id:TODO] should fail when DataImportCronTemplate does not have a name", func() {
 			Eventually(func() error {
 				foundSsp = getSsp()
-				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{{
+				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []sspv1beta2.DataImportCronTemplate{{
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
 				return apiClient.Update(ctx, foundSsp, client.DryRunAll)

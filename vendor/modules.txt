@@ -847,6 +847,7 @@ kubevirt.io/qe-tools/pkg/ginkgo-reporters
 kubevirt.io/qe-tools/pkg/polarion-xml
 # kubevirt.io/ssp-operator/api v0.0.0 => ./api
 ## explicit; go 1.19
+kubevirt.io/ssp-operator/api/v1beta1
 kubevirt.io/ssp-operator/api/v1beta2
 # sigs.k8s.io/controller-runtime v0.14.5
 ## explicit; go 1.19
