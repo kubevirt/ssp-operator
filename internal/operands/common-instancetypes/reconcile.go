@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	instancetypeapi "kubevirt.io/api/instancetype"
-	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
+	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
@@ -39,15 +39,15 @@ type CommonInstancetypes struct {
 	resourceURL                             string
 	virtualMachineClusterInstancetypeBundle string
 	virtualMachineClusterPreferenceBundle   string
-	virtualMachineClusterInstancetypes      []instancetypev1alpha2.VirtualMachineClusterInstancetype
-	virtualMachineClusterPreferences        []instancetypev1alpha2.VirtualMachineClusterPreference
+	virtualMachineClusterInstancetypes      []instancetypev1beta1.VirtualMachineClusterInstancetype
+	virtualMachineClusterPreferences        []instancetypev1beta1.VirtualMachineClusterPreference
 	KustomizeRunFunc                        func(filesys.FileSystem, string) (resmap.ResMap, error)
 }
 
 var _ operands.Operand = &CommonInstancetypes{}
 
 type clusterType interface {
-	instancetypev1alpha2.VirtualMachineClusterInstancetype | instancetypev1alpha2.VirtualMachineClusterPreference
+	instancetypev1beta1.VirtualMachineClusterInstancetype | instancetypev1beta1.VirtualMachineClusterPreference
 }
 
 func (c *CommonInstancetypes) Name() string {
@@ -56,8 +56,8 @@ func (c *CommonInstancetypes) Name() string {
 
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
-		{Object: &instancetypev1alpha2.VirtualMachineClusterInstancetype{}, Crd: virtualMachineClusterInstancetypeCrd, WatchFullObject: true},
-		{Object: &instancetypev1alpha2.VirtualMachineClusterPreference{}, Crd: virtualMachineClusterPreferenceCrd, WatchFullObject: true},
+		{Object: &instancetypev1beta1.VirtualMachineClusterInstancetype{}, Crd: virtualMachineClusterInstancetypeCrd, WatchFullObject: true},
+		{Object: &instancetypev1beta1.VirtualMachineClusterPreference{}, Crd: virtualMachineClusterPreferenceCrd, WatchFullObject: true},
 	}
 }
 
@@ -102,12 +102,12 @@ func FetchBundleResource[C clusterType](path string) ([]C, error) {
 	return decodeResources[C](file)
 }
 
-func (c *CommonInstancetypes) fetchResourcesFromBundle() ([]instancetypev1alpha2.VirtualMachineClusterInstancetype, []instancetypev1alpha2.VirtualMachineClusterPreference, error) {
-	virtualMachineClusterInstancetypes, err := FetchBundleResource[instancetypev1alpha2.VirtualMachineClusterInstancetype](c.virtualMachineClusterInstancetypeBundle)
+func (c *CommonInstancetypes) fetchResourcesFromBundle() ([]instancetypev1beta1.VirtualMachineClusterInstancetype, []instancetypev1beta1.VirtualMachineClusterPreference, error) {
+	virtualMachineClusterInstancetypes, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype](c.virtualMachineClusterInstancetypeBundle)
 	if err != nil {
 		return nil, nil, err
 	}
-	virtualMachineClusterPreferences, err := FetchBundleResource[instancetypev1alpha2.VirtualMachineClusterPreference](c.virtualMachineClusterPreferenceBundle)
+	virtualMachineClusterPreferences, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference](c.virtualMachineClusterPreferenceBundle)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,27 +140,27 @@ func decodeResMapResources[C clusterType](r *resource.Resource) ([]C, error) {
 	return bundle, nil
 }
 
-func (c *CommonInstancetypes) FetchResourcesFromURL(URL string) ([]instancetypev1alpha2.VirtualMachineClusterInstancetype, []instancetypev1alpha2.VirtualMachineClusterPreference, error) {
+func (c *CommonInstancetypes) FetchResourcesFromURL(URL string) ([]instancetypev1beta1.VirtualMachineClusterInstancetype, []instancetypev1beta1.VirtualMachineClusterPreference, error) {
 	resmapFromURL, err := c.generateResourcesFromURL(URL)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var (
-		virtualMachineClusterInstancetypes []instancetypev1alpha2.VirtualMachineClusterInstancetype
-		virtualMachineClusterPreferences   []instancetypev1alpha2.VirtualMachineClusterPreference
+		virtualMachineClusterInstancetypes []instancetypev1beta1.VirtualMachineClusterInstancetype
+		virtualMachineClusterPreferences   []instancetypev1beta1.VirtualMachineClusterPreference
 	)
 
 	for _, r := range resmapFromURL.Resources() {
 		switch strings.ToLower(r.GetKind()) {
 		case instancetypeapi.ClusterSingularResourceName:
-			resources, err := decodeResMapResources[instancetypev1alpha2.VirtualMachineClusterInstancetype](r)
+			resources, err := decodeResMapResources[instancetypev1beta1.VirtualMachineClusterInstancetype](r)
 			if err != nil {
 				return nil, nil, err
 			}
 			virtualMachineClusterInstancetypes = append(virtualMachineClusterInstancetypes, resources...)
 		case instancetypeapi.ClusterSingularPreferenceResourceName:
-			resources, err := decodeResMapResources[instancetypev1alpha2.VirtualMachineClusterPreference](r)
+			resources, err := decodeResMapResources[instancetypev1beta1.VirtualMachineClusterPreference](r)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -170,7 +170,7 @@ func (c *CommonInstancetypes) FetchResourcesFromURL(URL string) ([]instancetypev
 	return virtualMachineClusterInstancetypes, virtualMachineClusterPreferences, nil
 }
 
-func (c *CommonInstancetypes) fetchExistingResources(request *common.Request) ([]instancetypev1alpha2.VirtualMachineClusterInstancetype, []instancetypev1alpha2.VirtualMachineClusterPreference, error) {
+func (c *CommonInstancetypes) fetchExistingResources(request *common.Request) ([]instancetypev1beta1.VirtualMachineClusterInstancetype, []instancetypev1beta1.VirtualMachineClusterPreference, error) {
 	selector, err := common.GetAppNameSelector(c.Name())
 	if err != nil {
 		return nil, nil, err
@@ -178,19 +178,19 @@ func (c *CommonInstancetypes) fetchExistingResources(request *common.Request) ([
 	listOpts := &client.ListOptions{
 		LabelSelector: selector,
 	}
-	existingClusterInstancetypes := &instancetypev1alpha2.VirtualMachineClusterInstancetypeList{}
+	existingClusterInstancetypes := &instancetypev1beta1.VirtualMachineClusterInstancetypeList{}
 	if err := request.Client.List(request.Context, existingClusterInstancetypes, listOpts); err != nil {
 		return nil, nil, err
 	}
-	existingClusterPreferences := &instancetypev1alpha2.VirtualMachineClusterPreferenceList{}
+	existingClusterPreferences := &instancetypev1beta1.VirtualMachineClusterPreferenceList{}
 	if err := request.Client.List(request.Context, existingClusterPreferences, listOpts); err != nil {
 		return nil, nil, err
 	}
 	return existingClusterInstancetypes.Items, existingClusterPreferences.Items, nil
 }
 
-func reconcileRemovedInstancetypes(request *common.Request, existingResources []instancetypev1alpha2.VirtualMachineClusterInstancetype, resourcesFromURL []instancetypev1alpha2.VirtualMachineClusterInstancetype) error {
-	resourceFromURLByName := make(map[string]instancetypev1alpha2.VirtualMachineClusterInstancetype)
+func reconcileRemovedInstancetypes(request *common.Request, existingResources []instancetypev1beta1.VirtualMachineClusterInstancetype, resourcesFromURL []instancetypev1beta1.VirtualMachineClusterInstancetype) error {
+	resourceFromURLByName := make(map[string]instancetypev1beta1.VirtualMachineClusterInstancetype)
 	for _, resourceFromURL := range resourcesFromURL {
 		resourceFromURLByName[resourceFromURL.Name] = resourceFromURL
 	}
@@ -205,8 +205,8 @@ func reconcileRemovedInstancetypes(request *common.Request, existingResources []
 	return nil
 }
 
-func reconcileRemovedPreferences(request *common.Request, existingResources []instancetypev1alpha2.VirtualMachineClusterPreference, resourcesFromURL []instancetypev1alpha2.VirtualMachineClusterPreference) error {
-	resourceFromURLByName := make(map[string]instancetypev1alpha2.VirtualMachineClusterPreference)
+func reconcileRemovedPreferences(request *common.Request, existingResources []instancetypev1beta1.VirtualMachineClusterPreference, resourcesFromURL []instancetypev1beta1.VirtualMachineClusterPreference) error {
+	resourceFromURLByName := make(map[string]instancetypev1beta1.VirtualMachineClusterPreference)
 	for _, resourceFromURL := range resourcesFromURL {
 		resourceFromURLByName[resourceFromURL.Name] = resourceFromURL
 	}
@@ -221,7 +221,7 @@ func reconcileRemovedPreferences(request *common.Request, existingResources []in
 	return nil
 }
 
-func (c *CommonInstancetypes) reconcileRemovedResources(request *common.Request, newInstancetypes []instancetypev1alpha2.VirtualMachineClusterInstancetype, newPreferences []instancetypev1alpha2.VirtualMachineClusterPreference) error {
+func (c *CommonInstancetypes) reconcileRemovedResources(request *common.Request, newInstancetypes []instancetypev1beta1.VirtualMachineClusterInstancetype, newPreferences []instancetypev1beta1.VirtualMachineClusterPreference) error {
 	existingClusterInstancetypes, existingClusterPreferences, err := c.fetchExistingResources(request)
 	if err != nil {
 		return err

@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
+	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -482,6 +483,12 @@ func defaultUpdateFunc(newObj, foundObj client.Object) {
 
 	case *instancetypev1alpha2.VirtualMachineClusterPreference:
 		foundObj.(*instancetypev1alpha2.VirtualMachineClusterPreference).Spec = newTyped.Spec
+
+	case *instancetypev1beta1.VirtualMachineClusterInstancetype:
+		foundObj.(*instancetypev1beta1.VirtualMachineClusterInstancetype).Spec = newTyped.Spec
+
+	case *instancetypev1beta1.VirtualMachineClusterPreference:
+		foundObj.(*instancetypev1beta1.VirtualMachineClusterPreference).Spec = newTyped.Spec
 
 	case *routev1.Route:
 		foundObj.(*routev1.Route).Spec = newTyped.Spec
