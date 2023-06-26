@@ -133,7 +133,12 @@ func restClientForObject(obj runtime.Object, restConfig *rest.Config, scheme *ru
 		return nil, err
 	}
 
-	restClient, err := apiutil.RESTClientForGVK(gvk, false, restConfig, serializer.NewCodecFactory(scheme))
+	httpClient, err := rest.HTTPClientFor(restConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	restClient, err := apiutil.RESTClientForGVK(gvk, false, restConfig, serializer.NewCodecFactory(scheme), httpClient)
 	if err != nil {
 		logger.Log.Error(err, "error creating client")
 		return nil, err

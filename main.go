@@ -99,7 +99,7 @@ func runPrometheusServer(metricsAddr string, tlsOptions common.SSPTLSOptions) er
 	return nil
 }
 
-func getWebhookServer(sspTLSOptions common.SSPTLSOptions) *webhook.Server {
+func getWebhookServer(sspTLSOptions common.SSPTLSOptions) webhook.Server {
 	// If TLSSecurityProfile is empty, we want to return nil so that the default
 	// webhook server configuration is used.
 	if sspTLSOptions.IsEmpty() {
@@ -111,8 +111,11 @@ func getWebhookServer(sspTLSOptions common.SSPTLSOptions) *webhook.Server {
 		setupLog.Info("Configured ciphers", "ciphers", cfg.CipherSuites)
 	}
 
-	funcs := []func(*tls.Config){tlsCfgFunc}
-	return &webhook.Server{Port: webhookPort, TLSMinVersion: sspTLSOptions.MinTLSVersion, TLSOpts: funcs}
+	return webhook.NewServer(webhook.Options{
+		Port:          webhookPort,
+		TLSMinVersion: sspTLSOptions.MinTLSVersion,
+		TLSOpts:       []func(*tls.Config){tlsCfgFunc},
+	})
 }
 
 func main() {
