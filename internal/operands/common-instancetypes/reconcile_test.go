@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/kio"
 
 	instancetypeapi "kubevirt.io/api/instancetype"
-	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
+	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
@@ -58,7 +58,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		preferencePath   = "../../../" + BundleDir + ClusterPreferencesBundle
 	)
 
-	assertResoucesExist := func(request common.Request, virtualMachineClusterInstancetypes []instancetypev1alpha2.VirtualMachineClusterInstancetype, virtualMachineClusterPreferences []instancetypev1alpha2.VirtualMachineClusterPreference) {
+	assertResoucesExist := func(request common.Request, virtualMachineClusterInstancetypes []instancetypev1beta1.VirtualMachineClusterInstancetype, virtualMachineClusterPreferences []instancetypev1beta1.VirtualMachineClusterPreference) {
 		for _, instancetype := range virtualMachineClusterInstancetypes {
 			ExpectResourceExists(&instancetype, request)
 		}
@@ -67,7 +67,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 	}
 
-	assertResoucesDoNotExist := func(request common.Request, virtualMachineClusterInstancetypes []instancetypev1alpha2.VirtualMachineClusterInstancetype, virtualMachineClusterPreferences []instancetypev1alpha2.VirtualMachineClusterPreference) {
+	assertResoucesDoNotExist := func(request common.Request, virtualMachineClusterInstancetypes []instancetypev1beta1.VirtualMachineClusterInstancetype, virtualMachineClusterPreferences []instancetypev1beta1.VirtualMachineClusterPreference) {
 		for _, instancetype := range virtualMachineClusterInstancetypes {
 			ExpectResourceNotExists(&instancetype, request)
 		}
@@ -83,7 +83,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
 		Expect(apiextensions.AddToScheme(scheme.Scheme)).To(Succeed())
 		Expect(addConversionFunctions(scheme.Scheme)).To(Succeed())
-		Expect(instancetypev1alpha2.AddToScheme(scheme.Scheme)).To(Succeed())
+		Expect(instancetypev1beta1.AddToScheme(scheme.Scheme)).To(Succeed())
 
 		client := fake.NewClientBuilder().Build()
 
@@ -166,11 +166,11 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		_, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		virtualMachineClusterInstancetypes, err := FetchBundleResource[instancetypev1alpha2.VirtualMachineClusterInstancetype](instancetypePath)
+		virtualMachineClusterInstancetypes, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype](instancetypePath)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(virtualMachineClusterInstancetypes).ToNot(BeEmpty())
 
-		virtualMachineClusterPreferences, err := FetchBundleResource[instancetypev1alpha2.VirtualMachineClusterPreference](preferencePath)
+		virtualMachineClusterPreferences, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference](preferencePath)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(virtualMachineClusterPreferences).ToNot(BeEmpty())
 
@@ -206,10 +206,10 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		_, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		instancetypeList := &instancetypev1alpha2.VirtualMachineClusterInstancetypeList{}
+		instancetypeList := &instancetypev1beta1.VirtualMachineClusterInstancetypeList{}
 		Expect(request.Client.List(request.Context, instancetypeList, &client.ListOptions{})).To(Succeed())
 
-		preferenceList := &instancetypev1alpha2.VirtualMachineClusterPreferenceList{}
+		preferenceList := &instancetypev1beta1.VirtualMachineClusterPreferenceList{}
 		Expect(request.Client.List(request.Context, preferenceList, &client.ListOptions{})).To(Succeed())
 
 		instancetypeToUpdate := instancetypeList.Items[0]
@@ -221,8 +221,9 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		preferenceToUpdate := preferenceList.Items[0]
 		originalPreferenceCPU := preferenceToUpdate.Spec.CPU
-		updatedPreferenceCPU := &instancetypev1alpha2.CPUPreferences{
-			PreferredCPUTopology: instancetypev1alpha2.PreferCores,
+		updatedPreferredCPUTopology := instancetypev1beta1.PreferCores
+		updatedPreferenceCPU := &instancetypev1beta1.CPUPreferences{
+			PreferredCPUTopology: &updatedPreferredCPUTopology,
 		}
 		preferenceToUpdate.Spec.CPU = updatedPreferenceCPU
 		Expect(request.Client.Update(request.Context, &preferenceToUpdate, &client.UpdateOptions{})).To(Succeed())
@@ -397,11 +398,11 @@ func convertToResMapResources(obj runtime.Object) ([]*resource.Resource, error) 
 	return resources, nil
 }
 
-func newMockResources(countInstancetypes, countPreferences int) (*MockResMap, []instancetypev1alpha2.VirtualMachineClusterInstancetype, []instancetypev1alpha2.VirtualMachineClusterPreference, error) {
+func newMockResources(countInstancetypes, countPreferences int) (*MockResMap, []instancetypev1beta1.VirtualMachineClusterInstancetype, []instancetypev1beta1.VirtualMachineClusterPreference, error) {
 	var (
 		resources     []*resource.Resource
-		instancetypes []instancetypev1alpha2.VirtualMachineClusterInstancetype
-		preferences   []instancetypev1alpha2.VirtualMachineClusterPreference
+		instancetypes []instancetypev1beta1.VirtualMachineClusterInstancetype
+		preferences   []instancetypev1beta1.VirtualMachineClusterPreference
 	)
 	for i := 0; i < countInstancetypes; i++ {
 		instancetype := newVirtualMachineClusterInstancetype(fmt.Sprintf("instancetype-%d", i))
@@ -424,24 +425,24 @@ func newMockResources(countInstancetypes, countPreferences int) (*MockResMap, []
 	return &MockResMap{resources: resources}, instancetypes, preferences, nil
 }
 
-func newVirtualMachineClusterInstancetype(name string) *instancetypev1alpha2.VirtualMachineClusterInstancetype {
-	return &instancetypev1alpha2.VirtualMachineClusterInstancetype{
+func newVirtualMachineClusterInstancetype(name string) *instancetypev1beta1.VirtualMachineClusterInstancetype {
+	return &instancetypev1beta1.VirtualMachineClusterInstancetype{
 		TypeMeta: metav1.TypeMeta{
 			Kind: instancetypeapi.ClusterSingularResourceName,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: instancetypev1alpha2.VirtualMachineInstancetypeSpec{
-			CPU: instancetypev1alpha2.CPUInstancetype{
+		Spec: instancetypev1beta1.VirtualMachineInstancetypeSpec{
+			CPU: instancetypev1beta1.CPUInstancetype{
 				Guest: uint32(1),
 			},
 		},
 	}
 }
 
-func newVirtualMachineClusterPreference(name string) *instancetypev1alpha2.VirtualMachineClusterPreference {
-	return &instancetypev1alpha2.VirtualMachineClusterPreference{
+func newVirtualMachineClusterPreference(name string) *instancetypev1beta1.VirtualMachineClusterPreference {
+	return &instancetypev1beta1.VirtualMachineClusterPreference{
 		TypeMeta: metav1.TypeMeta{
 			Kind: instancetypeapi.ClusterSingularPreferenceResourceName,
 		},

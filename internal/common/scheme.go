@@ -11,6 +11,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
+	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 )
@@ -28,6 +29,7 @@ func init() {
 	utilruntime.Must(sspv1beta2.AddToScheme(Scheme))
 	utilruntime.Must(osconfv1.Install(Scheme))
 	utilruntime.Must(instancetypev1alpha2.AddToScheme(Scheme))
+	utilruntime.Must(instancetypev1beta1.AddToScheme(Scheme))
 }
 
 // This function is useful in operand unit tests only
