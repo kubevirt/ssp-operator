@@ -42,6 +42,13 @@ const (
 
 func CommonLabels() map[string]string {
 	return map[string]string{
+		// Required Labels
+		common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+		common.AppKubernetesVersionLabel:   common.GetOperatorVersion(),
+		common.AppKubernetesComponentLabel: VirtTemplateValidator,
+		common.AppKubernetesPartOfLabel:    common.AppKubernetesPartOfValue,
+
+		// Custom Labels
 		KubevirtIo: VirtTemplateValidator,
 	}
 }

@@ -34,6 +34,13 @@ func ServiceObject(namespace string) *v1.Service {
 			Name:      MetricsServiceName,
 			Namespace: namespace,
 			Labels: map[string]string{
+				// Required Labels
+				common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+				common.AppKubernetesVersionLabel:   common.GetOperatorVersion(),
+				common.AppKubernetesComponentLabel: serviceControllerName,
+				common.AppKubernetesPartOfLabel:    common.AppKubernetesPartOfValue,
+
+				// Custom Labels
 				metrics.PrometheusLabelKey: metrics.PrometheusLabelValue,
 			},
 		},

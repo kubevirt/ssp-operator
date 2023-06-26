@@ -18,6 +18,7 @@ const (
 	AppComponentTektonTasks           AppComponent = "tektonTasks"
 	AppKubernetesManagedByValue       string       = "ssp-operator"
 	TektonAppKubernetesManagedByValue string       = "tekton-tasks-operator"
+	AppKubernetesPartOfValue          string       = "hyperconverged-cluster"
 )
 
 type AppComponent string
