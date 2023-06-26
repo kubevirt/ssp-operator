@@ -396,7 +396,7 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 
 			foundDs := foundRes.(*cdiv1beta1.DataSource)
 			newDs := newRes.(*cdiv1beta1.DataSource)
-			if !dsInfo.autoUpdateEnabled || foundDs.Spec.Source.PVC == nil {
+			if !dsInfo.autoUpdateEnabled || (foundDs.Spec.Source.PVC == nil && foundDs.Spec.Source.Snapshot == nil) {
 				foundDs.Spec.Source.PVC = newDs.Spec.Source.PVC
 			}
 		}).
