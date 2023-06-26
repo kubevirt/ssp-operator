@@ -578,7 +578,7 @@ spec:
                 env:
                 - name: VALIDATOR_IMAGE
                   value: quay.io/kubevirt/kubevirt-template-validator:latest
-                - name: VIRT_LAUNCHER_IMAGE
+                - name: VIRTIO_IMG
                 - name: OPERATOR_VERSION
                   value: 0.14.0
                 - name: TEKTON_TASKS_IMAGE
