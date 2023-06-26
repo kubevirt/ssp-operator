@@ -43,7 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -724,10 +723,7 @@ func watchSspResource(bldr *ctrl.Builder) {
 func watchNamespacedResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
 		crdList,
-		&handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &ssp.SSP{},
-		},
+		handler.EnqueueRequestForOwner(common.Scheme, nil, &ssp.SSP{}, handler.OnlyControllerOwner()),
 		sspOperands,
 		operands.Operand.WatchTypes,
 		eventHandlerHook,
@@ -776,7 +772,7 @@ func watchResources(ctrlBuilder *ctrl.Builder, crdList crd_watch.CrdList, handle
 		}
 
 		ctrlBuilder.Watches(
-			&source.Kind{Type: watchType.Object},
+			watchType.Object,
 			handler_hook.New(handler, hookFunc),
 			builder.WithPredicates(predicates...),
 		)
