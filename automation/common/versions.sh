@@ -54,7 +54,9 @@ function latest_version() {
 }
 
 # Latest released Kubevirt version
-KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
+# KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
+# FIXME(lyarwood) Replace with above once v1.0.0 is released
+KUBEVIRT_VERSION=v1.0.0-rc.0
 
 # Latest released CDI version
 CDI_VERSION=$(latest_version "kubevirt" "containerized-data-importer")
