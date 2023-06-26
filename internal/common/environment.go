@@ -18,8 +18,8 @@ import (
 const (
 	OperatorVersionKey          = "OPERATOR_VERSION"
 	TemplateValidatorImageKey   = "VALIDATOR_IMAGE"
-	TektonTasksImageKey         = "TEKTON_TASKS_IMG"
-	TektonTasksDiskVirtImageKey = "TEKTON_TASKS_DISK_VIRT_IMG"
+	TektonTasksImageKey         = "TEKTON_TASKS_IMAGE"
+	TektonTasksDiskVirtImageKey = "TEKTON_TASKS_DISK_VIRT_IMAGE"
 	VirtioImageKey              = "VIRTIO_IMG"
 
 	DefaultTektonTasksIMG         = "quay.io/kubevirt/tekton-tasks:" + TektonTasksVersion
