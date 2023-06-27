@@ -9,7 +9,7 @@ require (
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
-	github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183 // release-4.13
+	github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183 // release-4.14
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/openshift/library-go v0.0.0-20230228181805-0899dfdba7d2 // release-4.13
 	github.com/operator-framework/api v0.17.4-0.20230223191600-0131a6301e42
