@@ -33,7 +33,7 @@ spec:
         env:
           - name: VALIDATOR_IMAGE
             value: "$VALIDATOR_IMG"
-          - name: VIRT_LAUNCHER_IMAGE
+          - name: VIRTIO_IMG
           - name: OPERATOR_VERSION
           - name: TEKTON_TASKS_IMAGE
           - name: TEKTON_TASKS_DISK_VIRT_IMAGE
