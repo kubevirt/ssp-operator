@@ -217,6 +217,37 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
 				Expect(ds.Spec).To(Equal(testDataSources[0].Spec))
 			})
+
+			It("should not restore DataSource if DataImportCron prefers snapshots sources", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cron := cronTemplate.AsDataImportCron()
+				cron.Namespace = internal.GoldenImagesNamespace
+				ExpectResourceExists(&cron, request)
+
+				// Update DataSource to simulate CDI
+				ds := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				ds.Spec.Source.PVC = nil
+				ds.Spec.Source.Snapshot = &cdiv1beta1.DataVolumeSourceSnapshot{
+					Namespace: "test",
+					Name:      "test",
+				}
+				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Test that DataSource was not changed
+				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				Expect(ds.Spec.Source).To(Equal(cdiv1beta1.DataSourceSource{
+					Snapshot: &cdiv1beta1.DataVolumeSourceSnapshot{
+						Namespace: "test",
+						Name:      "test",
+					},
+				}))
+			})
 		})
 
 		Context("with existing PVC", func() {
