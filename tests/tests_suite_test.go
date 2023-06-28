@@ -45,7 +45,6 @@ import (
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
-	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 )
 
 var (
@@ -115,10 +114,6 @@ func (s *newSspStrategy) Init() {
 				common.AppKubernetesVersionLabel:   "v0.0.0-test",
 				common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
 			},
-			Annotations: map[string]string{
-				vm_console_proxy.EnableAnnotation:                  "true",
-				vm_console_proxy.VmConsoleProxyNamespaceAnnotation: s.GetVmConsoleProxyNamespace(),
-			},
 		},
 		Spec: sspv1beta2.SSPSpec{
 			TemplateValidator: &sspv1beta2.TemplateValidator{
@@ -133,8 +128,12 @@ func (s *newSspStrategy) Init() {
 			TektonTasks: &sspv1beta2.TektonTasks{
 				Namespace: s.GetNamespace(),
 			},
+			VmConsoleProxy: &sspv1beta2.VmConsoleProxy{
+				Namespace: s.GetVmConsoleProxyNamespace(),
+			},
 			FeatureGates: &sspv1beta2.FeatureGates{
 				DeployTektonTaskResources: false,
+				DeployVmConsoleProxy:      true,
 			},
 		},
 	}
@@ -317,11 +316,8 @@ func (s *existingSspStrategy) GetTemplatesNamespace() string {
 }
 
 func (s *existingSspStrategy) GetVmConsoleProxyNamespace() string {
-	if s.ssp != nil && s.ssp.ObjectMeta.GetAnnotations() != nil {
-		namespace, isFound := s.ssp.ObjectMeta.GetAnnotations()[vm_console_proxy.VmConsoleProxyNamespaceAnnotation]
-		if isFound {
-			return namespace
-		}
+	if s.ssp.Spec.VmConsoleProxy != nil && s.ssp.Spec.VmConsoleProxy.Namespace != "" {
+		return s.ssp.Spec.VmConsoleProxy.Namespace
 	}
 
 	namespace := env.VmConsoleProxyNamespace()

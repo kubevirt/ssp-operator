@@ -90,6 +90,9 @@ type SSPSpec struct {
 	// TektonTasks is the configuration of the tekton-tasks operand
 	TektonTasks *TektonTasks `json:"tektonTasks,omitempty"`
 
+	// VmConsoleProxy is the configuration of the vm-console-proxy operand
+	VmConsoleProxy *VmConsoleProxy `json:"vmConsoleProxy,omitempty"`
+
 	// FeatureGates is the configuration of the tekton operands
 	FeatureGates *FeatureGates `json:"featureGates,omitempty"`
 }
@@ -104,9 +107,16 @@ type TektonTasks struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// VmConsoleProxy defines the desired state of vm-console-proxy
+type VmConsoleProxy struct {
+	Namespace string `json:"namespace,omitempty"`
+}
+
 // FeatureGates defines feature gate for tto operator
 type FeatureGates struct {
 	DeployTektonTaskResources bool `json:"deployTektonTaskResources,omitempty"`
+
+	DeployVmConsoleProxy bool `json:"deployVmConsoleProxy,omitempty"`
 }
 
 // DataImportCronTemplate defines the template type for DataImportCrons.

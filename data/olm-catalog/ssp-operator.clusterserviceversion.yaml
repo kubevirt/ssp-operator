@@ -9,10 +9,6 @@ metadata:
           "apiVersion": "ssp.kubevirt.io/v1beta2",
           "kind": "SSP",
           "metadata": {
-            "annotations": {
-              "ssp.kubevirt.io/vm-console-proxy-enabled": "true",
-              "ssp.kubevirt.io/vm-console-proxy-namespace": "kubevirt"
-            },
             "name": "ssp-sample",
             "namespace": "kubevirt"
           },
@@ -21,7 +17,8 @@ metadata:
               "namespace": "kubevirt"
             },
             "featureGates": {
-              "deployTektonTaskResources": true
+              "deployTektonTaskResources": true,
+              "deployVmConsoleProxy": true
             },
             "tektonPipelines": {
               "namespace": "kubevirt"
@@ -31,6 +28,9 @@ metadata:
             },
             "templateValidator": {
               "replicas": 2
+            },
+            "vmConsoleProxy": {
+              "namespace": "kubevirt"
             }
           }
         }

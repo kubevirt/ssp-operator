@@ -187,7 +187,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceExists(bundle.Deployment, request)
 		ExpectResourceExists(newRoute(namespace, serviceName), request)
 
-		delete(request.Instance.Annotations, EnableAnnotation)
+		request.Instance.Spec.FeatureGates.DeployVmConsoleProxy = false
 
 		_, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -227,7 +227,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 
 			route = newRoute(otherNamespace, serviceName)
 
-			request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation] = otherNamespace
+			request.Instance.Spec.VmConsoleProxy.Namespace = otherNamespace
 		})
 
 		It("should deploy resources in namespace provided by annotation", func() {
@@ -279,8 +279,8 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			ExpectResourceExists(deployment, request)
 			ExpectResourceExists(route, request)
 
-			delete(request.Instance.Annotations, EnableAnnotation)
-			delete(request.Instance.Annotations, VmConsoleProxyNamespaceAnnotation)
+			request.Instance.Spec.FeatureGates.DeployVmConsoleProxy = false
+			request.Instance.Spec.VmConsoleProxy = nil
 
 			_, err = operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
@@ -322,9 +322,13 @@ func getMockedRequest() common.Request {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
-				Annotations: map[string]string{
-					EnableAnnotation:                  "true",
-					VmConsoleProxyNamespaceAnnotation: namespace,
+			},
+			Spec: ssp.SSPSpec{
+				FeatureGates: &ssp.FeatureGates{
+					DeployVmConsoleProxy: true,
+				},
+				VmConsoleProxy: &ssp.VmConsoleProxy{
+					Namespace: namespace,
 				},
 			},
 		},

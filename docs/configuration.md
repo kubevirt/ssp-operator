@@ -21,9 +21,6 @@ To activate the operator, create the SSP Custom Resource (CR):
 apiVersion: ssp.kubevirt.io/v1beta2
 kind: SSP
 metadata:
-  annotations:
-    ssp.kubevirt.io/vm-console-proxy-enabled: "true"
-    ssp.kubevirt.io/vm-console-proxy-namespace: "kubevirt"
   name: ssp-sample
   namespace: kubevirt
 spec:
@@ -33,29 +30,16 @@ spec:
     replicas: 2
   featureGates:
     deployTektonTaskResources: true
+    deployVmConsoleProxy: true
   tektonPipelines:
     namespace: kubevirt
   tektonTasks:
     namespace: kubevirt
+  vmConsoleProxy:
+    namespace: kubevirt
 ```
 
 ## Annotations
-
-### VM Console Proxy
-
-These annotations are used by VM console proxy operand.
-
-```
-apiVersion: ssp.kubevirt.io/v1beta1
-kind: SSP
-metadata:
-  annotations:
-    ssp.kubevirt.io/vm-console-proxy-enabled: "true" # If not set, then by default is false
-    ssp.kubevirt.io/vm-console-proxy-namespace: "kubevirt" # If not set, then default namespace is "kubevirt"
-  name: ssp-sample
-  namespace: kubevirt
-spec: {}
-```
 
 ### Pause Operator
 
@@ -161,4 +145,23 @@ metadata:
 spec:
   featureGates:
     deployTektonTaskResources: true
+```
+
+### `deployVmConsoleProxy`
+
+Set the `deployVmConsoleProxy` feature gate to true to allow the operator
+to deploy VM console proxy resources.
+
+Resources that provides access to the VNC console of a Kubevirt VM
+will be deployed.
+
+```
+apiVersion: ssp.kubevirt.io/v1beta2
+kind: SSP
+metadata:
+  name: ssp-sample
+  namespace: kubevirt
+spec:
+  featureGates:
+    deployVmConsoleProxy: true
 ```

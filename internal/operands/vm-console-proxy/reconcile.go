@@ -3,7 +3,6 @@ package vm_console_proxy
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	routev1 "github.com/openshift/api/route/v1"
 	apps "k8s.io/api/apps/v1"
@@ -19,9 +18,6 @@ import (
 )
 
 const (
-	EnableAnnotation                  = "ssp.kubevirt.io/vm-console-proxy-enabled"
-	VmConsoleProxyNamespaceAnnotation = "ssp.kubevirt.io/vm-console-proxy-namespace"
-
 	operandName      = "vm-console-proxy"
 	operandComponent = "vm-console-proxy"
 
@@ -90,7 +86,7 @@ func (v *vmConsoleProxy) WatchClusterTypes() []operands.WatchType {
 }
 
 func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	if !isEnabled(request) {
+	if !request.Instance.Spec.FeatureGates.DeployVmConsoleProxy {
 		cleanupResults, err := v.Cleanup(request)
 		if err != nil {
 			return nil, err
@@ -184,7 +180,7 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 
 func reconcileServiceAccount(serviceAccount core.ServiceAccount) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		serviceAccount.Namespace = getVmConsoleProxyNamespace(request)
+		serviceAccount.Namespace = request.Instance.Spec.VmConsoleProxy.Namespace
 		return common.CreateOrUpdate(request).
 			ClusterResource(&serviceAccount).
 			WithAppLabels(operandName, operandComponent).
@@ -250,25 +246,10 @@ func reconcileRoute(serviceName string) common.ReconcileFunc {
 	}
 }
 
-func isEnabled(request *common.Request) bool {
-	if request.Instance.GetAnnotations() == nil {
-		return false
-	}
-	if enable, isFound := request.Instance.GetAnnotations()[EnableAnnotation]; isFound {
-		if isEnabled, err := strconv.ParseBool(enable); err == nil {
-			return isEnabled
-		}
-	}
-	return false
-}
-
 func getVmConsoleProxyNamespace(request *common.Request) string {
 	const defaultNamespace = "kubevirt"
-	if request.Instance.GetAnnotations() == nil {
-		return defaultNamespace
-	}
-	if namespace, isFound := request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation]; isFound {
-		return namespace
+	if request.Instance.Spec.VmConsoleProxy != nil && request.Instance.Spec.VmConsoleProxy.Namespace != "" {
+		return request.Instance.Spec.VmConsoleProxy.Namespace
 	}
 	return defaultNamespace
 }
