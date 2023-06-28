@@ -38,7 +38,8 @@ function kubevirtci::up() {
   KUBECONFIG=$(kubevirtci::kubeconfig)
   export KUBECONFIG
   echo "adding kubevirtci registry to cdi-insecure-registries"
-  ${_kubectl} patch configmap cdi-insecure-registries -n cdi --type merge -p '{"data":{"kubevirtci": "registry:5000"}}'
+  ${_kubectl} get cdis --output='name' --ignore-not-found \
+  | xargs -r ${_kubectl} patch --type merge -p '{"spec": {"config": {"insecureRegistries": ["registry:5000"]}}}'
   echo "installing kubevirt..."
   LATEST=$(curl -L https://storage.googleapis.com/kubevirt-prow/devel/release/kubevirt/kubevirt/stable.txt)
   ${_kubectl} apply -f "https://github.com/kubevirt/kubevirt/releases/download/${LATEST}/kubevirt-operator.yaml"
