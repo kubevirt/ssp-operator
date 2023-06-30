@@ -10,7 +10,7 @@ spec:
     - name: instanceTypeName
       type: string
       description: Name of VirtualMachineClusterInstancetype object
-      default: n1.large
+      default: u1.large
     - name: instanceTypeKind
       type: string
       description: Kind of VirtualMachineInstancetype object
