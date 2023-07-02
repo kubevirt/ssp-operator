@@ -38,7 +38,7 @@ metadata:
     capabilities: Basic Install
     categories: Openshift Optional
     containerImage: REPLACE_IMAGE:TAG
-    description: Manages KubeVirt addons for Scheduling, Scale, Performance
+    description: Deploys and controls additional KubeVirt resources
     operators.operatorframework.io/builder: operator-sdk-v1.25.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: ssp-operator.v0.14.0
@@ -57,7 +57,7 @@ spec:
       kind: SSP
       name: ssps.ssp.kubevirt.io
       version: v1beta2
-  description: KubeVirt Schedule, Scale and Performance Operator
+  description: Operator that deploys and controls additional KubeVirt resources
   displayName: ssp-operator
   icon:
   - base64data: ""
