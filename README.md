@@ -1,3 +1,7 @@
+# Branch name change:
+
+## Development has been moved from the master branch to the main branch.
+
 # SSP Operator
 
 Operator that deploying and controlling additional [KubeVirt](https://kubevirt.io) resources:
