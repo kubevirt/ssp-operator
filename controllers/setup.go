@@ -26,7 +26,7 @@ import (
 )
 
 // Need to watch CRDs
-// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list;watch
 
 func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager) error {
 	mgrCtx, cancel := context.WithCancel(ctx)
