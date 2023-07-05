@@ -3,7 +3,6 @@ package vm_console_proxy
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	routev1 "github.com/openshift/api/route/v1"
 	apps "k8s.io/api/apps/v1"
@@ -19,7 +18,6 @@ import (
 )
 
 const (
-	EnableAnnotation                  = "ssp.kubevirt.io/vm-console-proxy-enabled"
 	VmConsoleProxyNamespaceAnnotation = "ssp.kubevirt.io/vm-console-proxy-namespace"
 
 	operandName      = "vm-console-proxy"
@@ -90,7 +88,7 @@ func (v *vmConsoleProxy) WatchClusterTypes() []operands.WatchType {
 }
 
 func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	if !isEnabled(request) {
+	if request.Instance.Spec.FeatureGates == nil || !request.Instance.Spec.FeatureGates.DeployVmConsoleProxy {
 		cleanupResults, err := v.Cleanup(request)
 		if err != nil {
 			return nil, err
@@ -248,18 +246,6 @@ func reconcileRoute(serviceName string) common.ReconcileFunc {
 			WithAppLabels(operandName, operandComponent).
 			Reconcile()
 	}
-}
-
-func isEnabled(request *common.Request) bool {
-	if request.Instance.GetAnnotations() == nil {
-		return false
-	}
-	if enable, isFound := request.Instance.GetAnnotations()[EnableAnnotation]; isFound {
-		if isEnabled, err := strconv.ParseBool(enable); err == nil {
-			return isEnabled
-		}
-	}
-	return false
 }
 
 func getVmConsoleProxyNamespace(request *common.Request) string {
