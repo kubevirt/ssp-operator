@@ -18,7 +18,7 @@ SOURCE_DIR=$(dirname "$0")
 NAMESPACE=${1:-kubevirt}
 
 RELEASE_BRANCH=${CI_BRANCH}
-if [[ -z ${RELEASE_BRANCH} ]] || [[ ${RELEASE_BRANCH} == "main" ]] || [[ ${RELEASE_BRANCH} == "master" ]]
+if [[ -z ${RELEASE_BRANCH} ]] || [[ ${RELEASE_BRANCH} == "main" ]]
 then
   # Get the latest release branch
   RELEASE_BRANCH=$(curl 'https://api.github.com/repos/kubevirt/ssp-operator/branches' |
