@@ -6,6 +6,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-logr/logr v1.2.4
+	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230702114129-5c727ce98563
 	github.com/onsi/ginkgo/v2 v2.9.1
 	github.com/onsi/gomega v1.27.4
 	github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183 // release-4.13
