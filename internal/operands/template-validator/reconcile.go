@@ -20,8 +20,8 @@ import (
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=list;watch;create;update;delete
 
 // RBAC for created roles
-// +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch
-// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines,verbs=get;list;watch
+// +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=list;watch
+// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines,verbs=list;watch
 
 func WatchTypes() []operands.WatchType {
 	return []operands.WatchType{

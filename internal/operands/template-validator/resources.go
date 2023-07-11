@@ -62,11 +62,11 @@ func newClusterRole() *rbac.ClusterRole {
 		Rules: []rbac.PolicyRule{{
 			APIGroups: []string{templatev1.GroupName},
 			Resources: []string{"templates"},
-			Verbs:     []string{"get", "list", "watch"},
+			Verbs:     []string{"list", "watch"},
 		}, {
 			APIGroups: []string{kubevirt.GroupName},
 			Resources: []string{"virtualmachines"},
-			Verbs:     []string{"get", "list", "watch"},
+			Verbs:     []string{"list", "watch"},
 		}},
 	}
 }

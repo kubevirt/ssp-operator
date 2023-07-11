@@ -250,7 +250,6 @@ rules:
   resources:
   - virtualmachines
   verbs:
-  - get
   - list
   - watch
 - apiGroups:
