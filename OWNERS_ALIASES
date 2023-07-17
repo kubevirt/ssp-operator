@@ -1,0 +1,23 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  approvers:
+    - 0xFelix
+    - akrejcir
+    - ksimon1
+    - lyarwood
+    
+  code-reviewers:
+    - 0xFelix
+    - akrejcir
+    - ksimon1
+    - lyarwood
+    - jcanocan
+    - opokornyy
+    - codingben
+
+  #
+  # SIG Monitoring
+  #
+  sig-monitoring:
+    - sradco
