@@ -1,33 +1,13 @@
-# See the OWNERS docs at https://go.k8s.io/owners
-
-filters:
-  ".*":
-    reviewers:
-      - code-reviewers
-    approvers:
-      - approvers
-
-  "internal/operands/metrics/*":
-    reviewers:
-      - sig-monitoring
-      - code-reviewers
-
-  "internal/common/resource\\.go":
-    reviewers:
-      - sig-monitoring
-      - code-reviewers
-
-  "docs/metrics\\.md":
-    reviewers:
-      - sig-monitoring
-      - code-reviewers
-
-  "tests/metrics_test_utils\\.go":
-    reviewers:
-      - sig-monitoring
-      - code-reviewers
-
-  "tools/metricsdocs/*":
-    reviewers:
-      - sig-monitoring
-      - code-reviewers
+approvers:
+  - 0xFelix
+  - akrejcir
+  - ksimon1
+  - lyarwood
+reviewers:
+  - 0xFelix
+  - akrejcir
+  - codingben
+  - jcanocan
+  - ksimon1
+  - lyarwood
+  - opokornyy
