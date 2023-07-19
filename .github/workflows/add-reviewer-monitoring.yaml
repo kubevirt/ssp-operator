@@ -1,0 +1,25 @@
+name: Add reviewer from sig-monitoring to PR
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - internal/operands/metrics/*
+      - internal/common/resource.go
+      - docs/metrics.md
+      - tests/metrics_test_utils.go
+      - tools/metricsdocs/*
+
+jobs:
+  add_reviewer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Add Reviewer
+        id: add_reviewer
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-reviewer sradco
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
