@@ -12,7 +12,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: alpine
 spec:
   devices:
@@ -37,7 +36,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.7
 spec:
   devices:
@@ -62,7 +60,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.7.desktop
 spec:
   devices:
@@ -90,7 +87,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.8.stream
 spec:
   devices:
@@ -115,7 +111,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.8.stream.desktop
 spec:
   devices:
@@ -143,7 +138,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.9.stream
 spec:
   devices:
@@ -175,7 +169,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: centos.9.stream.desktop
 spec:
   devices:
@@ -210,7 +203,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cirros
 spec:
   devices:
@@ -235,7 +227,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: fedora
 spec:
   devices:
@@ -267,7 +258,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.7
 spec:
   devices:
@@ -292,7 +282,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.7.desktop
 spec:
   devices:
@@ -320,7 +309,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.8
 spec:
   devices:
@@ -345,7 +333,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.8.desktop
 spec:
   devices:
@@ -373,7 +360,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.9
 spec:
   devices:
@@ -405,7 +391,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: rhel.9.desktop
 spec:
   devices:
@@ -440,7 +425,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: linux
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: ubuntu
 spec:
   devices:
@@ -466,7 +450,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.10
 spec:
   clock:
@@ -524,7 +507,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.10.virtio
 spec:
   clock:
@@ -584,7 +566,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.11
 spec:
   clock:
@@ -642,7 +623,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.11.virtio
 spec:
   clock:
@@ -702,7 +682,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k12
 spec:
   clock:
@@ -760,7 +739,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k12.virtio
 spec:
   clock:
@@ -820,7 +798,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k16
 spec:
   clock:
@@ -873,7 +850,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k16.virtio
 spec:
   clock:
@@ -928,7 +904,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k19
 spec:
   clock:
@@ -986,7 +961,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k19.virtio
 spec:
   clock:
@@ -1046,7 +1020,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k22
 spec:
   clock:
@@ -1109,7 +1082,6 @@ metadata:
   labels:
     instancetype.kubevirt.io/os-type: windows
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: windows.2k22.virtio
 spec:
   clock:

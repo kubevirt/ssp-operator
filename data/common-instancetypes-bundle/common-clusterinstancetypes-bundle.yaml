@@ -25,7 +25,6 @@ metadata:
     instancetype.kubevirt.io/memory: 16Gi
     instancetype.kubevirt.io/numa: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cx1.2xlarge
 spec:
   cpu:
@@ -66,7 +65,6 @@ metadata:
     instancetype.kubevirt.io/memory: 32Gi
     instancetype.kubevirt.io/numa: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cx1.4xlarge
 spec:
   cpu:
@@ -107,7 +105,6 @@ metadata:
     instancetype.kubevirt.io/memory: 64Gi
     instancetype.kubevirt.io/numa: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cx1.8xlarge
 spec:
   cpu:
@@ -148,7 +145,6 @@ metadata:
     instancetype.kubevirt.io/memory: 4Gi
     instancetype.kubevirt.io/numa: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cx1.large
 spec:
   cpu:
@@ -189,7 +185,6 @@ metadata:
     instancetype.kubevirt.io/memory: 2Gi
     instancetype.kubevirt.io/numa: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cx1.medium
 spec:
   cpu:
@@ -230,7 +225,6 @@ metadata:
     instancetype.kubevirt.io/memory: 8Gi
     instancetype.kubevirt.io/numa: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: cx1.xlarge
 spec:
   cpu:
@@ -266,14 +260,13 @@ metadata:
     instancetype.kubevirt.io/gpus: "true"
     instancetype.kubevirt.io/memory: 32Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: gn1.2xlarge
 spec:
   cpu:
     guest: 8
   gpus:
-    - deviceName: nvidia.com/A400
-      name: gpu1
+  - deviceName: nvidia.com/A400
+    name: gpu1
   memory:
     guest: 32Gi
 ---
@@ -298,14 +291,13 @@ metadata:
     instancetype.kubevirt.io/gpus: "true"
     instancetype.kubevirt.io/memory: 64Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: gn1.4xlarge
 spec:
   cpu:
     guest: 16
   gpus:
-    - deviceName: nvidia.com/A400
-      name: gpu1
+  - deviceName: nvidia.com/A400
+    name: gpu1
   memory:
     guest: 64Gi
 ---
@@ -330,14 +322,13 @@ metadata:
     instancetype.kubevirt.io/gpus: "true"
     instancetype.kubevirt.io/memory: 128Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: gn1.8xlarge
 spec:
   cpu:
     guest: 32
   gpus:
-    - deviceName: nvidia.com/A400
-      name: gpu1
+  - deviceName: nvidia.com/A400
+    name: gpu1
   memory:
     guest: 128Gi
 ---
@@ -362,14 +353,13 @@ metadata:
     instancetype.kubevirt.io/gpus: "true"
     instancetype.kubevirt.io/memory: 16Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: gn1.xlarge
 spec:
   cpu:
     guest: 4
   gpus:
-    - deviceName: nvidia.com/A400
-      name: gpu1
+  - deviceName: nvidia.com/A400
+    name: gpu1
   memory:
     guest: 16Gi
 ---
@@ -380,7 +370,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: large
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: highperformance.large
 spec:
   cpu:
@@ -398,7 +387,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: medium
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: highperformance.medium
 spec:
   cpu:
@@ -416,7 +404,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: small
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: highperformance.small
 spec:
   cpu:
@@ -443,7 +430,6 @@ metadata:
     instancetype.kubevirt.io/hugepages: "true"
     instancetype.kubevirt.io/memory: 64Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: m1.2xlarge
 spec:
   cpu:
@@ -469,7 +455,6 @@ metadata:
     instancetype.kubevirt.io/hugepages: "true"
     instancetype.kubevirt.io/memory: 128Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: m1.4xlarge
 spec:
   cpu:
@@ -495,7 +480,6 @@ metadata:
     instancetype.kubevirt.io/hugepages: "true"
     instancetype.kubevirt.io/memory: 256Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: m1.8xlarge
 spec:
   cpu:
@@ -521,7 +505,6 @@ metadata:
     instancetype.kubevirt.io/hugepages: "true"
     instancetype.kubevirt.io/memory: 16Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: m1.large
 spec:
   cpu:
@@ -547,7 +530,6 @@ metadata:
     instancetype.kubevirt.io/hugepages: "true"
     instancetype.kubevirt.io/memory: 32Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: m1.xlarge
 spec:
   cpu:
@@ -563,14 +545,15 @@ metadata:
   annotations:
     instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The O Series is based on the N Series, with the only difference
+      The O Series is based on the U Series, with the only difference
       being that memory is overcommitted.
 
       *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
+    instancetype.kubevirt.io/cpu: "8"
+    instancetype.kubevirt.io/memory: 32Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: o1.2xlarge
 spec:
   cpu:
@@ -585,14 +568,15 @@ metadata:
   annotations:
     instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The O Series is based on the N Series, with the only difference
+      The O Series is based on the U Series, with the only difference
       being that memory is overcommitted.
 
       *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
+    instancetype.kubevirt.io/cpu: "16"
+    instancetype.kubevirt.io/memory: 64Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: o1.4xlarge
 spec:
   cpu:
@@ -607,14 +591,15 @@ metadata:
   annotations:
     instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The O Series is based on the N Series, with the only difference
+      The O Series is based on the U Series, with the only difference
       being that memory is overcommitted.
 
       *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
+    instancetype.kubevirt.io/cpu: "32"
+    instancetype.kubevirt.io/memory: 128Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: o1.8xlarge
 spec:
   cpu:
@@ -629,14 +614,15 @@ metadata:
   annotations:
     instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The O Series is based on the N Series, with the only difference
+      The O Series is based on the U Series, with the only difference
       being that memory is overcommitted.
 
       *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
+    instancetype.kubevirt.io/cpu: "2"
+    instancetype.kubevirt.io/memory: 8Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: o1.large
 spec:
   cpu:
@@ -651,14 +637,15 @@ metadata:
   annotations:
     instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The O Series is based on the N Series, with the only difference
+      The O Series is based on the U Series, with the only difference
       being that memory is overcommitted.
 
       *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
+    instancetype.kubevirt.io/cpu: "1"
+    instancetype.kubevirt.io/memory: 4Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: o1.medium
 spec:
   cpu:
@@ -673,14 +660,15 @@ metadata:
   annotations:
     instancetype.kubevirt.io/class: Overcommitted
     instancetype.kubevirt.io/description: |-
-      The O Series is based on the N Series, with the only difference
+      The O Series is based on the U Series, with the only difference
       being that memory is overcommitted.
 
       *O* is the abbreviation for "Overcommitted".
     instancetype.kubevirt.io/version: "1"
   labels:
+    instancetype.kubevirt.io/cpu: "4"
+    instancetype.kubevirt.io/memory: 16Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: o1.xlarge
 spec:
   cpu:
@@ -696,7 +684,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: large
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: server.large
 spec:
   cpu:
@@ -711,7 +698,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: medium
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: server.medium
 spec:
   cpu:
@@ -726,7 +712,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: micro
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: server.micro
 spec:
   cpu:
@@ -741,7 +726,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: small
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: server.small
 spec:
   cpu:
@@ -756,7 +740,6 @@ metadata:
     instancetype.kubevirt.io/deprecated: "true"
     instancetype.kubevirt.io/vendor: kubevirt.io
     kubevirt.io/size: tiny
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: server.tiny
 spec:
   cpu:
@@ -783,7 +766,6 @@ metadata:
     instancetype.kubevirt.io/cpu: "8"
     instancetype.kubevirt.io/memory: 32Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: u1.2xlarge
 spec:
   cpu:
@@ -810,7 +792,6 @@ metadata:
     instancetype.kubevirt.io/cpu: "16"
     instancetype.kubevirt.io/memory: 64Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: u1.4xlarge
 spec:
   cpu:
@@ -837,7 +818,6 @@ metadata:
     instancetype.kubevirt.io/cpu: "32"
     instancetype.kubevirt.io/memory: 128Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: u1.8xlarge
 spec:
   cpu:
@@ -864,7 +844,6 @@ metadata:
     instancetype.kubevirt.io/cpu: "2"
     instancetype.kubevirt.io/memory: 8Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: u1.large
 spec:
   cpu:
@@ -891,7 +870,6 @@ metadata:
     instancetype.kubevirt.io/cpu: "1"
     instancetype.kubevirt.io/memory: 4Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: u1.medium
 spec:
   cpu:
@@ -918,7 +896,6 @@ metadata:
     instancetype.kubevirt.io/cpu: "4"
     instancetype.kubevirt.io/memory: 16Gi
     instancetype.kubevirt.io/vendor: kubevirt.io
-    instancetype.kubevirt.io/common-instancetypes-version: v0.3.0
   name: u1.xlarge
 spec:
   cpu:
