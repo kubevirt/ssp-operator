@@ -2,12 +2,10 @@ package tests
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"reflect"
-	"strconv"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -17,7 +15,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 
@@ -39,15 +36,16 @@ var _ = Describe("VM Console Proxy Operand", func() {
 
 	BeforeEach(OncePerOrdered, func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
+		namespace := strategy.GetVmConsoleProxyNamespace()
 
 		updateSsp(func(foundSsp *ssp.SSP) {
+			if foundSsp.Spec.FeatureGates == nil {
+				foundSsp.Spec.FeatureGates = &ssp.FeatureGates{}
+			}
 			if foundSsp.GetAnnotations() == nil {
 				foundSsp.Annotations = make(map[string]string)
 			}
-
-			namespace := strategy.GetVmConsoleProxyNamespace()
-
-			foundSsp.Annotations[vm_console_proxy.EnableAnnotation] = "true"
+			foundSsp.Spec.FeatureGates.DeployVmConsoleProxy = true
 			foundSsp.Annotations[vm_console_proxy.VmConsoleProxyNamespaceAnnotation] = namespace
 		})
 
@@ -133,40 +131,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			},
 		}
 
-		// Waiting until the proxy deployment is created.
-		// This is a workaround, because the above updateSsp() function updates only annotations,
-		// which don't update the .metadata.generation field. So the waitUntilDeployed() call
-		// below succeeds immediately, and does not wait until proxy resources are created.
-		Eventually(func() error {
-			return apiClient.Get(ctx, deploymentResource.GetKey(), &apps.Deployment{})
-		}, env.ShortTimeout(), time.Second).Should(Succeed())
-
 		waitUntilDeployed()
 	})
 
 	AfterEach(OncePerOrdered, func() {
 		strategy.RevertToOriginalSspCr()
-
-		// Similar workaround as in BeforeEach().
-		originalSspProxyAnnotation := getSsp().Annotations[vm_console_proxy.EnableAnnotation]
-		if isEnabled, _ := strconv.ParseBool(originalSspProxyAnnotation); !isEnabled {
-			Eventually(func() error {
-				deployment := &apps.Deployment{}
-				err := apiClient.Get(ctx, deploymentResource.GetKey(), deployment)
-				if errors.IsNotFound(err) {
-					return nil
-				}
-				if err != nil {
-					return err
-				}
-				if !deployment.DeletionTimestamp.IsZero() {
-					return nil
-				}
-				return fmt.Errorf("the console proxy deployment is not being deleted")
-			}, env.ShortTimeout(), time.Second).Should(Succeed())
-		}
-
-		waitUntilDeployed()
 	})
 
 	Context("Resource creation", Ordered, func() {

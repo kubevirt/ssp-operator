@@ -22,7 +22,6 @@ apiVersion: ssp.kubevirt.io/v1beta2
 kind: SSP
 metadata:
   annotations:
-    ssp.kubevirt.io/vm-console-proxy-enabled: "true"
     ssp.kubevirt.io/vm-console-proxy-namespace: "kubevirt"
   name: ssp-sample
   namespace: kubevirt
@@ -33,6 +32,7 @@ spec:
     replicas: 2
   featureGates:
     deployTektonTaskResources: true
+    deployVmConsoleProxy: true
   tektonPipelines:
     namespace: kubevirt
   tektonTasks:
@@ -43,14 +43,13 @@ spec:
 
 ### VM Console Proxy
 
-These annotations are used by VM console proxy operand.
+This annotation is used by VM console proxy operand.
 
 ```
 apiVersion: ssp.kubevirt.io/v1beta1
 kind: SSP
 metadata:
   annotations:
-    ssp.kubevirt.io/vm-console-proxy-enabled: "true" # If not set, then by default is false
     ssp.kubevirt.io/vm-console-proxy-namespace: "kubevirt" # If not set, then default namespace is "kubevirt"
   name: ssp-sample
   namespace: kubevirt
@@ -161,4 +160,23 @@ metadata:
 spec:
   featureGates:
     deployTektonTaskResources: true
+```
+
+### `deployVmConsoleProxy`
+
+Set the `deployVmConsoleProxy` feature gate to true to allow the operator
+to deploy VM console proxy resources.
+
+Resources will be deployed that provide access to the VNC console of a KubeVirt VM,
+enabling users to access VMs without requiring access to the cluster's API.
+
+```
+apiVersion: ssp.kubevirt.io/v1beta2
+kind: SSP
+metadata:
+  name: ssp-sample
+  namespace: kubevirt
+spec:
+  featureGates:
+    deployVmConsoleProxy: true
 ```
