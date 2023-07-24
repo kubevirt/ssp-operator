@@ -48,9 +48,6 @@ done
 go build -o _out/prom-metrics-collector "$METRICS_COLLECTOR_PATH/..."
 json_output=$(_out/prom-metrics-collector 2>/dev/null)
 
-# Select container runtime
-source "${PROJECT_ROOT}"/hack/config.sh
-
 # Check if runs as part of Openshift-ci. If so, run directly
 if [[ "${OPENSHIFT_CI}" == "true" ]]; then
   errors=$(/usr/bin/prom-metrics-linter \
@@ -59,6 +56,9 @@ if [[ "${OPENSHIFT_CI}" == "true" ]]; then
       --sub-operator-name="$sub_operator_name" 2>/dev/null)
 # Else, run in a container, using the linter image
 else
+  # Select container runtime
+  source "${PROJECT_ROOT}"/hack/config.sh
+
   errors=$($KUBEVIRT_CRI run -i "quay.io/kubevirt/prom-metrics-linter:$linter_image_tag" \
       --metric-families="$json_output" \
       --operator-name="$operator_name" \
