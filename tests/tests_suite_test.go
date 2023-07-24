@@ -116,7 +116,6 @@ func (s *newSspStrategy) Init() {
 				common.AppKubernetesComponentLabel: common.AppComponentSchedule.String(),
 			},
 			Annotations: map[string]string{
-				vm_console_proxy.EnableAnnotation:                  "true",
 				vm_console_proxy.VmConsoleProxyNamespaceAnnotation: s.GetVmConsoleProxyNamespace(),
 			},
 		},
@@ -135,6 +134,7 @@ func (s *newSspStrategy) Init() {
 			},
 			FeatureGates: &sspv1beta2.FeatureGates{
 				DeployTektonTaskResources: false,
+				DeployVmConsoleProxy:      true,
 			},
 		},
 	}
