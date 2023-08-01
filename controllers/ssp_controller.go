@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -151,7 +150,6 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-	restartNeeded := r.isRestartNeeded(instance)
 	r.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
@@ -164,10 +162,6 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		VersionCache:   r.subresourceCache,
 		TopologyMode:   r.topologyMode,
 		CrdList:        r.crdList,
-	}
-
-	if restartNeeded {
-		r.restart(sspRequest)
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -236,25 +230,6 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r *sspReconciler) isRestartNeeded(sspObj *ssp.SSP) bool {
-	if reflect.DeepEqual(r.lastSspSpec, ssp.SSPSpec{}) {
-		return false
-	}
-	if !reflect.DeepEqual(r.lastSspSpec.TLSSecurityProfile, sspObj.Spec.TLSSecurityProfile) {
-		return true
-	}
-	return false
-}
-
-func (r *sspReconciler) restart(request *common.Request) {
-	r.log.Info("TLSSecurityProfile changed, restarting")
-	err := setSspResourceDeploying(request)
-	if err != nil {
-		r.log.Info("Error at setSspResourceDeploying", "Error: ", err)
-	}
-	os.Exit(0)
 }
 
 func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
