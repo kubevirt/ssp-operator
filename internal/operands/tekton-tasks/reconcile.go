@@ -7,6 +7,7 @@ import (
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -24,9 +25,9 @@ import (
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datavolumes,verbs=*
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datasources,verbs=get;create;delete
 // +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines/finalizers,verbs=*
-// +kubebuilder:rbac:groups=*,resources=persistentvolumeclaims,verbs=*
-// +kubebuilder:rbac:groups=*,resources=pods,verbs=create
-// +kubebuilder:rbac:groups=*,resources=secrets,verbs=*
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=*
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=create
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=*
 
 const (
 	operandName      = "tekton-tasks"
@@ -87,43 +88,11 @@ type tektonTasks struct {
 var _ operands.Operand = &tektonTasks{}
 
 func New(bundle *tektonbundle.Bundle) operands.Operand {
-	newTasks := []pipeline.Task{}
-	for _, task := range bundle.Tasks {
-		if _, ok := AllowedTasks[task.Name]; ok {
-			newTasks = append(newTasks, task)
-		}
-	}
-	bundle.Tasks = newTasks
-
-	newServiceAccounts := []v1.ServiceAccount{}
-	for _, serviceAccount := range bundle.ServiceAccounts {
-		if _, ok := AllowedTasks[strings.TrimSuffix(serviceAccount.Name, "-task")]; ok {
-			newServiceAccounts = append(newServiceAccounts, serviceAccount)
-		}
-	}
-	bundle.ServiceAccounts = newServiceAccounts
-
-	newRoleBinding := []rbac.RoleBinding{}
-	for _, roleBinding := range bundle.RoleBindings {
-		if _, ok := AllowedTasks[strings.TrimSuffix(roleBinding.Name, "-task")]; ok {
-			newRoleBinding = append(newRoleBinding, roleBinding)
-		}
-	}
-	bundle.RoleBindings = newRoleBinding
-
-	newClusterRole := []rbac.ClusterRole{}
-	for _, clusterRole := range bundle.ClusterRoles {
-		if _, ok := AllowedTasks[strings.TrimSuffix(clusterRole.Name, "-task")]; ok {
-			newClusterRole = append(newClusterRole, clusterRole)
-		}
-	}
-	bundle.ClusterRoles = newClusterRole
-
 	return &tektonTasks{
-		tasks:           bundle.Tasks,
-		serviceAccounts: bundle.ServiceAccounts,
-		roleBindings:    bundle.RoleBindings,
-		clusterRoles:    bundle.ClusterRoles,
+		tasks:           filterTektonResources(bundle.Tasks, false),
+		serviceAccounts: filterTektonResources(bundle.ServiceAccounts, true),
+		roleBindings:    filterTektonResources(bundle.RoleBindings, true),
+		clusterRoles:    filterTektonResources(bundle.ClusterRoles, true),
 	}
 }
 
@@ -174,39 +143,27 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 
 func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
+
 	if request.CrdList.CrdExists(tektonCrd) {
-		for _, t := range t.tasks {
-			o := t.DeepCopy()
-			objects = append(objects, o)
-		}
+		objects = common.AppendDeepCopies(objects, t.tasks)
 	}
-	for _, rb := range t.roleBindings {
-		o := rb.DeepCopy()
-		objects = append(objects, o)
-	}
-	for _, sa := range t.serviceAccounts {
-		o := sa.DeepCopy()
-		objects = append(objects, o)
-	}
+
+	objects = common.AppendDeepCopies(objects, t.roleBindings)
+	objects = common.AppendDeepCopies(objects, t.serviceAccounts)
 
 	for i := range objects {
 		objects[i].SetNamespace(getTektonTasksNamespace(request))
 	}
 
-	for _, cr := range t.clusterRoles {
-		o := cr.DeepCopy()
-		objects = append(objects, o)
-	}
+	objects = common.AppendDeepCopies(objects, t.clusterRoles)
 
 	if request.CrdList.CrdExists(tektonCrd) {
 		clusterTasks, err := listDeprecatedClusterTasks(request)
 		if err != nil {
 			return nil, err
 		}
-		for _, ct := range clusterTasks {
-			o := ct.DeepCopy()
-			objects = append(objects, o)
-		}
+
+		objects = common.AppendDeepCopies(objects, clusterTasks)
 	}
 
 	return common.DeleteAll(request, objects...)
@@ -306,4 +263,41 @@ func getTektonTasksNamespace(request *common.Request) string {
 		return request.Instance.Spec.TektonTasks.Namespace
 	}
 	return request.Instance.Namespace
+}
+
+// filterTektonResources filters a slice of Tekton resources based on the provided criteria.
+// It allows filtering based on the name of the resources, optionally trimming a specified suffix.
+// The function only includes resources with names present in the AllowedTasks map.
+//
+// The PT interface {*T ; meta1.Object } is a trick. It means that type PT satisfies
+// an anonymous typeset defined directly in the function signature.
+// This typeset interface { *T; metav1.Object } means that it is a pointer to T
+// and implements interface metav1.Object.
+//
+// Parameters:
+//   - items: A slice of Tekton resource objects to be filtered.
+//   - trimSuffix: A boolean indicating whether to trim the "-task" suffix from the resource names.
+//
+// Returns:
+//   - A new slice containing the filtered Tekton resource objects.
+//
+// Type Parameters:
+//   - PT: A type that is a pointer to the resource type (should implement *T and metav1.Object interfaces).
+//   - T: The actual resource type.
+func filterTektonResources[PT interface {
+	*T
+	metav1.Object
+}, T any](items []T, trimSuffix bool) []T {
+	var results []T
+	for i := range items {
+		object := PT(&items[i])
+		name := object.GetName()
+		if trimSuffix {
+			name = strings.TrimSuffix(name, "-task")
+		}
+		if _, ok := AllowedTasks[name]; ok {
+			results = append(results, *object)
+		}
+	}
+	return results
 }

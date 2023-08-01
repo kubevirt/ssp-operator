@@ -1,11 +1,9 @@
 package tekton_bundle
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"os"
-
 	"path/filepath"
 
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -38,138 +36,109 @@ type Bundle struct {
 	ConfigMaps      []v1.ConfigMap
 }
 
-func ReadTasksBundle(isOpenshift bool) (*Bundle, error) {
-	var files [][]byte
-	path := getTasksBundlePath(isOpenshift)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	files = append(files, data)
-
-	tektonObjs, err := decodeObjectsFromFiles(files)
-	if err != nil {
-		return nil, err
-	}
-
-	return tektonObjs, nil
+var tektonPipelineBundlePaths = []string{
+	filepath.Join(tektonPipelinesBundleDir, "pipelines-rbac.yaml"),
+	filepath.Join(tektonPipelinesBundleDir, "windows-bios-installer-configmaps.yaml"),
+	filepath.Join(tektonPipelinesBundleDir, "windows-bios-installer-pipeline.yaml"),
+	filepath.Join(tektonPipelinesBundleDir, "windows-customize-configmaps.yaml"),
+	filepath.Join(tektonPipelinesBundleDir, "windows-customize-pipeline.yaml"),
+	filepath.Join(tektonPipelinesBundleDir, "windows-efi-installer-configmaps.yaml"),
+	filepath.Join(tektonPipelinesBundleDir, "windows-efi-installer-pipeline.yaml"),
 }
 
-func ReadPipelineBundle() (*Bundle, error) {
-	path := getPipelineBundlePath()
-	files, err := readFolder(path)
-	if err != nil {
-		return nil, err
-	}
-
-	tektonObjs, err := decodeObjectsFromFiles(files)
-	if err != nil {
-		return nil, err
-	}
-
-	return tektonObjs, nil
+func GetTektonPipelineBundlePaths() []string {
+	return tektonPipelineBundlePaths
 }
 
-func getPipelineBundlePath() string {
-	return tektonPipelinesBundleDir
-}
-
-func getTasksBundlePath(isOpenshift bool) string {
-	if isOpenshift {
+func GetTektonTasksBundlePath(isOpenShift bool) string {
+	if isOpenShift {
 		return filepath.Join(tektonTasksOKDBundleDir, "kubevirt-tekton-tasks-okd.yaml")
 	}
 	return filepath.Join(tektonTasksKubernetesBundleDir, "kubevirt-tekton-tasks-kubernetes.yaml")
 }
 
-func readFolder(folderPath string) ([][]byte, error) {
-	files, err := os.ReadDir(folderPath)
-	if err != nil {
-		return nil, err
-	}
-	filesBytes := make([][]byte, 0, len(files))
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		f, err := os.ReadFile(filepath.Join(folderPath, file.Name()))
+func ReadBundle(paths []string) (*Bundle, error) {
+	bundle := &Bundle{}
+	for _, path := range paths {
+		err := decodeObjects(path, bundle)
 		if err != nil {
 			return nil, err
 		}
-		filesBytes = append(filesBytes, f)
 	}
-
-	return filesBytes, nil
+	return bundle, nil
 }
 
-func decodeObjectsFromFiles(files [][]byte) (*Bundle, error) {
-	bundle := &Bundle{}
-	for _, file := range files {
-		decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(file), 1024)
-		for {
-			var obj map[string]interface{}
-			err := decoder.Decode(&obj)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return nil, err
-			}
-			if kind, ok := obj["kind"].(string); ok {
-				if kind == "" {
-					continue
-				}
+func decodeObjects(path string, bundle *Bundle) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-				switch kind {
-				case tasksString:
-					task := pipeline.Task{}
-					err = getObject(obj, &task)
-					if err != nil {
-						return nil, err
-					}
-					bundle.Tasks = append(bundle.Tasks, task)
-				case pipelineKindString:
-					p := pipeline.Pipeline{}
-					err = getObject(obj, &p)
-					if err != nil {
-						return nil, err
-					}
-					bundle.Pipelines = append(bundle.Pipelines, p)
-				case serviceAccountKind:
-					sa := v1.ServiceAccount{}
-					err = getObject(obj, &sa)
-					if err != nil {
-						return nil, err
-					}
-					bundle.ServiceAccounts = append(bundle.ServiceAccounts, sa)
-				case roleBindingKind:
-					rb := rbac.RoleBinding{}
-					err = getObject(obj, &rb)
-					if err != nil {
-						return nil, err
-					}
-					bundle.RoleBindings = append(bundle.RoleBindings, rb)
-				case clusterRoleKind:
-					cr := rbac.ClusterRole{}
-					err = getObject(obj, &cr)
-					if err != nil {
-						return nil, err
-					}
-					bundle.ClusterRoles = append(bundle.ClusterRoles, cr)
-				case configMapKind:
-					cm := v1.ConfigMap{}
-					err = getObject(obj, &cm)
-					if err != nil {
-						return nil, err
-					}
-					bundle.ConfigMaps = append(bundle.ConfigMaps, cm)
-				default:
-					continue
+	decoder := yaml.NewYAMLOrJSONDecoder(file, 1024)
+	for {
+		var obj map[string]interface{}
+		err := decoder.Decode(&obj)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if kind, ok := obj["kind"].(string); ok {
+			if kind == "" {
+				continue
+			}
+
+			switch kind {
+			case tasksString:
+				task := pipeline.Task{}
+				err = getObject(obj, &task)
+				if err != nil {
+					return err
 				}
+				bundle.Tasks = append(bundle.Tasks, task)
+			case pipelineKindString:
+				p := pipeline.Pipeline{}
+				err = getObject(obj, &p)
+				if err != nil {
+					return err
+				}
+				bundle.Pipelines = append(bundle.Pipelines, p)
+			case serviceAccountKind:
+				sa := v1.ServiceAccount{}
+				err = getObject(obj, &sa)
+				if err != nil {
+					return err
+				}
+				bundle.ServiceAccounts = append(bundle.ServiceAccounts, sa)
+			case roleBindingKind:
+				rb := rbac.RoleBinding{}
+				err = getObject(obj, &rb)
+				if err != nil {
+					return err
+				}
+				bundle.RoleBindings = append(bundle.RoleBindings, rb)
+			case clusterRoleKind:
+				cr := rbac.ClusterRole{}
+				err = getObject(obj, &cr)
+				if err != nil {
+					return err
+				}
+				bundle.ClusterRoles = append(bundle.ClusterRoles, cr)
+			case configMapKind:
+				cm := v1.ConfigMap{}
+				err = getObject(obj, &cm)
+				if err != nil {
+					return err
+				}
+				bundle.ConfigMaps = append(bundle.ConfigMaps, cm)
+			default:
+				continue
 			}
 		}
 	}
-	return bundle, nil
+	return nil
 }
 
 func getObject(obj map[string]interface{}, newObj interface{}) error {

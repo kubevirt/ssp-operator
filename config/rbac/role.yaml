@@ -26,33 +26,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - '*'
-  resources:
-  - configmaps
-  verbs:
-  - create
-  - delete
-  - list
-  - watch
-- apiGroups:
-  - '*'
-  resources:
-  - persistentvolumeclaims
-  verbs:
-  - '*'
-- apiGroups:
-  - '*'
-  resources:
-  - pods
-  verbs:
-  - create
-- apiGroups:
-  - '*'
-  resources:
-  - secrets
-  verbs:
-  - '*'
-- apiGroups:
   - admissionregistration.k8s.io
   resources:
   - validatingwebhookconfigurations
@@ -157,6 +130,15 @@ rules:
   - ""
   resources:
   - configmaps
+  verbs:
+  - create
+  - delete
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
   - serviceaccounts
   verbs:
   - create
@@ -180,6 +162,7 @@ rules:
   resources:
   - persistentvolumeclaims
   verbs:
+  - '*'
   - create
   - delete
   - get
@@ -208,9 +191,16 @@ rules:
   resources:
   - pods
   verbs:
+  - create
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - '*'
 - apiGroups:
   - ""
   resources:
