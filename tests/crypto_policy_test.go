@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	ocpv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/library-go/pkg/crypto"
-	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
@@ -106,19 +104,6 @@ var _ = Describe("Crypto Policy", func() {
 
 	AfterEach(func() {
 		strategy.RevertToOriginalSspCr()
-
-		// Because of bug[1], the SSP operator will move to CrashLoopBackOff state,
-		// so we need to wait until it is running.
-		// [1] - https://bugzilla.redhat.com/show_bug.cgi?id=2151248
-		Eventually(func(g Gomega) {
-			deployment := &apps.Deployment{}
-			err := apiClient.Get(ctx, client.ObjectKey{
-				Name:      strategy.GetSSPDeploymentName(),
-				Namespace: strategy.GetSSPDeploymentNameSpace(),
-			}, deployment)
-			g.Expect(err).ToNot(HaveOccurred())
-			g.Expect(deployment.Status.ReadyReplicas).To(BeNumerically(">=", 1))
-		}, env.Timeout(), time.Second).Should(Succeed())
 	})
 
 	Context("setting Crypto Policy", func() {

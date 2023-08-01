@@ -1,16 +1,12 @@
 package common
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 
 	"github.com/go-logr/logr"
 	ocpv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/library-go/pkg/crypto"
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type SSPTLSOptions struct {
@@ -65,8 +61,8 @@ func GetKnownCipherId(IANACipherName string) (uint16, bool) {
 	return 0, false
 }
 
-func (s *SSPTLSOptions) CipherIDs(logger *logr.Logger) (cipherSuites []uint16) {
-	for _, cipherName := range crypto.OpenSSLToIANACipherSuites(s.OpenSSLCipherNames) {
+func CipherIDs(names []string, logger *logr.Logger) (cipherSuites []uint16) {
+	for _, cipherName := range crypto.OpenSSLToIANACipherSuites(names) {
 		if id, ok := GetKnownCipherId(cipherName); ok {
 			cipherSuites = append(cipherSuites, id)
 		} else {
@@ -76,33 +72,6 @@ func (s *SSPTLSOptions) CipherIDs(logger *logr.Logger) (cipherSuites []uint16) {
 		}
 	}
 	return
-}
-
-func GetSspTlsOptions(ctx context.Context) (*SSPTLSOptions, error) {
-	setupLog := ctrl.Log.WithName("setup tls options")
-	restConfig := ctrl.GetConfigOrDie()
-	apiReader, err := client.New(restConfig, client.Options{Scheme: Scheme})
-	if err != nil {
-		return nil, err
-	}
-
-	var sspList ssp.SSPList
-	if err := apiReader.List(ctx, &sspList, &client.ListOptions{}); err != nil {
-		return nil, err
-	}
-
-	if len(sspList.Items) == 0 {
-		setupLog.Info("SSP CR not found, will use default tlsProfile")
-		return &SSPTLSOptions{}, nil
-	}
-
-	ssp := sspList.Items[0]
-
-	sspTLSOptions, err := NewSSPTLSOptions(ssp.Spec.TLSSecurityProfile, &setupLog)
-	if err != nil {
-		return nil, err
-	}
-	return sspTLSOptions, nil
 }
 
 func selectCipherSuitesAndMinTLSVersion(profile *ocpv1.TLSSecurityProfile) ([]string, ocpv1.TLSProtocolVersion) {

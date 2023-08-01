@@ -192,7 +192,7 @@ func (ti *TLSInfo) CreateTlsConfig() *tls.Config {
 	}
 
 	if !ti.sspTLSOptions.IsEmpty() {
-		tlsConfig.CipherSuites = ti.sspTLSOptions.CipherIDs(nil)
+		tlsConfig.CipherSuites = common.CipherIDs(ti.sspTLSOptions.OpenSSLCipherNames, nil)
 		minVersion, err := ti.sspTLSOptions.MinTLSVersionId()
 		if err != nil {
 			panic(fmt.Sprintf("TLS Configuration broken, min version misconfigured %v", err))
