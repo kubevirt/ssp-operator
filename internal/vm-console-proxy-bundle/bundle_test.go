@@ -19,9 +19,11 @@ var _ = Describe("VM Console Proxy Bundle", func() {
 		Expect(bundle.ServiceAccount).ToNot(BeNil(), "service account should not be nil")
 		Expect(bundle.ClusterRole).ToNot(BeNil(), "cluster role should not be nil")
 		Expect(bundle.ClusterRoleBinding).ToNot(BeNil(), "cluster role binding should not be nil")
+		Expect(bundle.RoleBinding).ToNot(BeNil(), "role binding should not be nil")
 		Expect(bundle.Service).ToNot(BeNil(), "service should not be nil")
 		Expect(bundle.Deployment).ToNot(BeNil(), "deployment should not be nil")
 		Expect(bundle.ConfigMap).ToNot(BeNil(), "config map should not be nil")
+		Expect(bundle.ApiService).ToNot(BeNil(), "api service should not be nil")
 	})
 
 	It("should fail if bundle does not contain needed resources", func() {

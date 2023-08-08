@@ -1,7 +1,7 @@
 #!/bin/bash
 
 olm_output=$(podman run --rm --entrypoint=/csv-generator quay.io/kubevirt/ssp-operator:latest \
---csv-version=9.9.9 --namespace=namespace-test --operator-version=8.8.8  --validator-image=validator-test --dump-crds \
+--csv-version=9.9.9 --namespace=namespace-test --operator-version=8.8.8  --validator-image=validator-test --vm-console-proxy-image=proxy-test --dump-crds \
 --operator-image=operator-test)
 
 if [ $(echo $olm_output | grep 'ClusterServiceVersion' | wc -l) -eq 0 ]; then
@@ -16,6 +16,11 @@ fi
 
 if [ $(echo $olm_output | grep 'value: validator-test'| wc -l) -eq 0 ]; then
     echo "output doesn't contain correct validator-image"
+    exit 1
+fi
+
+if [ $(echo $olm_output | grep 'value: proxy-test'| wc -l) -eq 0 ]; then
+    echo "output doesn't contain correct proxy-image"
     exit 1
 fi
 
