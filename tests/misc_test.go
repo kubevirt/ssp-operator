@@ -98,7 +98,7 @@ var _ = Describe("Observed generation", func() {
 	})
 })
 
-var _ = Describe("SSPOperatorReconcilingProperly metric", func() {
+var _ = Describe("SSPOperatorReconcileSucceeded metric", func() {
 	var (
 		deploymentRes testResource
 		finalizerName = "ssp.kubernetes.io/temp-protection"
@@ -117,7 +117,7 @@ var _ = Describe("SSPOperatorReconcilingProperly metric", func() {
 		waitUntilDeployed()
 	})
 
-	It("[test_id:7369] should set SSPOperatorReconcilingProperly metrics to 0 on failing to reconcile", func() {
+	It("[test_id:7369] should set SSPOperatorReconcileSucceeded metrics to 0 on failing to reconcile", func() {
 		// add a finalizer to the validator deployment, do that it can't be deleted
 		addFinalizer(deploymentRes, finalizerName)
 		// send a request to delete the validator deployment
@@ -166,9 +166,9 @@ func validateSspIsFailingToReconcileMetric() {
 			Replicas: &newValidatorReplicas,
 		}
 	})
-	// the reconcile cycle should now be failing, so the ssp_operator_reconciling_properly metric should be 0
+	// the reconcile cycle should now be failing, so the kubevirt_ssp_operator_reconcile_succeeded metric should be 0
 	Eventually(func() int {
-		return sspOperatorReconcilingProperlyCount()
+		return sspOperatorReconcileSucceededCount()
 	}, env.ShortTimeout(), time.Second).Should(Equal(0))
 }
 

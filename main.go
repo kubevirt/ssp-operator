@@ -69,7 +69,7 @@ const (
 func runPrometheusServer(metricsAddr string, tlsOptions common.SSPTLSOptions) error {
 	setupLog.Info("Starting Prometheus metrics endpoint server with TLS")
 	metrics.Registry.MustRegister(common_templates.CommonTemplatesRestored)
-	metrics.Registry.MustRegister(common.SSPOperatorReconcilingProperly)
+	metrics.Registry.MustRegister(common.SSPOperatorReconcileSucceeded)
 	handler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{})
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)

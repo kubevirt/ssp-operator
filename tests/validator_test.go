@@ -943,7 +943,7 @@ func totalRejectedVmsMetricsValue() (sum int) {
 	Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
 	Expect(pods.Items).ToNot(BeEmpty())
 	for _, validatorPod := range pods.Items {
-		sum += intMetricValue("total_rejected_vms", validator.MetricsPort, &validatorPod)
+		sum += intMetricValue("kubevirt_ssp_template_validator_rejected_total", validator.MetricsPort, &validatorPod)
 	}
 	return
 }
