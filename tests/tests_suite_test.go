@@ -392,6 +392,7 @@ func (s *existingSspStrategy) SkipIfUpgradeLane() {
 var (
 	apiClient          client.Client
 	coreClient         *kubernetes.Clientset
+	apiServerHostname  string
 	ctx                context.Context
 	strategy           TestSuiteStrategy
 	sspListerWatcher   cache.ListerWatcher
@@ -468,6 +469,9 @@ func setupApiClient() {
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())
+
+	apiServerHostname = cfg.Host
+
 	apiClient, err = client.New(cfg, client.Options{Scheme: testScheme})
 	Expect(err).ToNot(HaveOccurred())
 	coreClient, err = kubernetes.NewForConfig(cfg)

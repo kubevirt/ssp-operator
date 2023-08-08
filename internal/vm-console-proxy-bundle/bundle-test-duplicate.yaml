@@ -32,10 +32,48 @@ rules:
   - kubevirt.io
   resources:
   - virtualmachineinstances
+  - virtualmachines
   verbs:
   - get
   - list
   - watch
+- apiGroups:
+  - subresources.kubevirt.io
+  resources:
+  - virtualmachineinstances/vnc
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+  - patch
 - apiGroups:
   - authentication.k8s.io
   resources:
@@ -48,6 +86,20 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vm-console-proxy
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: vm-console-proxy
+    namespace: kubevirt
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -109,7 +161,7 @@ spec:
       - args: []
         command:
         - /console
-        image: quay.io/kubevirt/vm-console-proxy:latest
+        image: quay.io/kubevirt/vm-console-proxy:v0.3.1
         imagePullPolicy: Always
         name: console
         ports:
@@ -128,9 +180,6 @@ spec:
         - mountPath: /tmp/vm-console-proxy-cert
           name: vm-console-proxy-cert
           readOnly: true
-        - mountPath: /etc/virt-handler/clientcertificates
-          name: kubevirt-virt-handler-certs
-          readOnly: true
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -144,6 +193,19 @@ spec:
       - name: vm-console-proxy-cert
         secret:
           secretName: vm-console-proxy-cert
-      - name: kubevirt-virt-handler-certs
-        secret:
-          secretName: kubevirt-virt-handler-certs
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  annotations:
+    service.beta.openshift.io/inject-cabundle: "true"
+  name: v1alpha1.token.kubevirt.io
+spec:
+  group: token.kubevirt.io
+  groupPriorityMinimum: 2000
+  service:
+    name: vm-console-proxy
+    namespace: kubevirt
+    port: 443
+  version: v1alpha1
+  versionPriority: 10

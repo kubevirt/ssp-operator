@@ -8,8 +8,8 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,16 +29,25 @@ const (
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=core,resources=services;serviceaccounts;configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings;rolebindings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=get;list;watch;create;update;patch;delete
+
+// Deprecated:
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list;watch;delete
 
 // RBAC for created roles
-// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachineinstances,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;delete;patch
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts/token,verbs=create
+// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachineinstances;virtualmachines,verbs=get;list;watch
+// +kubebuilder:rbac:groups=subresources.kubevirt.io,resources=virtualmachineinstances/vnc,verbs=get
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 
 func init() {
 	utilruntime.Must(routev1.Install(common.Scheme))
+	utilruntime.Must(apiregv1.AddToScheme(common.Scheme))
 }
 
 func WatchClusterTypes() []operands.WatchType {
@@ -49,6 +58,7 @@ func WatchClusterTypes() []operands.WatchType {
 		{Object: &core.Service{}},
 		{Object: &apps.Deployment{}, WatchFullObject: true},
 		{Object: &core.ConfigMap{}},
+		{Object: &apiregv1.APIService{}},
 		{Object: &routev1.Route{}},
 	}
 }
@@ -57,9 +67,11 @@ type vmConsoleProxy struct {
 	serviceAccount     *core.ServiceAccount
 	clusterRole        *rbac.ClusterRole
 	clusterRoleBinding *rbac.ClusterRoleBinding
+	roleBinding        *rbac.RoleBinding
 	service            *core.Service
 	deployment         *apps.Deployment
 	configMap          *core.ConfigMap
+	apiService         *apiregv1.APIService
 }
 
 var _ operands.Operand = &vmConsoleProxy{}
@@ -69,9 +81,11 @@ func New(bundle *vm_console_proxy_bundle.Bundle) *vmConsoleProxy {
 		serviceAccount:     bundle.ServiceAccount,
 		clusterRole:        bundle.ClusterRole,
 		clusterRoleBinding: bundle.ClusterRoleBinding,
+		roleBinding:        bundle.RoleBinding,
 		service:            bundle.Service,
 		deployment:         bundle.Deployment,
 		configMap:          bundle.ConfigMap,
+		apiService:         bundle.ApiService,
 	}
 }
 
@@ -102,19 +116,41 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 		return results, nil
 	}
 
-	return common.CollectResourceStatus(request,
+	reconcileResults, err := common.CollectResourceStatus(request,
 		reconcileServiceAccount(*v.serviceAccount.DeepCopy()),
 		reconcileClusterRole(*v.clusterRole.DeepCopy()),
 		reconcileClusterRoleBinding(*v.clusterRoleBinding.DeepCopy()),
+		reconcileRoleBinding(v.roleBinding.DeepCopy()),
 		reconcileConfigMap(*v.configMap.DeepCopy()),
 		reconcileService(*v.service.DeepCopy()),
 		reconcileDeployment(*v.deployment.DeepCopy()),
-		reconcileRoute(v.service.GetName()))
+		reconcileApiService(v.apiService.DeepCopy()))
+	if err != nil {
+		return nil, err
+	}
+
+	// Route is no longer needed.
+	routeCleanupResults, err := v.deleteRoute(request)
+	if err != nil {
+		return nil, err
+	}
+	for _, cleanupResult := range routeCleanupResults {
+		if !cleanupResult.Deleted {
+			reconcileResults = append(reconcileResults, common.ResourceDeletedResult(cleanupResult.Resource, common.OperationResultDeleted))
+		}
+	}
+
+	return reconcileResults, nil
 }
 
 func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	// We need to use labels to find resources that were deployed by this operand,
 	// because namespace annotation may not be present.
+
+	routeCleanupResults, err := v.deleteRoute(request)
+	if err != nil {
+		return nil, err
+	}
 
 	var objectsToDelete []client.Object
 
@@ -162,6 +198,21 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 	}
 	objectsToDelete = append(objectsToDelete, deployments...)
 
+	objectsToDelete = append(objectsToDelete,
+		v.clusterRole.DeepCopy(),
+		v.clusterRoleBinding.DeepCopy(),
+		v.roleBinding.DeepCopy(),
+		v.apiService.DeepCopy())
+
+	cleanupResults, err := common.DeleteAll(request, objectsToDelete...)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(cleanupResults, routeCleanupResults...), nil
+}
+
+func (v *vmConsoleProxy) deleteRoute(request *common.Request) ([]common.CleanupResult, error) {
 	routes, err := findResourcesUsingLabels(
 		request.Context,
 		routeName,
@@ -171,13 +222,8 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 	if err != nil {
 		return nil, err
 	}
-	objectsToDelete = append(objectsToDelete, routes...)
 
-	objectsToDelete = append(objectsToDelete,
-		v.clusterRole.DeepCopy(),
-		v.clusterRoleBinding.DeepCopy())
-
-	return common.DeleteAll(request, objectsToDelete...)
+	return common.DeleteAll(request, routes...)
 }
 
 func reconcileServiceAccount(serviceAccount core.ServiceAccount) common.ReconcileFunc {
@@ -203,6 +249,15 @@ func reconcileClusterRoleBinding(clusterRoleBinding rbac.ClusterRoleBinding) com
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		return common.CreateOrUpdate(request).
 			ClusterResource(&clusterRoleBinding).
+			WithAppLabels(operandName, operandComponent).
+			Reconcile()
+	}
+}
+
+func reconcileRoleBinding(roleBinding *rbac.RoleBinding) common.ReconcileFunc {
+	return func(request *common.Request) (common.ReconcileResult, error) {
+		return common.CreateOrUpdate(request).
+			ClusterResource(roleBinding).
 			WithAppLabels(operandName, operandComponent).
 			Reconcile()
 	}
@@ -239,11 +294,21 @@ func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
 	}
 }
 
-func reconcileRoute(serviceName string) common.ReconcileFunc {
+func reconcileApiService(apiService *apiregv1.APIService) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
+		apiService.Spec.Service.Namespace = getVmConsoleProxyNamespace(request)
 		return common.CreateOrUpdate(request).
-			ClusterResource(newRoute(getVmConsoleProxyNamespace(request), serviceName)).
+			ClusterResource(apiService).
 			WithAppLabels(operandName, operandComponent).
+			UpdateFunc(func(expected, found client.Object) {
+				foundApiService := found.(*apiregv1.APIService)
+				expectedApiService := expected.(*apiregv1.APIService)
+
+				// Keep CA bundle the same in the found object
+				expectedApiService.Spec.CABundle = foundApiService.Spec.CABundle
+
+				foundApiService.Spec = expectedApiService.Spec
+			}).
 			Reconcile()
 	}
 }
@@ -260,7 +325,7 @@ func getVmConsoleProxyNamespace(request *common.Request) string {
 }
 
 func getVmConsoleProxyImage() string {
-	return common.EnvOrDefault("VM_CONSOLE_PROXY_IMAGE", "quay.io/kubevirt/vm-console-proxy:v0.1.0")
+	return common.EnvOrDefault(common.VmConsoleProxyImageKey, defaultVmConsoleProxyImage)
 }
 
 func findResourcesUsingLabels[PtrL interface {
@@ -294,24 +359,4 @@ func findResourcesUsingLabels[PtrL interface {
 		}
 	}
 	return filteredItems, nil
-}
-
-func newRoute(namespace string, serviceName string) *routev1.Route {
-	return &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      routeName,
-			Namespace: namespace,
-		},
-		Spec: routev1.RouteSpec{
-			To: routev1.RouteTargetReference{
-				Kind: "Service",
-				Name: serviceName,
-			},
-			TLS: &routev1.TLSConfig{
-				Termination:                   routev1.TLSTerminationReencrypt,
-				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
-			},
-			WildcardPolicy: routev1.WildcardPolicyNone,
-		},
-	}
 }

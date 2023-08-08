@@ -48,6 +48,7 @@ type generatorFlags struct {
 	tektonTasksImage         string
 	tektonTasksDiskVirtImage string
 	virtioImage              string
+	vmConsoleProxyImage      string
 }
 
 var (
@@ -83,6 +84,7 @@ func init() {
 	rootCmd.Flags().StringVar(&f.tektonTasksImage, "tekton-tasks-image", "", "Link to tekton tasks image")
 	rootCmd.Flags().StringVar(&f.tektonTasksDiskVirtImage, "tekton-tasks-disk-virt-image", "", "Link to tekton tasks disk virt image")
 	rootCmd.Flags().StringVar(&f.virtioImage, "virtio-image", "", "Link to virtio image")
+	rootCmd.Flags().StringVar(&f.vmConsoleProxyImage, "vm-console-proxy-image", "", "Link to VM console proxy image")
 	rootCmd.Flags().Int32Var(&f.webhookPort, "webhook-port", 0, "Container port for the admission webhook")
 	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
 	rootCmd.Flags().BoolVar(&f.dumpCRDs, "dump-crds", false, "Dump crds to stdout")
@@ -216,6 +218,14 @@ func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
 		relatedImages = append(relatedImages, relatedImage)
 	}
 
+	if flags.vmConsoleProxyImage != "" {
+		relatedImage, err := buildRelatedImage(flags.vmConsoleProxyImage, "vm-console-proxy")
+		if err != nil {
+			return nil, err
+		}
+		relatedImages = append(relatedImages, relatedImage)
+	}
+
 	return relatedImages, nil
 }
 
@@ -270,6 +280,10 @@ func updateContainerEnvVars(flags generatorFlags, container v1.Container) []v1.E
 		case common.VirtioImageKey:
 			if flags.virtioImage != "" {
 				envVariable.Value = flags.virtioImage
+			}
+		case common.VmConsoleProxyImageKey:
+			if flags.vmConsoleProxyImage != "" {
+				envVariable.Value = flags.vmConsoleProxyImage
 			}
 		}
 
