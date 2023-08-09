@@ -22,4 +22,4 @@ jobs:
         id: add_reviewer
         run: gh pr edit ${{ github.event.pull_request.number }} --add-reviewer sradco
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
