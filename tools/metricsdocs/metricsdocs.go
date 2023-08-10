@@ -25,7 +25,8 @@ const (
 )
 
 func main() {
-	metricsList := recordRulesDescToMetricList(metrics.RecordRulesDescList)
+	metricsList := getMetricsList()
+	metricsList = append(metricsList, recordRulesDescToMetricList(metrics.RecordRulesDescList)...)
 	sort.Sort(metricsList)
 	printMetrics(metricsList)
 }
@@ -57,6 +58,28 @@ func metricDescriptionToMetric(rrd metrics.RecordRulesDesc) metric {
 		description: rrd.Description,
 		mtype:       rrd.Type,
 	}
+}
+
+func getMetricsList() metricList {
+	metrics := metricList{
+		{
+			name:        "kubevirt_ssp_template_validator_rejected_total",
+			description: "The total number of rejected template validators",
+			mtype:       "Counter",
+		},
+		{
+			name:        "kubevirt_ssp_operator_reconcile_succeeded",
+			description: "Set to 1 if the reconcile process of all operands completes with no errors, and to 0 otherwise",
+			mtype:       "Gauge",
+		},
+		{
+			name:        "kubevirt_ssp_common_templates_restored_total",
+			description: "The total number of common templates restored by the operator back to their original state",
+			mtype:       "Counter",
+		},
+	}
+
+	return metrics
 }
 
 func (m metric) writeOut() {

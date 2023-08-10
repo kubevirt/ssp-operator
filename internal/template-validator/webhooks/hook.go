@@ -37,9 +37,9 @@ import (
 )
 
 var (
-	vmsRejected = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "total_rejected_vms",
-		Help: "The total number of rejected vms",
+	templateValidatorRejected = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "kubevirt_ssp_template_validator_rejected_total",
+		Help: "The total number of rejected template validators",
 	})
 )
 
@@ -102,7 +102,7 @@ func (w *webhooks) admitVm(ar *admissionv1.AdmissionReview) *admissionv1.Admissi
 
 	causes := ValidateVm(rules, vm)
 	if len(causes) > 0 {
-		vmsRejected.Inc()
+		templateValidatorRejected.Inc()
 		return ToAdmissionResponse(causes)
 	}
 

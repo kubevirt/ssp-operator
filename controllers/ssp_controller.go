@@ -129,7 +129,7 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	defer func() {
 		if err != nil {
-			common.SSPOperatorReconcilingProperly.Set(0)
+			common.SSPOperatorReconcileSucceeded.Set(0)
 		}
 	}()
 	reqLogger := r.log.WithValues("ssp", req.NamespacedName)
@@ -227,9 +227,9 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspRequest.Logger.Info("CR status updated")
 
 	if sspRequest.Instance.Status.Phase == lifecycleapi.PhaseDeployed {
-		common.SSPOperatorReconcilingProperly.Set(1)
+		common.SSPOperatorReconcileSucceeded.Set(1)
 	} else {
-		common.SSPOperatorReconcilingProperly.Set(0)
+		common.SSPOperatorReconcileSucceeded.Set(0)
 	}
 
 	return ctrl.Result{}, nil

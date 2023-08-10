@@ -115,8 +115,8 @@ type reconcileBuilder struct {
 var _ ReconcileBuilder = &reconcileBuilder{}
 
 var (
-	SSPOperatorReconcilingProperly = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "ssp_operator_reconciling_properly",
+	SSPOperatorReconcileSucceeded = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "kubevirt_ssp_operator_reconcile_succeeded",
 		Help: "Set to 1 if the reconcile process of all operands completes with no errors, and to 0 otherwise",
 	})
 )

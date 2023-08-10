@@ -43,7 +43,7 @@ var _ = Describe("Prometheus Alerts", func() {
 		})
 		It("[test_id:8363] Should fire SSPCommonTemplatesModificationReverted", func() {
 			// we have to wait for prometheus to pick up the series before we increase it.
-			waitForSeriesToBeDetected(metrics.Total_restored_common_templates_increase_query)
+			waitForSeriesToBeDetected(metrics.CommonTemplatesRestoredIncreaseQuery)
 			expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate)
 			waitForAlertToActivate("SSPCommonTemplatesModificationReverted")
 		})
@@ -66,7 +66,7 @@ var _ = Describe("Prometheus Alerts", func() {
 			deploymentRes = testDeploymentResource()
 		})
 
-		It("[test_id:8364] should set SSPOperatorReconcilingProperly metrics to 0 on failing to reconcile", func() {
+		It("[test_id:8364] should set SSPOperatorReconcileSucceeded metrics to 0 on failing to reconcile", func() {
 			// add a finalizer to the validator deployment, do that it can't be deleted
 			addFinalizer(deploymentRes, finalizerName)
 			// send a request to delete the validator deployment
@@ -108,7 +108,7 @@ var _ = Describe("Prometheus Alerts", func() {
 		})
 
 		It("[test_id:8377] Should fire SSPHighRateRejectedVms", func() {
-			waitForSeriesToBeDetected(metrics.Total_rejected_vms_increase_query)
+			waitForSeriesToBeDetected(metrics.TemplateValidatorRejectedIncreaseQuery)
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 			for range [6]int{} {
 				time.Sleep(time.Second * 5)

@@ -166,7 +166,7 @@ var _ = Describe("Metrics", func() {
 			template = &getTemplates().Items[0]
 		})
 
-		It("[test_id:TODO]should increment total_restored_common_templates during normal reconcile", func() {
+		It("[test_id:TODO]should increment kubevirt_ssp_common_templates_restored_total during normal reconcile", func() {
 			skipIfUpgradeLane()
 
 			restoredCount := totalRestoredTemplatesCount()
@@ -179,7 +179,7 @@ var _ = Describe("Metrics", func() {
 			}, 5*time.Minute, 10*time.Second).Should(Equal(restoredCount + 1))
 		})
 
-		It("[test_id:TODO]should not increment total_restored_common_templates during upgrades", func() {
+		It("[test_id:TODO]should not increment kubevirt_ssp_common_templates_restored_total during upgrades", func() {
 			restoredCount := totalRestoredTemplatesCount()
 
 			template.Labels[common_templates.TemplateTypeLabel] = "test"

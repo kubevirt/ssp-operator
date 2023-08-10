@@ -99,7 +99,7 @@ var _ = Describe("Common-Templates operand", func() {
 		}
 
 		desc, value := getCommonTemplatesRestoredMetric()
-		Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+		Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
 		Expect(value).To(BeZero())
 	})
 
@@ -132,7 +132,7 @@ var _ = Describe("Common-Templates operand", func() {
 		}
 
 		desc, value := getCommonTemplatesRestoredMetric()
-		Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+		Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
 		Expect(value).To(Equal(float64(len(testTemplates))))
 	})
 
@@ -278,7 +278,7 @@ var _ = Describe("Common-Templates operand", func() {
 		})
 	})
 
-	Context("total_restored_common_templates metric", func() {
+	Context("kubevirt_ssp_common_templates_restored_total metric", func() {
 		var template *templatev1.Template
 		var initialMetricValue float64
 
@@ -290,7 +290,7 @@ var _ = Describe("Common-Templates operand", func() {
 			template.Namespace = namespace
 
 			desc, value := getCommonTemplatesRestoredMetric()
-			Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+			Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
 			initialMetricValue = value
 		})
 
@@ -306,7 +306,7 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
 
 			desc, value := getCommonTemplatesRestoredMetric()
-			Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+			Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
 			Expect(value).To(Equal(initialMetricValue + 1))
 		})
 
@@ -323,7 +323,7 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
 
 			desc, value := getCommonTemplatesRestoredMetric()
-			Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+			Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
 			Expect(value).To(Equal(initialMetricValue))
 		})
 	})
