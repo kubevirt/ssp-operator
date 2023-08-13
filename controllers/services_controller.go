@@ -21,21 +21,29 @@ import (
 )
 
 const (
-	MetricsServiceName    = "ssp-operator-metrics"
-	OperatorName          = "ssp-operator"
-	serviceControllerName = "service-controller"
+	ServiceManagedByLabelValue = "ssp-operator-services"
+	MetricsServiceName         = "ssp-operator-metrics"
+	OperatorName               = "ssp-operator"
+	ServiceControllerName      = "service-controller"
 )
 
-func ServiceObject(namespace string) *v1.Service {
+func ServiceObject(namespace string, appKubernetesPartOfValue string) *v1.Service {
 	policyCluster := v1.ServiceInternalTrafficPolicyCluster
 	familyPolicy := v1.IPFamilyPolicySingleStack
+	labels := map[string]string{
+		common.AppKubernetesManagedByLabel: ServiceManagedByLabelValue,
+		common.AppKubernetesVersionLabel:   common.GetOperatorVersion(),
+		common.AppKubernetesComponentLabel: ServiceControllerName,
+		metrics.PrometheusLabelKey:         metrics.PrometheusLabelValue,
+	}
+	if appKubernetesPartOfValue != "" {
+		labels[common.AppKubernetesPartOfLabel] = appKubernetesPartOfValue
+	}
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      MetricsServiceName,
 			Namespace: namespace,
-			Labels: map[string]string{
-				metrics.PrometheusLabelKey: metrics.PrometheusLabelValue,
-			},
+			Labels:    labels,
 		},
 		Spec: v1.ServiceSpec{
 			InternalTrafficPolicy: &policyCluster,
@@ -67,7 +75,7 @@ func CreateServiceController(ctx context.Context, mgr ctrl.Manager) (*serviceRec
 }
 
 func (r *serviceReconciler) Name() string {
-	return serviceControllerName
+	return ServiceControllerName
 }
 
 func (r *serviceReconciler) Start(ctx context.Context, mgr ctrl.Manager) error {
@@ -84,7 +92,8 @@ func (r *serviceReconciler) setServiceOwnerReference(service *v1.Service) error 
 }
 
 func (r *serviceReconciler) createMetricsService(ctx context.Context) error {
-	service := ServiceObject(r.serviceNamespace)
+	appKubernetesPartOfValue := r.deployment.GetLabels()[common.AppKubernetesPartOfLabel]
+	service := ServiceObject(r.serviceNamespace, appKubernetesPartOfValue)
 	err := r.setServiceOwnerReference(service)
 	if err != nil {
 		return fmt.Errorf("error setting owner reference: %w", err)
@@ -144,7 +153,8 @@ func newServiceReconciler(ctx context.Context, mgr ctrl.Manager) (*serviceReconc
 
 func (r *serviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	r.log.Info("Starting service reconciliation...", "request", req.String())
-	service := ServiceObject(req.Namespace)
+	appKubernetesPartOfValue := r.deployment.GetLabels()[common.AppKubernetesPartOfLabel]
+	service := ServiceObject(req.Namespace, appKubernetesPartOfValue)
 	var foundService v1.Service
 	foundService.Name = service.Name
 	foundService.Namespace = service.Namespace
