@@ -113,10 +113,10 @@ func expectRecreateAfterDelete(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func sspOperatorReconcilingProperlyCount() (sum int) {
+func sspOperatorReconcileSucceededCount() (sum int) {
 	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
 	for _, sspOperator := range operatorPods {
-		sum += intMetricValue("ssp_operator_reconciling_properly", operatorMetricsPort, &sspOperator)
+		sum += intMetricValue("kubevirt_ssp_operator_reconcile_succeeded", operatorMetricsPort, &sspOperator)
 	}
 	return
 }
@@ -124,7 +124,7 @@ func sspOperatorReconcilingProperlyCount() (sum int) {
 func totalRestoredTemplatesCount() (sum int) {
 	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
 	for _, sspOperator := range operatorPods {
-		sum += intMetricValue("total_restored_common_templates", operatorMetricsPort, &sspOperator)
+		sum += intMetricValue("kubevirt_ssp_common_templates_restored_total", operatorMetricsPort, &sspOperator)
 	}
 	return
 }
