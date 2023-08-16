@@ -15,9 +15,9 @@ import (
 )
 
 var regexpForMetrics = map[string]*regexp.Regexp{
-	"total_rejected_vms":                regexp.MustCompile(`total_rejected_vms ([0-9]+)`),
-	"total_restored_common_templates":   regexp.MustCompile(`total_restored_common_templates ([0-9]+)`),
-	"ssp_operator_reconciling_properly": regexp.MustCompile(`ssp_operator_reconciling_properly ([0-9]+)`),
+	"kubevirt_ssp_template_validator_rejected_total": regexp.MustCompile(`kubevirt_ssp_template_validator_rejected_total ([0-9]+)`),
+	"kubevirt_ssp_common_templates_restored_total":   regexp.MustCompile(`kubevirt_ssp_common_templates_restored_total ([0-9]+)`),
+	"kubevirt_ssp_operator_reconcile_succeeded":      regexp.MustCompile(`kubevirt_ssp_operator_reconcile_succeeded ([0-9]+)`),
 }
 
 func intMetricValue(metricName string, metricsPort uint16, pod *v1.Pod) int {

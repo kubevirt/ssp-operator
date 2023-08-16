@@ -22,7 +22,7 @@ import (
 
 var (
 	CommonTemplatesRestored = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "total_restored_common_templates",
+		Name: "kubevirt_ssp_common_templates_restored_total",
 		Help: "The total number of common templates restored by the operator back to their original state",
 	})
 )
