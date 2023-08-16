@@ -27,8 +27,8 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/kube-aggregator v0.26.2
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106
-	kubevirt.io/api v1.0.0-rc.0
-	kubevirt.io/containerized-data-importer-api v1.57.0-alpha1
+	kubevirt.io/api v1.0.0
+	kubevirt.io/containerized-data-importer-api v1.57.0
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.8
 	kubevirt.io/ssp-operator/api v0.0.0
