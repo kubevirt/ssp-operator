@@ -1,7 +1,7 @@
 name: Add reviewer from sig-monitoring to PR
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize]
     paths:
       - internal/operands/metrics/*
