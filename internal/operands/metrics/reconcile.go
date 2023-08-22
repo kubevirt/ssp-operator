@@ -15,6 +15,8 @@ import (
 
 const prometheusRulesCrd = "prometheusrules.monitoring.coreos.com"
 
+// test
+
 func init() {
 	utilruntime.Must(promv1.AddToScheme(common.Scheme))
 }
