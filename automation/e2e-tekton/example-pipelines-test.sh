@@ -4,7 +4,26 @@ cp -L $KUBECONFIG /tmp/kubeconfig && export KUBECONFIG=/tmp/kubeconfig
 export IMG=${CI_OPERATOR_IMG}
 export VALIDATOR_IMG=${CI_VALIDATOR_IMG}
 
+# SECRET
+namespace="kubevirt"
+if [[ $TARGET =~ windows10.* ]]; then
+  namespace="kubevirt-os-images"
+  oc create namespace ${namespace}
+fi
+
+key="/tmp/secrets/accessKeyId"
+token="/tmp/secrets/secretKey"
+if test -f "$key" && test -f "$token"; then
+  id=$(cat $key | tr -d '\n')
+  token=$(cat $token | tr -d '\n')
+
+  oc get secret/pull-secret -n openshift-config --template='{{index .data ".dockerconfigjson" | base64decode}}' > secrets.json
+  oc registry login --registry="quay.io/openshift-cnv/containerdisks" --auth-basic="$id:$token" --to=secrets.json
+  oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=secrets.json
+fi
+
 ./hack/set-crio-permissions-command.sh
+
 
 # switch to faster storage class for example pipelines tests (slower storage class is causing timeouts due 
 # to not able to copy whole windows disk)
@@ -27,32 +46,6 @@ for node in $(oc get nodes -o name -l node-role.kubernetes.io/worker); do
   oc label ${node} cpu-timer.node.kubevirt.io/tsc-scalable- --overwrite
   oc label ${node} ${tscLabel}- --overwrite
 done
-
-# SECRET
-accessKeyId="/tmp/secrets/accessKeyId"
-secretKey="/tmp/secrets/secretKey"
-namespace="kubevirt"
-if [[ $TARGET =~ windows10.* ]]; then
-  namespace="kubevirt-os-images"
-  oc create namespace ${namespace}
-fi
-
-if test -f "$accessKeyId" && test -f "$secretKey"; then
-  id=$(cat $accessKeyId | tr -d '\n' | base64)
-  token=$(cat $secretKey | tr -d '\n' | base64 | tr -d ' \n')
-
-  oc apply -n ${namespace} -f - <<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: tekton-operator-container-disk-puller
-  namespace: ${namespace}
-type: Opaque
-data:
-  accessKeyId: "${id}"
-  secretKey: "${token}"
-EOF
-fi
 
 function wait_until_exists() {
   timeout 10m bash <<- EOF

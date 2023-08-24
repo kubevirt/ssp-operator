@@ -8,7 +8,7 @@ spec:
   source:
       registry:
         url: 'docker://quay.io/openshift-cnv/containerdisks:Win2022_English_x64'
-        secretRef: "tekton-operator-container-disk-puller" 
+        pullMethod: node
   storage:
     volumeMode: Filesystem
     accessModes:
