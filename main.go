@@ -44,6 +44,7 @@ import (
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics"
 	"kubevirt.io/ssp-operator/webhooks"
 	// +kubebuilder:scaffold:imports
 )
@@ -203,6 +204,7 @@ func main() {
 	flag.Parse()
 	metrics.Registry.MustRegister(common_templates.CommonTemplatesRestored)
 	metrics.Registry.MustRegister(common.SSPOperatorReconcileSucceeded)
+	sspMetrics.SetupMetrics()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 

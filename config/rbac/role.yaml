@@ -198,6 +198,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - persistentvolumes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - get
@@ -269,6 +277,7 @@ rules:
   resources:
   - virtualmachines
   verbs:
+  - get
   - list
   - watch
 - apiGroups:

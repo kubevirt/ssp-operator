@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics"
 )
 
 const (
@@ -27,6 +29,16 @@ const (
 func main() {
 	metricsList := getMetricsList()
 	metricsList = append(metricsList, recordRulesDescToMetricList(metrics.RecordRulesDescList)...)
+
+	sspMetrics.SetupMetrics()
+	for _, m := range sspMetrics.ListMetrics() {
+		metricsList = append(metricsList, metric{
+			name:        m.GetOpts().Name,
+			description: m.GetOpts().Help,
+			mtype:       strings.TrimSuffix(string(m.GetType()), "Vec"),
+		})
+	}
+
 	sort.Sort(metricsList)
 	printMetrics(metricsList)
 }

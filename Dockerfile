@@ -26,6 +26,7 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 COPY internal/ internal/
+COPY pkg/ pkg/
 COPY webhooks/ webhooks/
 
 COPY hack/boilerplate.go.txt hack/boilerplate.go.txt
