@@ -20,14 +20,17 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands"
 	tektonbundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
-	namespace = "kubevirt"
-	name      = "test-tekton"
+	namespace              = "kubevirt"
+	name                   = "test-tekton"
+	testNamespace          = "test-namespace"
+	testDifferentNamespace = "different-namespace"
 )
 
 var _ = Describe("environments", func() {
@@ -163,6 +166,86 @@ var _ = Describe("environments", func() {
 			}
 		})
 	})
+
+	Context("With user defined namespace in ssp CR for pipelines", func() {
+		BeforeEach(func() {
+			request.Instance.Spec.FeatureGates.DeployTektonTaskResources = true
+			request.Instance.Spec.TektonPipelines = &ssp.TektonPipelines{
+				Namespace: testNamespace,
+			}
+		})
+
+		It("kubevirt.io/deploy-namespace annotation in configMaps should be replaced by user defined namespace", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, configMap := range bundle.ConfigMaps {
+				configMap.Namespace = testNamespace
+				key := client.ObjectKeyFromObject(&configMap)
+				cm := &v1.ConfigMap{}
+				ExpectWithOffset(1, request.Client.Get(request.Context, key, cm)).ToNot(HaveOccurred())
+				Expect(cm.Namespace).To(Equal(testNamespace), "configMap namespace should equal")
+			}
+		})
+
+		It("kubevirt.io/deploy-namespace annotation in roleBindings should be replaced by user defined namespace", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, roleBinding := range bundle.RoleBindings {
+				roleBinding.Namespace = testNamespace
+				key := client.ObjectKeyFromObject(&roleBinding)
+				rb := &rbac.RoleBinding{}
+				ExpectWithOffset(1, request.Client.Get(request.Context, key, rb)).ToNot(HaveOccurred())
+				Expect(rb.Namespace).To(Equal(testNamespace), rb.Name+" roleBinding namespace should equal")
+			}
+		})
+	})
+
+	Context("Without user defined namespace in ssp CR for pipelines", func() {
+		BeforeEach(func() {
+			request.Instance.Spec.FeatureGates.DeployTektonTaskResources = true
+			request.Instance.Spec.TektonPipelines = nil
+		})
+
+		It("kubevirt.io/deploy-namespace annotation in configMaps should replace default namespace", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, configMap := range bundle.ConfigMaps {
+				objNamespace := namespace
+
+				if configMap.Name == "test-cm" {
+					configMap.Namespace = testDifferentNamespace
+					objNamespace = testDifferentNamespace
+				}
+
+				key := client.ObjectKeyFromObject(&configMap)
+				cm := &v1.ConfigMap{}
+				ExpectWithOffset(1, request.Client.Get(request.Context, key, cm)).ToNot(HaveOccurred())
+				Expect(cm.Namespace).To(Equal(objNamespace), cm.Name+" configMap namespace should equal")
+			}
+		})
+
+		It("kubevirt.io/deploy-namespace annotation in roleBindings should replace default namespace", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, roleBinding := range bundle.RoleBindings {
+				objNamespace := namespace
+
+				if roleBinding.Name == "test-rb" {
+					roleBinding.Namespace = testDifferentNamespace
+					objNamespace = testDifferentNamespace
+				}
+
+				key := client.ObjectKeyFromObject(&roleBinding)
+				rb := &rbac.RoleBinding{}
+				ExpectWithOffset(1, request.Client.Get(request.Context, key, rb)).ToNot(HaveOccurred())
+				Expect(rb.Namespace).To(Equal(objNamespace), rb.Name+" roleBinding namespace should equal")
+			}
+		})
+	})
 })
 
 func TestTektonPipelines(t *testing.T) {
@@ -245,6 +328,9 @@ func getMockedTestBundle() *tektonbundle.Bundle {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-cm",
+					Annotations: map[string]string{
+						deployNamespaceAnnotation: testDifferentNamespace,
+					},
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
@@ -256,6 +342,9 @@ func getMockedTestBundle() *tektonbundle.Bundle {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-rb",
+					Annotations: map[string]string{
+						deployNamespaceAnnotation: testDifferentNamespace,
+					},
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{

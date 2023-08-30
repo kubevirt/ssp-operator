@@ -89,7 +89,7 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 		return nil, nil
 	}
 	if !request.CrdList.CrdExists(tektonCrd) {
-		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
+		return nil, fmt.Errorf("tekton CRD %s does not exist", tektonCrd)
 	}
 
 	var reconcileFunc []common.ReconcileFunc
@@ -133,9 +133,9 @@ func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResu
 		o := sa.DeepCopy()
 		objects = append(objects, o)
 	}
-
+	namespace, _ := getTektonPipelinesNamespace(request)
 	for i := range objects {
-		objects[i].SetNamespace(getTektonPipelinesNamespace(request))
+		objects[i].SetNamespace(namespace)
 	}
 
 	for _, cr := range t.clusterRoles {
@@ -155,7 +155,7 @@ func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.Recon
 	for i := range pipelines {
 		tektonPipeline := &pipelines[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			tektonPipeline.Namespace = getTektonPipelinesNamespace(request)
+			tektonPipeline.Namespace, _ = getTektonPipelinesNamespace(request)
 			return common.CreateOrUpdate(request).
 				ClusterResource(tektonPipeline).
 				WithAppLabels(operandName, operandComponent).
@@ -180,13 +180,13 @@ func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.Recon
 
 func reconcileConfigMapsFuncs(configMaps []v1.ConfigMap) []common.ReconcileFunc {
 	funcs := make([]common.ReconcileFunc, 0, len(configMaps))
+	var userDefinedNamespace bool
 	for i := range configMaps {
 		configMap := &configMaps[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			if value, ok := configMap.Annotations[deployNamespaceAnnotation]; ok {
+			configMap.Namespace, userDefinedNamespace = getTektonPipelinesNamespace(request)
+			if value, ok := configMap.Annotations[deployNamespaceAnnotation]; ok && !userDefinedNamespace {
 				configMap.Namespace = value
-			} else {
-				configMap.Namespace = getTektonPipelinesNamespace(request)
 			}
 			return common.CreateOrUpdate(request).
 				ClusterResource(configMap).
@@ -219,7 +219,7 @@ func reconcileServiceAccountsFuncs(request *common.Request, serviceAccounts []v1
 		}
 
 		funcs = append(funcs, func(r *common.Request) (common.ReconcileResult, error) {
-			serviceAccount.Namespace = getTektonPipelinesNamespace(r)
+			serviceAccount.Namespace, _ = getTektonPipelinesNamespace(r)
 			//check if pipeline SA already exists from tekton deployment
 			if serviceAccount.Name == pipelineServiceAccountName {
 				existingSA, err := getServiceAccount(request, serviceAccount.Name)
@@ -261,8 +261,8 @@ func reconcileRoleBindingsFuncs(rolebindings []rbac.RoleBinding) []common.Reconc
 	for i := range rolebindings {
 		roleBinding := &rolebindings[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			namespace := getTektonPipelinesNamespace(request)
-			if value, ok := roleBinding.Annotations[deployNamespaceAnnotation]; ok {
+			namespace, userDefinedNamespace := getTektonPipelinesNamespace(request)
+			if value, ok := roleBinding.Annotations[deployNamespaceAnnotation]; ok && !userDefinedNamespace {
 				roleBinding.Namespace = value
 			} else {
 				roleBinding.Namespace = namespace
@@ -280,9 +280,9 @@ func reconcileRoleBindingsFuncs(rolebindings []rbac.RoleBinding) []common.Reconc
 	return funcs
 }
 
-func getTektonPipelinesNamespace(request *common.Request) string {
+func getTektonPipelinesNamespace(request *common.Request) (string, bool) {
 	if request.Instance.Spec.TektonPipelines != nil && request.Instance.Spec.TektonPipelines.Namespace != "" {
-		return request.Instance.Spec.TektonPipelines.Namespace
+		return request.Instance.Spec.TektonPipelines.Namespace, true
 	}
-	return request.Instance.Namespace
+	return request.Instance.Namespace, false
 }
