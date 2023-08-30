@@ -70,6 +70,17 @@ rules:
   - list
   - watch
 - apiGroups:
+  - apiregistration.k8s.io
+  resources:
+  - apiservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
   - apps
   resources:
   - deployments
@@ -187,13 +198,29 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - serviceaccounts
   verbs:
   - create
   - delete
+  - get
   - list
+  - patch
   - update
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
 - apiGroups:
   - ""
   resources:
@@ -224,14 +251,6 @@ rules:
   - delete
   - list
   - update
-  - watch
-- apiGroups:
-  - kubevirt.io
-  resources:
-  - virtualmachineinstances
-  verbs:
-  - get
-  - list
   - watch
 - apiGroups:
   - kubevirt.io
@@ -282,6 +301,18 @@ rules:
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
+  - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  verbs:
+  - create
+  - delete
+  - list
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
   - clusterroles
   - rolebindings
   verbs:
@@ -320,7 +351,9 @@ rules:
   verbs:
   - create
   - delete
+  - get
   - list
+  - patch
   - update
   - watch
 - apiGroups:
@@ -328,10 +361,8 @@ rules:
   resources:
   - routes
   verbs:
-  - create
   - delete
   - list
-  - update
   - watch
 - apiGroups:
   - ssp.kubevirt.io
@@ -353,6 +384,12 @@ rules:
   - ssps/status
   verbs:
   - update
+- apiGroups:
+  - subresources.kubevirt.io
+  resources:
+  - virtualmachineinstances/vnc
+  verbs:
+  - get
 - apiGroups:
   - subresources.kubevirt.io
   resources:

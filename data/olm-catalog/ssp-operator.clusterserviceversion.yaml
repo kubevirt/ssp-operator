@@ -131,6 +131,17 @@ spec:
           - list
           - watch
         - apiGroups:
+          - apiregistration.k8s.io
+          resources:
+          - apiservices
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
           - apps
           resources:
           - deployments
@@ -248,13 +259,29 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - pods
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
           - serviceaccounts
           verbs:
           - create
           - delete
+          - get
           - list
+          - patch
           - update
           - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts/token
+          verbs:
+          - create
         - apiGroups:
           - ""
           resources:
@@ -285,14 +312,6 @@ spec:
           - delete
           - list
           - update
-          - watch
-        - apiGroups:
-          - kubevirt.io
-          resources:
-          - virtualmachineinstances
-          verbs:
-          - get
-          - list
           - watch
         - apiGroups:
           - kubevirt.io
@@ -343,6 +362,18 @@ spec:
         - apiGroups:
           - rbac.authorization.k8s.io
           resources:
+          - clusterrolebindings
+          - clusterroles
+          - rolebindings
+          verbs:
+          - create
+          - delete
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
           - clusterroles
           - rolebindings
           verbs:
@@ -381,7 +412,9 @@ spec:
           verbs:
           - create
           - delete
+          - get
           - list
+          - patch
           - update
           - watch
         - apiGroups:
@@ -389,10 +422,8 @@ spec:
           resources:
           - routes
           verbs:
-          - create
           - delete
           - list
-          - update
           - watch
         - apiGroups:
           - ssp.kubevirt.io
@@ -414,6 +445,12 @@ spec:
           - ssps/status
           verbs:
           - update
+        - apiGroups:
+          - subresources.kubevirt.io
+          resources:
+          - virtualmachineinstances/vnc
+          verbs:
+          - get
         - apiGroups:
           - subresources.kubevirt.io
           resources:
@@ -494,6 +531,7 @@ spec:
                   value: 0.14.0
                 - name: TEKTON_TASKS_IMAGE
                 - name: TEKTON_TASKS_DISK_VIRT_IMAGE
+                - name: VM_CONSOLE_PROXY_IMAGE
                 image: quay.io/kubevirt/ssp-operator:latest
                 livenessProbe:
                   httpGet:

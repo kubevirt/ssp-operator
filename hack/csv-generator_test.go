@@ -27,6 +27,7 @@ var _ = Describe("csv generator", func() {
 		tektonTasksImage:         "testTektonTasksImage",
 		tektonTasksDiskVirtImage: "testTektonTasksDiskVirtImage",
 		virtioImage:              "testVirtioImage",
+		vmConsoleProxyImage:      "testVmConsoleProxyImage",
 	}
 	envValues := []v1.EnvVar{
 		{Name: common.TemplateValidatorImageKey},
@@ -89,6 +90,9 @@ var _ = Describe("csv generator", func() {
 					}
 					if envVariable.Name == common.VirtioImageKey {
 						Expect(envVariable.Value).To(Equal(flags.virtioImage))
+					}
+					if envVariable.Name == common.VmConsoleProxyImageKey {
+						Expect(envVariable.Value).To(Equal(flags.vmConsoleProxyImage))
 					}
 				}
 				break

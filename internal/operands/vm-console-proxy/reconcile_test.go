@@ -2,12 +2,14 @@ package vm_console_proxy
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	routev1 "github.com/openshift/api/route/v1"
+	libhandler "github.com/operator-framework/operator-lib/handler"
 	apps "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	core "k8s.io/api/core/v1"
@@ -16,15 +18,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+	"k8s.io/utils/pointer"
 	kubevirt "kubevirt.io/api/core"
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	"kubevirt.io/ssp-operator/internal/common"
-	. "kubevirt.io/ssp-operator/internal/test-utils"
-	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	"kubevirt.io/ssp-operator/internal/common"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
+	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 )
 
 const (
@@ -33,6 +38,7 @@ const (
 	vmConsoleProxyName     = "vm-console-proxy"
 	clusterRoleName        = "vm-console-proxy"
 	clusterRoleBindingName = "vm-console-proxy"
+	roleBindingName        = "vm-console-proxy"
 	serviceAccountName     = "vm-console-proxy"
 	configMapName          = "vm-console-proxy"
 	serviceName            = "vm-console-proxy"
@@ -61,12 +67,6 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(name).To(Equal(operandName), "should return correct name")
 	})
 
-	It("should return functions from reconcile correctly", func() {
-		functions, err := operand.Reconcile(&request)
-		Expect(err).ToNot(HaveOccurred(), "should not throw err")
-		Expect(functions).To(HaveLen(7), "should return correct number of reconcile functions")
-	})
-
 	It("should create vm-console-proxy resources", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -74,10 +74,42 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceExists(bundle.ServiceAccount, request)
 		ExpectResourceExists(bundle.ClusterRole, request)
 		ExpectResourceExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceExists(bundle.RoleBinding, request)
 		ExpectResourceExists(bundle.ConfigMap, request)
 		ExpectResourceExists(bundle.Service, request)
 		ExpectResourceExists(bundle.Deployment, request)
-		ExpectResourceExists(newRoute(namespace, serviceName), request)
+		ExpectResourceExists(bundle.ApiService, request)
+	})
+
+	It("should read deployment image the environment variable", func() {
+		originalImage := os.Getenv(common.VmConsoleProxyImageKey)
+
+		newImage := "www.example.org/images/vm-console-proxy:latest"
+		Expect(os.Setenv(common.VmConsoleProxyImageKey, newImage)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(os.Setenv(common.VmConsoleProxyImageKey, originalImage)).To(Succeed())
+		})
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		deployment := &apps.Deployment{}
+		key := client.ObjectKeyFromObject(bundle.Deployment)
+		Expect(request.Client.Get(request.Context, key, deployment)).To(Succeed())
+
+		Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
+		Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal(newImage))
+	})
+
+	It("should deploy APIService with ServiceReference pointing to the right namespace", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		apiService := &apiregv1.APIService{}
+		key := client.ObjectKeyFromObject(bundle.ApiService)
+		Expect(request.Client.Get(request.Context, key, apiService)).To(Succeed())
+
+		Expect(apiService.Spec.Service.Namespace).To(Equal(namespace))
 	})
 
 	It("should remove cluster resources on cleanup", func() {
@@ -87,10 +119,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceExists(bundle.ServiceAccount, request)
 		ExpectResourceExists(bundle.ClusterRole, request)
 		ExpectResourceExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceExists(bundle.RoleBinding, request)
 		ExpectResourceExists(bundle.ConfigMap, request)
 		ExpectResourceExists(bundle.Service, request)
 		ExpectResourceExists(bundle.Deployment, request)
-		ExpectResourceExists(newRoute(namespace, serviceName), request)
+		ExpectResourceExists(bundle.ApiService, request)
 
 		_, err = operand.Cleanup(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -98,11 +131,44 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceNotExists(bundle.ServiceAccount, request)
 		ExpectResourceNotExists(bundle.ClusterRole, request)
 		ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceNotExists(bundle.RoleBinding, request)
 		ExpectResourceNotExists(bundle.ConfigMap, request)
 		ExpectResourceNotExists(bundle.Service, request)
 		ExpectResourceNotExists(bundle.Deployment, request)
-		ExpectResourceNotExists(newRoute(namespace, serviceName), request)
+		ExpectResourceNotExists(bundle.ApiService, request)
 	})
+
+	DescribeTable("should delete Route leftover from previous version", func(op func() error) {
+		route := &routev1.Route{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      routeName,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					libhandler.TypeAnnotation:           "SSP.ssp.kubevirt.io",
+					libhandler.NamespacedNameAnnotation: namespace + "/" + name,
+				},
+				Labels: map[string]string{
+					common.AppKubernetesNameLabel:      operandName,
+					common.AppKubernetesComponentLabel: operandComponent,
+					common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+				},
+			},
+			Spec: routev1.RouteSpec{},
+		}
+
+		Expect(request.Client.Create(request.Context, route)).To(Succeed())
+		Expect(op()).To(Succeed())
+		ExpectResourceNotExists(route.DeepCopy(), request)
+	},
+		Entry("on reconcile", func() error {
+			_, err := operand.Reconcile(&request)
+			return err
+		}),
+		Entry("on cleanup", func() error {
+			_, err := operand.Cleanup(&request)
+			return err
+		}),
+	)
 
 	It("should not update service cluster IP", func() {
 		_, err := operand.Reconcile(&request)
@@ -182,10 +248,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceExists(bundle.ServiceAccount, request)
 		ExpectResourceExists(bundle.ClusterRole, request)
 		ExpectResourceExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceExists(bundle.RoleBinding, request)
 		ExpectResourceExists(bundle.ConfigMap, request)
 		ExpectResourceExists(bundle.Service, request)
 		ExpectResourceExists(bundle.Deployment, request)
-		ExpectResourceExists(newRoute(namespace, serviceName), request)
+		ExpectResourceExists(bundle.ApiService, request)
 
 		request.Instance.Spec.FeatureGates.DeployVmConsoleProxy = false
 
@@ -195,10 +262,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceNotExists(bundle.ServiceAccount, request)
 		ExpectResourceNotExists(bundle.ClusterRole, request)
 		ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
+		ExpectResourceNotExists(bundle.RoleBinding, request)
 		ExpectResourceNotExists(bundle.ConfigMap, request)
 		ExpectResourceNotExists(bundle.Service, request)
 		ExpectResourceNotExists(bundle.Deployment, request)
-		ExpectResourceNotExists(newRoute(namespace, serviceName), request)
+		ExpectResourceNotExists(bundle.ApiService, request)
 	})
 
 	Context("with namespace annotation", func() {
@@ -209,7 +277,6 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			configMap      *core.ConfigMap
 			service        *core.Service
 			deployment     *apps.Deployment
-			route          *routev1.Route
 		)
 
 		BeforeEach(func() {
@@ -225,8 +292,6 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			deployment = bundle.Deployment.DeepCopy()
 			deployment.Namespace = otherNamespace
 
-			route = newRoute(otherNamespace, serviceName)
-
 			request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation] = otherNamespace
 		})
 
@@ -237,10 +302,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			ExpectResourceExists(serviceAccount, request)
 			ExpectResourceExists(bundle.ClusterRole, request)
 			ExpectResourceExists(bundle.ClusterRoleBinding, request)
+			ExpectResourceExists(bundle.RoleBinding, request)
 			ExpectResourceExists(configMap, request)
 			ExpectResourceExists(service, request)
 			ExpectResourceExists(deployment, request)
-			ExpectResourceExists(route, request)
+			ExpectResourceExists(bundle.ApiService, request)
 		})
 
 		It("should cleanup resources from namespace provided by annotation", func() {
@@ -250,10 +316,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			ExpectResourceExists(serviceAccount, request)
 			ExpectResourceExists(bundle.ClusterRole, request)
 			ExpectResourceExists(bundle.ClusterRoleBinding, request)
+			ExpectResourceExists(bundle.RoleBinding, request)
 			ExpectResourceExists(configMap, request)
 			ExpectResourceExists(service, request)
 			ExpectResourceExists(deployment, request)
-			ExpectResourceExists(route, request)
+			ExpectResourceExists(bundle.ApiService, request)
 
 			_, err = operand.Cleanup(&request)
 			Expect(err).ToNot(HaveOccurred())
@@ -261,10 +328,22 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			ExpectResourceNotExists(serviceAccount, request)
 			ExpectResourceNotExists(bundle.ClusterRole, request)
 			ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
+			ExpectResourceNotExists(bundle.RoleBinding, request)
 			ExpectResourceNotExists(configMap, request)
 			ExpectResourceNotExists(service, request)
 			ExpectResourceNotExists(deployment, request)
-			ExpectResourceNotExists(route, request)
+			ExpectResourceNotExists(bundle.ApiService, request)
+		})
+
+		It("should deploy APIService with ServiceReference pointing to the right namespace", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			apiService := &apiregv1.APIService{}
+			key := client.ObjectKeyFromObject(bundle.ApiService)
+			Expect(request.Client.Get(request.Context, key, apiService)).To(Succeed())
+
+			Expect(apiService.Spec.Service.Namespace).To(Equal(otherNamespace))
 		})
 
 		It("should remove resources from the namespace", func() {
@@ -274,10 +353,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			ExpectResourceExists(serviceAccount, request)
 			ExpectResourceExists(bundle.ClusterRole, request)
 			ExpectResourceExists(bundle.ClusterRoleBinding, request)
+			ExpectResourceExists(bundle.RoleBinding, request)
 			ExpectResourceExists(configMap, request)
 			ExpectResourceExists(service, request)
 			ExpectResourceExists(deployment, request)
-			ExpectResourceExists(route, request)
+			ExpectResourceExists(bundle.ApiService, request)
 
 			request.Instance.Spec.FeatureGates.DeployVmConsoleProxy = false
 
@@ -289,11 +369,44 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			ExpectResourceNotExists(serviceAccount, request)
 			ExpectResourceNotExists(bundle.ClusterRole, request)
 			ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
+			ExpectResourceNotExists(bundle.RoleBinding, request)
 			ExpectResourceNotExists(configMap, request)
 			ExpectResourceNotExists(service, request)
 			ExpectResourceNotExists(deployment, request)
-			ExpectResourceNotExists(route, request)
+			ExpectResourceNotExists(bundle.ApiService, request)
 		})
+
+		DescribeTable("should delete Route leftover from previous version", func(op func() error) {
+			route := &routev1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      routeName,
+					Namespace: otherNamespace,
+					Annotations: map[string]string{
+						libhandler.TypeAnnotation:           "SSP.ssp.kubevirt.io",
+						libhandler.NamespacedNameAnnotation: namespace + "/" + name,
+					},
+					Labels: map[string]string{
+						common.AppKubernetesNameLabel:      operandName,
+						common.AppKubernetesComponentLabel: operandComponent,
+						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+					},
+				},
+				Spec: routev1.RouteSpec{},
+			}
+
+			Expect(request.Client.Create(request.Context, route)).To(Succeed())
+			Expect(op()).To(Succeed())
+			ExpectResourceNotExists(route, request)
+		},
+			Entry("on reconcile", func() error {
+				_, err := operand.Reconcile(&request)
+				return err
+			}),
+			Entry("on cleanup", func() error {
+				_, err := operand.Cleanup(&request)
+				return err
+			}),
+		)
 	})
 })
 
@@ -386,6 +499,22 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 			RoleRef: rbac.RoleRef{
 				Kind:     "ClusterRole",
 				Name:     clusterRoleName,
+				APIGroup: rbac.GroupName,
+			},
+			Subjects: []rbac.Subject{{
+				Kind:      "ServiceAccount",
+				Name:      serviceAccountName,
+				Namespace: namespace,
+			}},
+		},
+		RoleBinding: &rbac.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      roleBindingName,
+				Namespace: "kube-system",
+			},
+			RoleRef: rbac.RoleRef{
+				Kind:     "Role",
+				Name:     "extension-apiserver-authentication-reader",
 				APIGroup: rbac.GroupName,
 			},
 			Subjects: []rbac.Subject{{
@@ -522,6 +651,22 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 							},
 						}},
 					},
+				},
+			},
+		},
+		ApiService: &apiregv1.APIService{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "v1alpha1.token.kubevirt.io",
+			},
+			Spec: apiregv1.APIServiceSpec{
+				Group:                "token.kubevirt.io",
+				GroupPriorityMinimum: 2000,
+				Version:              "v1alpha1",
+				VersionPriority:      10,
+				Service: &apiregv1.ServiceReference{
+					Name:      serviceName,
+					Namespace: namespace,
+					Port:      pointer.Int32(443),
 				},
 			},
 		},

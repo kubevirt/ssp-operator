@@ -1,4 +1,4 @@
-# Incorrect because ConfigMap is missing.
+# Incorrect because resources are missing.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
