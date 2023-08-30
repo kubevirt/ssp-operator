@@ -4,19 +4,22 @@ import (
 	"crypto/tls"
 	"io"
 	"net/http"
-	"net/url"
 	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	routev1 "github.com/openshift/api/route/v1"
 	apps "k8s.io/api/apps/v1"
+	authnv1 "k8s.io/api/authentication/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/utils/pointer"
+	kubevirtcorev1 "kubevirt.io/api/core/v1"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
@@ -27,11 +30,12 @@ var _ = Describe("VM Console Proxy Operand", func() {
 	var (
 		clusterRoleResource        testResource
 		clusterRoleBindingResource testResource
+		roleBindingResource        testResource
 		serviceAccountResource     testResource
 		serviceResource            testResource
 		deploymentResource         testResource
 		configMapResource          testResource
-		routeResource              testResource
+		apiServiceResource         testResource
 	)
 
 	BeforeEach(OncePerOrdered, func() {
@@ -69,6 +73,19 @@ var _ = Describe("VM Console Proxy Operand", func() {
 				roleBinding.Subjects = nil
 			},
 			EqualsFunc: func(old *rbac.ClusterRoleBinding, new *rbac.ClusterRoleBinding) bool {
+				return reflect.DeepEqual(old.RoleRef, new.RoleRef) &&
+					reflect.DeepEqual(old.Subjects, new.Subjects)
+			},
+		}
+		roleBindingResource = testResource{
+			Name:           "vm-console-proxy",
+			Namespace:      "kube-system",
+			Resource:       &rbac.RoleBinding{},
+			ExpectedLabels: expectedLabels,
+			UpdateFunc: func(roleBinding *rbac.RoleBinding) {
+				roleBinding.Subjects = nil
+			},
+			EqualsFunc: func(old *rbac.RoleBinding, new *rbac.RoleBinding) bool {
 				return reflect.DeepEqual(old.RoleRef, new.RoleRef) &&
 					reflect.DeepEqual(old.Subjects, new.Subjects)
 			},
@@ -118,15 +135,14 @@ var _ = Describe("VM Console Proxy Operand", func() {
 					reflect.DeepEqual(old.BinaryData, new.BinaryData)
 			},
 		}
-		routeResource = testResource{
-			Name:           "vm-console-proxy",
-			Namespace:      strategy.GetVmConsoleProxyNamespace(),
-			Resource:       &routev1.Route{},
+		apiServiceResource = testResource{
+			Name:           "v1alpha1.token.kubevirt.io",
+			Resource:       &apiregv1.APIService{},
 			ExpectedLabels: expectedLabels,
-			UpdateFunc: func(route *routev1.Route) {
-				route.Spec.TLS = nil
+			UpdateFunc: func(apiService *apiregv1.APIService) {
+				apiService.Spec.VersionPriority = apiService.Spec.VersionPriority + 10
 			},
-			EqualsFunc: func(old, new *routev1.Route) bool {
+			EqualsFunc: func(old *apiregv1.APIService, new *apiregv1.APIService) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)
 			},
 		}
@@ -147,21 +163,23 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		},
 			Entry("[test_id:9888] cluster role", &clusterRoleResource),
 			Entry("[test_id:9847] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:TODO] role binding", &roleBindingResource),
 			Entry("[test_id:9848] service account", &serviceAccountResource),
 			Entry("[test_id:9849] service", &serviceResource),
 			Entry("[test_id:9850] deployment", &deploymentResource),
 			Entry("[test_id:9852] config map", &configMapResource),
-			Entry("[test_id:9854] route", &routeResource),
+			Entry("[test_id:TODO] API service", &apiServiceResource),
 		)
 
 		DescribeTable("should set app labels", expectAppLabels,
 			Entry("[test_id:9887] cluster role", &clusterRoleResource),
 			Entry("[test_id:9851] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:TODO] role binding", &roleBindingResource),
 			Entry("[test_id:9853] service account", &serviceAccountResource),
 			Entry("[test_id:9855] service", &serviceResource),
 			Entry("[test_id:9856] deployment", &deploymentResource),
 			Entry("[test_id:9857] config map", &configMapResource),
-			Entry("[test_id:9859] route", &routeResource),
+			Entry("[test_id:TODO] API service", &apiServiceResource),
 		)
 	})
 
@@ -169,11 +187,12 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		DescribeTable("recreate after delete", expectRecreateAfterDelete,
 			Entry("[test_id:9858] cluster role", &clusterRoleResource),
 			Entry("[test_id:9860] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:TODO] role binding", &roleBindingResource),
 			Entry("[test_id:9861] service account", &serviceAccountResource),
 			Entry("[test_id:9862] service", &serviceResource),
 			Entry("[test_id:9864] deployment", &deploymentResource),
 			Entry("[test_id:9866] config map", &configMapResource),
-			Entry("[test_id:9867] route", &routeResource),
+			Entry("[test_id:TODO] API service", &apiServiceResource),
 		)
 	})
 
@@ -181,10 +200,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
 			Entry("[test_id:9863] cluster role", &clusterRoleResource),
 			Entry("[test_id:9865] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:TODO] role binding", &roleBindingResource),
 			Entry("[test_id:9869] service", &serviceResource),
 			Entry("[test_id:9870] deployment", &deploymentResource),
 			Entry("[test_id:9871] config map", &configMapResource),
-			Entry("[test_id:9872] route", &routeResource),
+			Entry("[test_id:TODO] API service", &apiServiceResource),
 		)
 
 		Context("With pause", func() {
@@ -195,28 +215,30 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
 				Entry("[test_id:9873] cluster role", &clusterRoleResource),
 				Entry("[test_id:9874] cluster role binding", &clusterRoleBindingResource),
+				Entry("[test_id:TODO] role binding", &roleBindingResource),
 				Entry("[test_id:9876] service", &serviceResource),
 				Entry("[test_id:9877] deployment", &deploymentResource),
 				Entry("[test_id:9878] config map", &configMapResource),
-				Entry("[test_id:9879] route", &routeResource),
+				Entry("[test_id:TODO] API service", &apiServiceResource),
 			)
 		})
 
 		DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
 			Entry("[test_id:9880] cluster role", &clusterRoleResource),
 			Entry("[test_id:9881] cluster role binding", &clusterRoleBindingResource),
+			Entry("[test_id:TODO] role binding", &roleBindingResource),
 			Entry("[test_id:9882] service account", &serviceAccountResource),
 			Entry("[test_id:9886] service", &serviceResource),
 			Entry("[test_id:9883] deployment", &deploymentResource),
 			Entry("[test_id:9884] config map", &configMapResource),
-			Entry("[test_id:9885] route", &routeResource),
+			Entry("[test_id:TODO] API service", &apiServiceResource),
 		)
 	})
 
-	Context("Route to access proxy", func() {
+	Context("Accessing proxy", func() {
 		var (
-			routeApiUrl string
-			httpClient  *http.Client
+			httpClient *http.Client
+			saToken    string
 		)
 
 		BeforeEach(func() {
@@ -226,27 +248,97 @@ var _ = Describe("VM Console Proxy Operand", func() {
 				Transport: transport,
 			}
 
-			route := &routev1.Route{}
-			Expect(apiClient.Get(ctx, routeResource.GetKey(), route)).To(Succeed())
-			routeApiUrl = "https://" + route.Spec.Host + "/api/v1alpha1"
-		})
+			serviceAccount := &core.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "proxy-test-account-",
+					Namespace:    strategy.GetNamespace(),
+				},
+			}
+			Expect(apiClient.Create(ctx, serviceAccount)).To(Succeed())
+			DeferCleanup(func() {
+				err := apiClient.Delete(ctx, serviceAccount)
+				if err != nil && !errors.IsNotFound(err) {
+					Expect(err).ToNot(HaveOccurred())
+				}
+			})
 
-		It("[test_id:9889] should be able to access /token endpoint", func() {
-			url, err := url.JoinPath(routeApiUrl, strategy.GetNamespace(), "non-existing-vm", "token")
+			role := &rbac.Role{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "proxy-test-role-",
+					Namespace:    strategy.GetNamespace(),
+				},
+				Rules: []rbac.PolicyRule{{
+					APIGroups: []string{"token.kubevirt.io"},
+					Resources: []string{"virtualmachines/vnc"},
+					Verbs:     []string{"get"},
+				}, {
+					APIGroups: []string{kubevirtcorev1.SubresourceGroupName},
+					Resources: []string{"virtualmachineinstances/vnc"},
+					Verbs:     []string{"get"},
+				}},
+			}
+			Expect(apiClient.Create(ctx, role)).To(Succeed())
+			DeferCleanup(func() {
+				err := apiClient.Delete(ctx, role)
+				if err != nil && !errors.IsNotFound(err) {
+					Expect(err).ToNot(HaveOccurred())
+				}
+			})
+
+			roleBinding := &rbac.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "proxy-role-binding-",
+					Namespace:    strategy.GetNamespace(),
+				},
+				Subjects: []rbac.Subject{{
+					Kind:      "ServiceAccount",
+					Name:      serviceAccount.Name,
+					Namespace: serviceAccount.Namespace,
+				}},
+				RoleRef: rbac.RoleRef{
+					APIGroup: rbac.GroupName,
+					Kind:     "Role",
+					Name:     role.Name,
+				},
+			}
+			Expect(apiClient.Create(ctx, roleBinding)).To(Succeed())
+			DeferCleanup(func() {
+				err := apiClient.Delete(ctx, roleBinding)
+				if err != nil && !errors.IsNotFound(err) {
+					Expect(err).ToNot(HaveOccurred())
+				}
+			})
+
+			tokenRequest, err := coreClient.CoreV1().ServiceAccounts(serviceAccount.Namespace).CreateToken(ctx, serviceAccount.Name, &authnv1.TokenRequest{}, metav1.CreateOptions{})
 			Expect(err).ToNot(HaveOccurred())
 
-			// It may take a moment for the service to be reachable through route
+			saToken = tokenRequest.Status.Token
+		})
+
+		It("[test_id:TODO] should be able to access /vnc endpoint", func() {
+			vmNamespace := strategy.GetNamespace()
+			vmName := "non-existing-vm"
+
+			url := apiServerHostname + "/apis/token.kubevirt.io/v1alpha1/namespaces/" + vmNamespace + "/virtualmachines/" + vmName + "/vnc"
+
+			// It may take a moment for the service to be reachable
 			Eventually(func(g Gomega) {
-				response, err := httpClient.Get(url)
+				request, err := http.NewRequest("GET", url, nil)
+				g.Expect(err).ToNot(HaveOccurred())
+
+				request.Header.Set("Authorization", "Bearer "+saToken)
+
+				response, err := httpClient.Do(request)
+
 				g.Expect(err).ToNot(HaveOccurred())
 				defer func() { _ = response.Body.Close() }()
 
-				g.Expect(response.StatusCode).To(Equal(http.StatusUnauthorized))
+				g.Expect(response.StatusCode).To(Equal(http.StatusNotFound))
 
 				body, err := io.ReadAll(response.Body)
 				g.Expect(err).ToNot(HaveOccurred())
 
-				g.Expect(body).To(ContainSubstring("authenticating token cannot be empty"))
+				g.Expect(body).To(ContainSubstring("VirtualMachine does not exist:"))
 			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 	})

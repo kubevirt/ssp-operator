@@ -17,6 +17,7 @@ jobs:
           OUTPUT_FILE=./data/vm-console-proxy-bundle/vm-console-proxy.yaml
           mkdir -p ./data/vm-console-proxy-bundle
           curl -L https://github.com/kubevirt/vm-console-proxy/releases/download/${RELEASE_VERSION}/vm-console-proxy.yaml > ${OUTPUT_FILE}
+          sed -i "s/defaultVmConsoleProxyImageTag = .*$/defaultVmConsoleProxyImageTag = \"${RELEASE_VERSION}\"/" ./internal/operands/vm-console-proxy/defaults.go 
 
       - name: Create pull request
         if: ${{ github.event.client_payload.release_version }} != ''

@@ -21,6 +21,7 @@ const (
 	TektonTasksImageKey         = "TEKTON_TASKS_IMAGE"
 	TektonTasksDiskVirtImageKey = "TEKTON_TASKS_DISK_VIRT_IMAGE"
 	VirtioImageKey              = "VIRTIO_IMG"
+	VmConsoleProxyImageKey      = "VM_CONSOLE_PROXY_IMAGE"
 
 	DefaultTektonTasksIMG         = "quay.io/kubevirt/tekton-tasks:" + TektonTasksVersion
 	DeafultTektonTasksDiskVirtIMG = "quay.io/kubevirt/tekton-tasks-disk-virt:" + TektonTasksVersion

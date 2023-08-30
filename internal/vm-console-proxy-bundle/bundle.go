@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
 const (
@@ -23,18 +24,22 @@ const (
 const (
 	clusterRoleKind         = "ClusterRole"
 	clusterRoleBindingsKind = "ClusterRoleBinding"
+	roleBindingKind         = "RoleBinding"
 	serviceKind             = "Service"
 	deploymentKind          = "Deployment"
 	configMapKind           = "ConfigMap"
+	apiServiceKind          = "APIService"
 )
 
 type Bundle struct {
 	ServiceAccount     *core.ServiceAccount
 	ClusterRole        *rbac.ClusterRole
 	ClusterRoleBinding *rbac.ClusterRoleBinding
+	RoleBinding        *rbac.RoleBinding
 	Service            *core.Service
 	Deployment         *apps.Deployment
 	ConfigMap          *core.ConfigMap
+	ApiService         *apiregv1.APIService
 }
 
 func ReadBundle(path string) (*Bundle, error) {
@@ -81,12 +86,16 @@ func loadBundleFromBytes(data []byte) (*Bundle, error) {
 			destObj = &(bundle.ClusterRole)
 		case clusterRoleBindingsKind:
 			destObj = &(bundle.ClusterRoleBinding)
+		case roleBindingKind:
+			destObj = &(bundle.RoleBinding)
 		case serviceKind:
 			destObj = &(bundle.Service)
 		case deploymentKind:
 			destObj = &(bundle.Deployment)
 		case configMapKind:
 			destObj = &(bundle.ConfigMap)
+		case apiServiceKind:
+			destObj = &(bundle.ApiService)
 		case "":
 			return nil, fmt.Errorf("empty Kind found in vm-console-proxy bundle")
 		default:
@@ -105,7 +114,7 @@ func loadBundleFromBytes(data []byte) (*Bundle, error) {
 }
 
 func validateBundle(bundle *Bundle) error {
-	missingFields := make([]string, 0, 6)
+	missingFields := make([]string, 0, 8)
 	if bundle.ServiceAccount == nil {
 		missingFields = append(missingFields, "ServiceAccount")
 	}
@@ -115,6 +124,9 @@ func validateBundle(bundle *Bundle) error {
 	if bundle.ClusterRoleBinding == nil {
 		missingFields = append(missingFields, "ClusterRoleBinding")
 	}
+	if bundle.RoleBinding == nil {
+		missingFields = append(missingFields, "RoleBinding")
+	}
 	if bundle.Service == nil {
 		missingFields = append(missingFields, "Service")
 	}
@@ -123,6 +135,9 @@ func validateBundle(bundle *Bundle) error {
 	}
 	if bundle.ConfigMap == nil {
 		missingFields = append(missingFields, "ConfigMap")
+	}
+	if bundle.ApiService == nil {
+		missingFields = append(missingFields, "ApiService")
 	}
 	if len(missingFields) > 0 {
 		return fmt.Errorf("bundle is missing these objects: %v", missingFields)
