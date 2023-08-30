@@ -25,7 +25,7 @@ const (
 
 	DefaultTektonTasksIMG         = "quay.io/kubevirt/tekton-tasks:" + TektonTasksVersion
 	DeafultTektonTasksDiskVirtIMG = "quay.io/kubevirt/tekton-tasks-disk-virt:" + TektonTasksVersion
-	DefaultVirtioIMG              = "quay.io/kubevirt/virtio-container-disk:v0.59.0"
+	DefaultVirtioIMG              = "quay.io/kubevirt/virtio-container-disk:v1.0.0"
 
 	defaultOperatorVersion = "devel"
 )

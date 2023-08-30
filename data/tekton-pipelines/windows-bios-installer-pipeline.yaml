@@ -31,7 +31,7 @@ spec:
     - name: virtioContainerDiskName
       description: Reference to the containerdisk containing the virtio-win drivers ISO.
       type: string
-      default: quay.io/kubevirt/virtio-container-disk:v0.59.0
+      default: quay.io/kubevirt/virtio-container-disk:v1.0.0
     - name: installCDRomName
       description: Name of datavolume which contains iso file.
       type: string
