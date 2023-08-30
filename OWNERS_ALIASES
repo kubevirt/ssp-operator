@@ -1,0 +1,18 @@
+aliases:
+  approvers:
+    - 0xFelix
+    - akrejcir
+    - ksimon1
+    - lyarwood
+  code-reviewers:
+    - 0xFelix
+    - akrejcir
+    - codingben
+    - jcanocan
+    - ksimon1
+    - lyarwood
+    - opokornyy
+  sig-monitoring-approvers:
+    - sradco
+  sig-monitoring-reviewers:
+    - machadovilaca

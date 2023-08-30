@@ -1,13 +1,4 @@
 approvers:
-  - 0xFelix
-  - akrejcir
-  - ksimon1
-  - lyarwood
+  - approvers
 reviewers:
-  - 0xFelix
-  - akrejcir
-  - codingben
-  - jcanocan
-  - ksimon1
-  - lyarwood
-  - opokornyy
+  - code-reviewers
