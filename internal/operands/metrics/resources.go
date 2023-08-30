@@ -164,6 +164,21 @@ func getAlertRules() ([]promv1.Rule, error) {
 				componentAlertLabelKey:    componentAlertLabelValue,
 			},
 		},
+		{
+			Alert: "VirtualMachineCRCErrors",
+			Expr:  intstr.FromString("kubevirt_ssp_vm_rbd_volume{volume_mode=\"Block\", rxbounce_enabled=\"false\"} > 0"),
+			Annotations: map[string]string{
+				"description": "VirtualMachine {{ $labels.namespace }}/{{ $labels.name }} may report OSD errors",
+				"summary":     "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', it will report bad crc/signature errors and cluster performance will be severely degraded if krbd:rxbounce is not set.",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, "VirtualMachineCRCErrors"),
+			},
+			Labels: map[string]string{
+				severityAlertLabelKey:     "warning",
+				healthImpactAlertLabelKey: "warning",
+				partOfAlertLabelKey:       partOfAlertLabelValue,
+				componentAlertLabelKey:    componentAlertLabelValue,
+			},
+		},
 	}, nil
 }
 
