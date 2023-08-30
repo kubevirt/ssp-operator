@@ -218,7 +218,7 @@ spec:
         - name: deleteObject
           value: true
         - name: deleteObjectKind
-          value: PersistentVolumeClaim
+          value: DataVolume
         - name: deleteObjectName
           value: $(tasks.import-win-iso.results.name)
         - name: namespace
@@ -231,7 +231,7 @@ spec:
         - name: deleteObject
           value: true
         - name: deleteObjectKind
-          value: PersistentVolumeClaim
+          value: DataVolume
         - name: deleteObjectName
           value: $(tasks.create-vm-root-disk.results.name)
         - name: namespace
