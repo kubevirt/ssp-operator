@@ -265,6 +265,14 @@ spec:
           - list
           - watch
         - apiGroups:
+            - ""
+          resources:
+            - persistentvolumes
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
           - ""
           resources:
           - serviceaccounts
@@ -330,6 +338,7 @@ spec:
           resources:
           - virtualmachines
           verbs:
+          - get
           - list
           - watch
         - apiGroups:

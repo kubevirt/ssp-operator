@@ -53,8 +53,8 @@ VALIDATOR_IMG ?= ${VALIDATOR_REPOSITORY}:${VALIDATOR_IMG_TAG}
 
 CRD_OPTIONS ?= "crd:generateEmbeddedObjectMeta=true"
 
-SRC_PATHS_TESTS = ./controllers/... ./internal/... ./hack/... ./webhooks/...
-SRC_PATHS_CONTROLLER_GEN = {./controllers/..., ./internal/..., ./hack/..., ./webhooks/...}
+SRC_PATHS_TESTS = ./controllers/... ./internal/... ./hack/... ./webhooks/... ./pkg/...
+SRC_PATHS_CONTROLLER_GEN = {./controllers/..., ./internal/..., ./hack/..., ./webhooks/..., ./pkg/...}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))

@@ -109,6 +109,8 @@ Controllers that can be found in `controllers`:
 independently of the SSP CR for Prometheus monitoring to work with SSP.
 - `SspReconciler` - Ensures that all required CRDs are available and reconciles
   the SSP CRD itself and its operands.
+- 'VmReconciler' - watches for VMs and creates a metric listing VMs with RBD
+volumes without krbd:rxbounce enabled.
 
 The logic of `ssp-operator` is split into separate operands, which can be found
 under `internal/operands`. Each operand deals with a designated task, all
