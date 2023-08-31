@@ -21,8 +21,6 @@ To activate the operator, create the SSP Custom Resource (CR):
 apiVersion: ssp.kubevirt.io/v1beta2
 kind: SSP
 metadata:
-  annotations:
-    ssp.kubevirt.io/vm-console-proxy-namespace: "kubevirt"
   name: ssp-sample
   namespace: kubevirt
 spec:
@@ -49,8 +47,6 @@ This annotation is used by VM console proxy operand.
 apiVersion: ssp.kubevirt.io/v1beta1
 kind: SSP
 metadata:
-  annotations:
-    ssp.kubevirt.io/vm-console-proxy-namespace: "kubevirt" # If not set, then default namespace is "kubevirt"
   name: ssp-sample
   namespace: kubevirt
 spec: {}
