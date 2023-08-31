@@ -241,7 +241,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		}
 	})
 
-	It("should delete resources when enabled annotation is removed", func() {
+	It("should delete resources when feature gate was disabled", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -267,146 +267,6 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceNotExists(bundle.Service, request)
 		ExpectResourceNotExists(bundle.Deployment, request)
 		ExpectResourceNotExists(bundle.ApiService, request)
-	})
-
-	Context("with namespace annotation", func() {
-		const otherNamespace = "some-namespace"
-
-		var (
-			serviceAccount *core.ServiceAccount
-			configMap      *core.ConfigMap
-			service        *core.Service
-			deployment     *apps.Deployment
-		)
-
-		BeforeEach(func() {
-			serviceAccount = bundle.ServiceAccount.DeepCopy()
-			serviceAccount.Namespace = otherNamespace
-
-			configMap = bundle.ConfigMap.DeepCopy()
-			configMap.Namespace = otherNamespace
-
-			service = bundle.Service.DeepCopy()
-			service.Namespace = otherNamespace
-
-			deployment = bundle.Deployment.DeepCopy()
-			deployment.Namespace = otherNamespace
-
-			request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation] = otherNamespace
-		})
-
-		It("should deploy resources in namespace provided by annotation", func() {
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
-
-			ExpectResourceExists(serviceAccount, request)
-			ExpectResourceExists(bundle.ClusterRole, request)
-			ExpectResourceExists(bundle.ClusterRoleBinding, request)
-			ExpectResourceExists(bundle.RoleBinding, request)
-			ExpectResourceExists(configMap, request)
-			ExpectResourceExists(service, request)
-			ExpectResourceExists(deployment, request)
-			ExpectResourceExists(bundle.ApiService, request)
-		})
-
-		It("should cleanup resources from namespace provided by annotation", func() {
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
-
-			ExpectResourceExists(serviceAccount, request)
-			ExpectResourceExists(bundle.ClusterRole, request)
-			ExpectResourceExists(bundle.ClusterRoleBinding, request)
-			ExpectResourceExists(bundle.RoleBinding, request)
-			ExpectResourceExists(configMap, request)
-			ExpectResourceExists(service, request)
-			ExpectResourceExists(deployment, request)
-			ExpectResourceExists(bundle.ApiService, request)
-
-			_, err = operand.Cleanup(&request)
-			Expect(err).ToNot(HaveOccurred())
-
-			ExpectResourceNotExists(serviceAccount, request)
-			ExpectResourceNotExists(bundle.ClusterRole, request)
-			ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
-			ExpectResourceNotExists(bundle.RoleBinding, request)
-			ExpectResourceNotExists(configMap, request)
-			ExpectResourceNotExists(service, request)
-			ExpectResourceNotExists(deployment, request)
-			ExpectResourceNotExists(bundle.ApiService, request)
-		})
-
-		It("should deploy APIService with ServiceReference pointing to the right namespace", func() {
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
-
-			apiService := &apiregv1.APIService{}
-			key := client.ObjectKeyFromObject(bundle.ApiService)
-			Expect(request.Client.Get(request.Context, key, apiService)).To(Succeed())
-
-			Expect(apiService.Spec.Service.Namespace).To(Equal(otherNamespace))
-		})
-
-		It("should remove resources from the namespace", func() {
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
-
-			ExpectResourceExists(serviceAccount, request)
-			ExpectResourceExists(bundle.ClusterRole, request)
-			ExpectResourceExists(bundle.ClusterRoleBinding, request)
-			ExpectResourceExists(bundle.RoleBinding, request)
-			ExpectResourceExists(configMap, request)
-			ExpectResourceExists(service, request)
-			ExpectResourceExists(deployment, request)
-			ExpectResourceExists(bundle.ApiService, request)
-
-			request.Instance.Spec.FeatureGates.DeployVmConsoleProxy = false
-
-			delete(request.Instance.Annotations, VmConsoleProxyNamespaceAnnotation)
-
-			_, err = operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred())
-
-			ExpectResourceNotExists(serviceAccount, request)
-			ExpectResourceNotExists(bundle.ClusterRole, request)
-			ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
-			ExpectResourceNotExists(bundle.RoleBinding, request)
-			ExpectResourceNotExists(configMap, request)
-			ExpectResourceNotExists(service, request)
-			ExpectResourceNotExists(deployment, request)
-			ExpectResourceNotExists(bundle.ApiService, request)
-		})
-
-		DescribeTable("should delete Route leftover from previous version", func(op func() error) {
-			route := &routev1.Route{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      routeName,
-					Namespace: otherNamespace,
-					Annotations: map[string]string{
-						libhandler.TypeAnnotation:           "SSP.ssp.kubevirt.io",
-						libhandler.NamespacedNameAnnotation: namespace + "/" + name,
-					},
-					Labels: map[string]string{
-						common.AppKubernetesNameLabel:      operandName,
-						common.AppKubernetesComponentLabel: operandComponent,
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-					},
-				},
-				Spec: routev1.RouteSpec{},
-			}
-
-			Expect(request.Client.Create(request.Context, route)).To(Succeed())
-			Expect(op()).To(Succeed())
-			ExpectResourceNotExists(route, request)
-		},
-			Entry("on reconcile", func() error {
-				_, err := operand.Reconcile(&request)
-				return err
-			}),
-			Entry("on cleanup", func() error {
-				_, err := operand.Cleanup(&request)
-				return err
-			}),
-		)
 	})
 })
 
@@ -436,9 +296,6 @@ func getMockedRequest() common.Request {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
-				Annotations: map[string]string{
-					VmConsoleProxyNamespaceAnnotation: namespace,
-				},
 			},
 			Spec: ssp.SSPSpec{
 				FeatureGates: &ssp.FeatureGates{

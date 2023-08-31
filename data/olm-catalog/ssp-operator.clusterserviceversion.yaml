@@ -9,9 +9,6 @@ metadata:
           "apiVersion": "ssp.kubevirt.io/v1beta2",
           "kind": "SSP",
           "metadata": {
-            "annotations": {
-              "ssp.kubevirt.io/vm-console-proxy-namespace": "kubevirt"
-            },
             "name": "ssp-sample",
             "namespace": "kubevirt"
           },
@@ -268,13 +265,13 @@ spec:
           - list
           - watch
         - apiGroups:
-            - ""
+          - ""
           resources:
-            - persistentvolumes
+          - persistentvolumes
           verbs:
-            - get
-            - list
-            - watch
+          - get
+          - list
+          - watch
         - apiGroups:
           - ""
           resources:

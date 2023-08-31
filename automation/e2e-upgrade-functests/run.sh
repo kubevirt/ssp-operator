@@ -70,6 +70,5 @@ export SKIP_CLEANUP_AFTER_TESTS="true"
 export TEST_EXISTING_CR_NAME="${SSP_NAME}"
 export TEST_EXISTING_CR_NAMESPACE="${SSP_NAMESPACE}"
 export IS_UPGRADE_LANE="true"
-export VM_CONSOLE_PROXY_NAMESPACE="kubevirt"
 
 make deploy functest
