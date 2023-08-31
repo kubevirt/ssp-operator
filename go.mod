@@ -126,9 +126,9 @@ replace (
 	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 
-	k8s.io/api => k8s.io/api v0.26.2
-	k8s.io/client-go => k8s.io/client-go v0.26.2
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.26.2
+	k8s.io/api => k8s.io/api v0.26.6
+	k8s.io/client-go => k8s.io/client-go v0.26.6
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.26.6
 
 	kubevirt.io/ssp-operator/api => ./api
 )
