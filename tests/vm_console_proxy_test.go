@@ -22,7 +22,6 @@ import (
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -40,17 +39,12 @@ var _ = Describe("VM Console Proxy Operand", func() {
 
 	BeforeEach(OncePerOrdered, func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
-		namespace := strategy.GetVmConsoleProxyNamespace()
 
 		updateSsp(func(foundSsp *ssp.SSP) {
 			if foundSsp.Spec.FeatureGates == nil {
 				foundSsp.Spec.FeatureGates = &ssp.FeatureGates{}
 			}
-			if foundSsp.GetAnnotations() == nil {
-				foundSsp.Annotations = make(map[string]string)
-			}
 			foundSsp.Spec.FeatureGates.DeployVmConsoleProxy = true
-			foundSsp.Annotations[vm_console_proxy.VmConsoleProxyNamespaceAnnotation] = namespace
 		})
 
 		expectedLabels := expectedLabelsFor("vm-console-proxy", "vm-console-proxy")
@@ -92,13 +86,13 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		}
 		serviceAccountResource = testResource{
 			Name:           "vm-console-proxy",
-			Namespace:      strategy.GetVmConsoleProxyNamespace(),
+			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.ServiceAccount{},
 			ExpectedLabels: expectedLabels,
 		}
 		serviceResource = testResource{
 			Name:           "vm-console-proxy",
-			Namespace:      strategy.GetVmConsoleProxyNamespace(),
+			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.Service{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(service *core.Service) {
@@ -111,7 +105,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		}
 		deploymentResource = testResource{
 			Name:           "vm-console-proxy",
-			Namespace:      strategy.GetVmConsoleProxyNamespace(),
+			Namespace:      strategy.GetNamespace(),
 			Resource:       &apps.Deployment{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(deployment *apps.Deployment) {
@@ -123,7 +117,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		}
 		configMapResource = testResource{
 			Name:           "vm-console-proxy",
-			Namespace:      strategy.GetVmConsoleProxyNamespace(),
+			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.ConfigMap{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(configMap *core.ConfigMap) {
@@ -164,6 +158,13 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Entry("[test_id:9888] cluster role", &clusterRoleResource),
 			Entry("[test_id:9847] cluster role binding", &clusterRoleBindingResource),
 			Entry("[test_id:TODO] role binding", &roleBindingResource),
+		)
+
+		DescribeTable("created resource", func(res *testResource) {
+			resource := res.NewResource()
+			err := apiClient.Get(ctx, res.GetKey(), resource)
+			Expect(err).ToNot(HaveOccurred())
+		},
 			Entry("[test_id:9848] service account", &serviceAccountResource),
 			Entry("[test_id:9849] service", &serviceResource),
 			Entry("[test_id:9850] deployment", &deploymentResource),

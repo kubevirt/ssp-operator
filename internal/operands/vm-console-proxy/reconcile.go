@@ -18,8 +18,6 @@ import (
 )
 
 const (
-	VmConsoleProxyNamespaceAnnotation = "ssp.kubevirt.io/vm-console-proxy-namespace"
-
 	operandName      = "vm-console-proxy"
 	operandComponent = "vm-console-proxy"
 
@@ -55,11 +53,16 @@ func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
 		{Object: &rbac.ClusterRole{}},
 		{Object: &rbac.ClusterRoleBinding{}},
+		{Object: &apiregv1.APIService{}},
+	}
+}
+
+func WatchTypes() []operands.WatchType {
+	return []operands.WatchType{
 		{Object: &core.ServiceAccount{}},
 		{Object: &core.Service{}},
 		{Object: &apps.Deployment{}, WatchFullObject: true},
 		{Object: &core.ConfigMap{}},
-		{Object: &apiregv1.APIService{}},
 		{Object: &routev1.Route{}},
 	}
 }
@@ -95,7 +98,7 @@ func (v *vmConsoleProxy) Name() string {
 }
 
 func (v *vmConsoleProxy) WatchTypes() []operands.WatchType {
-	return nil
+	return WatchTypes()
 }
 
 func (v *vmConsoleProxy) WatchClusterTypes() []operands.WatchType {
@@ -229,9 +232,9 @@ func (v *vmConsoleProxy) deleteRoute(request *common.Request) ([]common.CleanupR
 
 func reconcileServiceAccount(serviceAccount core.ServiceAccount) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		serviceAccount.Namespace = getVmConsoleProxyNamespace(request)
+		serviceAccount.Namespace = request.Instance.Namespace
 		return common.CreateOrUpdate(request).
-			ClusterResource(&serviceAccount).
+			NamespacedResource(&serviceAccount).
 			WithAppLabels(operandName, operandComponent).
 			Reconcile()
 	}
@@ -248,6 +251,7 @@ func reconcileClusterRole(clusterRole rbac.ClusterRole) common.ReconcileFunc {
 
 func reconcileClusterRoleBinding(clusterRoleBinding rbac.ClusterRoleBinding) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
+		clusterRoleBinding.Subjects[0].Namespace = request.Instance.Namespace
 		return common.CreateOrUpdate(request).
 			ClusterResource(&clusterRoleBinding).
 			WithAppLabels(operandName, operandComponent).
@@ -257,6 +261,7 @@ func reconcileClusterRoleBinding(clusterRoleBinding rbac.ClusterRoleBinding) com
 
 func reconcileRoleBinding(roleBinding *rbac.RoleBinding) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
+		roleBinding.Subjects[0].Namespace = request.Instance.Namespace
 		return common.CreateOrUpdate(request).
 			ClusterResource(roleBinding).
 			WithAppLabels(operandName, operandComponent).
@@ -266,9 +271,9 @@ func reconcileRoleBinding(roleBinding *rbac.RoleBinding) common.ReconcileFunc {
 
 func reconcileConfigMap(configMap core.ConfigMap) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		configMap.Namespace = getVmConsoleProxyNamespace(request)
+		configMap.Namespace = request.Instance.Namespace
 		return common.CreateOrUpdate(request).
-			ClusterResource(&configMap).
+			NamespacedResource(&configMap).
 			WithAppLabels(operandName, operandComponent).
 			Reconcile()
 	}
@@ -276,9 +281,9 @@ func reconcileConfigMap(configMap core.ConfigMap) common.ReconcileFunc {
 
 func reconcileService(service core.Service) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		service.Namespace = getVmConsoleProxyNamespace(request)
+		service.Namespace = request.Instance.Namespace
 		return common.CreateOrUpdate(request).
-			ClusterResource(&service).
+			NamespacedResource(&service).
 			WithAppLabels(operandName, operandComponent).
 			Reconcile()
 	}
@@ -286,10 +291,10 @@ func reconcileService(service core.Service) common.ReconcileFunc {
 
 func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		deployment.Namespace = getVmConsoleProxyNamespace(request)
+		deployment.Namespace = request.Instance.Namespace
 		deployment.Spec.Template.Spec.Containers[0].Image = getVmConsoleProxyImage()
 		return common.CreateOrUpdate(request).
-			ClusterResource(&deployment).
+			NamespacedResource(&deployment).
 			WithAppLabels(operandName, operandComponent).
 			Reconcile()
 	}
@@ -297,7 +302,7 @@ func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
 
 func reconcileApiService(apiService *apiregv1.APIService) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
-		apiService.Spec.Service.Namespace = getVmConsoleProxyNamespace(request)
+		apiService.Spec.Service.Namespace = request.Instance.Namespace
 		return common.CreateOrUpdate(request).
 			ClusterResource(apiService).
 			WithAppLabels(operandName, operandComponent).
@@ -312,17 +317,6 @@ func reconcileApiService(apiService *apiregv1.APIService) common.ReconcileFunc {
 			}).
 			Reconcile()
 	}
-}
-
-func getVmConsoleProxyNamespace(request *common.Request) string {
-	const defaultNamespace = "kubevirt"
-	if request.Instance.GetAnnotations() == nil {
-		return defaultNamespace
-	}
-	if namespace, isFound := request.Instance.GetAnnotations()[VmConsoleProxyNamespaceAnnotation]; isFound {
-		return namespace
-	}
-	return defaultNamespace
 }
 
 func getVmConsoleProxyImage() string {
