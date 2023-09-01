@@ -2,6 +2,7 @@ package test_utils
 
 import (
 	"bytes"
+
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	kubevirt "kubevirt.io/api/core/v1"
@@ -34,6 +35,8 @@ spec:
             name: cloudinitdisk
         machine:
           type: "q35"
+        memory:
+          guest: 2Gi
         resources:
           requests:
             memory: 128M
