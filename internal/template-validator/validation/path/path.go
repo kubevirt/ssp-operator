@@ -171,7 +171,14 @@ func (r *Results) AsInt64() ([]int64, error) {
 					continue
 				}
 			}
-			return nil, fmt.Errorf("mismatching type: %v, not int or resource.Quantity", res[j].Type().Name())
+			if quantityObj, ok := obj.(*resource.Quantity); ok {
+				v, ok := quantityObj.AsInt64()
+				if ok {
+					ret = append(ret, v)
+					continue
+				}
+			}
+			return nil, fmt.Errorf("mismatching type: %v, not int or resource.Quantity", res[j].Type())
 		}
 	}
 	return ret, nil
