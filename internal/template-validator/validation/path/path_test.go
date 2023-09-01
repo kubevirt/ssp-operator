@@ -101,6 +101,22 @@ var _ = Describe("Path", func() {
 			Expect(vals[0]).To(BeNumerically(">", 1024))
 		})
 
+		It("Should provide integer result for quantity pointer object", func() {
+			s := "jsonpath::.spec.domain.memory.guest"
+			p, err := New(s)
+			Expect(p).To(Not(BeNil()))
+			Expect(err).ToNot(HaveOccurred())
+
+			results, err := p.Find(vmCirros)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results.Len()).To(BeNumerically(">=", 1))
+
+			vals, err := results.AsInt64()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(vals).To(HaveLen(1))
+			Expect(vals[0]).To(BeNumerically(">", 2147483647), "value is lower than 2Gi")
+		})
+
 		It("Should provide some string results", func() {
 			s := "jsonpath::.spec.domain.machine.type"
 			p, err := New(s)
