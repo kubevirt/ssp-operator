@@ -80,7 +80,8 @@ independently of the SSP CR for Prometheus monitoring to work with SSP.
 - `SspReconciler` ensures that all required CRDs are available and reconciles
   the ssp CRD itself and its operands .
 - `VmReconciler` watches for vms based on RHEL6 template and updates the
-`kubevirt_vm_rhel6` metric.
+`kubevirt_vm_rhel6` metric. Also creates a metric listing VMs with RBD volumes
+without krbd:rxbounce enabled.
 
 The logic of `ssp-operator` is split into separate operands, which can be found
 under `internal/operands`. Each operand deals with a designated task, all

@@ -71,6 +71,7 @@ func runPrometheusServer(metricsAddr string, tlsOptions common.SSPTLSOptions) er
 	metrics.Registry.MustRegister(common_templates.CommonTemplatesRestored)
 	metrics.Registry.MustRegister(common.SSPOperatorReconcilingProperly)
 	metrics.Registry.MustRegister(controllers.VmRhel6)
+	metrics.Registry.MustRegister(controllers.VmRbdVolume)
 	handler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{})
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)
