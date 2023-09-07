@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: windows10-bios-autounattend
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 data:
   autounattend.xml: |
     <?xml version="1.0" encoding="utf-8"?>
