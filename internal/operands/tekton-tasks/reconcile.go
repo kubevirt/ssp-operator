@@ -22,12 +22,12 @@ import (
 // +kubebuilder:rbac:groups=subresources.kubevirt.io,resources=virtualmachines/restart;virtualmachines/start;virtualmachines/stop,verbs=update
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch;create;patch;update;delete
 // +kubebuilder:rbac:groups=template.openshift.io,resources=processedtemplates,verbs=create
-// +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datavolumes,verbs=*
+// +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datavolumes,verbs=get;create;delete
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datasources,verbs=get;create;delete
-// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines/finalizers,verbs=*
-// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=*
+// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines/finalizers,verbs=get
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;update;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=create
-// +kubebuilder:rbac:groups=core,resources=secrets,verbs=*
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;create;patch;delete
 
 const (
 	operandName      = "tekton-tasks"
