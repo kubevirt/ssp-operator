@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/openshift/api/config/v1"
+	kubevirtv1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/ssp-operator/internal/common"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -103,6 +105,11 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		requiredCrds = append(requiredCrds, getRequiredCrds(sspOperands[i])...)
 	}
 
+	// Add VMController necessary VirtualMachine CRD
+	vmKind := strings.ToLower(kubevirtv1.VirtualMachineGroupVersionKind.Kind) + "s"
+	vmCRD := vmKind + "." + kubevirtv1.VirtualMachineGroupVersionKind.Group
+	requiredCrds = append(requiredCrds, vmCRD)
+
 	crdWatch := crd_watch.New(requiredCrds...)
 	// Cleanly stops the manager and exit. The pod will be restarted.
 	crdWatch.AllCrdsAddedHandler = cancel
@@ -139,13 +146,17 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("error adding service controller: %w", err)
 	}
 
-	vmController, err := CreateVmController(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to create vm controller: %w", err)
-	}
+	if crdWatch.CrdExists(vmCRD) {
+		vmController, cErr := CreateVmController(mgr)
+		if cErr != nil {
+			return fmt.Errorf("[vm controller] failed to create vm controller: %w", cErr)
+		}
 
-	if err = mgr.Add(getRunnable(mgr, vmController)); err != nil {
-		return fmt.Errorf("error adding vm-controller: %w", err)
+		if cErr = mgr.Add(getRunnable(mgr, vmController)); cErr != nil {
+			return fmt.Errorf("[vm controller] error adding: %w", cErr)
+		}
+
+		mgr.GetLogger().Info("[vm controller] added")
 	}
 
 	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
