@@ -4,7 +4,7 @@ kind: RoleBinding
 metadata:
   name: windows-pipelines-modify-data-object
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 roleRef:
   kind: ClusterRole
   name: modify-data-object-task
@@ -18,7 +18,7 @@ kind: RoleBinding
 metadata:
   name: windows-pipelines-create-vm
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 roleRef:
   kind: ClusterRole
   name: create-vm-from-manifest-task
@@ -32,7 +32,7 @@ kind: RoleBinding
 metadata:
   name: windows-pipelines-wait-for-vmi
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 roleRef:
   kind: ClusterRole
   name: modify-data-object-task
@@ -46,7 +46,7 @@ kind: RoleBinding
 metadata:
   name: windows-pipelines-cleanup-vm
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 roleRef:
   kind: ClusterRole
   name: cleanup-vm-task
