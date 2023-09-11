@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: windows-sqlserver
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 data:
   unattend.xml: |
     <?xml version="1.0" encoding="utf-8"?>
@@ -63,7 +63,7 @@ kind: ConfigMap
 metadata:
   name: windows-vs-code
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 data:
   unattend.xml: |
     <?xml version="1.0" encoding="utf-8"?>
@@ -122,7 +122,7 @@ kind: ConfigMap
 metadata:
   name: windows10-unattend
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 data:
   unattend.xml: |
     <?xml version="1.0" encoding="utf-8"?>
@@ -195,7 +195,7 @@ kind: ConfigMap
 metadata:
   name: windows11-unattend
   annotations:
-    "kubevirt.io/deploy-namespace": "kubevirt-os-images"
+    "kubevirt.io/tekton-piplines-deploy-namespace": "kubevirt-os-images"
 data:
   unattend.xml: |
     <?xml version="1.0" encoding="utf-8"?>

@@ -25,8 +25,9 @@ const (
 	operandName                = "tekton-pipelines"
 	operandComponent           = common.AppComponentTektonPipelines
 	tektonCrd                  = "tasks.tekton.dev"
-	deployNamespaceAnnotation  = "kubevirt.io/deploy-namespace"
+	deployNamespaceAnnotation  = "kubevirt.io/tekton-piplines-deploy-namespace"
 	pipelineServiceAccountName = "pipeline"
+	kubevirtNamespace          = "kubevirt"
 )
 
 var namespaceRegex = regexp.MustCompile(namespacePattern)
@@ -133,9 +134,14 @@ func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResu
 		o := sa.DeepCopy()
 		objects = append(objects, o)
 	}
-	namespace, _ := getTektonPipelinesNamespace(request)
-	for i := range objects {
-		objects[i].SetNamespace(namespace)
+
+	namespace, isUserDefinedNamespace := getTektonPipelinesNamespace(request)
+	for i, o := range objects {
+		objectNamespace := namespace
+		if value, ok := o.GetAnnotations()[deployNamespaceAnnotation]; ok && !isUserDefinedNamespace {
+			objectNamespace = value
+		}
+		objects[i].SetNamespace(objectNamespace)
 	}
 
 	for _, cr := range t.clusterRoles {
@@ -180,12 +186,12 @@ func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.Recon
 
 func reconcileConfigMapsFuncs(configMaps []v1.ConfigMap) []common.ReconcileFunc {
 	funcs := make([]common.ReconcileFunc, 0, len(configMaps))
-	var userDefinedNamespace bool
+	var isUserDefinedNamespace bool
 	for i := range configMaps {
 		configMap := &configMaps[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			configMap.Namespace, userDefinedNamespace = getTektonPipelinesNamespace(request)
-			if value, ok := configMap.Annotations[deployNamespaceAnnotation]; ok && !userDefinedNamespace {
+			configMap.Namespace, isUserDefinedNamespace = getTektonPipelinesNamespace(request)
+			if value, ok := configMap.Annotations[deployNamespaceAnnotation]; ok && !isUserDefinedNamespace {
 				configMap.Namespace = value
 			}
 			return common.CreateOrUpdate(request).
@@ -261,8 +267,8 @@ func reconcileRoleBindingsFuncs(rolebindings []rbac.RoleBinding) []common.Reconc
 	for i := range rolebindings {
 		roleBinding := &rolebindings[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
-			namespace, userDefinedNamespace := getTektonPipelinesNamespace(request)
-			if value, ok := roleBinding.Annotations[deployNamespaceAnnotation]; ok && !userDefinedNamespace {
+			namespace, isUserDefinedNamespace := getTektonPipelinesNamespace(request)
+			if value, ok := roleBinding.Annotations[deployNamespaceAnnotation]; ok && !isUserDefinedNamespace {
 				roleBinding.Namespace = value
 			} else {
 				roleBinding.Namespace = namespace
@@ -281,7 +287,7 @@ func reconcileRoleBindingsFuncs(rolebindings []rbac.RoleBinding) []common.Reconc
 }
 
 func getTektonPipelinesNamespace(request *common.Request) (string, bool) {
-	if request.Instance.Spec.TektonPipelines != nil && request.Instance.Spec.TektonPipelines.Namespace != "" {
+	if request.Instance.Spec.TektonPipelines != nil && request.Instance.Spec.TektonPipelines.Namespace != "" && request.Instance.Spec.TektonPipelines.Namespace != kubevirtNamespace {
 		return request.Instance.Spec.TektonPipelines.Namespace, true
 	}
 	return request.Instance.Namespace, false
