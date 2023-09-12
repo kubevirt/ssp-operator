@@ -175,7 +175,7 @@ var _ = Describe("environments", func() {
 			}
 		})
 
-		It("kubevirt.io/deploy-namespace annotation in configMaps should be replaced by user defined namespace", func() {
+		It("kubevirt.io/tekton-piplines-deploy-namespace annotation in configMaps should be replaced by user defined namespace", func() {
 			_, err := operand.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -188,7 +188,7 @@ var _ = Describe("environments", func() {
 			}
 		})
 
-		It("kubevirt.io/deploy-namespace annotation in roleBindings should be replaced by user defined namespace", func() {
+		It("kubevirt.io/tekton-piplines-deploy-namespace annotation in roleBindings should be replaced by user defined namespace", func() {
 			_, err := operand.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -202,13 +202,56 @@ var _ = Describe("environments", func() {
 		})
 	})
 
+	Context("With kubevirt namespace in ssp CR for pipelines", func() {
+		BeforeEach(func() {
+			request.Instance.Spec.FeatureGates.DeployTektonTaskResources = true
+			request.Instance.Spec.TektonPipelines = &ssp.TektonPipelines{
+				Namespace: kubevirtNamespace,
+			}
+		})
+
+		It("kubevirt.io/tekton-piplines-deploy-namespace annotation in configMaps should not be replaced", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, configMap := range bundle.ConfigMaps {
+				expectedNamespace := namespace
+				if annotationNamespace, ok := configMap.Annotations[deployNamespaceAnnotation]; ok {
+					expectedNamespace = annotationNamespace
+				}
+
+				key := client.ObjectKeyFromObject(&configMap)
+				cm := &v1.ConfigMap{}
+				Expect(request.Client.Get(request.Context, key, cm)).ToNot(HaveOccurred())
+				Expect(cm.Namespace).To(Equal(expectedNamespace), cm.Name+" configMap namespace should equal")
+			}
+		})
+
+		It("kubevirt.io/tekton-piplines-deploy-namespace annotation in roleBindings should not be replaced", func() {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, roleBinding := range bundle.RoleBindings {
+				expectedNamespace := namespace
+				if annotationNamespace, ok := roleBinding.Annotations[deployNamespaceAnnotation]; ok {
+					expectedNamespace = annotationNamespace
+				}
+
+				key := client.ObjectKeyFromObject(&roleBinding)
+				rb := &rbac.RoleBinding{}
+				Expect(request.Client.Get(request.Context, key, rb)).ToNot(HaveOccurred())
+				Expect(rb.Namespace).To(Equal(expectedNamespace), rb.Name+" roleBinding namespace should equal")
+			}
+		})
+	})
+
 	Context("Without user defined namespace in ssp CR for pipelines", func() {
 		BeforeEach(func() {
 			request.Instance.Spec.FeatureGates.DeployTektonTaskResources = true
 			request.Instance.Spec.TektonPipelines = nil
 		})
 
-		It("kubevirt.io/deploy-namespace annotation in configMaps should replace default namespace", func() {
+		It("kubevirt.io/tekton-piplines-deploy-namespace annotation in configMaps should replace default namespace", func() {
 			_, err := operand.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -227,7 +270,7 @@ var _ = Describe("environments", func() {
 			}
 		})
 
-		It("kubevirt.io/deploy-namespace annotation in roleBindings should replace default namespace", func() {
+		It("kubevirt.io/tekton-piplines-deploy-namespace annotation in roleBindings should replace default namespace", func() {
 			_, err := operand.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 
