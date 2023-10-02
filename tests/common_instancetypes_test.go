@@ -43,6 +43,8 @@ var _ = Describe("Common Instance Types", func() {
 				URL: pointer.String(URL),
 			}
 			createOrUpdateSsp(sspObj)
+			waitUntilDeployed()
+
 			k := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
 			c := common_instancetypes.CommonInstancetypes{
 				KustomizeRunFunc: k.Run,
