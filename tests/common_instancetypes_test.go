@@ -37,7 +37,7 @@ var _ = Describe("Common Instance Types", func() {
 			}
 		})
 		It("should reconcile from URL when provided", func() {
-			URL := "https://github.com/kubevirt/common-instancetypes//VirtualMachineClusterPreferences?ref=v0.1.0"
+			URL := "https://github.com/kubevirt/common-instancetypes//VirtualMachineClusterPreferences?ref=v0.3.3"
 			sspObj := getSsp()
 			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 				URL: pointer.String(URL),
