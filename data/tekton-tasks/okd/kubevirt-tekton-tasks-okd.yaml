@@ -53,7 +53,7 @@ spec:
       default: ""
   steps:
     - name: execute-in-vm
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - entrypoint
       args:
@@ -176,7 +176,7 @@ spec:
       description: The namespace of a template that was created.
   steps:
     - name: copytemplate
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - copy-template
       args:
@@ -280,7 +280,7 @@ spec:
       description: The namespace of a VM that was created.
   steps:
     - name: createvm
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - create-vm
       args:
@@ -321,23 +321,13 @@ rules:
     resources:
       - virtualmachines/start
   - verbs:
-      - '*'
-    apiGroups:
-      - kubevirt.io
-    resources:
-      - virtualmachines/finalizers
-  - verbs:
-      - '*'
+      - update
+
     apiGroups:
       - ''
     resources:
       - persistentvolumeclaims
-  - verbs:
-      - '*'
-    apiGroups:
-      - cdi.kubevirt.io
-    resources:
-      - datavolumes
+
 
 ---
 apiVersion: v1
@@ -415,7 +405,7 @@ spec:
       description: The namespace of a VM that was created.
   steps:
     - name: createvm
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - create-vm
       args:
@@ -452,7 +442,7 @@ rules:
       - virtualmachines
       - virtualmachineinstances
   - verbs:
-      - '*'
+      - get
     apiGroups:
       - kubevirt.io
     resources:
@@ -472,13 +462,8 @@ rules:
     resources:
       - processedtemplates
   - verbs:
-      - '*'
-    apiGroups:
-      - ''
-    resources:
-      - persistentvolumeclaims
-  - verbs:
-      - '*'
+      - create
+
     apiGroups:
       - cdi.kubevirt.io
     resources:
@@ -540,7 +525,7 @@ spec:
       default: ""
   steps:
     - name: run-virt-customize
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.16.0"
       command:
         - entrypoint
       args:
@@ -668,7 +653,7 @@ spec:
       default: ""
   steps:
     - name: run-virt-sysprep
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.16.0"
       command:
         - entrypoint
       args:
@@ -804,7 +789,7 @@ spec:
       default: ""
   steps:
     - name: execute-in-vm
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - entrypoint
       args:
@@ -928,7 +913,7 @@ spec:
       description: The namespace of a private key secret.
   steps:
     - name: generate-ssh-keys
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - entrypoint
       args:
@@ -955,7 +940,10 @@ metadata:
   name: generate-ssh-keys-task
 rules:
   - verbs:
-      - '*'
+      - get
+      - list
+      - create
+      - patch
     apiGroups:
       - ''
     resources:
@@ -1031,7 +1019,7 @@ spec:
       description: The namespace of the data object that was created.
   steps:
     - name: modify-data-object
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - modify-data-object
       args:
@@ -1205,7 +1193,7 @@ spec:
       description: The namespace of a template that was updated.
   steps:
     - name: modifyvmtemplate
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - modify-vm-template
       args:
@@ -1307,7 +1295,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.16.0"
       script: |
         #!/bin/bash
         set -x
@@ -1352,7 +1340,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       script: |
         #!/bin/bash
         set -ex
@@ -1379,7 +1367,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.16.0"
       script: |
         #!/bin/bash
         set -x
@@ -1431,7 +1419,7 @@ spec:
       description: A label selector expression to decide if the VirtualMachineInstance (VMI) is in a failed state. Eg. "status.phase in (Failed, Unknown)". It is evaluated on each VMI update and will result in this task failing if true.
   steps:
     - name: wait-for-vmi-status
-      image: "quay.io/kubevirt/tekton-tasks:v0.15.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.16.0"
       command:
         - entrypoint
       env:
