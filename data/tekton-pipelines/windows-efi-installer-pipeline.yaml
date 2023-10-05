@@ -52,8 +52,6 @@ spec:
             apiVersion: cdi.kubevirt.io/v1beta1
             kind: DataVolume
             metadata:
-              annotations:
-                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
               generateName: $(params.isoDVName)-
             spec:
               source:
@@ -65,7 +63,7 @@ spec:
                   requests:
                     storage: 9Gi
         - name: waitForSuccess
-          value: true
+          value: false
         - name: allowReplace
           value: true
       taskRef:
@@ -91,8 +89,6 @@ spec:
             apiVersion: cdi.kubevirt.io/v1beta1
             kind: DataVolume
             metadata:
-              annotations:
-                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
               generateName: windows-efi-root-disk-
             spec:
               storage:
@@ -102,7 +98,7 @@ spec:
               source:
                 blank: {}
         - name: waitForSuccess
-          value: true
+          value: false
     - name: create-vm
       params:
         - name: runStrategy
@@ -181,10 +177,10 @@ spec:
             apiVersion: cdi.kubevirt.io/v1beta1
             kind: DataVolume
             metadata:
-              name: $(params.baseDvName)
-              namespace: $(params.baseDvNamespace)
               annotations:
                 "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
+              name: $(params.baseDvName)
+              namespace: $(params.baseDvNamespace)
             spec:
               storage: {}
               source:
