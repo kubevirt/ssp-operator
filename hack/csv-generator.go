@@ -98,6 +98,20 @@ func init() {
 }
 
 func runGenerator() error {
+	if err := generateCsv(); err != nil {
+		return err
+	}
+
+	if f.dumpCRDs {
+		if err := dumpCrds(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func generateCsv() error {
 	csv := &csvv1.ClusterServiceVersion{}
 	if err := readFileToObject(f.file, csv); err != nil {
 		return err
@@ -115,13 +129,10 @@ func runGenerator() error {
 
 	csv.Spec.RelatedImages = getRelatedImages(f)
 
-	err = writeObjectYaml(csv, os.Stdout)
-	if err != nil {
-		return err
-	}
-	if !f.dumpCRDs {
-		return nil
-	}
+	return writeObjectYaml(csv, os.Stdout)
+}
+
+func dumpCrds() error {
 	files, err := os.ReadDir("data/crd")
 	if err != nil {
 		return err
