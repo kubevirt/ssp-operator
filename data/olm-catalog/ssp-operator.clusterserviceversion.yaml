@@ -163,7 +163,6 @@ spec:
           resources:
           - datavolumes
           verbs:
-          - '*'
           - create
           - delete
           - get
@@ -220,7 +219,6 @@ spec:
           resources:
           - persistentvolumeclaims
           verbs:
-          - '*'
           - create
           - delete
           - get
@@ -258,7 +256,11 @@ spec:
           resources:
           - secrets
           verbs:
-          - '*'
+          - create
+          - delete
+          - get
+          - list
+          - patch
         - apiGroups:
           - ""
           resources:
@@ -333,7 +335,7 @@ spec:
           resources:
           - virtualmachines/finalizers
           verbs:
-          - '*'
+          - get
         - apiGroups:
           - monitoring.coreos.com
           resources:

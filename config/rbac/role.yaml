@@ -105,7 +105,6 @@ rules:
   resources:
   - datavolumes
   verbs:
-  - '*'
   - create
   - delete
   - get
@@ -162,7 +161,6 @@ rules:
   resources:
   - persistentvolumeclaims
   verbs:
-  - '*'
   - create
   - delete
   - get
@@ -200,7 +198,11 @@ rules:
   resources:
   - secrets
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
 - apiGroups:
   - ""
   resources:
@@ -275,7 +277,7 @@ rules:
   resources:
   - virtualmachines/finalizers
   verbs:
-  - '*'
+  - get
 - apiGroups:
   - monitoring.coreos.com
   resources:
