@@ -65,12 +65,14 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
 	}
 
-	tektonPipelinesBundle, err := tekton_bundle.ReadPipelineBundle()
+	tektonPipelinesBundlePaths := tekton_bundle.GetTektonPipelineBundlePaths()
+	tektonPipelinesBundle, err := tekton_bundle.ReadBundle(tektonPipelinesBundlePaths)
 	if err != nil {
 		return err
 	}
 
-	tektonTasksBundle, err := tekton_bundle.ReadTasksBundle(runningOnOpenShift)
+	tektonTasksBundlePath := tekton_bundle.GetTektonTasksBundlePath(runningOnOpenShift)
+	tektonTasksBundle, err := tekton_bundle.ReadBundle([]string{tektonTasksBundlePath})
 	if err != nil {
 		return err
 	}

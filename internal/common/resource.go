@@ -549,3 +549,32 @@ func defaultStatusFunc(obj client.Object) ResourceStatus {
 	}
 	return status
 }
+
+// AppendDeepCopies appends deep copies of objects from a source slice to a destination slice.
+// This function is useful for creating a new slice containing deep copies of the provided objects.
+//
+// The PT interface {*T ; client.Object } is a trick. It means that type PT satisfies
+// an anonymous typeset defined directly in the function signature.
+// This typeset interface { *T; client.Object } means that it is a pointer to T
+// and implements interface client.Object.
+//
+// Parameters:
+//   - destination: The destination slice where the deep copies of objects will be appended.
+//   - objects: A slice of objects (of type T) to be deep copied and appended to the destination slice.
+//
+// Returns:
+//   - The updated destination slice containing the appended deep copies of objects.
+//
+// Type Parameters:
+//   - PT: A type that is a pointer to the object type (should implement *T and client.Object interfaces).
+//   - T: The actual object type.
+func AppendDeepCopies[PT interface {
+	*T
+	client.Object
+}, T any](destination []client.Object, objects []T) []client.Object {
+	for i := range objects {
+		var object = PT(&objects[i])
+		destination = append(destination, object.DeepCopyObject().(client.Object))
+	}
+	return destination
+}

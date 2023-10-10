@@ -32,9 +32,9 @@ const (
 
 var _ = Describe("environments", func() {
 	var (
-		operand operands.Operand
 		bundle  *tektonbundle.Bundle
-		request *common.Request
+		operand operands.Operand
+		request common.Request
 	)
 
 	BeforeEach(func() {
@@ -54,69 +54,69 @@ var _ = Describe("environments", func() {
 		})
 
 		It("Reconcile function should return correct functions", func() {
-			functions, err := operand.Reconcile(request)
+			functions, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred(), "should not throw err")
 			Expect(functions).To(HaveLen(8), "should return correct number of reconcile functions")
 		})
 
 		It("Should create tekton-tasks resources", func() {
-			_, err := operand.Reconcile(request)
+			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
 			for _, task := range bundle.Tasks {
-				ExpectResourceExists(&task, *request)
+				ExpectResourceExists(&task, request)
 			}
 
 			for _, clusterRole := range bundle.ClusterRoles {
-				ExpectResourceExists(&clusterRole, *request)
+				ExpectResourceExists(&clusterRole, request)
 			}
 
 			for _, serviceAccount := range bundle.ServiceAccounts {
-				ExpectResourceExists(&serviceAccount, *request)
+				ExpectResourceExists(&serviceAccount, request)
 			}
 
 			for _, roleBinding := range bundle.RoleBindings {
-				ExpectResourceExists(&roleBinding, *request)
+				ExpectResourceExists(&roleBinding, request)
 			}
 		})
 
-		It("should remove tekton-tasks resources on cleanup", func() {
-			_, err := operand.Reconcile(request)
+		It("Should remove tekton-tasks resources on cleanup", func() {
+			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
 			for _, task := range bundle.Tasks {
-				ExpectResourceExists(&task, *request)
+				ExpectResourceExists(&task, request)
 			}
 
 			for _, clusterRole := range bundle.ClusterRoles {
-				ExpectResourceExists(&clusterRole, *request)
+				ExpectResourceExists(&clusterRole, request)
 			}
 
 			for _, serviceAccount := range bundle.ServiceAccounts {
-				ExpectResourceExists(&serviceAccount, *request)
+				ExpectResourceExists(&serviceAccount, request)
 			}
 
 			for _, roleBinding := range bundle.RoleBindings {
-				ExpectResourceExists(&roleBinding, *request)
+				ExpectResourceExists(&roleBinding, request)
 			}
 
-			_, err = operand.Cleanup(request)
+			_, err = operand.Cleanup(&request)
 			Expect(err).ToNot(HaveOccurred())
 
 			for _, task := range bundle.Tasks {
-				ExpectResourceNotExists(&task, *request)
+				ExpectResourceNotExists(&task, request)
 			}
 
 			for _, clusterRole := range bundle.ClusterRoles {
-				ExpectResourceNotExists(&clusterRole, *request)
+				ExpectResourceNotExists(&clusterRole, request)
 			}
 
 			for _, serviceAccount := range bundle.ServiceAccounts {
-				ExpectResourceNotExists(&serviceAccount, *request)
+				ExpectResourceNotExists(&serviceAccount, request)
 			}
 
 			for _, roleBinding := range bundle.RoleBindings {
-				ExpectResourceNotExists(&roleBinding, *request)
+				ExpectResourceNotExists(&roleBinding, request)
 			}
 		})
 	})
@@ -127,23 +127,23 @@ var _ = Describe("environments", func() {
 		})
 
 		It("Should not create tekton-tasks resources", func() {
-			_, err := operand.Reconcile(request)
+			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
 			for _, task := range bundle.Tasks {
-				ExpectResourceNotExists(&task, *request)
+				ExpectResourceNotExists(&task, request)
 			}
 
 			for _, clusterRole := range bundle.ClusterRoles {
-				ExpectResourceNotExists(&clusterRole, *request)
+				ExpectResourceNotExists(&clusterRole, request)
 			}
 
 			for _, serviceAccount := range bundle.ServiceAccounts {
-				ExpectResourceNotExists(&serviceAccount, *request)
+				ExpectResourceNotExists(&serviceAccount, request)
 			}
 
 			for _, roleBinding := range bundle.RoleBindings {
-				ExpectResourceNotExists(&roleBinding, *request)
+				ExpectResourceNotExists(&roleBinding, request)
 			}
 		})
 	})
@@ -154,7 +154,7 @@ func TestTektonTasks(t *testing.T) {
 	RunSpecs(t, "Tekton Tasks Suite")
 }
 
-func getMockedRequest() *common.Request {
+func getMockedRequest() common.Request {
 	log := logf.Log.WithName("tekton-tasks-operand")
 
 	Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
@@ -179,7 +179,7 @@ func getMockedRequest() *common.Request {
 	crdWatch := crd_watch.New(tektonCrd)
 	Expect(crdWatch.Init(context.Background(), client)).To(Succeed())
 
-	return &common.Request{
+	return common.Request{
 		Request: reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: namespace,
@@ -217,8 +217,9 @@ func getMockedTestBundle() *tektonbundle.Bundle {
 		Tasks: []pipeline.Task{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{},
-					Name:   diskVirtSysprepTaskName,
+					Labels:    map[string]string{},
+					Name:      diskVirtSysprepTaskName,
+					Namespace: namespace,
 				},
 				Spec: pipeline.TaskSpec{
 					Steps: []pipeline.Step{
@@ -229,8 +230,9 @@ func getMockedTestBundle() *tektonbundle.Bundle {
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{},
-					Name:   modifyTemplateTaskName,
+					Labels:    map[string]string{},
+					Name:      modifyTemplateTaskName,
+					Namespace: namespace,
 				},
 				Spec: pipeline.TaskSpec{
 					Steps: []pipeline.Step{
@@ -244,33 +246,39 @@ func getMockedTestBundle() *tektonbundle.Bundle {
 		ServiceAccounts: []v1.ServiceAccount{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtSysprepTaskName + "-task",
+					Name:      diskVirtSysprepTaskName + "-task",
+					Namespace: namespace,
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyTemplateTaskName + "-task",
+					Name:      modifyTemplateTaskName + "-task",
+					Namespace: namespace,
 				},
 			},
 		},
 		RoleBindings: []rbac.RoleBinding{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtSysprepTaskName + "-task",
+					Name:      diskVirtSysprepTaskName + "-task",
+					Namespace: namespace,
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyTemplateTaskName + "-task",
+					Name:      modifyTemplateTaskName + "-task",
+					Namespace: namespace,
 				},
 			},
 		},
 		ClusterRoles: []rbac.ClusterRole{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: diskVirtSysprepTaskName + "-task",
+					Name:      diskVirtSysprepTaskName + "-task",
+					Namespace: namespace,
 				},
 			}, {
 				ObjectMeta: metav1.ObjectMeta{
-					Name: modifyTemplateTaskName + "-task",
+					Name:      modifyTemplateTaskName + "-task",
+					Namespace: namespace,
 				},
 			},
 		},

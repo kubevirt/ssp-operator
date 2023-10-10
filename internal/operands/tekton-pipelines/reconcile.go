@@ -17,7 +17,7 @@ import (
 )
 
 // +kubebuilder:rbac:groups=tekton.dev,resources=pipelines,verbs=list;watch;create;update;delete
-// +kubebuilder:rbac:groups=*,resources=configmaps,verbs=list;watch;create;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=list;watch;create;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=list;watch;create;update;delete
 
 const (
@@ -116,24 +116,14 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 
 func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
+
 	if request.CrdList.CrdExists(tektonCrd) {
-		for _, p := range t.pipelines {
-			o := p.DeepCopy()
-			objects = append(objects, o)
-		}
+		objects = common.AppendDeepCopies(objects, t.pipelines)
 	}
-	for _, cm := range t.configMaps {
-		o := cm.DeepCopy()
-		objects = append(objects, o)
-	}
-	for _, rb := range t.roleBindings {
-		o := rb.DeepCopy()
-		objects = append(objects, o)
-	}
-	for _, sa := range t.serviceAccounts {
-		o := sa.DeepCopy()
-		objects = append(objects, o)
-	}
+
+	objects = common.AppendDeepCopies(objects, t.configMaps)
+	objects = common.AppendDeepCopies(objects, t.roleBindings)
+	objects = common.AppendDeepCopies(objects, t.serviceAccounts)
 
 	namespace, isUserDefinedNamespace := getTektonPipelinesNamespace(request)
 	for i, o := range objects {
@@ -144,10 +134,7 @@ func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResu
 		objects[i].SetNamespace(objectNamespace)
 	}
 
-	for _, cr := range t.clusterRoles {
-		o := cr.DeepCopy()
-		objects = append(objects, o)
-	}
+	objects = common.AppendDeepCopies(objects, t.clusterRoles)
 
 	return common.DeleteAll(request, objects...)
 }

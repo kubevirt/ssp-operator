@@ -19,43 +19,52 @@ const (
 )
 
 var _ = Describe("Tekton bundle", func() {
-	It("should return correct pipeline folder path ", func() {
-		path := getPipelineBundlePath()
-		Expect(path).To(Equal("/data/tekton-pipelines/"))
+	It("should return tekton pipeline paths", func() {
+		paths := GetTektonPipelineBundlePaths()
+		Expect(paths).To(HaveLen(7), "number of paths should equal")
 	})
 
-	It("should return correct task path on okd", func() {
-		path := getTasksBundlePath(true)
-		Expect(path).To(Equal("/data/tekton-tasks/okd/kubevirt-tekton-tasks-okd.yaml"))
+	It("should return tekton tasks path correctly", func() {
+		kubernetesPath := GetTektonTasksBundlePath(false)
+		okdPath := GetTektonTasksBundlePath(true)
+
+		Expect(kubernetesPath).To(Equal("/data/tekton-tasks/kubernetes/kubevirt-tekton-tasks-kubernetes.yaml"))
+		Expect(okdPath).To(Equal("/data/tekton-tasks/okd/kubevirt-tekton-tasks-okd.yaml"))
 	})
 
-	It("should return correct task path on kubernetes", func() {
-		path := getTasksBundlePath(false)
-		Expect(path).To(Equal("/data/tekton-tasks/kubernetes/kubevirt-tekton-tasks-kubernetes.yaml"))
-	})
-
-	It("should load correct files and convert them", func() {
+	It("should read tekton tasks bundle correctly", func() {
 		path, _ := os.Getwd()
-
-		taskPath := filepath.Join(path, "test-bundle-files/test-tasks/test-tasks.yaml")
-		pipelinePath := filepath.Join(path, "test-bundle-files/test-pipelines/")
-
-		taskFile, err := os.ReadFile(taskPath)
+		bundlePath := filepath.Join(path, "test-bundle-files/test-tasks/test-tasks.yaml")
+		bundle, err := ReadBundle([]string{bundlePath})
 		Expect(err).ToNot(HaveOccurred())
-		pipelineFiles, err := readFolder(pipelinePath)
-		Expect(err).ToNot(HaveOccurred())
-		files := [][]byte{}
-		files = append(files, taskFile)
-		files = append(files, pipelineFiles...)
+		Expect(bundle.Tasks).To(HaveLen(numberOfTasks), "number of tasks should equal")
+	})
 
-		tektonObjs, err := decodeObjectsFromFiles(files)
+	It("should read tekton pipelines bundle correctly", func() {
+		path, _ := os.Getwd()
+		var bundlePaths []string
+		bundlePaths = append(bundlePaths, filepath.Join(path, "test-bundle-files/test-pipelines/windows-installer.yaml"))
+		bundlePaths = append(bundlePaths, filepath.Join(path, "test-bundle-files/test-pipelines/windows-installer2-test.yaml"))
+		bundle, err := ReadBundle(bundlePaths)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(bundle.Pipelines).To(HaveLen(numberOfPipelines), "number of pipelines should equal")
+	})
+
+	It("should load tekton bundle correctly", func() {
+		path, _ := os.Getwd()
+		var paths []string
+		paths = append(paths, filepath.Join(path, "test-bundle-files/test-tasks/test-tasks.yaml"))
+		paths = append(paths, filepath.Join(path, "test-bundle-files/test-pipelines/windows-installer.yaml"))
+		paths = append(paths, filepath.Join(path, "test-bundle-files/test-pipelines/windows-installer2-test.yaml"))
+
+		bundle, err := ReadBundle(paths)
 		Expect(err).ToNot(HaveOccurred(), "it should not throw error")
-		Expect(tektonObjs.Tasks).To(HaveLen(numberOfTasks), "number of tasks should equal")
-		Expect(tektonObjs.ServiceAccounts).To(HaveLen(numberOfServiceAccounts), "number of service accounts should equal")
-		Expect(tektonObjs.RoleBindings).To(HaveLen(numberOfRoleBindings), "number of role bindings should equal")
-		Expect(tektonObjs.ClusterRoles).To(HaveLen(numberOfClusterRoles), "number of cluster roles should equal")
-		Expect(tektonObjs.Pipelines).To(HaveLen(numberOfPipelines), "number of pipelines should equal")
-		Expect(tektonObjs.ConfigMaps).To(HaveLen(numberOfConfigMaps), "number of config maps should equal")
+		Expect(bundle.Tasks).To(HaveLen(numberOfTasks), "number of tasks should equal")
+		Expect(bundle.ServiceAccounts).To(HaveLen(numberOfServiceAccounts), "number of service accounts should equal")
+		Expect(bundle.RoleBindings).To(HaveLen(numberOfRoleBindings), "number of role bindings should equal")
+		Expect(bundle.ClusterRoles).To(HaveLen(numberOfClusterRoles), "number of cluster roles should equal")
+		Expect(bundle.Pipelines).To(HaveLen(numberOfPipelines), "number of pipelines should equal")
+		Expect(bundle.ConfigMaps).To(HaveLen(numberOfConfigMaps), "number of config maps should equal")
 	})
 })
 
