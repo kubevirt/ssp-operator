@@ -54,8 +54,6 @@ spec:
             apiVersion: cdi.kubevirt.io/v1beta1
             kind: DataVolume
             metadata:
-              annotations:
-                "cdi.kubevirt.io/storage.bind.immediate.requested": "true"
               name: $(params.baseDvName)
               namespace: $(params.baseDvNamespace)
             spec:
@@ -65,7 +63,7 @@ spec:
                   name: $(params.sourceDiskImageName)
                   namespace: $(params.sourceDiskImageNamespace)
         - name: waitForSuccess
-          value: true
+          value: false
         - name: allowReplace
           value: true
     - name: create-vm
