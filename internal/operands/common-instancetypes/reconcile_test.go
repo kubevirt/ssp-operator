@@ -400,6 +400,114 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		ExpectResourceExists(instancetype, request)
 		ExpectResourceExists(preference, request)
 	})
+
+	It("should not deploy internal bundle resources when featureGate is disabled", func() {
+		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
+			DeployCommonInstancetypes: pointer.Bool(false),
+		}
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		virtualMachineClusterInstancetypes, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype](instancetypePath)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(virtualMachineClusterInstancetypes).ToNot(BeEmpty())
+
+		virtualMachineClusterPreferences, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference](preferencePath)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(virtualMachineClusterPreferences).ToNot(BeEmpty())
+
+		assertResoucesDoNotExist(request, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences)
+	})
+
+	It("should cleanup internal bundle resources from when featureGate is disabled after being enabled", func() {
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		virtualMachineClusterInstancetypes, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype](instancetypePath)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(virtualMachineClusterInstancetypes).ToNot(BeEmpty())
+
+		virtualMachineClusterPreferences, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference](preferencePath)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(virtualMachineClusterPreferences).ToNot(BeEmpty())
+
+		assertResoucesExist(request, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences)
+
+		// Assert that CrdList can see the required CRDs before we Reconcile and Cleanup
+		Expect(request.CrdList.CrdExists(virtualMachineClusterInstancetypeCrd)).To(BeTrue())
+		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
+
+		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
+			DeployCommonInstancetypes: pointer.Bool(false),
+		}
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		assertResoucesDoNotExist(request, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences)
+	})
+
+	It("should not deploy external URI resources resources when featureGate is disabled", func() {
+		// Generate a mock ResMap and resources for the test
+		mockResMap, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences, err := newMockResources(10, 10)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Use a mock Run function to return our fake ResMap
+		operand.KustomizeRunFunc = func(_ filesys.FileSystem, _ string) (resmap.ResMap, error) {
+			return mockResMap, nil
+		}
+
+		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
+			DeployCommonInstancetypes: pointer.Bool(false),
+		}
+
+		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
+		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
+			URL: pointer.String("https://foo.com/bar?ref=1"),
+		}
+
+		// Run Reconcile and assert the results
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		assertResoucesDoNotExist(request, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences)
+	})
+
+	It("should cleanup external URI resources from when featureGate is disabled after being enabled", func() {
+		// Generate a mock ResMap and resources for the test
+		mockResMap, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences, err := newMockResources(10, 10)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Use a mock Run function to return our fake ResMap
+		operand.KustomizeRunFunc = func(_ filesys.FileSystem, _ string) (resmap.ResMap, error) {
+			return mockResMap, nil
+		}
+
+		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
+		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
+			URL: pointer.String("https://foo.com/bar?ref=1"),
+		}
+
+		// Run Reconcile and assert the results
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		assertResoucesExist(request, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences)
+
+		// Assert that CrdList can see the required CRDs before we Reconcile and Cleanup
+		Expect(request.CrdList.CrdExists(virtualMachineClusterInstancetypeCrd)).To(BeTrue())
+		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
+
+		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
+			DeployCommonInstancetypes: pointer.Bool(false),
+		}
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		assertResoucesDoNotExist(request, virtualMachineClusterInstancetypes, virtualMachineClusterPreferences)
+	})
 })
 
 func addConversionFunctions(s *runtime.Scheme) error {
