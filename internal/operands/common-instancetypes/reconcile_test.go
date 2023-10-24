@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 	"sigs.k8s.io/kustomize/kyaml/kio"
 
+	virtv1 "kubevirt.io/api/core/v1"
 	instancetypeapi "kubevirt.io/api/instancetype"
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
@@ -249,6 +250,55 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 		ExpectResourceExists(instancetype, request)
 		ExpectResourceExists(preference, request)
+	})
+
+	It("should ignore virt-operator owned objects during reconcile when also provided by bundle", func() {
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		instancetypeList := &instancetypev1beta1.VirtualMachineClusterInstancetypeList{}
+		Expect(request.Client.List(request.Context, instancetypeList, &client.ListOptions{})).To(Succeed())
+		Expect(len(instancetypeList.Items) > 0).To(BeTrue())
+
+		preferenceList := &instancetypev1beta1.VirtualMachineClusterPreferenceList{}
+		Expect(request.Client.List(request.Context, preferenceList, &client.ListOptions{})).To(Succeed())
+		Expect(len(preferenceList.Items) > 0).To(BeTrue())
+
+		// Mutate the instance type while also adding the labels for virt-operator
+		instancetypeToUpdate := instancetypeList.Items[0]
+		updatedCPUGuestCount := instancetypeToUpdate.Spec.CPU.Guest + 1
+		instancetypeToUpdate.Spec.CPU.Guest = updatedCPUGuestCount
+		instancetypeToUpdate.Labels = map[string]string{
+			virtv1.ManagedByLabel: virtv1.ManagedByLabelOperatorValue,
+		}
+		Expect(request.Client.Update(request.Context, &instancetypeToUpdate, &client.UpdateOptions{})).To(Succeed())
+
+		// Mutate the preference while also adding the labels for virt-operator
+		preferenceToUpdate := preferenceList.Items[0]
+		updatedPreferredCPUTopology := instancetypev1beta1.PreferCores
+		updatedPreferenceCPU := &instancetypev1beta1.CPUPreferences{
+			PreferredCPUTopology: &updatedPreferredCPUTopology,
+		}
+		preferenceToUpdate.Spec.CPU = updatedPreferenceCPU
+		preferenceToUpdate.Labels = map[string]string{
+			virtv1.ManagedByLabel: virtv1.ManagedByLabelOperatorValue,
+		}
+		Expect(request.Client.Update(request.Context, &preferenceToUpdate, &client.UpdateOptions{})).To(Succeed())
+
+		results, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Assert that we have reported ignoring the attempt to reconcile the objects owned by virt-operator
+		for _, res := range results {
+			Expect(res.Resource.GetName()).ToNot(Equal(instancetypeToUpdate.Name))
+			Expect(res.Resource.GetName()).ToNot(Equal(preferenceToUpdate.Name))
+		}
+
+		// Assert that the mutations made above persist as the reconcile is being ignored
+		Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&instancetypeToUpdate), &instancetypeToUpdate, &client.GetOptions{})).To(Succeed())
+		Expect(instancetypeToUpdate.Spec.CPU.Guest).To(Equal(updatedCPUGuestCount))
+		Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&preferenceToUpdate), &preferenceToUpdate, &client.GetOptions{})).To(Succeed())
+		Expect(preferenceToUpdate.Spec.CPU).To(Equal(updatedPreferenceCPU))
 	})
 
 	It("should create and cleanup resources from an external URL", func() {

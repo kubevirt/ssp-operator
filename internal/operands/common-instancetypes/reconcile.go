@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kustomize/api/krusty"
@@ -15,6 +16,7 @@ import (
 	"sigs.k8s.io/kustomize/api/resource"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
+	virtv1 "kubevirt.io/api/core/v1"
 	instancetypeapi "kubevirt.io/api/instancetype"
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -260,7 +262,11 @@ func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]commo
 	// Generate the normal set of reconcile funcs to create or update the provided resources
 	c.virtualMachineClusterInstancetypes = clusterInstancetypesFromURL
 	c.virtualMachineClusterPreferences = clusterPreferencesFromURL
-	return common.CollectResourceStatus(request, c.reconcileFuncs()...)
+	reconcileFuncs, err := c.reconcileFuncs(request)
+	if err != nil {
+		return nil, err
+	}
+	return common.CollectResourceStatus(request, reconcileFuncs...)
 }
 
 func (c *CommonInstancetypes) reconcileFromBundle(request *common.Request) ([]common.ReconcileResult, error) {
@@ -277,7 +283,11 @@ func (c *CommonInstancetypes) reconcileFromBundle(request *common.Request) ([]co
 
 	c.virtualMachineClusterInstancetypes = clusterInstancetypesFromBundle
 	c.virtualMachineClusterPreferences = clusterPreferencesFromBundle
-	return common.CollectResourceStatus(request, c.reconcileFuncs()...)
+	reconcileFuncs, err := c.reconcileFuncs(request)
+	if err != nil {
+		return nil, err
+	}
+	return common.CollectResourceStatus(request, reconcileFuncs...)
 }
 
 func (c *CommonInstancetypes) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
@@ -309,17 +319,31 @@ func (c *CommonInstancetypes) Cleanup(request *common.Request) ([]common.Cleanup
 	return nil, nil
 }
 
-func (c *CommonInstancetypes) reconcileFuncs() []common.ReconcileFunc {
+func (c *CommonInstancetypes) reconcileFuncs(request *common.Request) ([]common.ReconcileFunc, error) {
+	instancetypeFuncs, err := c.reconcileVirtualMachineClusterInstancetypesFuncs(request)
+	if err != nil {
+		return nil, err
+	}
+	preferenceFuncs, err := c.reconcileVirtualMachineClusterPreferencesFuncs(request)
+	if err != nil {
+		return nil, err
+	}
+
 	funcs := []common.ReconcileFunc{}
-	funcs = append(funcs, c.reconcileVirtualMachineClusterInstancetypesFuncs()...)
-	funcs = append(funcs, c.reconcileVirtualMachineClusterPreferencesFuncs()...)
-	return funcs
+	funcs = append(funcs, instancetypeFuncs...)
+	funcs = append(funcs, preferenceFuncs...)
+	return funcs, nil
 }
 
-func (c *CommonInstancetypes) reconcileVirtualMachineClusterInstancetypesFuncs() []common.ReconcileFunc {
+func (c *CommonInstancetypes) reconcileVirtualMachineClusterInstancetypesFuncs(request *common.Request) ([]common.ReconcileFunc, error) {
 	funcs := make([]common.ReconcileFunc, 0, len(c.virtualMachineClusterInstancetypes))
 	for i := range c.virtualMachineClusterInstancetypes {
 		clusterInstancetype := &c.virtualMachineClusterInstancetypes[i]
+		if ignore, err := ignoreObjectOwnedByVirtOperator(request, clusterInstancetype); err != nil {
+			return nil, err
+		} else if ignore {
+			continue
+		}
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			return common.CreateOrUpdate(request).
 				ClusterResource(clusterInstancetype).
@@ -327,13 +351,18 @@ func (c *CommonInstancetypes) reconcileVirtualMachineClusterInstancetypesFuncs()
 				Reconcile()
 		})
 	}
-	return funcs
+	return funcs, nil
 }
 
-func (c *CommonInstancetypes) reconcileVirtualMachineClusterPreferencesFuncs() []common.ReconcileFunc {
+func (c *CommonInstancetypes) reconcileVirtualMachineClusterPreferencesFuncs(request *common.Request) ([]common.ReconcileFunc, error) {
 	funcs := make([]common.ReconcileFunc, 0, len(c.virtualMachineClusterPreferences))
 	for i := range c.virtualMachineClusterPreferences {
 		clusterPreference := &c.virtualMachineClusterPreferences[i]
+		if ignore, err := ignoreObjectOwnedByVirtOperator(request, clusterPreference); err != nil {
+			return nil, err
+		} else if ignore {
+			continue
+		}
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			return common.CreateOrUpdate(request).
 				ClusterResource(clusterPreference).
@@ -341,5 +370,28 @@ func (c *CommonInstancetypes) reconcileVirtualMachineClusterPreferencesFuncs() [
 				Reconcile()
 		})
 	}
-	return funcs
+	return funcs, nil
+}
+
+func ignoreObjectOwnedByVirtOperator(request *common.Request, obj client.Object) (bool, error) {
+	// During an upgrade to v0.19.0 we might encounter virt-operator attempting
+	// to reconcile the same set of common-instancetype resources. Ignore these
+	// requests to reconcile such objects once owned by virt-operator.
+	existing := obj.DeepCopyObject().(client.Object)
+	if err := request.Client.Get(request.Context, client.ObjectKeyFromObject(existing), existing); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return false, nil
+		}
+		return true, err
+	}
+
+	return isOwnedByVirtOperator(existing), nil
+}
+
+func isOwnedByVirtOperator(obj client.Object) bool {
+	if obj.GetLabels() == nil {
+		return false
+	}
+	managedValue, managedOk := obj.GetLabels()[virtv1.ManagedByLabel]
+	return managedOk && managedValue == virtv1.ManagedByLabelOperatorValue
 }
