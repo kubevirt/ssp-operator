@@ -1,8 +1,7 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal as builder
 
 RUN microdnf install -y make tar gzip which && microdnf clean all
-
-RUN curl -L https://go.dev/dl/go1.16.15.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+RUN curl -L https://go.dev/dl/go1.17.13.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 ENV PATH=$PATH:/usr/local/go/bin
 
 ARG VERSION=latest
@@ -30,6 +29,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -ldflags="-
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 RUN mkdir -p /etc/webhook/certs
+
+RUN microdnf update -y  && microdnf clean all
 
 WORKDIR /
 COPY --from=builder /workspace/kubevirt-template-validator /usr/sbin/kubevirt-template-validator
