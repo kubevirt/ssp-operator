@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+source $(dirname "$0")/versions.sh
+
 NAMESPACE=${1:-kubevirt}
 
 oc apply -f - <<EOF
@@ -10,11 +12,7 @@ metadata:
   name: ${NAMESPACE}
 EOF
 
-# Deploying kuebvirt
-LATEST_KUBEVIRT=$(curl -L https://api.github.com/repos/kubevirt/kubevirt/releases | \
-            jq '.[] | select(.prerelease==false) | .name' | sort -V | tail -n1 | tr -d '"')
-
-oc apply -n $NAMESPACE -f "https://github.com/kubevirt/kubevirt/releases/download/${LATEST_KUBEVIRT}/kubevirt-operator.yaml"
+oc apply -n $NAMESPACE -f "https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml"
 
 # Using KubeVirt CR from version v0.35.0
 oc apply -n $NAMESPACE -f - <<EOF
@@ -51,11 +49,8 @@ metadata:
   name: $CDI_NAMESPACE
 EOF
 
-LATEST_CDI=$(curl -L https://api.github.com/repos/kubevirt/containerized-data-importer/releases | \
-             jq '.[] | select(.prerelease==false) | .tag_name' | sort -V | tail -n1 | tr -d '"')
-
-oc apply -n ${CDI_NAMESPACE} -f "https://github.com/kubevirt/containerized-data-importer/releases/download/${LATEST_CDI}/cdi-operator.yaml"
-oc apply -n ${CDI_NAMESPACE} -f "https://github.com/kubevirt/containerized-data-importer/releases/download/${LATEST_CDI}/cdi-cr.yaml"
+oc apply -n ${CDI_NAMESPACE} -f "https://github.com/kubevirt/containerized-data-importer/releases/download/${CDI_VERSION}/cdi-operator.yaml"
+oc apply -n ${CDI_NAMESPACE} -f "https://github.com/kubevirt/containerized-data-importer/releases/download/${CDI_VERSION}/cdi-cr.yaml"
 
 echo "Waiting for CDI to be ready..."
 
