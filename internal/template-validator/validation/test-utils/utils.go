@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	kubevirt "kubevirt.io/client-go/apis/core/v1"
+	kubevirt "kubevirt.io/api/core/v1"
 )
 
 func NewVMCirros() *kubevirt.VirtualMachine {

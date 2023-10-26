@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	k6tv1 "kubevirt.io/client-go/apis/core/v1"
+	k6tv1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/ssp-operator/internal/template-validator/validation/path"
 )
