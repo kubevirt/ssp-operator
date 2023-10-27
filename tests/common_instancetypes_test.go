@@ -15,6 +15,7 @@ import (
 var _ = Describe("Common Instance Types", func() {
 	BeforeEach(func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
+		waitUntilDeployed()
 	})
 
 	AfterEach(func() {
