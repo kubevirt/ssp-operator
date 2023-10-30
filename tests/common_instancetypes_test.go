@@ -102,6 +102,28 @@ var _ = Describe("Common Instance Types", func() {
 			Expect(apiClient.Get(ctx, client.ObjectKey{Name: preferenceToUpdate.Name}, preferenceToUpdate)).To(Succeed())
 			Expect(preferenceToUpdate.Spec.CPU).To(Equal(updatedPreferenceCPU))
 		})
+		It("should cleanup resources when feature gate is disabled", func() {
+			sspObj := getSsp()
+			sspObj.Spec.FeatureGates = &ssp.FeatureGates{
+				DeployCommonInstancetypes: pointer.Bool(false),
+			}
+			createOrUpdateSsp(sspObj)
+			waitUntilDeployed()
+
+			virtualMachineClusterInstancetypes, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundle)
+			Expect(err).ToNot(HaveOccurred())
+
+			virtualMachineClusterPreferences, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundle)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, instancetype := range virtualMachineClusterInstancetypes {
+				Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).ToNot(Succeed())
+			}
+
+			for _, preference := range virtualMachineClusterPreferences {
+				Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).ToNot(Succeed())
+			}
+		})
 	})
 	Context("webhook", func() {
 		DescribeTable("should reject URL", func(URL string) {

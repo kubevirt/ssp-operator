@@ -223,23 +223,28 @@ func reconcileRemovedPreferences(request *common.Request, existingResources []in
 	return nil
 }
 
-func (c *CommonInstancetypes) reconcileRemovedResources(request *common.Request, newInstancetypes []instancetypev1beta1.VirtualMachineClusterInstancetype, newPreferences []instancetypev1beta1.VirtualMachineClusterPreference) error {
+func (c *CommonInstancetypes) reconcileRemovedResources(request *common.Request) error {
 	existingClusterInstancetypes, existingClusterPreferences, err := c.fetchExistingResources(request)
 	if err != nil {
 		return err
 	}
 
-	if err = reconcileRemovedInstancetypes(request, existingClusterInstancetypes, newInstancetypes); err != nil {
+	if err = reconcileRemovedInstancetypes(request, existingClusterInstancetypes, c.virtualMachineClusterInstancetypes); err != nil {
 		return err
 	}
 
-	if err = reconcileRemovedPreferences(request, existingClusterPreferences, newPreferences); err != nil {
+	if err = reconcileRemovedPreferences(request, existingClusterPreferences, c.virtualMachineClusterPreferences); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]common.ReconcileResult, error) {
+	// Handle the featureGate being disabled by ensuring any resources previously reconciled are cleaned up
+	if !isFeatureGateEnabled(request) {
+		return c.cleanupReconcile(request)
+	}
+
 	// TODO - In the future we should handle cases where the URL remains the same but the provided resources change.
 	if c.resourceURL != "" && c.resourceURL == *request.Instance.Spec.CommonInstancetypes.URL {
 		request.Logger.Info(fmt.Sprintf("Skipping reconcile of common-instancetypes from URL %s, force with a restart of the service.", *request.Instance.Spec.CommonInstancetypes.URL))
@@ -249,19 +254,18 @@ func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]commo
 	// Cache the URL so we can check if it changes with future reconcile attempts above
 	c.resourceURL = *request.Instance.Spec.CommonInstancetypes.URL
 	request.Logger.Info(fmt.Sprintf("Reconciling common-instancetypes from URL %s", c.resourceURL))
-	clusterInstancetypesFromURL, clusterPreferencesFromURL, err := c.FetchResourcesFromURL(c.resourceURL)
+	var err error
+	c.virtualMachineClusterInstancetypes, c.virtualMachineClusterPreferences, err = c.FetchResourcesFromURL(c.resourceURL)
 	if err != nil {
 		return nil, err
 	}
 
 	// Remove any resources no longer provided by the URL, this should only happen when switching from the internal bundle to external URL for now.
-	if err = c.reconcileRemovedResources(request, clusterInstancetypesFromURL, clusterPreferencesFromURL); err != nil {
+	if err = c.reconcileRemovedResources(request); err != nil {
 		return nil, err
 	}
 
 	// Generate the normal set of reconcile funcs to create or update the provided resources
-	c.virtualMachineClusterInstancetypes = clusterInstancetypesFromURL
-	c.virtualMachineClusterPreferences = clusterPreferencesFromURL
 	reconcileFuncs, err := c.reconcileFuncs(request)
 	if err != nil {
 		return nil, err
@@ -270,19 +274,23 @@ func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]commo
 }
 
 func (c *CommonInstancetypes) reconcileFromBundle(request *common.Request) ([]common.ReconcileResult, error) {
+	// Handle the featureGate being disabled by ensuring any resources previously reconciled are cleaned up
+	if !isFeatureGateEnabled(request) {
+		return c.cleanupReconcile(request)
+	}
+
 	request.Logger.Info("Reconciling common-instancetypes from internal bundle")
-	clusterInstancetypesFromBundle, clusterPreferencesFromBundle, err := c.fetchResourcesFromBundle()
+	var err error
+	c.virtualMachineClusterInstancetypes, c.virtualMachineClusterPreferences, err = c.fetchResourcesFromBundle()
 	if err != nil {
 		return nil, err
 	}
 
 	// Remove any resources no longer provided by the bundle
-	if err = c.reconcileRemovedResources(request, clusterInstancetypesFromBundle, clusterPreferencesFromBundle); err != nil {
+	if err = c.reconcileRemovedResources(request); err != nil {
 		return nil, err
 	}
 
-	c.virtualMachineClusterInstancetypes = clusterInstancetypesFromBundle
-	c.virtualMachineClusterPreferences = clusterPreferencesFromBundle
 	reconcileFuncs, err := c.reconcileFuncs(request)
 	if err != nil {
 		return nil, err
@@ -290,11 +298,32 @@ func (c *CommonInstancetypes) reconcileFromBundle(request *common.Request) ([]co
 	return common.CollectResourceStatus(request, reconcileFuncs...)
 }
 
+func isFeatureGateEnabled(request *common.Request) bool {
+	if request.Instance.Spec.FeatureGates == nil || request.Instance.Spec.FeatureGates.DeployCommonInstancetypes == nil {
+		return true
+	}
+	return *request.Instance.Spec.FeatureGates.DeployCommonInstancetypes
+}
+
 func (c *CommonInstancetypes) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	if request.Instance.Spec.CommonInstancetypes != nil && request.Instance.Spec.CommonInstancetypes.URL != nil {
 		return c.reconcileFromURL(request)
 	}
 	return c.reconcileFromBundle(request)
+}
+
+func (c *CommonInstancetypes) cleanupReconcile(request *common.Request) ([]common.ReconcileResult, error) {
+	cleanupResults, err := c.Cleanup(request)
+	if err != nil {
+		return nil, err
+	}
+	var results []common.ReconcileResult
+	for _, cleanupResult := range cleanupResults {
+		if !cleanupResult.Deleted {
+			results = append(results, common.ResourceDeletedResult(cleanupResult.Resource, common.OperationResultDeleted))
+		}
+	}
+	return results, nil
 }
 
 func (c *CommonInstancetypes) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
