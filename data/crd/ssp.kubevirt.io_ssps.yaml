@@ -3915,6 +3915,8 @@ spec:
                 description: FeatureGates for SSP
                 properties:
                   deployCommonInstancetypes:
+                    description: Enables deployment of the common-instancetypes bundles,
+                      defaults to true.
                     type: boolean
                   deployTektonTaskResources:
                     type: boolean
