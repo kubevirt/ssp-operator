@@ -185,7 +185,7 @@ func (c *multiNamespaceCache) WaitForCacheSync(ctx context.Context) bool {
 func (c *multiNamespaceCache) IndexField(ctx context.Context, obj client.Object, field string, extractValue client.IndexerFunc) error {
 	isNamespaced, err := objectutil.IsAPINamespaced(obj, c.Scheme, c.RESTMapper)
 	if err != nil {
-		return nil //nolint:nilerr
+		return err
 	}
 
 	if !isNamespaced {
@@ -200,7 +200,7 @@ func (c *multiNamespaceCache) IndexField(ctx context.Context, obj client.Object,
 	return nil
 }
 
-func (c *multiNamespaceCache) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (c *multiNamespaceCache) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	isNamespaced, err := objectutil.IsAPINamespaced(obj, c.Scheme, c.RESTMapper)
 	if err != nil {
 		return err
