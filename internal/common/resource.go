@@ -32,6 +32,7 @@ type ResourceStatus struct {
 
 type ReconcileResult struct {
 	Status          ResourceStatus
+	InitialResource client.Object
 	Resource        client.Object
 	OperationResult OperationResult
 }
@@ -185,7 +186,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 		return nil
 	}
 
-	res, err := r.createOrUpdateWithImmutableSpec(found, mutateFn)
+	res, existing, err := r.createOrUpdateWithImmutableSpec(found, mutateFn)
 	if err != nil {
 		r.request.Logger.Info(fmt.Sprintf("Resource create/update failed: %v", err))
 		return ReconcileResult{}, err
@@ -199,7 +200,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	logOperation(res, found, r.request.Logger)
 
 	status := r.statusFunc(found)
-	return ReconcileResult{status, r.resource, res}, nil
+	return ReconcileResult{status, existing, r.resource, res}, nil
 }
 
 func CreateOrUpdate(request *Request) ReconcileBuilder {
@@ -283,43 +284,43 @@ func DeleteAll(request *Request, resources ...client.Object) ([]CleanupResult, e
 }
 
 // This function was initially copied from controllerutil.CreateOrUpdate
-func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f controllerutil.MutateFn) (OperationResult, error) {
+func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f controllerutil.MutateFn) (OperationResult, client.Object, error) {
 	key := client.ObjectKeyFromObject(obj)
 	if err := r.request.Client.Get(r.request.Context, key, obj); err != nil {
 		if !errors.IsNotFound(err) {
-			return OperationResultNone, err
+			return OperationResultNone, nil, err
 		}
 		if err := mutate(f, key, obj); err != nil {
-			return OperationResultNone, err
+			return OperationResultNone, nil, err
 		}
 		if err := r.request.Client.Create(r.request.Context, obj); err != nil {
-			return OperationResultNone, err
+			return OperationResultNone, nil, err
 		}
-		return OperationResultCreated, nil
+		return OperationResultCreated, nil, nil
 	}
 
-	existing := obj.DeepCopyObject()
+	existing := obj.DeepCopyObject().(client.Object)
 	if err := mutate(f, key, obj); err != nil {
-		return OperationResultNone, err
+		return OperationResultNone, existing, err
 	}
 
 	if equality.Semantic.DeepEqual(existing, obj) {
-		return OperationResultNone, nil
+		return OperationResultNone, existing, nil
 	}
 
 	// If the resource is immutable and specs are not equal, delete it.
 	// It will be recreated in the next iteration.
-	if r.immutableSpec && !equality.Semantic.DeepEqual(r.specGetter(existing.(client.Object)), r.specGetter(obj)) {
+	if r.immutableSpec && !equality.Semantic.DeepEqual(r.specGetter(existing), r.specGetter(obj)) {
 		if err := r.request.Client.Delete(r.request.Context, obj); err != nil {
-			return OperationResultNone, err
+			return OperationResultNone, existing, err
 		}
-		return OperationResultDeleted, nil
+		return OperationResultDeleted, existing, nil
 	}
 
 	if err := r.request.Client.Update(r.request.Context, obj); err != nil {
-		return OperationResultNone, err
+		return OperationResultNone, existing, err
 	}
-	return OperationResultUpdated, nil
+	return OperationResultUpdated, existing, nil
 }
 
 // This function is a copy of controllerutil.mutate
