@@ -180,7 +180,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							Protocol:      core.ProtocolTCP,
 						}},
 						ReadinessProbe: &core.Probe{
-							Handler: core.Handler{
+							ProbeHandler: core.ProbeHandler{
 								HTTPGet: &core.HTTPGetAction{
 									Path:   "/readyz",
 									Port:   intstr.FromInt(ContainerPort),
