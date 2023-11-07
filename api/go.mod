@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	github.com/openshift/api v0.0.0-20230228142948-d170fcdc0fa6 // release-4.13
-	k8s.io/apimachinery v0.26.2
+	k8s.io/apimachinery v0.26.10
 	kubevirt.io/containerized-data-importer-api v1.55.2
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
-	sigs.k8s.io/controller-runtime v0.14.5
+	sigs.k8s.io/controller-runtime v0.14.7
 )
 
 require (
@@ -22,7 +22,7 @@ require (
 	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/api v0.26.2 // indirect
+	k8s.io/api v0.26.10 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
