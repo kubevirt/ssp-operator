@@ -341,7 +341,7 @@ func getVmConsoleProxyNamespace(request *common.Request) string {
 }
 
 func getVmConsoleProxyImage() string {
-	return common.EnvOrDefault("VM_CONSOLE_PROXY_IMAGE", "quay.io/kubevirt/vm-console-proxy:v0.1.0")
+	return common.EnvOrDefault("VM_CONSOLE_PROXY_IMAGE", "quay.io/kubevirt/vm-console-proxy:v0.1.1")
 }
 
 func findResourcesUsingLabels[PtrL interface {
