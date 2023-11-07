@@ -8,8 +8,8 @@ require (
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.3
-	github.com/onsi/ginkgo/v2 v2.1.4
-	github.com/onsi/gomega v1.19.0
+	github.com/onsi/ginkgo/v2 v2.1.6
+	github.com/onsi/gomega v1.20.1
 	github.com/openshift/api v0.0.0-20220124143425-d74727069f6f // release-4.10
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/openshift/library-go v0.0.0-20220630204433-c71d40c7de49
@@ -23,20 +23,20 @@ require (
 	github.com/spf13/pflag v1.0.5
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.25.0
-	k8s.io/apiextensions-apiserver v0.25.0
-	k8s.io/apimachinery v0.25.0
+	k8s.io/api v0.25.15
+	k8s.io/apiextensions-apiserver v0.25.15
+	k8s.io/apimachinery v0.25.15
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/klog/v2 v2.70.1
+	k8s.io/klog/v2 v2.80.1
 	k8s.io/kube-aggregator v0.24.2
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
-	kubevirt.io/api v0.58.0
-	kubevirt.io/client-go v0.58.0
+	kubevirt.io/api v0.58.2
+	kubevirt.io/client-go v0.58.2
 	kubevirt.io/containerized-data-importer-api v1.53.1
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.8
 	kubevirt.io/ssp-operator/api v0.0.0
-	sigs.k8s.io/controller-runtime v0.13.1
+	sigs.k8s.io/controller-runtime v0.13.2
 	sigs.k8s.io/kustomize/api v0.13.0
 	sigs.k8s.io/kustomize/kyaml v0.14.0
 )
@@ -70,7 +70,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.1.2 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -104,8 +104,8 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiserver v0.25.0 // indirect
-	k8s.io/component-base v0.25.0 // indirect
+	k8s.io/apiserver v0.25.15 // indirect
+	k8s.io/component-base v0.25.15 // indirect
 	k8s.io/kube-openapi v0.0.0-20230109183929-3758b55a6596 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
@@ -113,10 +113,7 @@ require (
 )
 
 replace (
-	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
-	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
-	k8s.io/client-go => k8s.io/client-go v0.25.0
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.23.5
+	k8s.io/client-go => k8s.io/client-go v0.25.15
 
 	kubevirt.io/ssp-operator/api => ./api
 )
