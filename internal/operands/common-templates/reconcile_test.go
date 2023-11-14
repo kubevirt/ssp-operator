@@ -7,10 +7,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	templatev1 "github.com/openshift/api/template/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
+	"github.com/prometheus/client_golang/prometheus"
+	io_prometheus_client "github.com/prometheus/client_model/go"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -75,6 +79,11 @@ var _ = Describe("Common-Templates operand", func() {
 						Namespace: namespace,
 					},
 				},
+				Status: ssp.SSPStatus{
+					Status: lifecycleapi.Status{
+						ObservedVersion: common.GetOperatorVersion(),
+					},
+				},
 			},
 			Logger:       log,
 			VersionCache: common.VersionCache{},
@@ -88,9 +97,13 @@ var _ = Describe("Common-Templates operand", func() {
 			template.Namespace = namespace
 			ExpectResourceExists(&template, request)
 		}
+
+		desc, value := getCommonTemplatesRestoredMetric()
+		Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+		Expect(value).To(BeZero())
 	})
 
-	It("should reconcle predefined labels", func() {
+	It("should reconcile predefined labels", func() {
 		const (
 			defaultOsLabel = "template.kubevirt.io/default-os-variant"
 			testLabel      = "some.test.label"
@@ -117,6 +130,10 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(template.Labels).ToNot(HaveKey(defaultOsLabel))
 			Expect(template.Labels).To(HaveKey(testLabel))
 		}
+
+		desc, value := getCommonTemplatesRestoredMetric()
+		Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+		Expect(value).To(Equal(float64(len(testTemplates))))
 	})
 
 	Context("old templates", func() {
@@ -258,6 +275,56 @@ var _ = Describe("Common-Templates operand", func() {
 			}
 		})
 	})
+
+	Context("total_restored_common_templates metric", func() {
+		var template *templatev1.Template
+		var initialMetricValue float64
+
+		BeforeEach(func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			template = getTemplate(request, &testTemplates[0])
+			template.Namespace = namespace
+
+			desc, value := getCommonTemplatesRestoredMetric()
+			Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+			initialMetricValue = value
+		})
+
+		It("should increase by 1 when one template is restored", func() {
+			template.Labels[TemplateTypeLabel] = "rand"
+			err := request.Client.Update(request.Context, template)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			updatedTpl := getTemplate(request, template)
+			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
+
+			desc, value := getCommonTemplatesRestoredMetric()
+			Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+			Expect(value).To(Equal(initialMetricValue + 1))
+		})
+
+		It("should not increase when template restored is from previous version", func() {
+			template.Labels[TemplateTypeLabel] = "rand"
+			template.Labels[TemplateVersionLabel] = "rand"
+			err := request.Client.Update(request.Context, template)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			updatedTpl := getTemplate(request, template)
+			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
+
+			desc, value := getCommonTemplatesRestoredMetric()
+			Expect(desc).To(ContainSubstring("total_restored_common_templates"))
+			Expect(value).To(Equal(initialMetricValue))
+		})
+	})
 })
 
 func getTestTemplates() []templatev1.Template {
@@ -284,4 +351,25 @@ func getTestTemplates() []templatev1.Template {
 			},
 		},
 	}}
+}
+
+func getCommonTemplatesRestoredMetric() (string, float64) {
+	ch := make(chan prometheus.Metric, 1)
+	CommonTemplatesRestored.Collect(ch)
+	close(ch)
+	m := <-ch
+	metric := &io_prometheus_client.Metric{}
+	err := m.Write(metric)
+	Expect(err).ToNot(HaveOccurred())
+
+	return m.Desc().String(), metric.GetCounter().GetValue()
+}
+
+func getTemplate(req common.Request, template *templatev1.Template) *templatev1.Template {
+	key := client.ObjectKeyFromObject(template)
+	updatedTpl := &templatev1.Template{}
+	err := req.Client.Get(req.Context, key, updatedTpl)
+	Expect(err).ToNot(HaveOccurred())
+
+	return updatedTpl
 }

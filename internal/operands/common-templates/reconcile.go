@@ -105,10 +105,15 @@ func isUpgradingNow(request *common.Request) bool {
 }
 
 func incrementTemplatesRestoredMetric(reconcileResults []common.ReconcileResult, logger logr.Logger) {
-	for i := range reconcileResults {
-		if reconcileResults[i].OperationResult == common.OperationResultUpdated {
-			logger.Info(fmt.Sprintf("Changes reverted in common template: %s", reconcileResults[i].Resource.GetName()))
-			CommonTemplatesRestored.Inc()
+	for _, reconcileResult := range reconcileResults {
+		if reconcileResult.InitialResource != nil {
+			oldVersion := reconcileResult.InitialResource.GetLabels()[TemplateVersionLabel]
+			newVersion := reconcileResult.Resource.GetLabels()[TemplateVersionLabel]
+
+			if reconcileResult.OperationResult == common.OperationResultUpdated && oldVersion == newVersion {
+				logger.Info(fmt.Sprintf("Changes reverted in common template: %s", reconcileResult.Resource.GetName()))
+				CommonTemplatesRestored.Inc()
+			}
 		}
 	}
 }
