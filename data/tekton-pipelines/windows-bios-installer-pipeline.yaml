@@ -101,6 +101,7 @@ spec:
                         url: $(params.winImageDownloadURL)
               template:
                 spec:
+                  evictionStrategy: LiveMigrateIfPossible
                   domain:
                     devices:
                       disks:

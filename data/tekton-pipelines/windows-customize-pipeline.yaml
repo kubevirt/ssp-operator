@@ -86,6 +86,7 @@ spec:
                 name: $(params.preferenceName)
               template:
                 spec:
+                  evictionStrategy: LiveMigrateIfPossible
                   domain:
                     devices:
                       disks:
