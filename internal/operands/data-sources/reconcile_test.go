@@ -221,7 +221,7 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(ds.Spec).To(Equal(testDataSources[0].Spec))
 			})
 
-			It("should not restore DataSource if DataImportCron prefers snapshots sources", func() {
+			DescribeTable("should not restore DataSource if DataImportCron is present", func(source cdiv1beta1.DataSourceSource) {
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -232,11 +232,7 @@ var _ = Describe("Data-Sources operand", func() {
 				// Update DataSource to simulate CDI
 				ds := &cdiv1beta1.DataSource{}
 				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
-				ds.Spec.Source.PVC = nil
-				ds.Spec.Source.Snapshot = &cdiv1beta1.DataVolumeSourceSnapshot{
-					Namespace: "test",
-					Name:      "test",
-				}
+				ds.Spec.Source = source
 				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
 
 				_, err = operand.Reconcile(&request)
@@ -244,13 +240,23 @@ var _ = Describe("Data-Sources operand", func() {
 
 				// Test that DataSource was not changed
 				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
-				Expect(ds.Spec.Source).To(Equal(cdiv1beta1.DataSourceSource{
+				Expect(ds.Spec.Source).To(Equal(source))
+			},
+				Entry("and prefers PVCs", cdiv1beta1.DataSourceSource{
+					PVC: &cdiv1beta1.DataVolumeSourcePVC{
+						Namespace: "test",
+						Name:      "test",
+					},
+					Snapshot: nil,
+				}),
+				Entry("and prefers Snapshots", cdiv1beta1.DataSourceSource{
+					PVC: nil,
 					Snapshot: &cdiv1beta1.DataVolumeSourceSnapshot{
 						Namespace: "test",
 						Name:      "test",
 					},
-				}))
-			})
+				}),
+			)
 		})
 
 		Context("with existing PVC", func() {
