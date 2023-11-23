@@ -283,7 +283,7 @@ var _ = Describe("Prometheus Alerts", func() {
 			alertShouldNotBeActive("VirtualMachineCRCErrors")
 		})
 
-		It("[test_id:TODO] Should fire VirtualMachineCRCErrors when rxbounce is disabled", func() {
+		It("[test_id:10549] Should fire VirtualMachineCRCErrors when rxbounce is disabled", func() {
 			vmName := createResources(true, false)
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_volume{name='%s', rxbounce_enabled='false'}", vmName))
 			waitForAlertToActivate("VirtualMachineCRCErrors")
