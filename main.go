@@ -230,10 +230,10 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       leaderElectionID,
-		WebhookServer: &webhook.Server{
+		WebhookServer: webhook.NewServer(webhook.Options{
 			Port:    webhookPort,
 			TLSOpts: []func(*tls.Config){getTLSOptsFunc},
-		},
+		}),
 	})
 
 	if err != nil {

@@ -109,7 +109,7 @@ var _ = Describe("SSP Validation", func() {
 					},
 				}
 
-				err := validator.ValidateCreate(ctx, toUnstructured(ssp))
+				_, err := validator.ValidateCreate(ctx, toUnstructured(ssp))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp"))
 			})

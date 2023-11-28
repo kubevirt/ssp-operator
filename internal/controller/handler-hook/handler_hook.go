@@ -1,6 +1,8 @@
 package handler_hook
 
 import (
+	"context"
+
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,26 +26,26 @@ type hook struct {
 
 var _ handler.EventHandler = &hook{}
 
-func (h *hook) Create(event event.CreateEvent, queue workqueue.RateLimitingInterface) {
-	h.inner.Create(event, &queueHook{queue, func(request ctrl.Request) {
+func (h *hook) Create(ctx context.Context, event event.CreateEvent, queue workqueue.RateLimitingInterface) {
+	h.inner.Create(ctx, event, &queueHook{queue, func(request ctrl.Request) {
 		h.hookFunc(request, event.Object)
 	}})
 }
 
-func (h *hook) Update(event event.UpdateEvent, queue workqueue.RateLimitingInterface) {
-	h.inner.Update(event, &queueHook{queue, func(request ctrl.Request) {
+func (h *hook) Update(ctx context.Context, event event.UpdateEvent, queue workqueue.RateLimitingInterface) {
+	h.inner.Update(ctx, event, &queueHook{queue, func(request ctrl.Request) {
 		h.hookFunc(request, event.ObjectNew)
 	}})
 }
 
-func (h *hook) Delete(event event.DeleteEvent, queue workqueue.RateLimitingInterface) {
-	h.inner.Delete(event, &queueHook{queue, func(request ctrl.Request) {
+func (h *hook) Delete(ctx context.Context, event event.DeleteEvent, queue workqueue.RateLimitingInterface) {
+	h.inner.Delete(ctx, event, &queueHook{queue, func(request ctrl.Request) {
 		h.hookFunc(request, event.Object)
 	}})
 }
 
-func (h *hook) Generic(event event.GenericEvent, queue workqueue.RateLimitingInterface) {
-	h.inner.Generic(event, &queueHook{queue, func(request ctrl.Request) {
+func (h *hook) Generic(ctx context.Context, event event.GenericEvent, queue workqueue.RateLimitingInterface) {
+	h.inner.Generic(ctx, event, &queueHook{queue, func(request ctrl.Request) {
 		h.hookFunc(request, event.Object)
 	}})
 }
