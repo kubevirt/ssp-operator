@@ -1006,3 +1006,4 @@ sigs.k8s.io/yaml
 # k8s.io/api => k8s.io/api v0.26.10
 # k8s.io/apimachinery => k8s.io/apimachinery v0.26.10
 # kubevirt.io/ssp-operator/api => ./api
+# vbom.ml/util => github.com/fvbommel/util v0.0.3
