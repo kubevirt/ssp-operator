@@ -1,7 +1,7 @@
 # This Dockerfile is used in openshift CI
 FROM quay.io/fedora/fedora:37
 
-RUN curl -L https://go.dev/dl/go1.19.2.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+RUN curl -L https://go.dev/dl/go1.20.11.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 ENV PATH=$PATH:/usr/local/go/bin
 
 # Install dependencies and tools
