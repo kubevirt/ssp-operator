@@ -19,7 +19,7 @@ The increase in the number of rejected template validators, over the last hour. 
 The total number of rejected template validators. Type: Counter.
 ### kubevirt_ssp_template_validator_up
 The total number of running virt-template-validator pods. Type: Gauge.
-### kubevirt_ssp_vm_rbd_volume
-VM with RBD mounted volume. Type: Gauge.
+### kubevirt_ssp_vm_rbd_block_volume_without_rxbounce
+VM with RBD mounted Block volume (without rxbounce option set). Type: Gauge.
 ## Developing new metrics
 After developing new metrics or changing old ones, please run `make generate-doc` to regenerate this document.
