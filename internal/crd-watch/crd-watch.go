@@ -11,7 +11,6 @@ import (
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
 type CrdList interface {
@@ -211,9 +210,11 @@ func (c *CrdWatch) crdDeleted(crdName string) {
 	}
 }
 
-var _ inject.Cache = &CrdWatch{}
+// TODO -- handle injection
 
-func (c *CrdWatch) InjectCache(cache ctrlcache.Cache) error {
-	c.cache = cache
-	return nil
-}
+//var _ inject.Cache = &CrdWatch{}
+//
+//func (c *CrdWatch) InjectCache(cache ctrlcache.Cache) error {
+//	c.cache = cache
+//	return nil
+//}

@@ -1,14 +1,11 @@
 package handler_hook
 
 import (
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
 type HookFunc func(request ctrl.Request, obj client.Object)
@@ -51,21 +48,23 @@ func (h *hook) Generic(event event.GenericEvent, queue workqueue.RateLimitingInt
 	}})
 }
 
-var _ inject.Scheme = &hook{}
+// TODO -- handle injection
 
-// The EnqueueRequestForOwner handler implements this interface.
-func (h *hook) InjectScheme(scheme *runtime.Scheme) error {
-	_, err := inject.SchemeInto(scheme, h.inner)
-	return err
-}
-
-var _ inject.Mapper = &hook{}
-
-// The EnqueueRequestForOwner handler implements this interface.
-func (h *hook) InjectMapper(mapper meta.RESTMapper) error {
-	_, err := inject.MapperInto(mapper, h.inner)
-	return err
-}
+//var _ inject.Scheme = &hook{}
+//
+//// The EnqueueRequestForOwner handler implements this interface.
+//func (h *hook) InjectScheme(scheme *runtime.Scheme) error {
+//	_, err := inject.SchemeInto(scheme, h.inner)
+//	return err
+//}
+//
+//var _ inject.Mapper = &hook{}
+//
+//// The EnqueueRequestForOwner handler implements this interface.
+//func (h *hook) InjectMapper(mapper meta.RESTMapper) error {
+//	_, err := inject.MapperInto(mapper, h.inner)
+//	return err
+//}
 
 type queueHook struct {
 	workqueue.RateLimitingInterface
