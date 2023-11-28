@@ -129,4 +129,8 @@ replace (
 	k8s.io/apimachinery => k8s.io/apimachinery v0.26.10
 
 	kubevirt.io/ssp-operator/api => ./api
+
+	// Redirect nonexisting URL "vbom.ml/util".
+	// TODO: Remove when github.com/openshift/library-go will be updated to 4.15
+	vbom.ml/util => github.com/fvbommel/util v0.0.3
 )
