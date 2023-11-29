@@ -110,7 +110,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 		Expect(client.Create(context.Background(), virtualMachineClusterPreferenceCrdObj)).To(Succeed())
 
-		crdWatch := crd_watch.New(virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
+		crdWatch := crd_watch.New(nil, virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
 		Expect(crdWatch.Init(context.Background(), client)).To(Succeed())
 
 		request = common.Request{
@@ -146,7 +146,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		request.Client = fake.NewClientBuilder().WithScheme(testScheme).Build()
 
-		crdWatch := crd_watch.New(virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
+		crdWatch := crd_watch.New(nil, virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
 		Expect(crdWatch.Init(request.Context, request.Client)).To(Succeed())
 
 		request.CrdList = crdWatch

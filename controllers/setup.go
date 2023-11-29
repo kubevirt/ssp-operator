@@ -112,7 +112,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 	vmCRD := vmKind + "." + kubevirtv1.VirtualMachineGroupVersionKind.Group
 	requiredCrds = append(requiredCrds, vmCRD)
 
-	crdWatch := crd_watch.New(requiredCrds...)
+	crdWatch := crd_watch.New(mgr.GetCache(), requiredCrds...)
 	// Cleanly stops the manager and exit. The pod will be restarted.
 	crdWatch.AllCrdsAddedHandler = cancel
 	crdWatch.SomeCrdRemovedHandler = cancel

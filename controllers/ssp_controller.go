@@ -116,7 +116,7 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 
 	// Register watches for created objects only if all required CRDs exist
 	watchClusterResources(builder, r.crdList, r.operands, eventHandlerHook)
-	watchNamespacedResources(builder, r.crdList, r.operands, eventHandlerHook)
+	watchNamespacedResources(builder, r.crdList, r.operands, eventHandlerHook, mgr.GetScheme(), mgr.GetRESTMapper())
 
 	return builder.Complete(r)
 }
@@ -694,14 +694,14 @@ func watchSspResource(bldr *ctrl.Builder) {
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
-func watchNamespacedResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
+func watchNamespacedResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc, scheme *runtime.Scheme, mapper meta.RESTMapper) {
 	watchResources(builder,
 		crdList,
 		handler.EnqueueRequestForOwner(
-			func() *runtime.Scheme { panic("not implemented") }(), // TODO -- add
-			func() meta.RESTMapper { panic("not implemented") }(), // TODO -- add
+			scheme,
+			mapper,
 			&ssp.SSP{},
-			// TODO -- add options
+			handler.OnlyControllerOwner(),
 		),
 		sspOperands,
 		operands.Operand.WatchTypes,
