@@ -50,24 +50,6 @@ func (h *hook) Generic(ctx context.Context, event event.GenericEvent, queue work
 	}})
 }
 
-// TODO -- handle injection
-
-//var _ inject.Scheme = &hook{}
-//
-//// The EnqueueRequestForOwner handler implements this interface.
-//func (h *hook) InjectScheme(scheme *runtime.Scheme) error {
-//	_, err := inject.SchemeInto(scheme, h.inner)
-//	return err
-//}
-//
-//var _ inject.Mapper = &hook{}
-//
-//// The EnqueueRequestForOwner handler implements this interface.
-//func (h *hook) InjectMapper(mapper meta.RESTMapper) error {
-//	_, err := inject.MapperInto(mapper, h.inner)
-//	return err
-//}
-
 type queueHook struct {
 	workqueue.RateLimitingInterface
 	closure func(request ctrl.Request)

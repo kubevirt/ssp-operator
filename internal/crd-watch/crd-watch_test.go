@@ -55,10 +55,8 @@ var _ = Describe("CRD watch", func() {
 
 		fakeInformers = &informertest.FakeInformers{}
 
-		crdWatch = New(crd1, crd2, crd3)
+		crdWatch = New(fakeInformers, crd1, crd2, crd3)
 		Expect(crdWatch.Init(context.Background(), fakeClient)).To(Succeed())
-		// TODO -- fix injection
-		// Expect(crdWatch.InjectCache(fakeInformers)).To(Succeed())
 
 		var ctx context.Context
 		ctx, cancel = context.WithCancel(context.Background())

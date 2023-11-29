@@ -318,7 +318,7 @@ func getMockedRequest() *common.Request {
 	}
 	Expect(client.Create(context.Background(), tektonCrdObj)).To(Succeed())
 
-	crdWatch := crd_watch.New(tektonCrd)
+	crdWatch := crd_watch.New(nil, tektonCrd)
 	Expect(crdWatch.Init(context.Background(), client)).To(Succeed())
 
 	return &common.Request{

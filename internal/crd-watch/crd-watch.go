@@ -31,7 +31,7 @@ type CrdWatch struct {
 	cache       ctrlcache.Cache
 }
 
-func New(requiredCrds ...string) *CrdWatch {
+func New(cache ctrlcache.Cache, requiredCrds ...string) *CrdWatch {
 	requiredCrdsMap := make(map[string]struct{}, len(requiredCrds))
 	missingCrds := make(map[string]struct{}, len(requiredCrds))
 	for _, crdName := range requiredCrds {
@@ -43,6 +43,7 @@ func New(requiredCrds ...string) *CrdWatch {
 		requiredCrds: requiredCrdsMap,
 		existingCrds: map[string]struct{}{},
 		missingCrds:  missingCrds,
+		cache:        cache,
 	}
 }
 
@@ -209,12 +210,3 @@ func (c *CrdWatch) crdDeleted(crdName string) {
 		c.SomeCrdRemovedHandler()
 	}
 }
-
-// TODO -- handle injection
-
-//var _ inject.Cache = &CrdWatch{}
-//
-//func (c *CrdWatch) InjectCache(cache ctrlcache.Cache) error {
-//	c.cache = cache
-//	return nil
-//}
