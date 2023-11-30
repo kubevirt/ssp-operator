@@ -191,13 +191,13 @@ func addConversionFunctions(s *runtime.Scheme) error {
 }
 
 func addCrdToFakeInformers(crdName string, fakeInformers *informertest.FakeInformers) {
-	fakeInformer, err := fakeInformers.FakeInformerFor(&metav1.PartialObjectMetadata{})
+	fakeInformer, err := fakeInformers.FakeInformerFor(context.Background(), &metav1.PartialObjectMetadata{})
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	fakeInformer.Add(crdPartialMetadata(crdName))
 }
 
 func removeCrdFromFakeInformers(crdName string, fakeInformers *informertest.FakeInformers) {
-	fakeInformer, err := fakeInformers.FakeInformerFor(&metav1.PartialObjectMetadata{})
+	fakeInformer, err := fakeInformers.FakeInformerFor(context.Background(), &metav1.PartialObjectMetadata{})
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	fakeInformer.Delete(crdPartialMetadata(crdName))
 }

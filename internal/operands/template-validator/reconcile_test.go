@@ -154,12 +154,12 @@ var _ = Describe("Template validator operand", func() {
 
 		// Set status for deployment
 		key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img", emptySSPTLSConfig))
-		updateDeployment(key, &request, func(deployment *apps.Deployment) {
-			deployment.Status.Replicas = replicas
-			deployment.Status.ReadyReplicas = 0
-			deployment.Status.AvailableReplicas = 0
-			deployment.Status.UpdatedReplicas = 0
-			deployment.Status.UnavailableReplicas = replicas
+		updateDeploymentStatus(key, &request, func(deploymentStatus *apps.DeploymentStatus) {
+			deploymentStatus.Replicas = replicas
+			deploymentStatus.ReadyReplicas = 0
+			deploymentStatus.AvailableReplicas = 0
+			deploymentStatus.UpdatedReplicas = 0
+			deploymentStatus.UnavailableReplicas = replicas
 		})
 
 		reconcileResults, err := operand.Reconcile(&request)
@@ -178,12 +178,12 @@ var _ = Describe("Template validator operand", func() {
 			}
 		}
 
-		updateDeployment(key, &request, func(deployment *apps.Deployment) {
-			deployment.Status.Replicas = replicas
-			deployment.Status.ReadyReplicas = replicas
-			deployment.Status.AvailableReplicas = replicas
-			deployment.Status.UpdatedReplicas = replicas
-			deployment.Status.UnavailableReplicas = 0
+		updateDeploymentStatus(key, &request, func(deploymentStatus *apps.DeploymentStatus) {
+			deploymentStatus.Replicas = replicas
+			deploymentStatus.ReadyReplicas = replicas
+			deploymentStatus.AvailableReplicas = replicas
+			deploymentStatus.UpdatedReplicas = replicas
+			deploymentStatus.UnavailableReplicas = 0
 		})
 
 		reconcileResults, err = operand.Reconcile(&request)
@@ -398,11 +398,10 @@ var _ = Describe("Template validator operand", func() {
 	})
 })
 
-func updateDeployment(key client.ObjectKey, request *common.Request, updateFunc func(deployment *apps.Deployment)) {
+func updateDeploymentStatus(key client.ObjectKey, request *common.Request, updateFunc func(deploymentStatus *apps.DeploymentStatus)) {
 	deployment := &apps.Deployment{}
 	Expect(request.Client.Get(request.Context, key, deployment)).ToNot(HaveOccurred())
-	updateFunc(deployment)
-	Expect(request.Client.Update(request.Context, deployment)).ToNot(HaveOccurred())
+	updateFunc(&deployment.Status)
 	Expect(request.Client.Status().Update(request.Context, deployment)).ToNot(HaveOccurred())
 }
 
