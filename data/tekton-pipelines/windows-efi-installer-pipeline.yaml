@@ -28,7 +28,7 @@ spec:
       description: Name of the ConfigMap containing the sysprep configuration files (autounattend.xml, etc.). For example windows11-autounattend or windows2022-autounattend. It is possible to provide customize ConfigMaps created by the user too.
       name: autounattendConfigMapName
       type: string
-    - default: quay.io/kubevirt/virtio-container-disk:v1.0.1
+    - default: quay.io/kubevirt/virtio-container-disk:v1.1.0
       description: Reference to the containerdisk containing the virtio-win drivers ISO.
       name: virtioContainerDiskName
       type: string
