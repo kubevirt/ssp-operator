@@ -27,6 +27,10 @@ func (c *GaugeVec) GetType() MetricType {
 	return GaugeVecType
 }
 
+func (c *GaugeVec) GetBaseType() MetricType {
+	return GaugeType
+}
+
 func (c *GaugeVec) getCollector() prometheus.Collector {
 	return c.GaugeVec
 }

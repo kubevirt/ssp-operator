@@ -79,7 +79,7 @@ func WatchClusterTypes() []operands.WatchType {
 }
 
 type tektonTasks struct {
-	tasks           []pipeline.Task
+	tasks           []pipeline.Task //nolint:staticcheck
 	serviceAccounts []v1.ServiceAccount
 	roleBindings    []rbac.RoleBinding
 	clusterRoles    []rbac.ClusterRole
@@ -171,7 +171,7 @@ func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, 
 
 // Note: ClusterTasks are deprecated and replaced by Tasks [1].
 // [1] https://tekton.dev/docs/pipelines/tasks/#task-vs-clustertask
-func listDeprecatedClusterTasks(request *common.Request) ([]pipeline.ClusterTask, error) {
+func listDeprecatedClusterTasks(request *common.Request) ([]pipeline.ClusterTask, error) { //nolint:staticcheck
 	deprecatedClusterTasks := &pipeline.ClusterTaskList{}
 	err := request.Client.List(request.Context, deprecatedClusterTasks, &client.MatchingLabels{
 		common.AppKubernetesManagedByLabel: common.TektonAppKubernetesManagedByValue,
@@ -186,7 +186,7 @@ func isUpgradingNow(request *common.Request) bool {
 	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
 }
 
-func reconcileTektonTasksFuncs(tasks []pipeline.Task) []common.ReconcileFunc {
+func reconcileTektonTasksFuncs(tasks []pipeline.Task) []common.ReconcileFunc { //nolint:staticcheck
 	funcs := make([]common.ReconcileFunc, 0, len(tasks))
 	for i := range tasks {
 		task := &tasks[i]

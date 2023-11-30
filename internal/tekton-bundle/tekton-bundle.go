@@ -28,12 +28,17 @@ var (
 )
 
 type Bundle struct {
-	Tasks           []pipeline.Task
+	// TODO: Update to v1.Task
+	Tasks []pipeline.Task //nolint:staticcheck
+
 	ServiceAccounts []v1.ServiceAccount
 	RoleBindings    []rbac.RoleBinding
 	ClusterRoles    []rbac.ClusterRole
-	Pipelines       []pipeline.Pipeline
-	ConfigMaps      []v1.ConfigMap
+
+	// TODO: Update to v1.Pipeline
+	Pipelines []pipeline.Pipeline //nolint:staticcheck
+
+	ConfigMaps []v1.ConfigMap
 }
 
 var tektonPipelineBundlePaths = []string{
@@ -92,14 +97,14 @@ func decodeObjects(path string, bundle *Bundle) error {
 
 			switch kind {
 			case tasksString:
-				task := pipeline.Task{}
+				task := pipeline.Task{} //nolint:staticcheck
 				err = getObject(obj, &task)
 				if err != nil {
 					return err
 				}
 				bundle.Tasks = append(bundle.Tasks, task)
 			case pipelineKindString:
-				p := pipeline.Pipeline{}
+				p := pipeline.Pipeline{} //nolint:staticcheck
 				err = getObject(obj, &p)
 				if err != nil {
 					return err
