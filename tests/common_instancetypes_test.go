@@ -3,13 +3,15 @@ package tests
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+
+	"k8s.io/utils/ptr"
 	virtv1 "kubevirt.io/api/core/v1"
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kustomize/api/krusty"
+
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 )
 
 var _ = Describe("Common Instance Types", func() {
@@ -42,7 +44,7 @@ var _ = Describe("Common Instance Types", func() {
 			URL := "https://github.com/kubevirt/common-instancetypes//VirtualMachineClusterPreferences?ref=v0.3.3"
 			sspObj := getSsp()
 			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-				URL: pointer.String(URL),
+				URL: ptr.To(URL),
 			}
 			createOrUpdateSsp(sspObj)
 			waitUntilDeployed()
@@ -105,7 +107,7 @@ var _ = Describe("Common Instance Types", func() {
 		It("should cleanup resources when feature gate is disabled", func() {
 			sspObj := getSsp()
 			sspObj.Spec.FeatureGates = &ssp.FeatureGates{
-				DeployCommonInstancetypes: pointer.Bool(false),
+				DeployCommonInstancetypes: ptr.To(false),
 			}
 			createOrUpdateSsp(sspObj)
 			waitUntilDeployed()
@@ -129,7 +131,7 @@ var _ = Describe("Common Instance Types", func() {
 		DescribeTable("should reject URL", func(URL string) {
 			sspObj := getSsp()
 			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-				URL: pointer.String(URL),
+				URL: ptr.To(URL),
 			}
 			err := apiClient.Update(ctx, sspObj)
 			Expect(err).To(HaveOccurred())

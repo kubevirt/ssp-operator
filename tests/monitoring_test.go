@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -265,7 +265,7 @@ var _ = Describe("Prometheus Alerts", func() {
 				Volumes: volumes,
 			}
 			vm = NewVirtualMachine(vmi)
-			vm.Spec.Running = pointer.Bool(false)
+			vm.Spec.Running = ptr.To(false)
 			eventuallyCreateVm(vm)
 
 			return vmName
