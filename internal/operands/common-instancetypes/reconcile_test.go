@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -313,7 +313,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -342,7 +342,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -360,7 +360,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 			return mockResMap, nil
 		}
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=2"),
+			URL: ptr.To("https://foo.com/bar?ref=2"),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -391,7 +391,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		// Update the SSP CR to use a URL so that it calls KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -403,7 +403,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 	It("should not deploy internal bundle resources when featureGate is disabled", func() {
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -439,7 +439,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
 
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -459,12 +459,12 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -486,7 +486,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -500,7 +500,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
 
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		_, err = operand.Reconcile(&request)

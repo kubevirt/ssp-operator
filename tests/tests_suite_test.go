@@ -9,13 +9,15 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
-	ginkgo_reporters "github.com/onsi/ginkgo/v2/reporters"
 	. "github.com/onsi/gomega"
+
+	ginkgo_reporters "github.com/onsi/ginkgo/v2/reporters"
 	osconfv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,23 +30,21 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
-
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
-	"kubevirt.io/ssp-operator/tests/env"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 var (
@@ -116,7 +116,7 @@ func (s *newSspStrategy) Init() {
 		},
 		Spec: sspv1beta2.SSPSpec{
 			TemplateValidator: &sspv1beta2.TemplateValidator{
-				Replicas: pointer.Int32(int32(s.GetValidatorReplicas())),
+				Replicas: ptr.To(int32(s.GetValidatorReplicas())),
 			},
 			CommonTemplates: sspv1beta2.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),

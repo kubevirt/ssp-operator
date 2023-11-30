@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kubevirt "kubevirt.io/api/core"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 
@@ -286,7 +286,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
 					Namespace: serviceNamespace,
-					Path:      pointer.String(webhook.VmValidatePath),
+					Path:      ptr.To(webhook.VmValidatePath),
 				},
 			},
 			Rules:                   vmRules,
@@ -299,7 +299,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 				Service: &admission.ServiceReference{
 					Name:      ServiceName,
 					Namespace: serviceNamespace,
-					Path:      pointer.String(webhook.TemplateValidatePath),
+					Path:      ptr.To(webhook.TemplateValidatePath),
 				},
 			},
 			ObjectSelector: &metav1.LabelSelector{

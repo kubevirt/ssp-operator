@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kubevirt "kubevirt.io/api/core"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -523,7 +523,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 				Service: &apiregv1.ServiceReference{
 					Name:      serviceName,
 					Namespace: namespace,
-					Port:      pointer.Int32(443),
+					Port:      ptr.To[int32](443),
 				},
 			},
 		},

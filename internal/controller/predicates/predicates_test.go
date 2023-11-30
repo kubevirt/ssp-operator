@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
@@ -18,7 +18,7 @@ var _ = Describe("SpecChangedPredicate", func() {
 		obj := &ssp.SSP{
 			Spec: ssp.SSPSpec{
 				TemplateValidator: &ssp.TemplateValidator{
-					Replicas: pointer.Int32(1),
+					Replicas: ptr.To[int32](1),
 				},
 			},
 		}
@@ -35,13 +35,13 @@ var _ = Describe("SpecChangedPredicate", func() {
 		obj := &ssp.SSP{
 			Spec: ssp.SSPSpec{
 				TemplateValidator: &ssp.TemplateValidator{
-					Replicas: pointer.Int32(1),
+					Replicas: ptr.To[int32](1),
 				},
 			},
 		}
 
 		newObj := obj.DeepCopy()
-		newObj.Spec.TemplateValidator.Replicas = pointer.Int32(2)
+		newObj.Spec.TemplateValidator.Replicas = ptr.To[int32](2)
 
 		updateEvent := event.UpdateEvent{
 			ObjectOld: obj,

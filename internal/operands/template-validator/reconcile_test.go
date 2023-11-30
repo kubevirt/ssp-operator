@@ -4,18 +4,17 @@ import (
 	"context"
 	"testing"
 
-	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
-	. "kubevirt.io/ssp-operator/internal/test-utils"
+	"k8s.io/utils/ptr"
+	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -23,6 +22,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	. "kubevirt.io/ssp-operator/internal/test-utils"
 )
 
 var log = logf.Log.WithName("validator_operand")
@@ -65,7 +65,7 @@ var _ = Describe("Template validator operand", func() {
 				},
 				Spec: ssp.SSPSpec{
 					TemplateValidator: &ssp.TemplateValidator{
-						Replicas: pointer.Int32(replicas),
+						Replicas: ptr.To(replicas),
 						Placement: &lifecycleapi.NodePlacement{
 							Affinity: &core.Affinity{},
 						},

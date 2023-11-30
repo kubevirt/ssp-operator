@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
@@ -286,7 +286,7 @@ var _ = Describe("RHEL VM creation", func() {
 										Disk: &kubevirtv1.DiskTarget{Bus: "virtio"},
 									},
 								}},
-								NetworkInterfaceMultiQueue: pointer.Bool(true),
+								NetworkInterfaceMultiQueue: ptr.To(true),
 							},
 						},
 						TerminationGracePeriodSeconds: &terminateGracePeriod,
