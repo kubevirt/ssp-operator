@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -64,7 +66,7 @@ func RunningOnOpenshift(ctx context.Context, cl client.Reader) (bool, error) {
 		},
 	}
 	if err := cl.Get(ctx, client.ObjectKeyFromObject(clusterVersion), clusterVersion); err != nil {
-		if meta.IsNoMatchError(err) || apierrors.IsNotFound(err) {
+		if meta.IsNoMatchError(err) || apierrors.IsNotFound(err) || errors.Is(err, &discovery.ErrGroupDiscoveryFailed{}) {
 			// Not on OpenShift
 			return false, nil
 		} else {
