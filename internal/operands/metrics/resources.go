@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -92,7 +92,7 @@ func getAlertRules() ([]promv1.Rule, error) {
 		{
 			Alert: "SSPDown",
 			Expr:  intstr.FromString("kubevirt_ssp_operator_up == 0"),
-			For:   "5m",
+			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary":     "All SSP operator pods are down.",
 				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPDown"),
@@ -107,7 +107,7 @@ func getAlertRules() ([]promv1.Rule, error) {
 		{
 			Alert: "SSPTemplateValidatorDown",
 			Expr:  intstr.FromString("kubevirt_ssp_template_validator_up == 0"),
-			For:   "5m",
+			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary":     "All Template Validator pods are down.",
 				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPTemplateValidatorDown"),
@@ -122,7 +122,7 @@ func getAlertRules() ([]promv1.Rule, error) {
 		{
 			Alert: "SSPFailingToReconcile",
 			Expr:  intstr.FromString("(kubevirt_ssp_operator_reconcile_succeeded_aggregated == 0) and (kubevirt_ssp_operator_up > 0)"),
-			For:   "5m",
+			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary":     "The ssp-operator pod is up but failing to reconcile",
 				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPFailingToReconcile"),
@@ -137,7 +137,7 @@ func getAlertRules() ([]promv1.Rule, error) {
 		{
 			Alert: "SSPHighRateRejectedVms",
 			Expr:  intstr.FromString("kubevirt_ssp_template_validator_rejected_increase > 5"),
-			For:   "5m",
+			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary":     "High rate of rejected Vms",
 				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPHighRateRejectedVms"),
@@ -152,7 +152,7 @@ func getAlertRules() ([]promv1.Rule, error) {
 		{
 			Alert: "SSPCommonTemplatesModificationReverted",
 			Expr:  intstr.FromString("kubevirt_ssp_common_templates_restored_increase > 0"),
-			For:   "0m",
+			For:   ptr.To[promv1.Duration]("0m"),
 			Annotations: map[string]string{
 				"summary":     "Common Templates manual modifications were reverted by the operator",
 				"runbook_url": fmt.Sprintf(runbookURLTemplate, "SSPCommonTemplatesModificationReverted"),
@@ -241,7 +241,7 @@ func newServiceMonitorCR(namespace string) *promv1.ServiceMonitor {
 			Labels:    ServiceMonitorLabels(),
 		},
 		Spec: promv1.ServiceMonitorSpec{
-			NamespaceSelector: v1.NamespaceSelector{
+			NamespaceSelector: promv1.NamespaceSelector{
 				Any: true,
 			},
 			Selector: metav1.LabelSelector{

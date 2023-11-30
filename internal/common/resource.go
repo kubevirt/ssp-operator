@@ -499,8 +499,8 @@ func defaultUpdateFunc(newObj, foundObj client.Object) {
 	case *promv1.ServiceMonitor:
 		foundObj.(*promv1.ServiceMonitor).Spec = newTyped.Spec
 
-	case *tekton.Task:
-		foundObj.(*tekton.Task).Spec = newTyped.Spec
+	case *tekton.Task: //nolint:staticcheck
+		foundObj.(*tekton.Task).Spec = newTyped.Spec //nolint:staticcheck
 
 	default:
 		panic(fmt.Sprintf("Default update is not supported for type: %T", newObj))

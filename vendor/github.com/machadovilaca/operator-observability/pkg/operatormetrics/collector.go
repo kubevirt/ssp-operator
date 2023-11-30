@@ -65,19 +65,19 @@ func collectValue(ch chan<- prometheus.Metric, metric Metric, cr CollectorResult
 		m.Observe(cr.Value)
 		m.Collect(ch)
 	case CounterVecType:
-		m := metric.getCollector().(*prometheus.CounterVec)
+		m := metric.getCollector().(prometheus.CounterVec)
 		m.WithLabelValues(cr.Labels...).Add(cr.Value)
 		m.Collect(ch)
 	case GaugeVecType:
-		m := metric.getCollector().(*prometheus.GaugeVec)
+		m := metric.getCollector().(prometheus.GaugeVec)
 		m.WithLabelValues(cr.Labels...).Set(cr.Value)
 		m.Collect(ch)
 	case HistogramVecType:
-		m := metric.getCollector().(*prometheus.HistogramVec)
+		m := metric.getCollector().(prometheus.HistogramVec)
 		m.WithLabelValues(cr.Labels...).Observe(cr.Value)
 		m.Collect(ch)
 	case SummaryVecType:
-		m := metric.getCollector().(*prometheus.SummaryVec)
+		m := metric.getCollector().(prometheus.SummaryVec)
 		m.WithLabelValues(cr.Labels...).Observe(cr.Value)
 		m.Collect(ch)
 	default:

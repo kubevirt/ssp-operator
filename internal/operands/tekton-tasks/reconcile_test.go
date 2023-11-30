@@ -214,7 +214,7 @@ func getMockedRequest() common.Request {
 
 func getMockedTestBundle() *tektonbundle.Bundle {
 	return &tektonbundle.Bundle{
-		Tasks: []pipeline.Task{
+		Tasks: []pipeline.Task{ //nolint:staticcheck
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:    map[string]string{},

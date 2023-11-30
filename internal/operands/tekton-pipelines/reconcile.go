@@ -49,7 +49,9 @@ func WatchClusterTypes() []operands.WatchType {
 }
 
 type tektonPipelines struct {
-	pipelines       []pipeline.Pipeline
+	// TODO: Update to v1.Pipeline
+	pipelines []pipeline.Pipeline //nolint:staticcheck
+
 	configMaps      []v1.ConfigMap
 	roleBindings    []rbac.RoleBinding
 	serviceAccounts []v1.ServiceAccount
@@ -143,7 +145,7 @@ func isUpgradingNow(request *common.Request) bool {
 	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
 }
 
-func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.ReconcileFunc {
+func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.ReconcileFunc { //nolint:staticcheck
 	funcs := make([]common.ReconcileFunc, 0, len(pipelines))
 	for i := range pipelines {
 		tektonPipeline := &pipelines[i]
@@ -153,8 +155,8 @@ func reconcileTektonPipelinesFuncs(pipelines []pipeline.Pipeline) []common.Recon
 				ClusterResource(tektonPipeline).
 				WithAppLabels(operandName, operandComponent).
 				UpdateFunc(func(newRes, foundRes client.Object) {
-					newPipeline := newRes.(*pipeline.Pipeline)
-					foundPipeline := foundRes.(*pipeline.Pipeline)
+					newPipeline := newRes.(*pipeline.Pipeline)     //nolint:staticcheck
+					foundPipeline := foundRes.(*pipeline.Pipeline) //nolint:staticcheck
 					foundPipeline.Spec = newPipeline.Spec
 					for i, param := range foundPipeline.Spec.Params {
 						if strings.HasPrefix(param.Name, "virtioContainer") {

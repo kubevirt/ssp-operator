@@ -356,7 +356,7 @@ func getMockedRequest() *common.Request {
 
 func getMockedTestBundle() *tektonbundle.Bundle {
 	return &tektonbundle.Bundle{
-		Pipelines: []pipeline.Pipeline{
+		Pipelines: []pipeline.Pipeline{ //nolint:staticcheck
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-pipeline",
