@@ -115,24 +115,6 @@ var _ = Describe("SSP Validation", func() {
 			})
 		})
 
-		It("should fail if template namespace does not exist", func() {
-			const nonexistingNamespace = "nonexisting-namespace"
-			ssp := &sspv1beta2.SSP{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ssp",
-					Namespace: "test-ns",
-				},
-				Spec: sspv1beta2.SSPSpec{
-					CommonTemplates: sspv1beta2.CommonTemplates{
-						Namespace: nonexistingNamespace,
-					},
-				},
-			}
-			err := validator.ValidateCreate(ctx, toUnstructured(ssp))
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("creation failed, the configured namespace for common templates does not exist: " + nonexistingNamespace))
-		})
-
 		It("should accept old v1beta1 SSP CR", func() {
 			ssp := &sspv1beta1.SSP{
 				ObjectMeta: metav1.ObjectMeta{
@@ -164,26 +146,6 @@ var _ = Describe("SSP Validation", func() {
 
 			Expect(validator.ValidateCreate(ctx, toUnstructured(ssp))).To(Succeed())
 		})
-	})
-
-	It("should allow update of commonTemplates.namespace", func() {
-		oldSsp := &sspv1beta2.SSP{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-ssp",
-				Namespace: "test-ns",
-			},
-			Spec: sspv1beta2.SSPSpec{
-				CommonTemplates: sspv1beta2.CommonTemplates{
-					Namespace: "old-ns",
-				},
-			},
-		}
-
-		newSsp := oldSsp.DeepCopy()
-		newSsp.Spec.CommonTemplates.Namespace = "new-ns"
-
-		err := validator.ValidateUpdate(ctx, toUnstructured(oldSsp), toUnstructured(newSsp))
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("DataImportCronTemplates", func() {

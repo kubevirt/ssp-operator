@@ -79,14 +79,6 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 		return fmt.Errorf("creation failed, an SSP CR already exists in namespace %v: %v", ssps.Items[0].ObjectMeta.Namespace, ssps.Items[0].ObjectMeta.Name)
 	}
 
-	// Check if the common templates namespace exists
-	namespaceName := sspObj.Spec.CommonTemplates.Namespace
-	var namespace v1.Namespace
-	err = s.apiClient.Get(ctx, client.ObjectKey{Name: namespaceName}, &namespace)
-	if err != nil {
-		return fmt.Errorf("creation failed, the configured namespace for common templates does not exist: %v", namespaceName)
-	}
-
 	return s.validateSspObject(ctx, sspObj)
 }
 
