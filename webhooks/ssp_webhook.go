@@ -87,19 +87,7 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 		return fmt.Errorf("creation failed, the configured namespace for common templates does not exist: %v", namespaceName)
 	}
 
-	if err = s.validatePlacement(ctx, sspObj); err != nil {
-		return fmt.Errorf("placement api validation error: %w", err)
-	}
-
-	if err := validateDataImportCronTemplates(sspObj); err != nil {
-		return fmt.Errorf("dataImportCronTemplates validation error: %w", err)
-	}
-
-	if err := validateCommonInstancetypes(sspObj); err != nil {
-		return fmt.Errorf("commonInstancetypes validation error: %w", err)
-	}
-
-	return nil
+	return s.validateSspObject(ctx, sspObj)
 }
 
 func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) error {
@@ -110,22 +98,26 @@ func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Obj
 
 	ssplog.Info("validate update", "name", newSsp.Name)
 
-	if err := s.validatePlacement(ctx, newSsp); err != nil {
-		return fmt.Errorf("placement api validation error: %w", err)
-	}
-
-	if err := validateDataImportCronTemplates(newSsp); err != nil {
-		return fmt.Errorf("dataImportCronTemplates validation error: %w", err)
-	}
-
-	if err := validateCommonInstancetypes(newSsp); err != nil {
-		return fmt.Errorf("commonInstancetypes validation error: %w", err)
-	}
-
-	return nil
+	return s.validateSspObject(ctx, newSsp)
 }
 
 func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) error {
+	return nil
+}
+
+func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta2.SSP) error {
+	if err := s.validatePlacement(ctx, ssp); err != nil {
+		return fmt.Errorf("placement api validation error: %w", err)
+	}
+
+	if err := validateDataImportCronTemplates(ssp); err != nil {
+		return fmt.Errorf("dataImportCronTemplates validation error: %w", err)
+	}
+
+	if err := validateCommonInstancetypes(ssp); err != nil {
+		return fmt.Errorf("commonInstancetypes validation error: %w", err)
+	}
+
 	return nil
 }
 
