@@ -9,10 +9,10 @@ jobs:
     name: Upload Release Asset
     runs-on: ubuntu-latest
     steps:
-      - name: Install Golang 1.19
+      - name: Install Golang 1.20
         uses: actions/setup-go@v2
         with:
-          go-version: '1.19'
+          go-version: '1.20'
 
       - name: Checkout code
         uses: actions/checkout@v2
@@ -32,7 +32,7 @@ jobs:
           make release
 
       - name: Upload CRD Asset
-        id: upload-crd-asset 
+        id: upload-crd-asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
           asset_content_type: text/plain
 
       - name: Upload CSV Asset
-        id: upload-csv-asset 
+        id: upload-csv-asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
@@ -54,7 +54,7 @@ jobs:
           asset_content_type: text/plain
 
       - name: Upload Operator Asset
-        id: upload-operator-asset 
+        id: upload-operator-asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
