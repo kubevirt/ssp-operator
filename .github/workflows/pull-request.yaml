@@ -13,7 +13,7 @@ jobs:
         with:
           go-version: '1.20'
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Generate metrics docs
         run: make generate-doc
       - name: Validate no changes
@@ -28,7 +28,7 @@ jobs:
         go-version: '1.20'
 
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Build and Test csv-generator
       run: make container-build && ./tests/e2e-test-csv-generator.sh
@@ -36,6 +36,6 @@ jobs:
   check_commited_files:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Check commited files
       run: hack/check-commited-changes.sh
