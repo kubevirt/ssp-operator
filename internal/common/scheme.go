@@ -2,7 +2,6 @@ package common
 
 import (
 	osconfv1 "github.com/openshift/api/config/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	internalmeta "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,8 +35,8 @@ func init() {
 
 // This function is useful in operand unit tests only
 func AddConversionFunctions(s *runtime.Scheme) error {
-	err := s.AddConversionFunc((*apiextensions.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crd := a.(*apiextensions.CustomResourceDefinition)
+	err := s.AddConversionFunc((*extv1.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crd := a.(*extv1.CustomResourceDefinition)
 		partialMeta := b.(*metav1.PartialObjectMetadata)
 
 		partialMeta.TypeMeta = crd.TypeMeta
@@ -48,8 +47,8 @@ func AddConversionFunctions(s *runtime.Scheme) error {
 		return err
 	}
 
-	return s.AddConversionFunc((*apiextensions.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crdList := a.(*apiextensions.CustomResourceDefinitionList)
+	return s.AddConversionFunc((*extv1.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crdList := a.(*extv1.CustomResourceDefinitionList)
 		partialMetaList := b.(*metav1.PartialObjectMetadataList)
 
 		partialMetaList.TypeMeta = crdList.TypeMeta
