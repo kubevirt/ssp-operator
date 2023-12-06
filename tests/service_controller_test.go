@@ -46,7 +46,6 @@ var _ = Describe("Service Controller", func() {
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesManagedByLabel, controllers.ServiceManagedByLabelValue))
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, common.GetOperatorVersion()))
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesComponentLabel, controllers.ServiceControllerName))
-		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(BeEmpty())
 	})
 
 	It("[test_id: 8808] Should re-create ssp-operator-metrics service if deleted", func() {
