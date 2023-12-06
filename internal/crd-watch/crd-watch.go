@@ -116,11 +116,11 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to add event handler to informer: %w", err)
 	}
 
 	if err := c.sync(ctx, c.cache); err != nil {
-		return err
+		return fmt.Errorf("failed to sync CRD watch: %w", err)
 	}
 
 	// This function has to block, because that is what manager.Runnable expects.
