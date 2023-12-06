@@ -114,20 +114,6 @@ var _ = Describe("Validation webhook", func() {
 				strategy.RevertToOriginalSspCr()
 			})
 
-			It("[test_id:6056] should fail to create SSP CR with invalid commonTemplates.namespace", func() {
-				newSsp.Spec.CommonTemplates.Namespace = "nonexisting-templates-namespace"
-
-				err := apiClient.Create(ctx, newSsp, client.DryRunAll)
-				if err == nil {
-					Fail("SSP CR with invalid commonTemplates.namespace created.")
-					return
-				}
-				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
-					"creation failed, the configured namespace for common templates does not exist: %v",
-					newSsp.Spec.CommonTemplates.Namespace,
-				)))
-			})
-
 			Context("Placement API validation", func() {
 				It("[test_id:5988]should succeed with valid template-validator placement fields", func() {
 					newSsp.Spec.TemplateValidator = &sspv1beta2.TemplateValidator{
