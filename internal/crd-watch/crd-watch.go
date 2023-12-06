@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -95,7 +95,7 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 
 	informer, err := c.cache.GetInformer(ctx, &metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: apiextensions.GroupName + "/v1",
+			APIVersion: extv1.SchemeGroupVersion.String(),
 			Kind:       "CustomResourceDefinition",
 		},
 	})
@@ -131,7 +131,7 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 func (c *CrdWatch) sync(ctx context.Context, reader client.Reader) error {
 	crdMetaList := &metav1.PartialObjectMetadataList{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: apiextensions.SchemeGroupVersion.String(),
+			APIVersion: extv1.SchemeGroupVersion.String(),
 			Kind:       "CustomResourceDefinitionList",
 		},
 	}

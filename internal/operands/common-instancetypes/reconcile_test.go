@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	internalmeta "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
@@ -48,8 +48,8 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		err                                     error
 		operand                                 *CommonInstancetypes
 		request                                 common.Request
-		virtualMachineClusterInstancetypeCrdObj *apiextensions.CustomResourceDefinition
-		virtualMachineClusterPreferenceCrdObj   *apiextensions.CustomResourceDefinition
+		virtualMachineClusterInstancetypeCrdObj *extv1.CustomResourceDefinition
+		virtualMachineClusterPreferenceCrdObj   *extv1.CustomResourceDefinition
 	)
 
 	const (
@@ -82,15 +82,15 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
-		Expect(apiextensions.AddToScheme(scheme.Scheme)).To(Succeed())
+		Expect(extv1.AddToScheme(scheme.Scheme)).To(Succeed())
 		Expect(addConversionFunctions(scheme.Scheme)).To(Succeed())
 		Expect(instancetypev1beta1.AddToScheme(scheme.Scheme)).To(Succeed())
 
 		client := fake.NewClientBuilder().Build()
 
-		virtualMachineClusterInstancetypeCrdObj = &apiextensions.CustomResourceDefinition{
+		virtualMachineClusterInstancetypeCrdObj = &extv1.CustomResourceDefinition{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiextensions.SchemeGroupVersion.String(),
+				APIVersion: extv1.SchemeGroupVersion.String(),
 				Kind:       "CustomResourceDefinition",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -99,9 +99,9 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 		Expect(client.Create(context.Background(), virtualMachineClusterInstancetypeCrdObj)).To(Succeed())
 
-		virtualMachineClusterPreferenceCrdObj = &apiextensions.CustomResourceDefinition{
+		virtualMachineClusterPreferenceCrdObj = &extv1.CustomResourceDefinition{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiextensions.SchemeGroupVersion.String(),
+				APIVersion: extv1.SchemeGroupVersion.String(),
 				Kind:       "CustomResourceDefinition",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -142,7 +142,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		// Replace the client with a new one without the CRDs or instancetype schema present
 		testScheme := runtime.NewScheme()
 		Expect(internalmeta.AddToScheme(testScheme)).To(Succeed())
-		Expect(apiextensions.AddToScheme(testScheme)).To(Succeed())
+		Expect(extv1.AddToScheme(testScheme)).To(Succeed())
 
 		request.Client = fake.NewClientBuilder().WithScheme(testScheme).Build()
 
@@ -511,8 +511,8 @@ var _ = Describe("Common-Instancetypes operand", func() {
 })
 
 func addConversionFunctions(s *runtime.Scheme) error {
-	err := s.AddConversionFunc((*apiextensions.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crd := a.(*apiextensions.CustomResourceDefinition)
+	err := s.AddConversionFunc((*extv1.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crd := a.(*extv1.CustomResourceDefinition)
 		partialMeta := b.(*metav1.PartialObjectMetadata)
 
 		partialMeta.TypeMeta = crd.TypeMeta
@@ -523,8 +523,8 @@ func addConversionFunctions(s *runtime.Scheme) error {
 		return err
 	}
 
-	return s.AddConversionFunc((*apiextensions.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crdList := a.(*apiextensions.CustomResourceDefinitionList)
+	return s.AddConversionFunc((*extv1.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crdList := a.(*extv1.CustomResourceDefinitionList)
 		partialMetaList := b.(*metav1.PartialObjectMetadataList)
 
 		partialMetaList.TypeMeta = crdList.TypeMeta
