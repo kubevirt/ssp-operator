@@ -321,3 +321,7 @@ GOLANGCI_LINT_VERSION ?= v1.51.1
 lint:
 	test -s $(GOLANGCI_LINT) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION)
 	$(GOLANGCI_LINT) run --timeout 5m
+
+.PHONY: lint-metrics
+lint-metrics:
+	./hack/prom_metric_linter.sh  --operator-name="kubevirt" --sub-operator-name="ssp"
