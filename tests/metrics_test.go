@@ -87,7 +87,11 @@ var _ = Describe("Metrics", func() {
 			ExpectedLabels: expectedLabelsFor("metrics", common.AppComponentMonitoring),
 			UpdateFunc: func(rule *promv1.PrometheusRule) {
 				rule.Spec.Groups[0].Name = "changed-name"
-				rule.Spec.Groups[0].Rules = []promv1.Rule{}
+				rule.Spec.Groups[0].Rules = []promv1.Rule{
+					{
+						Alert: "changed-alert",
+					},
+				}
 			},
 			EqualsFunc: func(old, new *promv1.PrometheusRule) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)

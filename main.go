@@ -44,8 +44,7 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
-	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
-	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics"
+	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 	"kubevirt.io/ssp-operator/webhooks"
 	// +kubebuilder:scaffold:imports
 )
@@ -183,6 +182,8 @@ func (s *prometheusServer) getPrometheusTLSConfig(ctx context.Context, certWatch
 }
 
 func newPrometheusServer(metricsAddr string, cache cache.Cache) *prometheusServer {
+	sspMetrics.SetupMetrics()
+
 	return &prometheusServer{
 		certPath:      path.Join(sdkTLSDir, sdkTLSCrt),
 		keyPath:       path.Join(sdkTLSDir, sdkTLSKey),
@@ -203,9 +204,6 @@ func main() {
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
-	metrics.Registry.MustRegister(common_templates.CommonTemplatesRestored)
-	metrics.Registry.MustRegister(common.SSPOperatorReconcileSucceeded)
-	sspMetrics.SetupMetrics()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 

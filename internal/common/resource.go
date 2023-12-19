@@ -8,7 +8,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/prometheus/client_golang/prometheus"
 	tekton "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -113,13 +112,6 @@ type reconcileBuilder struct {
 }
 
 var _ ReconcileBuilder = &reconcileBuilder{}
-
-var (
-	SSPOperatorReconcileSucceeded = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "kubevirt_ssp_operator_reconcile_succeeded",
-		Help: "Set to 1 if the reconcile process of all operands completes with no errors, and to 0 otherwise",
-	})
-)
 
 func (r *reconcileBuilder) NamespacedResource(resource client.Object) ReconcileBuilder {
 	r.resource = resource

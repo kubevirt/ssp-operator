@@ -15,7 +15,7 @@ var (
 
 	vmRbdVolume = operatormetrics.NewGaugeVec(
 		operatormetrics.MetricOpts{
-			Name: metricPrefix + "vm_rbd_block_volume_without_rxbounce",
+			Name: "kubevirt_ssp_vm_rbd_block_volume_without_rxbounce",
 			Help: "VM with RBD mounted Block volume (without rxbounce option set)",
 			ExtraFields: map[string]string{
 				"StabilityLevel": "ALPHA",
