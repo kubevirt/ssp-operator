@@ -856,7 +856,7 @@ var _ = Describe("Template validator webhooks", func() {
 	It("[test_id:4375] Test refreshing of certificates", func() {
 		pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 		Expect(err).ToNot(HaveOccurred())
-		Expect(pods.Items).ToNot(HaveLen(0), "no pods found")
+		Expect(pods.Items).ToNot(BeEmpty(), "no pods found")
 
 		validatorPod := pods.Items[0]
 		oldCerts, err := getWebhookServerCertificates(&validatorPod)

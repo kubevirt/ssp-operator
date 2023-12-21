@@ -258,11 +258,11 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		instancetypeList := &instancetypev1beta1.VirtualMachineClusterInstancetypeList{}
 		Expect(request.Client.List(request.Context, instancetypeList, &client.ListOptions{})).To(Succeed())
-		Expect(len(instancetypeList.Items) > 0).To(BeTrue())
+		Expect(instancetypeList.Items).ToNot(BeEmpty())
 
 		preferenceList := &instancetypev1beta1.VirtualMachineClusterPreferenceList{}
 		Expect(request.Client.List(request.Context, preferenceList, &client.ListOptions{})).To(Succeed())
-		Expect(len(preferenceList.Items) > 0).To(BeTrue())
+		Expect(preferenceList.Items).ToNot(BeEmpty())
 
 		// Mutate the instance type while also adding the labels for virt-operator
 		instancetypeToUpdate := instancetypeList.Items[0]
@@ -334,7 +334,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		// Generate a mock ResMap and resources for the test
 		mockResMap, originalInstancetypes, originalPreferences, err := newMockResources(0, 10)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(originalInstancetypes).To(HaveLen(0))
+		Expect(originalInstancetypes).To(BeEmpty())
 		Expect(originalPreferences).To(HaveLen(10))
 
 		operand.KustomizeRunFunc = func(_ filesys.FileSystem, _ string) (resmap.ResMap, error) {
@@ -354,7 +354,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		mockResMap, updatedInstancetypes, updatedPreferences, err := newMockResources(10, 0)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updatedInstancetypes).To(HaveLen(10))
-		Expect(updatedPreferences).To(HaveLen(0))
+		Expect(updatedPreferences).To(BeEmpty())
 
 		operand.KustomizeRunFunc = func(_ filesys.FileSystem, _ string) (resmap.ResMap, error) {
 			return mockResMap, nil
