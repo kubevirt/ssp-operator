@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	internalmeta "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
@@ -35,14 +35,14 @@ var _ = Describe("CRD watch", func() {
 
 	BeforeEach(func() {
 		Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
-		Expect(apiextensions.AddToScheme(scheme.Scheme)).To(Succeed())
+		Expect(extv1.AddToScheme(scheme.Scheme)).To(Succeed())
 
 		// For unit tests, we to manually add conversion functions from CRD to PartialObjectMetadata
 		Expect(addConversionFunctions(scheme.Scheme)).To(Succeed())
 
-		crdObj := &apiextensions.CustomResourceDefinition{
+		crdObj := &extv1.CustomResourceDefinition{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiextensions.SchemeGroupVersion.String(),
+				APIVersion: extv1.SchemeGroupVersion.String(),
 				Kind:       "CustomResourceDefinition",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -55,9 +55,8 @@ var _ = Describe("CRD watch", func() {
 
 		fakeInformers = &informertest.FakeInformers{}
 
-		crdWatch = New(crd1, crd2, crd3)
+		crdWatch = New(fakeInformers, crd1, crd2, crd3)
 		Expect(crdWatch.Init(context.Background(), fakeClient)).To(Succeed())
-		Expect(crdWatch.InjectCache(fakeInformers)).To(Succeed())
 
 		var ctx context.Context
 		ctx, cancel = context.WithCancel(context.Background())
@@ -162,8 +161,8 @@ var _ = Describe("CRD watch", func() {
 })
 
 func addConversionFunctions(s *runtime.Scheme) error {
-	err := s.AddConversionFunc((*apiextensions.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crd := a.(*apiextensions.CustomResourceDefinition)
+	err := s.AddConversionFunc((*extv1.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crd := a.(*extv1.CustomResourceDefinition)
 		partialMeta := b.(*metav1.PartialObjectMetadata)
 
 		partialMeta.TypeMeta = crd.TypeMeta
@@ -174,8 +173,8 @@ func addConversionFunctions(s *runtime.Scheme) error {
 		return err
 	}
 
-	return s.AddConversionFunc((*apiextensions.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crdList := a.(*apiextensions.CustomResourceDefinitionList)
+	return s.AddConversionFunc((*extv1.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crdList := a.(*extv1.CustomResourceDefinitionList)
 		partialMetaList := b.(*metav1.PartialObjectMetadataList)
 
 		partialMetaList.TypeMeta = crdList.TypeMeta
@@ -192,13 +191,13 @@ func addConversionFunctions(s *runtime.Scheme) error {
 }
 
 func addCrdToFakeInformers(crdName string, fakeInformers *informertest.FakeInformers) {
-	fakeInformer, err := fakeInformers.FakeInformerFor(&metav1.PartialObjectMetadata{})
+	fakeInformer, err := fakeInformers.FakeInformerFor(context.Background(), &metav1.PartialObjectMetadata{})
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	fakeInformer.Add(crdPartialMetadata(crdName))
 }
 
 func removeCrdFromFakeInformers(crdName string, fakeInformers *informertest.FakeInformers) {
-	fakeInformer, err := fakeInformers.FakeInformerFor(&metav1.PartialObjectMetadata{})
+	fakeInformer, err := fakeInformers.FakeInformerFor(context.Background(), &metav1.PartialObjectMetadata{})
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	fakeInformer.Delete(crdPartialMetadata(crdName))
 }
@@ -206,7 +205,7 @@ func removeCrdFromFakeInformers(crdName string, fakeInformers *informertest.Fake
 func crdPartialMetadata(crdName string) *metav1.PartialObjectMetadata {
 	return &metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: apiextensions.SchemeGroupVersion.String(),
+			APIVersion: extv1.SchemeGroupVersion.String(),
 			Kind:       "CustomResourceDefinition",
 		},
 		ObjectMeta: metav1.ObjectMeta{

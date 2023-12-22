@@ -29,8 +29,10 @@ import (
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
@@ -42,7 +44,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -115,7 +116,7 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 
 	// Register watches for created objects only if all required CRDs exist
 	watchClusterResources(builder, r.crdList, r.operands, eventHandlerHook)
-	watchNamespacedResources(builder, r.crdList, r.operands, eventHandlerHook)
+	watchNamespacedResources(builder, r.crdList, r.operands, eventHandlerHook, mgr.GetScheme(), mgr.GetRESTMapper())
 
 	return builder.Complete(r)
 }
@@ -693,13 +694,15 @@ func watchSspResource(bldr *ctrl.Builder) {
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
 }
 
-func watchNamespacedResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
+func watchNamespacedResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc, scheme *runtime.Scheme, mapper meta.RESTMapper) {
 	watchResources(builder,
 		crdList,
-		&handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &ssp.SSP{},
-		},
+		handler.EnqueueRequestForOwner(
+			scheme,
+			mapper,
+			&ssp.SSP{},
+			handler.OnlyControllerOwner(),
+		),
 		sspOperands,
 		operands.Operand.WatchTypes,
 		eventHandlerHook,
@@ -748,7 +751,7 @@ func watchResources(ctrlBuilder *ctrl.Builder, crdList crd_watch.CrdList, handle
 		}
 
 		ctrlBuilder.Watches(
-			&source.Kind{Type: watchType.Object},
+			watchType.Object,
 			handler_hook.New(handler, hookFunc),
 			builder.WithPredicates(predicates...),
 		)

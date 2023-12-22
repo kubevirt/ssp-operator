@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
 type CrdList interface {
@@ -32,7 +31,7 @@ type CrdWatch struct {
 	cache       ctrlcache.Cache
 }
 
-func New(requiredCrds ...string) *CrdWatch {
+func New(cache ctrlcache.Cache, requiredCrds ...string) *CrdWatch {
 	requiredCrdsMap := make(map[string]struct{}, len(requiredCrds))
 	missingCrds := make(map[string]struct{}, len(requiredCrds))
 	for _, crdName := range requiredCrds {
@@ -44,6 +43,7 @@ func New(requiredCrds ...string) *CrdWatch {
 		requiredCrds: requiredCrdsMap,
 		existingCrds: map[string]struct{}{},
 		missingCrds:  missingCrds,
+		cache:        cache,
 	}
 }
 
@@ -95,7 +95,7 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 
 	informer, err := c.cache.GetInformer(ctx, &metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: apiextensions.GroupName + "/v1",
+			APIVersion: extv1.SchemeGroupVersion.String(),
 			Kind:       "CustomResourceDefinition",
 		},
 	})
@@ -116,11 +116,11 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to add event handler to informer: %w", err)
 	}
 
 	if err := c.sync(ctx, c.cache); err != nil {
-		return err
+		return fmt.Errorf("failed to sync CRD watch: %w", err)
 	}
 
 	// This function has to block, because that is what manager.Runnable expects.
@@ -131,7 +131,7 @@ func (c *CrdWatch) Start(ctx context.Context) error {
 func (c *CrdWatch) sync(ctx context.Context, reader client.Reader) error {
 	crdMetaList := &metav1.PartialObjectMetadataList{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: apiextensions.SchemeGroupVersion.String(),
+			APIVersion: extv1.SchemeGroupVersion.String(),
 			Kind:       "CustomResourceDefinitionList",
 		},
 	}
@@ -209,11 +209,4 @@ func (c *CrdWatch) crdDeleted(crdName string) {
 	if missingCountOld == 0 {
 		c.SomeCrdRemovedHandler()
 	}
-}
-
-var _ inject.Cache = &CrdWatch{}
-
-func (c *CrdWatch) InjectCache(cache ctrlcache.Cache) error {
-	c.cache = cache
-	return nil
 }

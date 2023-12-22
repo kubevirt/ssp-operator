@@ -9,14 +9,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	internalmeta "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -48,8 +48,8 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		err                                     error
 		operand                                 *CommonInstancetypes
 		request                                 common.Request
-		virtualMachineClusterInstancetypeCrdObj *apiextensions.CustomResourceDefinition
-		virtualMachineClusterPreferenceCrdObj   *apiextensions.CustomResourceDefinition
+		virtualMachineClusterInstancetypeCrdObj *extv1.CustomResourceDefinition
+		virtualMachineClusterPreferenceCrdObj   *extv1.CustomResourceDefinition
 	)
 
 	const (
@@ -82,15 +82,15 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
-		Expect(apiextensions.AddToScheme(scheme.Scheme)).To(Succeed())
+		Expect(extv1.AddToScheme(scheme.Scheme)).To(Succeed())
 		Expect(addConversionFunctions(scheme.Scheme)).To(Succeed())
 		Expect(instancetypev1beta1.AddToScheme(scheme.Scheme)).To(Succeed())
 
 		client := fake.NewClientBuilder().Build()
 
-		virtualMachineClusterInstancetypeCrdObj = &apiextensions.CustomResourceDefinition{
+		virtualMachineClusterInstancetypeCrdObj = &extv1.CustomResourceDefinition{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiextensions.SchemeGroupVersion.String(),
+				APIVersion: extv1.SchemeGroupVersion.String(),
 				Kind:       "CustomResourceDefinition",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -99,9 +99,9 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 		Expect(client.Create(context.Background(), virtualMachineClusterInstancetypeCrdObj)).To(Succeed())
 
-		virtualMachineClusterPreferenceCrdObj = &apiextensions.CustomResourceDefinition{
+		virtualMachineClusterPreferenceCrdObj = &extv1.CustomResourceDefinition{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiextensions.SchemeGroupVersion.String(),
+				APIVersion: extv1.SchemeGroupVersion.String(),
 				Kind:       "CustomResourceDefinition",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -110,7 +110,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 		Expect(client.Create(context.Background(), virtualMachineClusterPreferenceCrdObj)).To(Succeed())
 
-		crdWatch := crd_watch.New(virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
+		crdWatch := crd_watch.New(nil, virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
 		Expect(crdWatch.Init(context.Background(), client)).To(Succeed())
 
 		request = common.Request{
@@ -142,11 +142,11 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		// Replace the client with a new one without the CRDs or instancetype schema present
 		testScheme := runtime.NewScheme()
 		Expect(internalmeta.AddToScheme(testScheme)).To(Succeed())
-		Expect(apiextensions.AddToScheme(testScheme)).To(Succeed())
+		Expect(extv1.AddToScheme(testScheme)).To(Succeed())
 
 		request.Client = fake.NewClientBuilder().WithScheme(testScheme).Build()
 
-		crdWatch := crd_watch.New(virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
+		crdWatch := crd_watch.New(nil, virtualMachineClusterInstancetypeCrd, virtualMachineClusterPreferenceCrd)
 		Expect(crdWatch.Init(request.Context, request.Client)).To(Succeed())
 
 		request.CrdList = crdWatch
@@ -313,7 +313,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -342,7 +342,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -360,7 +360,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 			return mockResMap, nil
 		}
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=2"),
+			URL: ptr.To("https://foo.com/bar?ref=2"),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -391,7 +391,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		// Update the SSP CR to use a URL so that it calls KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -403,7 +403,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 	It("should not deploy internal bundle resources when featureGate is disabled", func() {
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -439,7 +439,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
 
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -459,12 +459,12 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -486,7 +486,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-			URL: pointer.String("https://foo.com/bar?ref=1"),
+			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
 
 		// Run Reconcile and assert the results
@@ -500,7 +500,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd)).To(BeTrue())
 
 		request.Instance.Spec.FeatureGates = &ssp.FeatureGates{
-			DeployCommonInstancetypes: pointer.Bool(false),
+			DeployCommonInstancetypes: ptr.To(false),
 		}
 
 		_, err = operand.Reconcile(&request)
@@ -511,8 +511,8 @@ var _ = Describe("Common-Instancetypes operand", func() {
 })
 
 func addConversionFunctions(s *runtime.Scheme) error {
-	err := s.AddConversionFunc((*apiextensions.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crd := a.(*apiextensions.CustomResourceDefinition)
+	err := s.AddConversionFunc((*extv1.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crd := a.(*extv1.CustomResourceDefinition)
 		partialMeta := b.(*metav1.PartialObjectMetadata)
 
 		partialMeta.TypeMeta = crd.TypeMeta
@@ -523,8 +523,8 @@ func addConversionFunctions(s *runtime.Scheme) error {
 		return err
 	}
 
-	return s.AddConversionFunc((*apiextensions.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		crdList := a.(*apiextensions.CustomResourceDefinitionList)
+	return s.AddConversionFunc((*extv1.CustomResourceDefinitionList)(nil), (*metav1.PartialObjectMetadataList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		crdList := a.(*extv1.CustomResourceDefinitionList)
 		partialMetaList := b.(*metav1.PartialObjectMetadataList)
 
 		partialMetaList.TypeMeta = crdList.TypeMeta

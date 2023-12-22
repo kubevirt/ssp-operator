@@ -18,7 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
@@ -109,7 +109,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Resource:       &apps.Deployment{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(deployment *apps.Deployment) {
-				deployment.Spec.Replicas = pointer.Int32(0)
+				deployment.Spec.Replicas = ptr.To[int32](0)
 			},
 			EqualsFunc: func(old *apps.Deployment, new *apps.Deployment) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)

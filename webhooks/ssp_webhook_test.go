@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -109,7 +109,7 @@ var _ = Describe("SSP Validation", func() {
 					},
 				}
 
-				err := validator.ValidateCreate(ctx, toUnstructured(ssp))
+				_, err := validator.ValidateCreate(ctx, toUnstructured(ssp))
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp"))
 			})
@@ -123,14 +123,14 @@ var _ = Describe("SSP Validation", func() {
 				},
 				Spec: sspv1beta1.SSPSpec{
 					TemplateValidator: &sspv1beta1.TemplateValidator{
-						Replicas: pointer.Int32(2),
+						Replicas: ptr.To[int32](2),
 					},
 					CommonTemplates: sspv1beta1.CommonTemplates{
 						Namespace: templatesNamespace,
 					},
 					NodeLabeller: &sspv1beta1.NodeLabeller{},
 					CommonInstancetypes: &sspv1beta1.CommonInstancetypes{
-						URL: pointer.String("https://foo.com/bar?ref=1234"),
+						URL: ptr.To("https://foo.com/bar?ref=1234"),
 					},
 					TektonPipelines: &sspv1beta1.TektonPipelines{
 						Namespace: "test-pipelines-ns",
@@ -144,7 +144,8 @@ var _ = Describe("SSP Validation", func() {
 				},
 			}
 
-			Expect(validator.ValidateCreate(ctx, toUnstructured(ssp))).To(Succeed())
+			_, err := validator.ValidateCreate(ctx, toUnstructured(ssp))
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -193,15 +194,23 @@ var _ = Describe("SSP Validation", func() {
 		})
 
 		It("should validate dataImportCronTemplates on create", func() {
-			Expect(validator.ValidateCreate(ctx, toUnstructured(newSSP))).To(HaveOccurred())
+			_, err := validator.ValidateCreate(ctx, toUnstructured(newSSP))
+			Expect(err).To(HaveOccurred())
+
 			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
-			Expect(validator.ValidateCreate(ctx, toUnstructured(newSSP))).ToNot(HaveOccurred())
+
+			_, err = validator.ValidateCreate(ctx, toUnstructured(newSSP))
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should validate dataImportCronTemplates on update", func() {
-			Expect(validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))).To(HaveOccurred())
+			_, err := validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))
+			Expect(err).To(HaveOccurred())
+
 			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
-			Expect(validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))).ToNot(HaveOccurred())
+
+			_, err = validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -238,18 +247,21 @@ var _ = Describe("SSP Validation", func() {
 		})
 
 		It("should reject URL without https:// or ssh://", func() {
-			sspObj.Spec.CommonInstancetypes.URL = pointer.String("file://foo/bar")
-			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).ShouldNot(Succeed())
+			sspObj.Spec.CommonInstancetypes.URL = ptr.To("file://foo/bar")
+			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should reject URL without ?ref= or ?version=", func() {
-			sspObj.Spec.CommonInstancetypes.URL = pointer.String("https://foo.com/bar")
-			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).ShouldNot(Succeed())
+			sspObj.Spec.CommonInstancetypes.URL = ptr.To("https://foo.com/bar")
+			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
+			Expect(err).To(HaveOccurred())
 		})
 
 		DescribeTable("should accept a valid remote kustomize target URL", func(url string) {
-			sspObj.Spec.CommonInstancetypes.URL = pointer.String(url)
-			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).Should(Succeed())
+			sspObj.Spec.CommonInstancetypes.URL = ptr.To(url)
+			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
+			Expect(err).ToNot(HaveOccurred())
 		},
 			Entry("https:// with ?ref=", "https://foo.com/bar?ref=1234"),
 			Entry("https:// with ?target=", "https://foo.com/bar?version=1234"),
@@ -258,7 +270,8 @@ var _ = Describe("SSP Validation", func() {
 		)
 
 		It("should accept when no URL is provided", func() {
-			Expect(validator.ValidateCreate(ctx, toUnstructured(sspObj))).Should(Succeed())
+			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })

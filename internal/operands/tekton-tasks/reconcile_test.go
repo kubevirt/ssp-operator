@@ -6,23 +6,25 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	internalmeta "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
 	tektonbundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -158,16 +160,16 @@ func getMockedRequest() common.Request {
 	log := logf.Log.WithName("tekton-tasks-operand")
 
 	Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
-	Expect(apiextensions.AddToScheme(scheme.Scheme)).To(Succeed())
+	Expect(extv1.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(common.AddConversionFunctions(scheme.Scheme)).To(Succeed())
 	Expect(pipeline.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(ssp.AddToScheme(scheme.Scheme)).To(Succeed())
 
 	client := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 
-	tektonCrdObj := &apiextensions.CustomResourceDefinition{
+	tektonCrdObj := &extv1.CustomResourceDefinition{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: apiextensions.SchemeGroupVersion.String(),
+			APIVersion: extv1.SchemeGroupVersion.String(),
 			Kind:       "CustomResourceDefinition",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -176,7 +178,7 @@ func getMockedRequest() common.Request {
 	}
 	Expect(client.Create(context.Background(), tektonCrdObj)).To(Succeed())
 
-	crdWatch := crd_watch.New(tektonCrd)
+	crdWatch := crd_watch.New(nil, tektonCrd)
 	Expect(crdWatch.Init(context.Background(), client)).To(Succeed())
 
 	return common.Request{
@@ -214,7 +216,7 @@ func getMockedRequest() common.Request {
 
 func getMockedTestBundle() *tektonbundle.Bundle {
 	return &tektonbundle.Bundle{
-		Tasks: []pipeline.Task{
+		Tasks: []pipeline.Task{ //nolint:staticcheck
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:    map[string]string{},

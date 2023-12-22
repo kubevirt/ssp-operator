@@ -36,13 +36,13 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 	mgrCtx = logr.NewContext(mgrCtx, mgr.GetLogger())
 
 	if err := setupManager(mgrCtx, cancel, mgr); err != nil {
-		return err
+		return fmt.Errorf("failed to setup manager: %w", err)
 	}
 
 	mgr.GetLogger().Info("starting manager")
 	if err := mgr.Start(mgrCtx); err != nil {
 		mgr.GetLogger().Error(err, "problem running manager")
-		return err
+		return fmt.Errorf("failed to start manager: %w", err)
 	}
 	return nil
 }
@@ -50,7 +50,7 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager) error {
 	runningOnOpenShift, err := common.RunningOnOpenshift(ctx, mgr.GetAPIReader())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check if running on openshift: %w", err)
 	}
 
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
@@ -68,13 +68,13 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 	tektonPipelinesBundlePaths := tekton_bundle.GetTektonPipelineBundlePaths()
 	tektonPipelinesBundle, err := tekton_bundle.ReadBundle(tektonPipelinesBundlePaths)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read tekton pipelines bundle: %w", err)
 	}
 
 	tektonTasksBundlePath := tekton_bundle.GetTektonTasksBundlePath(runningOnOpenShift)
 	tektonTasksBundle, err := tekton_bundle.ReadBundle([]string{tektonTasksBundlePath})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read tekton tasks bundle: %w", err)
 	}
 
 	tektonPipelinesOperand := tekton_pipelines.New(tektonPipelinesBundle)
@@ -112,13 +112,13 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 	vmCRD := vmKind + "." + kubevirtv1.VirtualMachineGroupVersionKind.Group
 	requiredCrds = append(requiredCrds, vmCRD)
 
-	crdWatch := crd_watch.New(requiredCrds...)
+	crdWatch := crd_watch.New(mgr.GetCache(), requiredCrds...)
 	// Cleanly stops the manager and exit. The pod will be restarted.
 	crdWatch.AllCrdsAddedHandler = cancel
 	crdWatch.SomeCrdRemovedHandler = cancel
 
 	if err = crdWatch.Init(ctx, mgr.GetAPIReader()); err != nil {
-		return err
+		return fmt.Errorf("failed to initialize CRD watch: %w", err)
 	}
 
 	if missingCrds := crdWatch.MissingCrds(); len(missingCrds) > 0 {
@@ -131,12 +131,12 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 	if runningOnOpenShift {
 		infrastructureTopology, err = common.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get infrastructure topology: %w", err)
 		}
 	}
 
 	if err = mgr.Add(crdWatch); err != nil {
-		return err
+		return fmt.Errorf("failed to add CRD watch to manager: %w", err)
 	}
 
 	serviceController, err := CreateServiceController(ctx, mgr)

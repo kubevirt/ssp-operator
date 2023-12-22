@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
@@ -225,15 +226,17 @@ func main() {
 	}
 
 	mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 common.Scheme,
-		MetricsBindAddress:     "0",
+		Scheme: common.Scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       leaderElectionID,
-		WebhookServer: &webhook.Server{
+		WebhookServer: webhook.NewServer(webhook.Options{
 			Port:    webhookPort,
 			TLSOpts: []func(*tls.Config){getTLSOptsFunc},
-		},
+		}),
 	})
 
 	if err != nil {

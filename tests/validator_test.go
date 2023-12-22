@@ -8,22 +8,22 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	templatev1 "github.com/openshift/api/template/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,7 +42,7 @@ func testDeploymentResource() testResource {
 		Resource:       &apps.Deployment{},
 		ExpectedLabels: expectedLabelsFor("template-validator", common.AppComponentTemplating),
 		UpdateFunc: func(deployment *apps.Deployment) {
-			deployment.Spec.Replicas = pointer.Int32(0)
+			deployment.Spec.Replicas = ptr.To[int32](0)
 		},
 		EqualsFunc: func(old *apps.Deployment, new *apps.Deployment) bool {
 			return reflect.DeepEqual(old.Spec, new.Spec)
@@ -381,7 +381,7 @@ var _ = Describe("Template validator operand", func() {
 
 			updateSsp(func(foundSsp *ssp.SSP) {
 				foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
-					Replicas: pointer.Int32(replicas),
+					Replicas: ptr.To(replicas),
 				}
 			})
 

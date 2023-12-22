@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,10 +61,10 @@ type sspValidator struct {
 
 var _ admission.CustomValidator = &sspValidator{}
 
-func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	sspObj, err := getSspWithConversion(obj)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var ssps sspv1beta2.SSPList
@@ -73,19 +73,19 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) e
 	ssplog.Info("validate create", "name", sspObj.Name)
 	err = s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
+		return nil, fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
 	}
 	if len(ssps.Items) > 0 {
-		return fmt.Errorf("creation failed, an SSP CR already exists in namespace %v: %v", ssps.Items[0].ObjectMeta.Namespace, ssps.Items[0].ObjectMeta.Name)
+		return nil, fmt.Errorf("creation failed, an SSP CR already exists in namespace %v: %v", ssps.Items[0].ObjectMeta.Namespace, ssps.Items[0].ObjectMeta.Name)
 	}
 
 	return s.validateSspObject(ctx, sspObj)
 }
 
-func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) error {
+func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
 	newSsp, err := getSspWithConversion(newObj)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ssplog.Info("validate update", "name", newSsp.Name)
@@ -93,24 +93,24 @@ func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Obj
 	return s.validateSspObject(ctx, newSsp)
 }
 
-func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) error {
-	return nil
+func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+	return nil, nil
 }
 
-func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta2.SSP) error {
+func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta2.SSP) (admission.Warnings, error) {
 	if err := s.validatePlacement(ctx, ssp); err != nil {
-		return fmt.Errorf("placement api validation error: %w", err)
+		return nil, fmt.Errorf("placement api validation error: %w", err)
 	}
 
 	if err := validateDataImportCronTemplates(ssp); err != nil {
-		return fmt.Errorf("dataImportCronTemplates validation error: %w", err)
+		return nil, fmt.Errorf("dataImportCronTemplates validation error: %w", err)
 	}
 
 	if err := validateCommonInstancetypes(ssp); err != nil {
-		return fmt.Errorf("commonInstancetypes validation error: %w", err)
+		return nil, fmt.Errorf("commonInstancetypes validation error: %w", err)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta2.SSP) error {
@@ -139,7 +139,7 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 			Namespace: namespace,
 		},
 		Spec: apps.DeploymentSpec{
-			Replicas: pointer.Int32(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					webhookTestLabel: "",
