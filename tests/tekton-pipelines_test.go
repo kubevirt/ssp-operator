@@ -83,7 +83,7 @@ var _ = Describe("Tekton Pipelines Operand", func() {
 				return existingSA != nil
 			}, env.ShortTimeout(), time.Second).Should(BeTrue())
 
-			Expect(existingSA.Annotations[common.AppKubernetesComponentLabel]).ToNot(Equal(common.AppComponentTektonPipelines))
+			Expect(existingSA.Annotations[common.AppKubernetesComponentLabel]).ToNot(BeEquivalentTo(common.AppComponentTektonPipelines))
 		})
 
 		It("[test_id:TODO] should create config maps", func() {

@@ -702,9 +702,9 @@ var _ = Describe("DataSources", func() {
 			})
 
 			AfterEach(func() {
-				Eventually(func() error {
+				Eventually(func(g Gomega) error {
 					ds := &cdiv1beta1.DataSource{}
-					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 					delete(ds.GetLabels(), cdiLabel)
 					return apiClient.Update(ctx, ds)
 				}, env.ShortTimeout(), time.Second).Should(Succeed())
@@ -845,9 +845,9 @@ var _ = Describe("DataSources", func() {
 			})
 
 			It("[test_id:8295] DataSource should have CDI label", func() {
-				Eventually(func() map[string]string {
+				Eventually(func(g Gomega) map[string]string {
 					ds := &cdiv1beta1.DataSource{}
-					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 					return ds.GetLabels()
 				}, env.ShortTimeout(), time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
@@ -893,17 +893,17 @@ var _ = Describe("DataSources", func() {
 			})
 
 			It("[test_id:8296] should restore CDI label on DataSource, if user removes it", func() {
-				Eventually(func() error {
+				Eventually(func(g Gomega) error {
 					ds := &cdiv1beta1.DataSource{}
-					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 					delete(ds.GetLabels(), cdiLabel)
 					return apiClient.Update(ctx, ds)
 				}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 				// Eventually the label should be added back
-				Eventually(func() map[string]string {
+				Eventually(func(g Gomega) map[string]string {
 					ds := &cdiv1beta1.DataSource{}
-					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 					return ds.GetLabels()
 				}, env.ShortTimeout(), time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
@@ -1085,9 +1085,9 @@ var _ = Describe("DataSources", func() {
 
 			Context("with CDI label on DataSource", func() {
 				BeforeEach(func() {
-					Eventually(func() error {
+					Eventually(func(g Gomega) error {
 						ds := &cdiv1beta1.DataSource{}
-						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 
 						if ds.GetLabels() == nil {
 							ds.SetLabels(map[string]string{})
@@ -1099,9 +1099,9 @@ var _ = Describe("DataSources", func() {
 				})
 
 				AfterEach(func() {
-					Eventually(func() error {
+					Eventually(func(g Gomega) error {
 						ds := &cdiv1beta1.DataSource{}
-						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 						delete(ds.GetLabels(), cdiLabel)
 						return apiClient.Update(ctx, ds)
 					}, env.ShortTimeout(), time.Second).Should(Succeed())
@@ -1120,9 +1120,9 @@ var _ = Describe("DataSources", func() {
 
 					waitUntilDeployed()
 
-					Eventually(func() error {
+					Eventually(func(g Gomega) error {
 						ds := &cdiv1beta1.DataSource{}
-						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 						delete(ds.GetLabels(), cdiLabel)
 						return apiClient.Update(ctx, ds)
 					}, env.ShortTimeout(), time.Second).Should(Succeed())
@@ -1149,9 +1149,9 @@ var _ = Describe("DataSources", func() {
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), autoUpdateDataSource)).To(Succeed())
 
 					// Remove label
-					Eventually(func() error {
+					Eventually(func(g Gomega) error {
 						ds := &cdiv1beta1.DataSource{}
-						Expect(apiClient.Get(ctx, dataSource.GetKey(), ds))
+						g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
 						delete(ds.GetLabels(), cdiLabel)
 						return apiClient.Update(ctx, ds)
 					}, env.ShortTimeout(), time.Second).Should(Succeed())

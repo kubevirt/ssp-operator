@@ -248,7 +248,7 @@ func (s *existingSspStrategy) Init() {
 	Expect(err).ToNot(HaveOccurred())
 
 	templatesNamespace := existingSsp.Spec.CommonTemplates.Namespace
-	Expect(apiClient.Get(ctx, client.ObjectKey{Name: templatesNamespace}, &v1.Namespace{}))
+	Expect(apiClient.Get(ctx, client.ObjectKey{Name: templatesNamespace}, &v1.Namespace{})).To(Succeed())
 
 	validateDeploymentExists()
 
