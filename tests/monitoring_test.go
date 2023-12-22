@@ -417,7 +417,8 @@ func getPrometheusUrl() string {
 
 	err := apiClient.Get(ctx, routeKey, &route)
 	Expect(err).ShouldNot(HaveOccurred())
-	return fmt.Sprintf("https://%s", route.Spec.Host)
+	Expect(route.Status.Ingress).ToNot(BeEmpty())
+	return fmt.Sprintf("https://%s", route.Status.Ingress[0].Host)
 }
 
 func getAuthorizationTokenForPrometheus() string {
