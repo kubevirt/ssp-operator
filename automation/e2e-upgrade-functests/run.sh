@@ -21,15 +21,13 @@ RELEASE_BRANCH=${CI_BRANCH}
 if [[ -z ${RELEASE_BRANCH} ]] || [[ ${RELEASE_BRANCH} == "main" ]]
 then
   # Get the latest release branch
-  RELEASE_BRANCH=$(curl 'https://api.github.com/repos/kubevirt/ssp-operator/branches' |
-    jq '[.[].name | select(startswith("release-v"))] | max_by(ltrimstr("release-v") | split(".") | map(tonumber))' |
-    tr -d '"')
+  RELEASE_BRANCH=$(curl -s 'https://api.github.com/repos/kubevirt/ssp-operator/branches?per_page=100' |
+    jq -r '[.[].name | select(startswith("release-v"))] | max_by(ltrimstr("release-v") | split(".") | map(tonumber))')
 fi
 
 # GitHub API returns releases sorted by creation time. Latest release is the first.
-LATEST_RELEASED_VERSION=$(curl 'https://api.github.com/repos/kubevirt/ssp-operator/releases' |
-  jq --arg BRANCH "${RELEASE_BRANCH}" '[.[] | select(.target_commitish == $BRANCH) | .name] | .[0]' |
-  tr -d '"')
+LATEST_RELEASED_VERSION=$(curl -s 'https://api.github.com/repos/kubevirt/ssp-operator/releases' |
+  jq -r --arg BRANCH "${RELEASE_BRANCH}" '[.[] | select(.target_commitish == $BRANCH) | .name] | .[0]')
 
 oc apply -n $NAMESPACE -f "https://github.com/kubevirt/ssp-operator/releases/download/${LATEST_RELEASED_VERSION}/ssp-operator.yaml"
 
