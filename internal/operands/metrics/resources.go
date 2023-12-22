@@ -86,7 +86,7 @@ func getAlertRules() ([]promv1.Rule, error) {
 
 	return []promv1.Rule{
 		{
-			Expr:   intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by (node,os,workload,flavor)"),
+			Expr:   intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by (node,os,workload,flavor,instance_type,preference)"),
 			Record: "cnv:vmi_status_running:count",
 		},
 		{
