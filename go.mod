@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/logr v1.4.1
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
 	github.com/machadovilaca/operator-observability v0.0.8
 	github.com/onsi/ginkgo/v2 v2.13.2
