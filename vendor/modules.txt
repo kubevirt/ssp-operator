@@ -72,8 +72,8 @@ github.com/go-openapi/jsonpointer
 # github.com/go-openapi/jsonreference v0.19.6
 ## explicit; go 1.13
 github.com/go-openapi/jsonreference
-# github.com/go-openapi/swag v0.21.1
-## explicit; go 1.11
+# github.com/go-openapi/swag v0.22.6
+## explicit; go 1.19
 github.com/go-openapi/swag
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
@@ -693,7 +693,7 @@ kubevirt.io/controller-lifecycle-operator-sdk/api
 kubevirt.io/qe-tools/pkg/ginkgo-reporters
 kubevirt.io/qe-tools/pkg/polarion-xml
 # kubevirt.io/ssp-operator/api v0.0.0 => ./api
-## explicit; go 1.17
+## explicit; go 1.18
 kubevirt.io/ssp-operator/api/v1beta1
 # sigs.k8s.io/controller-runtime v0.13.2
 ## explicit; go 1.17
