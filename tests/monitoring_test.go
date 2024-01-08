@@ -304,7 +304,7 @@ func checkAlert(alertName string) (*promApiv1.Alert, error) {
 }
 
 func waitForAlertToActivate(alertName string) {
-	Eventually(func() error {
+	EventuallyWithOffset(1, func() error {
 		alert, err := checkAlert(alertName)
 		if err != nil {
 			return err
@@ -317,7 +317,7 @@ func waitForAlertToActivate(alertName string) {
 }
 
 func alertShouldNotBeActive(alertName string) {
-	Eventually(func() error {
+	EventuallyWithOffset(1, func() error {
 		alert, err := checkAlert(alertName)
 		if err != nil {
 			return err
@@ -328,7 +328,7 @@ func alertShouldNotBeActive(alertName string) {
 		return fmt.Errorf("alert %s found", alertName)
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
-	Consistently(func() error {
+	ConsistentlyWithOffset(1, func() error {
 		alert, err := checkAlert(alertName)
 		if err != nil {
 			return err
@@ -341,7 +341,7 @@ func alertShouldNotBeActive(alertName string) {
 }
 
 func waitForSeriesToBeDetected(seriesName string) {
-	Eventually(func() bool {
+	EventuallyWithOffset(1, func() bool {
 		results, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
 		Expect(err).ShouldNot(HaveOccurred())
 		return results.String() != ""
