@@ -7,7 +7,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v1.2.3
+	github.com/go-logr/logr v1.3.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.1
 	github.com/openshift/api v0.0.0
@@ -25,7 +25,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.25.15
 	k8s.io/apimachinery v0.25.15
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/klog/v2 v2.70.1
+	k8s.io/klog/v2 v2.110.1
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 	kubevirt.io/api v0.52.0
 	kubevirt.io/client-go v0.52.0
