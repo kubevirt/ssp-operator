@@ -93,24 +93,6 @@ spec:
           - list
           - watch
         - apiGroups:
-          - '*'
-          resources:
-          - persistentvolumeclaims
-          verbs:
-          - '*'
-        - apiGroups:
-          - '*'
-          resources:
-          - pods
-          verbs:
-          - create
-        - apiGroups:
-          - '*'
-          resources:
-          - secrets
-          verbs:
-          - '*'
-        - apiGroups:
           - admissionregistration.k8s.io
           resources:
           - validatingwebhookconfigurations
@@ -195,7 +177,6 @@ spec:
           resources:
           - datavolumes
           verbs:
-          - '*'
           - create
           - delete
           - get
@@ -277,9 +258,20 @@ spec:
           resources:
           - pods
           verbs:
+          - create
           - get
           - list
           - watch
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
         - apiGroups:
           - ""
           resources:
@@ -360,7 +352,7 @@ spec:
           resources:
           - virtualmachines/finalizers
           verbs:
-          - '*'
+          - get
         - apiGroups:
           - monitoring.coreos.com
           resources:
