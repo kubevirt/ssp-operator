@@ -58,7 +58,11 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	vm := kubevirtv1.VirtualMachine{}
 	if err := r.client.Get(ctx, req.NamespacedName, &vm); err != nil {
 		if errors.IsNotFound(err) {
-			// VM was deleted, so we can ignore it
+			// VM was deleted
+			vm.Name = req.Name
+			vm.Namespace = req.Namespace
+			metrics.SetVmWithVolume(&vm, nil, nil)
+
 			return ctrl.Result{}, nil
 		}
 		r.log.Error(err, "Error getting VM", "vm", req.NamespacedName)
