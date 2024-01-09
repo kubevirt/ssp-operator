@@ -249,7 +249,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/sirupsen/logrus v1.8.1
+# github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/spf13/cobra v1.4.0
@@ -693,7 +693,7 @@ kubevirt.io/controller-lifecycle-operator-sdk/api
 kubevirt.io/qe-tools/pkg/ginkgo-reporters
 kubevirt.io/qe-tools/pkg/polarion-xml
 # kubevirt.io/ssp-operator/api v0.0.0 => ./api
-## explicit; go 1.17
+## explicit; go 1.18
 kubevirt.io/ssp-operator/api/v1beta1
 # sigs.k8s.io/controller-runtime v0.13.2
 ## explicit; go 1.17
