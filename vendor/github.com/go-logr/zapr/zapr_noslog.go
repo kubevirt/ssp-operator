@@ -1,5 +1,8 @@
+//go:build !go1.21
+// +build !go1.21
+
 /*
-Copyright 2020 The logr Authors.
+Copyright 2023 The logr Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +17,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package logr
+package zapr
 
-// Discard returns a Logger that discards all messages logged to it.  It can be
-// used whenever the caller is not interested in the logs.  Logger instances
-// produced by this function always compare as equal.
-func Discard() Logger {
-	return New(nil)
+import (
+	"github.com/go-logr/logr"
+	"go.uber.org/zap"
+)
+
+func zapIt(field string, val interface{}) zap.Field {
+	// Handle types that implement logr.Marshaler: log the replacement
+	// object instead of the original one.
+	if marshaler, ok := val.(logr.Marshaler); ok {
+		field, val = invokeMarshaler(field, marshaler)
+	}
+	return zap.Any(field, val)
 }
