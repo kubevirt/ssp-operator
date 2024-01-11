@@ -138,6 +138,7 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 	}
 
 	deployment := newDeployment(request.Namespace, numberOfReplicas, image, sspTLSOptions)
+	common.AddAppLabels(request.Instance, operandName, operandComponent, &deployment.Spec.Template.ObjectMeta)
 	injectPlacementMetadata(&deployment.Spec.Template.Spec, validatorSpec)
 	return common.CreateOrUpdate(request).
 		NamespacedResource(deployment).

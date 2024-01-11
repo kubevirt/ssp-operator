@@ -292,6 +292,7 @@ func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		deployment.Namespace = request.Instance.Namespace
 		deployment.Spec.Template.Spec.Containers[0].Image = getVmConsoleProxyImage()
+		common.AddAppLabels(request.Instance, operandName, operandComponent, &deployment.Spec.Template.ObjectMeta)
 		return common.CreateOrUpdate(request).
 			NamespacedResource(&deployment).
 			WithAppLabels(operandName, operandComponent).
