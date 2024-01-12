@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"kubevirt.io/ssp-operator/pkg/monitoring/metrics"
+	"kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
 
 // +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines,verbs=get;list;watch

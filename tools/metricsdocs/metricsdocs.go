@@ -5,8 +5,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/machadovilaca/operator-observability/pkg/operatormetrics"
+
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics"
+	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
+	validatorMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/template-validator"
 )
 
 const (
@@ -27,11 +30,12 @@ const (
 )
 
 func main() {
-	metricsList := getMetricsList()
-	metricsList = append(metricsList, recordRulesDescToMetricList(metrics.RecordRulesDescList)...)
+	metricsList := recordRulesDescToMetricList(metrics.RecordRulesDescList)
 
 	sspMetrics.SetupMetrics()
-	for _, m := range sspMetrics.ListMetrics() {
+	validatorMetrics.SetupMetrics()
+
+	for _, m := range operatormetrics.ListMetrics() {
 		metricsList = append(metricsList, metric{
 			name:        m.GetOpts().Name,
 			description: m.GetOpts().Help,
@@ -70,28 +74,6 @@ func metricDescriptionToMetric(rrd metrics.RecordRulesDesc) metric {
 		description: rrd.Description,
 		mtype:       rrd.Type,
 	}
-}
-
-func getMetricsList() metricList {
-	metrics := metricList{
-		{
-			name:        "kubevirt_ssp_template_validator_rejected_total",
-			description: "The total number of rejected template validators",
-			mtype:       "Counter",
-		},
-		{
-			name:        "kubevirt_ssp_operator_reconcile_succeeded",
-			description: "Set to 1 if the reconcile process of all operands completes with no errors, and to 0 otherwise",
-			mtype:       "Gauge",
-		},
-		{
-			name:        "kubevirt_ssp_common_templates_restored_total",
-			description: "The total number of common templates restored by the operator back to their original state",
-			mtype:       "Counter",
-		},
-	}
-
-	return metrics
 }
 
 func (m metric) writeOut() {

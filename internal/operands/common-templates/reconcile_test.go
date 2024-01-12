@@ -10,8 +10,6 @@ import (
 
 	templatev1 "github.com/openshift/api/template/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
-	"github.com/prometheus/client_golang/prometheus"
-	io_prometheus_client "github.com/prometheus/client_model/go"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
@@ -24,6 +22,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
+	metrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
 
 var log = logf.Log.WithName("common-templates-operand")
@@ -98,8 +97,8 @@ var _ = Describe("Common-Templates operand", func() {
 			ExpectResourceExists(&template, request)
 		}
 
-		desc, value := getCommonTemplatesRestoredMetric()
-		Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
+		value, err := metrics.GetCommonTemplatesRestored()
+		Expect(err).ToNot(HaveOccurred())
 		Expect(value).To(BeZero())
 	})
 
@@ -131,8 +130,8 @@ var _ = Describe("Common-Templates operand", func() {
 			Expect(template.Labels).To(HaveKey(testLabel))
 		}
 
-		desc, value := getCommonTemplatesRestoredMetric()
-		Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
+		value, err := metrics.GetCommonTemplatesRestored()
+		Expect(err).ToNot(HaveOccurred())
 		Expect(value).To(Equal(float64(len(testTemplates))))
 	})
 
@@ -289,8 +288,8 @@ var _ = Describe("Common-Templates operand", func() {
 			template = getTemplate(request, &testTemplates[0])
 			template.Namespace = namespace
 
-			desc, value := getCommonTemplatesRestoredMetric()
-			Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
+			value, err := metrics.GetCommonTemplatesRestored()
+			Expect(err).ToNot(HaveOccurred())
 			initialMetricValue = value
 		})
 
@@ -305,8 +304,8 @@ var _ = Describe("Common-Templates operand", func() {
 			updatedTpl := getTemplate(request, template)
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
 
-			desc, value := getCommonTemplatesRestoredMetric()
-			Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
+			value, err := metrics.GetCommonTemplatesRestored()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(value).To(Equal(initialMetricValue + 1))
 		})
 
@@ -322,8 +321,8 @@ var _ = Describe("Common-Templates operand", func() {
 			updatedTpl := getTemplate(request, template)
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
 
-			desc, value := getCommonTemplatesRestoredMetric()
-			Expect(desc).To(ContainSubstring("kubevirt_ssp_common_templates_restored_total"))
+			value, err := metrics.GetCommonTemplatesRestored()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(value).To(Equal(initialMetricValue))
 		})
 	})
@@ -353,18 +352,6 @@ func getTestTemplates() []templatev1.Template {
 			},
 		},
 	}}
-}
-
-func getCommonTemplatesRestoredMetric() (string, float64) {
-	ch := make(chan prometheus.Metric, 1)
-	CommonTemplatesRestored.Collect(ch)
-	close(ch)
-	m := <-ch
-	metric := &io_prometheus_client.Metric{}
-	err := m.Write(metric)
-	Expect(err).ToNot(HaveOccurred())
-
-	return m.Desc().String(), metric.GetCounter().GetValue()
 }
 
 func getTemplate(req common.Request, template *templatev1.Template) *templatev1.Template {

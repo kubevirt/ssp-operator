@@ -14,17 +14,10 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-logr/logr"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-)
-
-var (
-	CommonTemplatesRestored = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "kubevirt_ssp_common_templates_restored_total",
-		Help: "The total number of common templates restored by the operator back to their original state",
-	})
+	metrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
 
 // Define RBAC rules needed by this operand:
@@ -109,7 +102,7 @@ func incrementTemplatesRestoredMetric(reconcileResults []common.ReconcileResult,
 
 			if reconcileResult.OperationResult == common.OperationResultUpdated && oldVersion == newVersion {
 				logger.Info(fmt.Sprintf("Changes reverted in common template: %s", reconcileResult.Resource.GetName()))
-				CommonTemplatesRestored.Inc()
+				metrics.IncCommonTemplatesRestored()
 			}
 		}
 	}

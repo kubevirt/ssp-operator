@@ -24,8 +24,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,13 +32,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
 	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 	"kubevirt.io/ssp-operator/internal/template-validator/virtinformers"
-)
-
-var (
-	templateValidatorRejected = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "kubevirt_ssp_template_validator_rejected_total",
-		Help: "The total number of rejected template validators",
-	})
+	"kubevirt.io/ssp-operator/pkg/monitoring/metrics/template-validator"
 )
 
 const (
@@ -102,7 +94,7 @@ func (w *webhooks) admitVm(ar *admissionv1.AdmissionReview) *admissionv1.Admissi
 
 	causes := ValidateVm(rules, vm)
 	if len(causes) > 0 {
-		templateValidatorRejected.Inc()
+		metrics.IncTemplateValidatorRejected()
 		return ToAdmissionResponse(causes)
 	}
 

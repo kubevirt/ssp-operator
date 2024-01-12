@@ -19,6 +19,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/template-validator/version"
 	"kubevirt.io/ssp-operator/internal/template-validator/virtinformers"
 	validating "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
+	validatorMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/template-validator"
 )
 
 const (
@@ -74,6 +75,9 @@ func (app *App) Run() {
 	validating.NewWebhooks(informers).Register()
 
 	registerReadinessProbe()
+
+	// setup monitoring
+	validatorMetrics.SetupMetrics()
 
 	logger.Log.Info("TLS certs directory", "directory", app.TLSInfo.CertsDirectory)
 

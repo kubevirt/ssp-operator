@@ -51,6 +51,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/controller/predicates"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/operands"
+	"kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
 
 const (
@@ -129,7 +130,7 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	defer func() {
 		if err != nil {
-			common.SSPOperatorReconcileSucceeded.Set(0)
+			metrics.SetSspOperatorReconcileSucceeded(false)
 		}
 	}()
 	reqLogger := r.log.WithValues("ssp", req.NamespacedName)
@@ -222,9 +223,9 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspRequest.Logger.Info("CR status updated")
 
 	if sspRequest.Instance.Status.Phase == lifecycleapi.PhaseDeployed {
-		common.SSPOperatorReconcileSucceeded.Set(1)
+		metrics.SetSspOperatorReconcileSucceeded(true)
 	} else {
-		common.SSPOperatorReconcileSucceeded.Set(0)
+		metrics.SetSspOperatorReconcileSucceeded(false)
 	}
 
 	return ctrl.Result{}, nil
