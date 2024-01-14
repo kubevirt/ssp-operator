@@ -2,6 +2,10 @@
 rule_files:
   - rules.json
 
+group_eval_order:
+  - recordingRules.rules
+  - alerts.rules
+
 tests:
   # SSPDown alert tests
   - interval: "1m"
@@ -15,7 +19,7 @@ tests:
         exp_alerts:
           - exp_annotations:
               summary: "All SSP operator pods are down."
-              runbook_url: "test-runbook:SSPDown"
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/SSPDown"
             exp_labels:
               severity: "critical"
               operator_health_impact: "critical"
@@ -38,7 +42,7 @@ tests:
         exp_alerts:
           - exp_annotations:
               summary: "All Template Validator pods are down."
-              runbook_url: "test-runbook:SSPTemplateValidatorDown"
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/SSPTemplateValidatorDown"
             exp_labels:
               severity: "critical"
               operator_health_impact: "critical"
@@ -68,8 +72,8 @@ tests:
         alertname: "SSPFailingToReconcile"
         exp_alerts:
           - exp_annotations:
-              summary: "The ssp-operator pod is up but failing to reconcile"
-              runbook_url: "test-runbook:SSPFailingToReconcile"
+              summary: "The ssp-operator pod is up but failing to reconcile."
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/SSPFailingToReconcile"
             exp_labels:
               severity: "critical"
               operator_health_impact: "critical"
@@ -96,8 +100,8 @@ tests:
         alertname: "SSPHighRateRejectedVms"
         exp_alerts:
           - exp_annotations:
-              summary: "High rate of rejected Vms"
-              runbook_url: "test-runbook:SSPHighRateRejectedVms"
+              summary: "High rate of rejected Vms."
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/SSPHighRateRejectedVms"
             exp_labels:
               severity: "warning"
               operator_health_impact: "warning"
@@ -110,8 +114,8 @@ tests:
         alertname: "SSPHighRateRejectedVms"
         exp_alerts:
           - exp_annotations:
-              summary: "High rate of rejected Vms"
-              runbook_url: "test-runbook:SSPHighRateRejectedVms"
+              summary: "High rate of rejected Vms."
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/SSPHighRateRejectedVms"
             exp_labels:
               severity: "warning"
               operator_health_impact: "warning"
@@ -137,8 +141,8 @@ tests:
         alertname: "SSPCommonTemplatesModificationReverted"
         exp_alerts:
           - exp_annotations:
-              summary: "Common Templates manual modifications were reverted by the operator"
-              runbook_url: "test-runbook:SSPCommonTemplatesModificationReverted"
+              summary: "Common Templates manual modifications were reverted by the operator."
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/SSPCommonTemplatesModificationReverted"
             exp_labels:
               severity: "warning"
               operator_health_impact: "none"
@@ -151,8 +155,8 @@ tests:
         alertname: "SSPCommonTemplatesModificationReverted"
         exp_alerts:
           - exp_annotations:
-              summary: "Common Templates manual modifications were reverted by the operator"
-              runbook_url: "test-runbook:SSPCommonTemplatesModificationReverted"
+              summary: "Common Templates manual modifications were reverted by the operator."
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/SSPCommonTemplatesModificationReverted"
             exp_labels:
               severity: "warning"
               operator_health_impact: "none"
@@ -178,9 +182,9 @@ tests:
         alertname: "VMStorageClassWarning"
         exp_alerts:
           - exp_annotations:
-              summary: "1 Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns"
+              summary: "1 Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns."
               description: "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', VMs may cause reports of bad crc/signature errors due to certain I/O patterns. Cluster performance can be severely degraded if the number of re-transmissions due to crc errors causes network saturation."
-              runbook_url: "test-runbook:VMStorageClassWarning"
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/VMStorageClassWarning"
             exp_labels:
               severity: "warning"
               operator_health_impact: "none"

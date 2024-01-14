@@ -4,10 +4,13 @@ import (
 	"github.com/machadovilaca/operator-observability/pkg/operatormetrics"
 )
 
-func SetupMetrics() {
-	if err := operatormetrics.RegisterMetrics(
+func SetupMetrics() error {
+	return operatormetrics.RegisterMetrics(
 		templateMetrics,
-	); err != nil {
-		panic(err)
-	}
+	)
+}
+
+// ListMetrics registered prometheus metrics
+func ListMetrics() []operatormetrics.Metric {
+	return operatormetrics.ListMetrics()
 }
