@@ -6,35 +6,14 @@ updates:
       interval: "daily"
     allow:
       - dependency-type: "all"
-  - package-ecosystem: "gomod"
-    directory: "/"
-    target-branch: "release-v0.18"
-    schedule:
-      interval: "daily"
-    allow:
-      - dependency-type: "all"
-  - package-ecosystem: "gomod"
-    directory: "/"
-    target-branch: "release-v0.17"
-    schedule:
-      interval: "daily"
-    allow:
-      - dependency-type: "all"
-  - package-ecosystem: "gomod"
-    directory: "/"
-    target-branch: "release-v0.16"
-    schedule:
-      interval: "daily"
-    allow:
-      - dependency-type: "all"
-  - package-ecosystem: "gomod"
-    directory: "/"
-    target-branch: "release-v0.15"
-    schedule:
-      interval: "daily"
-    allow:
-      - dependency-type: "all"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+    open-pull-requests-limit: 3
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"  
+    open-pull-requests-limit: 3
