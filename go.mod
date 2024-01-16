@@ -14,7 +14,7 @@ require (
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/openshift/library-go v0.0.0-20231129101644-c7f15dcc10f5 // release-4.15
 	github.com/operator-framework/api v0.21.0
-	github.com/operator-framework/operator-lib v0.12.0 // TODO: Use v0.12.0 when it's released
+	github.com/operator-framework/operator-lib v0.12.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.71.0
 	github.com/prometheus/client_golang v1.18.0
 	github.com/prometheus/client_model v0.5.0
