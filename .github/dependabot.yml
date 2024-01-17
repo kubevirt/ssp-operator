@@ -12,8 +12,12 @@ updates:
       development-dependencies:
         dependency-type: "development"
     open-pull-requests-limit: 3
+    labels:
+      - "release-note-none"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"  
     open-pull-requests-limit: 3
+    labels:
+      - "release-note-none"
