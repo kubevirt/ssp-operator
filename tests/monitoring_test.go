@@ -234,7 +234,7 @@ var _ = Describe("Prometheus Alerts", func() {
 					AccessModes: []core.PersistentVolumeAccessMode{
 						core.ReadWriteOnce,
 					},
-					Resources: core.ResourceRequirements{
+					Resources: core.VolumeResourceRequirements{
 						Requests: core.ResourceList{
 							core.ResourceStorage: resource.MustParse("1Gi"),
 						},
