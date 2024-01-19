@@ -296,6 +296,7 @@ func createOrUpdateTestResource(request *Request) (ReconcileResult, error) {
 	return CreateOrUpdate(request).
 		NamespacedResource(newTestResource(namespace)).
 		UpdateFunc(func(expected, found client.Object) {
+			found.(*v1.Service).TypeMeta = expected.(*v1.Service).TypeMeta
 			found.(*v1.Service).Spec = expected.(*v1.Service).Spec
 		}).
 		Reconcile()
