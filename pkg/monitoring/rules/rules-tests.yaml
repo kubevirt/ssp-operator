@@ -3,6 +3,7 @@ rule_files:
   - rules.json
 
 tests:
+  # SSPDown alert tests
   - interval: "1m"
     input_series:
       - series: 'up{pod="ssp-operator-12345"}'
@@ -23,4 +24,169 @@ tests:
 
       - eval_time: "6m"
         alertname: "SSPDown"
+        exp_alerts: []
+
+  # SSPTemplateValidatorDown alert tests
+  - interval: "1m"
+    input_series:
+      - series: 'up{pod="virt-template-validator-12345"}'
+        values: '0x5 1'
+
+    alert_rule_test:
+      - eval_time: "5m"
+        alertname: "SSPTemplateValidatorDown"
+        exp_alerts:
+          - exp_annotations:
+              summary: "All Template Validator pods are down."
+              runbook_url: "test-runbook:SSPTemplateValidatorDown"
+            exp_labels:
+              severity: "critical"
+              operator_health_impact: "critical"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      - eval_time: "6m"
+        alertname: "SSPTemplateValidatorDown"
+        exp_alerts: []
+
+  # SSPFailingToReconcile alert tests
+  - interval: "1m"
+    input_series:
+      - series: 'up{pod="ssp-operator-12345"}'
+        values: '0x5 1'
+      - series: 'kubevirt_ssp_operator_reconcile_succeeded{pod="ssp-operator-12345"}'
+        values: '0x11 1'
+
+    alert_rule_test:
+      # SSP pod is down -> should not trigger SSPFailingToReconcile alert
+      - eval_time: "5m"
+        alertname: "SSPFailingToReconcile"
+        exp_alerts: []
+
+      # SSP pod is up, but failed to reconcile
+      - eval_time: "11m"
+        alertname: "SSPFailingToReconcile"
+        exp_alerts:
+          - exp_annotations:
+              summary: "The ssp-operator pod is up but failing to reconcile"
+              runbook_url: "test-runbook:SSPFailingToReconcile"
+            exp_labels:
+              severity: "critical"
+              operator_health_impact: "critical"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      # SSP pod is up, and reconciliation succeeded
+      - eval_time: "12m"
+        alertname: "SSPFailingToReconcile"
+        exp_alerts: []
+
+  # SSPHighRateRejectedVms alert tests
+  - interval: "1m"
+    input_series:
+      - series: 'kubevirt_ssp_template_validator_rejected_total{pod="virt-template-validator-12345"}'
+        values: '0+1x10 10x120'
+
+    alert_rule_test:
+      - eval_time: "10m"
+        alertname: "SSPHighRateRejectedVms"
+        exp_alerts: []
+
+      - eval_time: "11m"
+        alertname: "SSPHighRateRejectedVms"
+        exp_alerts:
+          - exp_annotations:
+              summary: "High rate of rejected Vms"
+              runbook_url: "test-runbook:SSPHighRateRejectedVms"
+            exp_labels:
+              severity: "warning"
+              operator_health_impact: "warning"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      # The alert is triggering for the whole hour, until the window
+      # does not contain the first few values
+      - eval_time: "64m"
+        alertname: "SSPHighRateRejectedVms"
+        exp_alerts:
+          - exp_annotations:
+              summary: "High rate of rejected Vms"
+              runbook_url: "test-runbook:SSPHighRateRejectedVms"
+            exp_labels:
+              severity: "warning"
+              operator_health_impact: "warning"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      - eval_time: "65m"
+        alertname: "SSPHighRateRejectedVms"
+        exp_alerts: []
+
+  # SSPCommonTemplatesModificationReverted alert tests
+  - interval: "1m"
+    input_series:
+      - series: 'kubevirt_ssp_common_templates_restored_total{pod="ssp-operator-12345"}'
+        values: '0 0 1 0'
+
+    alert_rule_test:
+      - eval_time: "1m"
+        alertname: "SSPCommonTemplatesModificationReverted"
+        exp_alerts: []
+
+      - eval_time: "2m"
+        alertname: "SSPCommonTemplatesModificationReverted"
+        exp_alerts:
+          - exp_annotations:
+              summary: "Common Templates manual modifications were reverted by the operator"
+              runbook_url: "test-runbook:SSPCommonTemplatesModificationReverted"
+            exp_labels:
+              severity: "warning"
+              operator_health_impact: "none"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      # The alert is triggering for the whole hour, until the window
+      # does not contain the first few values
+      - eval_time: "61m"
+        alertname: "SSPCommonTemplatesModificationReverted"
+        exp_alerts:
+          - exp_annotations:
+              summary: "Common Templates manual modifications were reverted by the operator"
+              runbook_url: "test-runbook:SSPCommonTemplatesModificationReverted"
+            exp_labels:
+              severity: "warning"
+              operator_health_impact: "none"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      - eval_time: "62m"
+        alertname: "SSPCommonTemplatesModificationReverted"
+        exp_alerts: []
+
+  # VirtualMachineCRCErrors alert tests
+  - interval: "1m"
+    input_series:
+      - series: 'kubevirt_ssp_vm_rbd_block_volume_without_rxbounce'
+        values: '0 0 1 0'
+
+    alert_rule_test:
+      - eval_time: "1m"
+        alertname: "VirtualMachineCRCErrors"
+        exp_alerts: []
+
+      - eval_time: "2m"
+        alertname: "VirtualMachineCRCErrors"
+        exp_alerts:
+          - exp_annotations:
+              description: "1 Virtual Machines are in risk of causing CRC errors and major service outages"
+              summary: "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', it will report bad crc/signature errors and cluster performance will be severely degraded if krbd:rxbounce is not set."
+              runbook_url: "test-runbook:VirtualMachineCRCErrors"
+            exp_labels:
+              severity: "warning"
+              operator_health_impact: "none"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      - eval_time: "3m"
+        alertname: "VirtualMachineCRCErrors"
         exp_alerts: []
