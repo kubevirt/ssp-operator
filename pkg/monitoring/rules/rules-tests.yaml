@@ -1,0 +1,26 @@
+# Unit tests for the prometheus rules
+rule_files:
+  - rules.json
+
+tests:
+  - interval: "1m"
+    input_series:
+      - series: 'up{pod="ssp-operator-12345"}'
+        values: '0x5 1'
+
+    alert_rule_test:
+      - eval_time: "5m"
+        alertname: "SSPDown"
+        exp_alerts:
+          - exp_annotations:
+              summary: "All SSP operator pods are down."
+              runbook_url: "test-runbook:SSPDown"
+            exp_labels:
+              severity: "critical"
+              operator_health_impact: "critical"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      - eval_time: "6m"
+        alertname: "SSPDown"
+        exp_alerts: []
