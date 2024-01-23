@@ -14,7 +14,7 @@ var excludedMetrics = map[string]struct{}{}
 
 func readMetrics() []*dto.MetricFamily {
 	var metricFamilies []*dto.MetricFamily
-	sspMetrics := rules.RecordRulesDescList
+	sspMetrics := rules.RecordRulesWithDescriptions()
 
 	for _, metric := range sspMetrics {
 		if _, isExcludedMetric := excludedMetrics[metric.Name]; !isExcludedMetric {

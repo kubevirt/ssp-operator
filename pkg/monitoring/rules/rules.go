@@ -30,8 +30,8 @@ type RecordRulesDesc struct {
 	Type        string
 }
 
-// RecordRulesDescList lists all SSP Operator Prometheus Record Rules
-var RecordRulesDescList = []RecordRulesDesc{
+// recordRulesDescList lists all SSP Operator Prometheus Record Rules
+var recordRulesDescList = []RecordRulesDesc{
 	{
 		Name:        "kubevirt_ssp_operator_up",
 		Expr:        intstr.FromString("sum(up{pod=~'ssp-operator.*'}) OR on() vector(0)"),
@@ -65,13 +65,19 @@ var RecordRulesDescList = []RecordRulesDesc{
 }
 
 func RecordRules() []promv1.Rule {
-	var recordRules []promv1.Rule
-
-	for _, rrd := range RecordRulesDescList {
-		recordRules = append(recordRules, promv1.Rule{Record: rrd.Name, Expr: rrd.Expr})
+	result := make([]promv1.Rule, 0, len(recordRulesDescList))
+	for _, rrd := range recordRulesDescList {
+		result = append(result, promv1.Rule{Record: rrd.Name, Expr: rrd.Expr})
 	}
+	return result
+}
 
-	return recordRules
+func RecordRulesWithDescriptions() []RecordRulesDesc {
+	result := make([]RecordRulesDesc, 0, len(recordRulesDescList))
+	for _, rrd := range recordRulesDescList {
+		result = append(result, rrd)
+	}
+	return result
 }
 
 func AlertRules(runbookURLTemplate string) []promv1.Rule {

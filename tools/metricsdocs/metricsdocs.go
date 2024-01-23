@@ -30,7 +30,7 @@ const (
 )
 
 func main() {
-	metricsList := recordRulesDescToMetricList(rules.RecordRulesDescList)
+	metricsList := recordRulesDescToMetricList(rules.RecordRulesWithDescriptions())
 
 	sspMetrics.SetupMetrics()
 	validatorMetrics.SetupMetrics()
