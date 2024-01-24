@@ -7,9 +7,9 @@ import (
 
 	"github.com/machadovilaca/operator-observability/pkg/operatormetrics"
 
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 	validatorMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/template-validator"
+	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 )
 
 const (
@@ -30,7 +30,7 @@ const (
 )
 
 func main() {
-	metricsList := recordRulesDescToMetricList(metrics.RecordRulesDescList)
+	metricsList := recordRulesDescToMetricList(rules.RecordRulesWithDescriptions())
 
 	sspMetrics.SetupMetrics()
 	validatorMetrics.SetupMetrics()
@@ -59,7 +59,7 @@ type metric struct {
 	mtype       string
 }
 
-func recordRulesDescToMetricList(mdl []metrics.RecordRulesDesc) metricList {
+func recordRulesDescToMetricList(mdl []rules.RecordRulesDesc) metricList {
 	res := make([]metric, len(mdl))
 	for i, md := range mdl {
 		res[i] = metricDescriptionToMetric(md)
@@ -68,7 +68,7 @@ func recordRulesDescToMetricList(mdl []metrics.RecordRulesDesc) metricList {
 	return res
 }
 
-func metricDescriptionToMetric(rrd metrics.RecordRulesDesc) metric {
+func metricDescriptionToMetric(rrd rules.RecordRulesDesc) metric {
 	return metric{
 		name:        rrd.Name,
 		description: rrd.Description,

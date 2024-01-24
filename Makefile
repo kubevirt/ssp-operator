@@ -84,7 +84,7 @@ endif
 all: manager
 
 .PHONY: unittest
-unittest: generate lint fmt vet manifests
+unittest: generate lint fmt vet manifests metrics-rules-test
 	go test -v -coverprofile cover.out $(SRC_PATHS_TESTS)
 	cd api && go test -v ./...
 
@@ -325,3 +325,22 @@ lint:
 .PHONY: lint-metrics
 lint-metrics:
 	./hack/prom_metric_linter.sh  --operator-name="kubevirt" --sub-operator-name="ssp"
+
+PROMTOOL ?= $(LOCALBIN)/promtool
+PROMTOOL_VERSION ?= 2.44.0
+
+.PHONY: promtool
+promtool: $(PROMTOOL)
+$(PROMTOOL): $(LOCALBIN)
+	test -s $(PROMTOOL) || curl -sSfL "https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).linux-amd64.tar.gz" | \
+ 		tar xvzf - --directory=$(LOCALBIN) "prometheus-$(PROMTOOL_VERSION).linux-amd64"/promtool --strip-components=1
+
+METRIC_RULES_WRITER ?= $(LOCALBIN)/metrics-rules-writer
+
+.PHONY: build-metric-rules-writer
+build-metric-rules-writer: $(LOCALBIN)
+	go build -o $(METRIC_RULES_WRITER) tools/test-rules-writer/test_rules_writer.go
+
+.PHONY: metrics-rules-test
+metrics-rules-test: build-metric-rules-writer promtool
+	./hack/metrics-rules-test.sh $(METRIC_RULES_WRITER) "./pkg/monitoring/rules/rules-tests.yaml"

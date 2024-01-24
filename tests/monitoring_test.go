@@ -31,6 +31,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -49,7 +50,7 @@ var _ = Describe("Prometheus Alerts", func() {
 		})
 		It("[test_id:8363] Should fire SSPCommonTemplatesModificationReverted", func() {
 			// we have to wait for prometheus to pick up the series before we increase it.
-			waitForSeriesToBeDetected(metrics.CommonTemplatesRestoredIncreaseQuery)
+			waitForSeriesToBeDetected(rules.CommonTemplatesRestoredIncreaseQuery)
 			expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate)
 			waitForAlertToActivate("SSPCommonTemplatesModificationReverted")
 		})
@@ -114,7 +115,7 @@ var _ = Describe("Prometheus Alerts", func() {
 		})
 
 		It("[test_id:8377] Should fire SSPHighRateRejectedVms", func() {
-			waitForSeriesToBeDetected(metrics.TemplateValidatorRejectedIncreaseQuery)
+			waitForSeriesToBeDetected(rules.TemplateValidatorRejectedIncreaseQuery)
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 			for range [6]int{} {
 				time.Sleep(time.Second * 5)
