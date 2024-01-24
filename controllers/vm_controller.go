@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -65,13 +66,26 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 
 			return ctrl.Result{}, nil
 		}
-		r.log.Error(err, "Error getting VM", "vm", req.NamespacedName)
-		return ctrl.Result{}, err
+
+		r.log.Error(err, "Could not find VM", "vm", req.NamespacedName)
+		return ctrl.Result{
+			Requeue:      true,
+			RequeueAfter: 5 * time.Second,
+		}, err
+	}
+
+	if vm.Status.PrintableStatus == kubevirtv1.VirtualMachineStatusProvisioning {
+		// The status Provisioning is set when not all resources are created yet.
+		// This way we will avoid reconciliation looping while waiting for the resources to be created.
+		return ctrl.Result{}, nil
 	}
 
 	if err := r.setVmVolumesMetrics(ctx, &vm); err != nil {
-		r.log.Error(err, "Error setting vm volumes metrics", "vm", req.NamespacedName)
-		return ctrl.Result{}, err
+		r.log.Error(err, "Could not set vm volumes metrics", "vm", req.NamespacedName)
+		return ctrl.Result{
+			Requeue:      true,
+			RequeueAfter: 5 * time.Second,
+		}, err
 	}
 
 	return ctrl.Result{}, nil
