@@ -3,11 +3,9 @@ package tests
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -19,6 +17,7 @@ import (
 	promApiv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	promConfig "github.com/prometheus/common/config"
 	apps "k8s.io/api/apps/v1"
+	authnv1 "k8s.io/api/authentication/v1"
 	core "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -409,28 +408,11 @@ func getPrometheusUrl() string {
 }
 
 func getAuthorizationTokenForPrometheus() string {
-	var token string
-	Eventually(func() error {
-		secretList := &core.SecretList{}
-		namespace := client.InNamespace(metrics.MonitorNamespace)
-		err := apiClient.List(ctx, secretList, namespace)
-		if err != nil {
-			return fmt.Errorf("error getting secret: %w", err)
-		}
-		var tokenBytes []byte
-		var ok bool
-		for _, secret := range secretList.Items {
-			if strings.HasPrefix(secret.Name, "prometheus-k8s-token") {
-				tokenBytes, ok = secret.Data["token"]
-				if !ok {
-					return errors.New("token not found in secret data")
-				}
-				break
-			}
-		}
+	const serviceAccountName = "prometheus-k8s"
+	tokenReview, err := coreClient.CoreV1().ServiceAccounts(metrics.MonitorNamespace).
+		CreateToken(ctx, serviceAccountName, &authnv1.TokenRequest{}, metav1.CreateOptions{})
 
-		token = string(tokenBytes)
-		return nil
-	}, 10*time.Second, time.Second).Should(Succeed())
-	return token
+	Expect(err).ToNot(HaveOccurred())
+
+	return tokenReview.Status.Token
 }
