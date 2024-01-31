@@ -34,7 +34,7 @@ data:
                   <CreatePartition wcm:action="add">
                       <Order>1</Order>
                       <Type>Primary</Type>
-                      <Size>300</Size>
+                      <Size>700</Size>
                   </CreatePartition>
                   <CreatePartition wcm:action="add">
                       <Order>2</Order>
@@ -191,7 +191,7 @@ data:
                             <CreatePartition wcm:action="add">
                                 <Order>1</Order>
                                 <Type>Primary</Type>
-                                <Size>300</Size>
+                                <Size>700</Size>
                             </CreatePartition>
                             <CreatePartition wcm:action="add">
                                 <Order>2</Order>
