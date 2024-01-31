@@ -55,6 +55,11 @@ spec:
             apiVersion: cdi.kubevirt.io/v1beta1
             kind: DataVolume
             metadata:
+              labels:
+                "instancetype.kubevirt.io/default-instancetype-kind": $(params.instanceTypeKind)
+                "instancetype.kubevirt.io/default-instancetype": $(params.instanceTypeName)
+                "instancetype.kubevirt.io/default-preference-kind": $(params.virtualMachinePreferenceKind)
+                "instancetype.kubevirt.io/default-preference": $(params.preferenceName)
               name: $(params.baseDvName)
               namespace: $(params.baseDvNamespace)
             spec:
