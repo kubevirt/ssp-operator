@@ -26,7 +26,7 @@ jobs:
 
       - name: Create pull request
         if: ${{ github.event.client_payload.release_version }} != ''
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ github.token }}
           commit-message: "chore: update tekton-tasks manifests to ${{ github.event.client_payload.release_version }}"
