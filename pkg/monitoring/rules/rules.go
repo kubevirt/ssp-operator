@@ -162,12 +162,12 @@ func AlertRules(runbookURLTemplate string) []promv1.Rule {
 			},
 		},
 		{
-			Alert: "VirtualMachineCRCErrors",
+			Alert: "VMStorageClassWarning",
 			Expr:  intstr.FromString("(count(kubevirt_ssp_vm_rbd_block_volume_without_rxbounce > 0) or vector(0)) > 0"),
 			Annotations: map[string]string{
-				"description": "{{ $value }} Virtual Machines are in risk of causing CRC errors and major service outages",
-				"summary":     "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', it will report bad crc/signature errors and cluster performance will be severely degraded if krbd:rxbounce is not set.",
-				"runbook_url": fmt.Sprintf(runbookURLTemplate, "VirtualMachineCRCErrors"),
+				"summary":     "{{ $value }} Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns",
+				"description": "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', VMs may cause reports of bad crc/signature errors due to certain I/O patterns. Cluster performance can be severely degraded if the number of re-transmissions due to crc errors causes network saturation.",
+				"runbook_url": fmt.Sprintf(runbookURLTemplate, "VMStorageClassWarning"),
 			},
 			Labels: map[string]string{
 				severityAlertLabelKey:     "warning",
