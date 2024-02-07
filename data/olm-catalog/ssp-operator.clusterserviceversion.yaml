@@ -90,6 +90,7 @@ spec:
           verbs:
           - create
           - delete
+          - get
           - list
           - update
           - watch
