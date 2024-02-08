@@ -163,7 +163,7 @@ tests:
         alertname: "SSPCommonTemplatesModificationReverted"
         exp_alerts: []
 
-  # VirtualMachineCRCErrors alert tests
+  # VMStorageClassWarning alert tests
   - interval: "1m"
     input_series:
       - series: 'kubevirt_ssp_vm_rbd_block_volume_without_rxbounce'
@@ -171,16 +171,16 @@ tests:
 
     alert_rule_test:
       - eval_time: "1m"
-        alertname: "VirtualMachineCRCErrors"
+        alertname: "VMStorageClassWarning"
         exp_alerts: []
 
       - eval_time: "2m"
-        alertname: "VirtualMachineCRCErrors"
+        alertname: "VMStorageClassWarning"
         exp_alerts:
           - exp_annotations:
-              description: "1 Virtual Machines are in risk of causing CRC errors and major service outages"
-              summary: "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', it will report bad crc/signature errors and cluster performance will be severely degraded if krbd:rxbounce is not set."
-              runbook_url: "test-runbook:VirtualMachineCRCErrors"
+              summary: "1 Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns"
+              description: "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', VMs may cause reports of bad crc/signature errors due to certain I/O patterns. Cluster performance can be severely degraded if the number of re-transmissions due to crc errors causes network saturation."
+              runbook_url: "test-runbook:VMStorageClassWarning"
             exp_labels:
               severity: "warning"
               operator_health_impact: "none"
@@ -188,5 +188,5 @@ tests:
               kubernetes_operator_component: "ssp-operator"
 
       - eval_time: "3m"
-        alertname: "VirtualMachineCRCErrors"
+        alertname: "VMStorageClassWarning"
         exp_alerts: []
