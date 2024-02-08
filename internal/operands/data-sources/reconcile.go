@@ -387,18 +387,17 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 				if foundRes.GetLabels() == nil {
 					foundRes.SetLabels(make(map[string]string))
 				}
+				// We need to restore this label in case it was removed.
+				// If it is removed, then CDI stops watching the DataSource.
 				foundRes.GetLabels()[dataImportCronLabel] = dsInfo.dataImportCronName
-			} else {
-				// Only set app labels if DIC does not exist
-				common.AddAppLabels(request.Instance, operandName, operandComponent, foundRes)
-				delete(foundRes.GetLabels(), dataImportCronLabel)
+				return
 			}
 
-			foundDs := foundRes.(*cdiv1beta1.DataSource)
-			newDs := newRes.(*cdiv1beta1.DataSource)
-			if !dsInfo.autoUpdateEnabled || (foundDs.Spec.Source.PVC == nil && foundDs.Spec.Source.Snapshot == nil) {
-				foundDs.Spec.Source.PVC = newDs.Spec.Source.PVC
-			}
+			// Only set app labels if DIC does not exist
+			common.AddAppLabels(request.Instance, operandName, operandComponent, foundRes)
+			delete(foundRes.GetLabels(), dataImportCronLabel)
+
+			foundRes.(*cdiv1beta1.DataSource).Spec = newRes.(*cdiv1beta1.DataSource).Spec
 		}).
 		Reconcile()
 }

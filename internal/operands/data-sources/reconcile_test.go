@@ -202,7 +202,10 @@ var _ = Describe("Data-Sources operand", func() {
 				// Update DataSource to simulate CDI
 				ds := &cdiv1beta1.DataSource{}
 				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
-				ds.Spec.Source.PVC.Name = "test"
+				ds.Spec.Source.PVC = &cdiv1beta1.DataVolumeSourcePVC{
+					Name:      "test",
+					Namespace: internal.GoldenImagesNamespace,
+				}
 				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
 
 				_, err = operand.Reconcile(&request)
