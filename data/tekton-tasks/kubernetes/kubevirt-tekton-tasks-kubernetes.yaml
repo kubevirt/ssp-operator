@@ -1,20 +1,27 @@
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    task.kubevirt.io/associatedServiceAccount: cleanup-vm-task
-    vmNamespace.params.task.kubevirt.io/type: namespace
-    secretName.params.task.kubevirt.io/type: execute-in-vm-secret
-    script.params.task.kubevirt.io/type: script
-    delete.params.task.kubevirt.io/type: boolean
-    stop.params.task.kubevirt.io/type: boolean
-    timeout.params.task.kubevirt.io/type: duration
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt cleanup VM"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: cleanup-vm
-    task.kubevirt.io/category: execute-in-vm
+    app.kubernetes.io/version: v0.18.0
   name: cleanup-vm
 spec:
+  description: >-
+    Run commands in KubeVirt virtual machine.
+    This task can stop and delete VMs
   params:
     - description: Name of a VM to execute the action in.
       name: vmName
@@ -53,7 +60,7 @@ spec:
       default: ""
   steps:
     - name: execute-in-vm
-      image: "quay.io/kubevirt/tekton-tasks:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.18.0"
       command:
         - entrypoint
       args:
@@ -86,74 +93,31 @@ spec:
       secret:
         secretName: $(params.secretName)
         optional: true
-
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: cleanup-vm-task
-rules:
-  - verbs:
-      - get
-      - list
-      - watch
-      - delete
-    apiGroups:
-      - kubevirt.io
-    resources:
-      - virtualmachines
-      - virtualmachineinstances
-  - verbs:
-      - update
-    apiGroups:
-      - subresources.kubevirt.io
-    resources:
-      - virtualmachines/start
-      - virtualmachines/stop
-      - virtualmachines/restart
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: cleanup-vm-task
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: cleanup-vm-task
-roleRef:
-  kind: ClusterRole
-  name: cleanup-vm-task
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-  - kind: ServiceAccount
-    name: cleanup-vm-task
----
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    task.kubevirt.io/associatedServiceAccount: create-vm-from-manifest-task
-    manifest.params.task.kubevirt.io/type: resource-yaml
-    manifest.params.task.kubevirt.io/kind: VirtualMachine
-    manifest.params.task.kubevirt.io/apiVersion: kubevirt.io/v1
-    namespace.params.task.kubevirt.io/type: namespace
-    dataVolumes.params.task.kubevirt.io/kind: DataVolume
-    dataVolumes.params.task.kubevirt.io/apiVersion: cdi.kubevirt.io/v1beta1
-    ownDataVolumes.params.task.kubevirt.io/kind: DataVolume
-    ownDataVolumes.params.task.kubevirt.io/apiVersion: cdi.kubevirt.io/v1beta1
-    persistentVolumeClaims.params.task.kubevirt.io/kind: PersistentVolumeClaim
-    persistentVolumeClaims.params.task.kubevirt.io/apiVersion: v1
-    ownPersistentVolumeClaims.params.task.kubevirt.io/kind: PersistentVolumeClaim
-    ownPersistentVolumeClaims.params.task.kubevirt.io/apiVersion: v1
-    startVM.params.task.kubevirt.io/type: boolean
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt create VM from manifest"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: create-vm-from-manifest
-    task.kubevirt.io/category: create-vm
+    app.kubernetes.io/version: v0.18.0
   name: create-vm-from-manifest
 spec:
+  description: >-
+    Automates creation of the KubeVirt virtual machine.
+    User can create VM from manifest or with the same parameters as for virtctl.
+    It is possible to immediatelly start the vm after creation with startVM parameter.
   params:
     - name: manifest
       description: YAML manifest of a VirtualMachine resource to be created.
@@ -182,7 +146,7 @@ spec:
       description: The namespace of a VM that was created.
   steps:
     - name: createvm
-      image: "quay.io/kubevirt/tekton-tasks:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.18.0"
       command:
         - create-vm
       args:
@@ -198,71 +162,29 @@ spec:
           value: $(params.startVM)
         - name: RUN_STRATEGY
           value: $(params.runStrategy)
-
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: create-vm-from-manifest-task
-rules:
-  - verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-    apiGroups:
-      - kubevirt.io
-    resources:
-      - virtualmachines
-      - virtualmachineinstances
-  - verbs:
-      - 'update'
-    apiGroups:
-      - subresources.kubevirt.io
-    resources:
-      - virtualmachines/start
-  - verbs:
-      - update
-
-    apiGroups:
-      - ''
-    resources:
-      - persistentvolumeclaims
-
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: create-vm-from-manifest-task
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: create-vm-from-manifest-task
-roleRef:
-  kind: ClusterRole
-  name: create-vm-from-manifest-task
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-  - kind: ServiceAccount
-    name: create-vm-from-manifest-task
----
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    pvc.params.task.kubevirt.io/kind: PersistentVolumeClaim
-    pvc.params.task.kubevirt.io/apiVersion: v1
-    customizeCommands.params.task.kubevirt.io/type: script
-    verbose.params.task.kubevirt.io/type: boolean
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt disk virt customize"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: disk-virt-customize
-    task.kubevirt.io/category: disk-virt-customize
+    app.kubernetes.io/version: v0.18.0
   name: disk-virt-customize
 spec:
+  description: >-
+    Run virt-customize command on given PVC. Usefull for manipulation with virtual machine's disks.
   params:
     - name: pvc
       description: PersistentVolumeClaim to run the the virt-customize script in. PVC should be in the same namespace as taskrun/pipelinerun.
@@ -281,7 +203,7 @@ spec:
       default: ""
   steps:
     - name: run-virt-customize
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.18.0"
       command:
         - entrypoint
       args:
@@ -296,7 +218,7 @@ spec:
           value: $(params.additionalOptions)
         - name: LIBGUESTFS_BACKEND
           value: direct
-      resources:
+      computeResources:
         limits:
           devices.kubevirt.io/kvm: '1'
           devices.kubevirt.io/tun: '1'
@@ -378,19 +300,28 @@ spec:
       optional: true
       mountPath: /data10
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    pvc.params.task.kubevirt.io/kind: PersistentVolumeClaim
-    pvc.params.task.kubevirt.io/apiVersion: v1
-    sysprepCommands.params.task.kubevirt.io/type: script
-    verbose.params.task.kubevirt.io/type: boolean
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt disk virt sysprep"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: disk-virt-sysprep
-    task.kubevirt.io/category: disk-virt-sysprep
+    app.kubernetes.io/version: v0.18.0
   name: disk-virt-sysprep
 spec:
+  description: >-
+    Run virt-sysprep command on given PVC. Usefull for manipulation with virtual machine's disks.
   params:
     - name: pvc
       description: PersistentVolumeClaim to run the the virt-sysprep script in. PVC should be in the same namespace as taskrun/pipelinerun.
@@ -409,7 +340,7 @@ spec:
       default: ""
   steps:
     - name: run-virt-sysprep
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.18.0"
       command:
         - entrypoint
       args:
@@ -424,7 +355,7 @@ spec:
           value: $(params.additionalOptions)
         - name: LIBGUESTFS_BACKEND
           value: direct
-      resources:
+      computeResources:
         limits:
           devices.kubevirt.io/kvm: '1'
           devices.kubevirt.io/tun: '1'
@@ -506,19 +437,28 @@ spec:
       optional: true
       mountPath: /data10
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    task.kubevirt.io/associatedServiceAccount: execute-in-vm-task
-    vmNamespace.params.task.kubevirt.io/type: namespace
-    secretName.params.task.kubevirt.io/type: execute-in-vm-secret
-    script.params.task.kubevirt.io/type: script
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt execute in vm"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: execute-in-vm
-    task.kubevirt.io/category: execute-in-vm
+    app.kubernetes.io/version: v0.18.0
   name: execute-in-vm
 spec:
+  description: >-
+    Run commands in KubeVirt virtual machine.
   params:
     - description: Name of a VM to execute the action in.
       name: vmName
@@ -545,7 +485,7 @@ spec:
       default: ""
   steps:
     - name: execute-in-vm
-      image: "quay.io/kubevirt/tekton-tasks:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.18.0"
       command:
         - entrypoint
       args:
@@ -572,67 +512,29 @@ spec:
       secret:
         secretName: $(params.secretName)
         optional: true
-
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: execute-in-vm-task
-rules:
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - kubevirt.io
-    resources:
-      - virtualmachines
-      - virtualmachineinstances
-  - verbs:
-      - update
-    apiGroups:
-      - subresources.kubevirt.io
-    resources:
-      - virtualmachines/start
-      - virtualmachines/stop
-      - virtualmachines/restart
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: execute-in-vm-task
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: execute-in-vm-task
-roleRef:
-  kind: ClusterRole
-  name: execute-in-vm-task
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-  - kind: ServiceAccount
-    name: execute-in-vm-task
----
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    task.kubevirt.io/associatedServiceAccount: generate-ssh-keys-task
-    publicKeySecretName.params.task.kubevirt.io/kind: Secret
-    publicKeySecretName.params.task.kubevirt.io/apiVersion: v1
-    publicKeySecretNamespace.params.task.kubevirt.io/type: namespace
-    privateKeySecretName.params.task.kubevirt.io/kind: Secret
-    privateKeySecretName.params.task.kubevirt.io/apiVersion: v1
-    privateKeySecretNamespace.params.task.kubevirt.io/type: namespace
-    privateKeyConnectionOptions.params.task.kubevirt.io/type: private-key-options-array
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt generate ssh keys"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: generate-ssh-keys
-    task.kubevirt.io/category: generate-ssh-keys
+    app.kubernetes.io/version: v0.18.0
   name: generate-ssh-keys
 spec:
+  description: >-
+    Generate SSH keys which can be used for KubeVirt virtual machines.
   params:
     - name: publicKeySecretName
       description: Name of a new or existing secret to append the generated public key to. The name will be generated and new secret created if not specified.
@@ -669,7 +571,7 @@ spec:
       description: The namespace of a private key secret.
   steps:
     - name: generate-ssh-keys
-      image: "quay.io/kubevirt/tekton-tasks:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.18.0"
       command:
         - entrypoint
       args:
@@ -688,53 +590,25 @@ spec:
           value: $(params.privateKeySecretNamespace)
         - name: ADDITIONAL_SSH_KEYGEN_OPTIONS
           value: $(params.additionalSSHKeygenOptions)
-
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: generate-ssh-keys-task
-rules:
-  - verbs:
-      - get
-      - list
-      - create
-      - patch
-    apiGroups:
-      - ''
-    resources:
-      - secrets
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: generate-ssh-keys-task
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: generate-ssh-keys-task
-roleRef:
-  kind: ClusterRole
-  name: generate-ssh-keys-task
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-  - kind: ServiceAccount
-    name: generate-ssh-keys-task
----
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    task.kubevirt.io/associatedServiceAccount: modify-data-object-task
-    manifest.params.task.kubevirt.io/type: resource-yaml
-    manifest.params.task.kubevirt.io/apiVersion: cdi.kubevirt.io/v1beta1
-    waitForSuccess.params.task.kubevirt.io/type: boolean
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt modify data object"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: modify-data-object
-    task.kubevirt.io/category: modify-data-object
+    app.kubernetes.io/version: v0.18.0
   name: modify-data-object
 spec:
   description: >-
@@ -775,7 +649,7 @@ spec:
       description: The namespace of the data object that was created.
   steps:
     - name: modify-data-object
-      image: "quay.io/kubevirt/tekton-tasks:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.18.0"
       command:
         - modify-data-object
       args:
@@ -795,65 +669,35 @@ spec:
           value: $(params.deleteObjectKind)
         - name: DELETE_OBJECT_NAME
           value: $(params.deleteObjectName)
-
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: modify-data-object-task
-rules:
-  - verbs:
-      - get
-      - create
-      - delete
-    apiGroups:
-      - cdi.kubevirt.io
-    resources:
-      - datavolumes
-      - datasources
-  - verbs:
-      - create
-    apiGroups:
-      - ""
-    resources:
-      - pods
-  - verbs:
-      - get
-      - delete
-    apiGroups:
-      - ""
-    resources:
-      - persistentvolumeclaims
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: modify-data-object-task
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: modify-data-object-task
-roleRef:
-  kind: ClusterRole
-  name: modify-data-object-task
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-  - kind: ServiceAccount
-    name: modify-data-object-task
----
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    task.kubevirt.io/associatedServiceAccount: modify-windows-iso-file-task
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt modify Windows iso"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: modify-windows-iso-file
-    task.kubevirt.io/category: modify-windows-iso-file
+    app.kubernetes.io/version: v0.18.0
   name: modify-windows-iso-file
 spec:
+  description: >-
+    This tasks is modifying windows iso file. It replaces prompt 
+    bootloader with non prompt one. This helps with automation of 
+    windows installation which requires EFI - the prompt bootloader will not 
+    continue with installation until some key is pressed. The non prompt 
+    bootloader will not require any key press. This task is used in 
+    combination with KubeVirt. It is part of windows-efi-installer pipeline 
+    https://github.com/kubevirt/kubevirt-tekton-tasks/tree/main/examples/pipelines/windows-efi-installer.
   params:
     - name: pvcName
       description: PersistentVolumeClaim which contains windows iso.
@@ -866,7 +710,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.18.0"
       script: |
         #!/bin/bash
         set -x
@@ -895,7 +739,7 @@ spec:
           value: "direct"
         - name: "HOME"
           value: "/usr/local/lib/guestfs/appliance"
-      resources:
+      computeResources:
         limits:
           devices.kubevirt.io/kvm: '1'
         requests:
@@ -911,7 +755,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-tasks:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.18.0"
       script: |
         #!/bin/bash
         set -ex
@@ -938,7 +782,7 @@ spec:
         capabilities:
           drop:
           - "ALL"
-      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks-disk-virt:v0.18.0"
       script: |
         #!/bin/bash
         set -x
@@ -963,17 +807,30 @@ spec:
       emptyDir:
         sizeLimit: 12Gi
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   annotations:
-    task.kubevirt.io/associatedServiceAccount: wait-for-vmi-status-task
-    vmiNamespace.params.task.kubevirt.io/type: namespace
+    tekton.dev/pipelines.minVersion: "0.43.0"
+    tekton.dev/categories: Automation
+    tekton.dev/tags: kubevirt
+    tekton.dev/displayName: "KubeVirt wait for VMI status"
+    tekton.dev/platforms: "linux/amd64"
+    artifacthub.io/maintainers: |
+      - name: Karel Simon
+        email: ksimon@redhat.com
+    artifacthub.io/provider: KubeVirt
+    artifacthub.io/recommendations: |
+      - url: https://kubevirt.io/
+    artifacthub.io/category: integration-delivery
   labels:
-    task.kubevirt.io/type: wait-for-vmi-status
-    task.kubevirt.io/category: wait-for-vmi-status
+    app.kubernetes.io/version: v0.18.0
   name: wait-for-vmi-status
 spec:
+  description: >-
+    This tasks waits until KubeVirt virtual machine is in some 
+    state. It can be used in pipeline where user needs to wait until e.g. 
+    VM finish some installation.
   params:
     - name: vmiName
       description: Name of a VirtualMachineInstance to wait for.
@@ -990,7 +847,7 @@ spec:
       description: A label selector expression to decide if the VirtualMachineInstance (VMI) is in a failed state. Eg. "status.phase in (Failed, Unknown)". It is evaluated on each VMI update and will result in this task failing if true.
   steps:
     - name: wait-for-vmi-status
-      image: "quay.io/kubevirt/tekton-tasks:v0.17.0"
+      image: "quay.io/kubevirt/tekton-tasks:v0.18.0"
       command:
         - entrypoint
       env:
@@ -1004,37 +861,3 @@ spec:
           value: $(params.successCondition)
         - name: FAILURE_CONDITION
           value: $(params.failureCondition)
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: wait-for-vmi-status-task
-rules:
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - kubevirt.io
-    resources:
-      - virtualmachineinstances
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: wait-for-vmi-status-task
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: wait-for-vmi-status-task
-roleRef:
-  kind: ClusterRole
-  name: wait-for-vmi-status-task
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-  - kind: ServiceAccount
-    name: wait-for-vmi-status-task

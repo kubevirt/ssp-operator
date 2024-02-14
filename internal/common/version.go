@@ -1,5 +1,5 @@
 package common
 
 const (
-	TektonTasksVersion = "v0.17.0"
+	TektonTasksVersion = "v0.18.0"
 )
