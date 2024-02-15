@@ -1,10 +1,6 @@
 package metrics
 
 import (
-	"errors"
-	"os"
-	"strings"
-
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +9,6 @@ import (
 )
 
 const (
-	PrometheusRuleName           = "prometheus-k8s-rules-cnv"
 	MonitorNamespace             = "openshift-monitoring"
 	defaultRunbookURLTemplate    = "https://kubevirt.io/monitoring/runbooks/%s"
 	runbookURLTemplateEnv        = "RUNBOOK_URL_TEMPLATE"
@@ -69,7 +64,7 @@ func newServiceMonitorCR(namespace string) *promv1.ServiceMonitor {
 	return &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      PrometheusRuleName,
+			Name:      rules.RuleName,
 			Labels:    ServiceMonitorLabels(),
 		},
 		Spec: promv1.ServiceMonitorSpec{
@@ -95,45 +90,4 @@ func newServiceMonitorCR(namespace string) *promv1.ServiceMonitor {
 			},
 		},
 	}
-}
-
-func newPrometheusRule(namespace string) (*promv1.PrometheusRule, error) {
-	runbookURLTemplate, err := getRunbookURLTemplate()
-	if err != nil {
-		return nil, err
-	}
-
-	return &promv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      PrometheusRuleName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"prometheus":       "k8s",
-				"role":             "alert-rules",
-				"kubevirt.io":      "prometheus-rules",
-				PrometheusLabelKey: PrometheusLabelValue,
-			},
-		},
-		Spec: promv1.PrometheusRuleSpec{
-			Groups: []promv1.RuleGroup{
-				{
-					Name:  "cnv.rules",
-					Rules: append(rules.RecordRules(), rules.AlertRules(runbookURLTemplate)...),
-				},
-			},
-		},
-	}, nil
-}
-
-func getRunbookURLTemplate() (string, error) {
-	runbookURLTemplate, exists := os.LookupEnv(runbookURLTemplateEnv)
-	if !exists {
-		runbookURLTemplate = defaultRunbookURLTemplate
-	}
-
-	if strings.Count(runbookURLTemplate, "%s") != 1 || strings.Count(runbookURLTemplate, "%") != 1 {
-		return "", errors.New("runbook URL template must have exactly 1 %s substring")
-	}
-
-	return runbookURLTemplate, nil
 }

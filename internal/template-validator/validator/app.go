@@ -77,7 +77,11 @@ func (app *App) Run() {
 	registerReadinessProbe()
 
 	// setup monitoring
-	validatorMetrics.SetupMetrics()
+	err = validatorMetrics.SetupMetrics()
+	if err != nil {
+		logger.Log.Error(err, "Error setting up metrics")
+		panic(err)
+	}
 
 	logger.Log.Info("TLS certs directory", "directory", app.TLSInfo.CertsDirectory)
 

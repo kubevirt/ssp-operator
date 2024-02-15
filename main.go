@@ -45,6 +45,7 @@ import (
 	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
 	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
+	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 	"kubevirt.io/ssp-operator/webhooks"
 	// +kubebuilder:scaffold:imports
 )
@@ -181,15 +182,21 @@ func (s *prometheusServer) getPrometheusTLSConfig(ctx context.Context, certWatch
 	}
 }
 
-func newPrometheusServer(metricsAddr string, cache cache.Cache) *prometheusServer {
-	sspMetrics.SetupMetrics()
+func newPrometheusServer(metricsAddr string, cache cache.Cache) (*prometheusServer, error) {
+	if err := sspMetrics.SetupMetrics(); err != nil {
+		return nil, err
+	}
+
+	if err := rules.SetupRules(); err != nil {
+		return nil, err
+	}
 
 	return &prometheusServer{
 		certPath:      path.Join(sdkTLSDir, sdkTLSCrt),
 		keyPath:       path.Join(sdkTLSDir, sdkTLSKey),
 		cache:         cache,
 		serverAddress: metricsAddr,
-	}
+	}, nil
 }
 
 func main() {
@@ -249,7 +256,7 @@ func main() {
 		}
 	}
 
-	metricsServer := newPrometheusServer(metricsAddr, mgr.GetCache())
+	metricsServer, err := newPrometheusServer(metricsAddr, mgr.GetCache())
 	if err != nil {
 		setupLog.Error(err, "unable create Prometheus server")
 		os.Exit(1)

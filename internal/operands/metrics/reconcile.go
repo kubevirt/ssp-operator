@@ -6,6 +6,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 )
 
 // Define RBAC rules needed by this operand:
@@ -96,7 +97,11 @@ func reconcileMonitoringRbacRoleBinding(request *common.Request) (common.Reconci
 }
 
 func reconcilePrometheusRule(request *common.Request) (common.ReconcileResult, error) {
-	prometheusRule, err := newPrometheusRule(request.Namespace)
+	if err := rules.SetupRules(); err != nil {
+		return common.ReconcileResult{}, err
+	}
+
+	prometheusRule, err := rules.BuildPrometheusRule(request.Namespace)
 	if err != nil {
 		return common.ReconcileResult{}, err
 	}

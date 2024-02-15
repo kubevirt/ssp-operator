@@ -5,14 +5,17 @@ import (
 	runtimemetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
-func SetupMetrics() {
+func SetupMetrics() error {
 	operatormetrics.Register = runtimemetrics.Registry.Register
 
-	if err := operatormetrics.RegisterMetrics(
+	return operatormetrics.RegisterMetrics(
 		operatorMetrics,
 		rbdMetrics,
 		templateMetrics,
-	); err != nil {
-		panic(err)
-	}
+	)
+}
+
+// ListMetrics registered prometheus metrics
+func ListMetrics() []operatormetrics.Metric {
+	return operatormetrics.ListMetrics()
 }

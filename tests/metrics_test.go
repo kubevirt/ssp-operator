@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"net/http"
 	"reflect"
 	"time"
@@ -18,7 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 )
 
 func mergeMaps(maps ...map[string]string) map[string]string {
@@ -43,7 +44,7 @@ var _ = Describe("Metrics", func() {
 		expectedLabels := expectedLabelsFor("metrics", common.AppComponentMonitoring)
 
 		serviceMonitorRes = testResource{
-			Name:           metrics.PrometheusRuleName,
+			Name:           rules.RuleName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &promv1.ServiceMonitor{},
 			ExpectedLabels: mergeMaps(expectedLabels, metrics.ServiceMonitorLabels()),
@@ -81,7 +82,7 @@ var _ = Describe("Metrics", func() {
 		}
 
 		prometheusRuleRes = testResource{
-			Name:           metrics.PrometheusRuleName,
+			Name:           rules.RuleName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &promv1.PrometheusRule{},
 			ExpectedLabels: expectedLabelsFor("metrics", common.AppComponentMonitoring),

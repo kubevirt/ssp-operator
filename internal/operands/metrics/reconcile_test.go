@@ -18,6 +18,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 )
 
 var log = logf.Log.WithName("metrics_operand")
@@ -34,6 +35,8 @@ var _ = Describe("Metrics operand", func() {
 	)
 
 	BeforeEach(func() {
+		Expect(rules.SetupRules()).To(Succeed())
+
 		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
 			Request: reconcile.Request{
@@ -67,7 +70,7 @@ var _ = Describe("Metrics operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		prometheusRule, err := newPrometheusRule(namespace)
+		prometheusRule, err := rules.BuildPrometheusRule(namespace)
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceExists(prometheusRule, request)
@@ -82,13 +85,16 @@ var _ = Describe("Metrics operand", func() {
 				os.Setenv(runbookURLTemplateEnv, template)
 			}
 
-			prometheusRule, err := newPrometheusRule(namespace)
+			err := rules.SetupRules()
 
 			if strings.Count(template, "%s") != 1 || strings.Count(template, "%") != 1 {
 				Expect(err).To(HaveOccurred())
 				return
 			}
 
+			Expect(err).ToNot(HaveOccurred())
+
+			prometheusRule, err := rules.BuildPrometheusRule(namespace)
 			Expect(err).ToNot(HaveOccurred())
 
 			for _, group := range prometheusRule.Spec.Groups {
