@@ -15,7 +15,9 @@ import (
 // This should be used only for very rare cases where the naming conventions that are explained in the best practices:
 // https://sdk.operatorframework.io/docs/best-practices/observability-best-practices/#metrics-guidelines
 // should be ignored.
-var excludedMetrics = map[string]struct{}{}
+var excludedMetrics = map[string]struct{}{
+	"cnv:vmi_status_running:count": {},
+}
 
 func main() {
 	if err := sspMetrics.SetupMetrics(); err != nil {
