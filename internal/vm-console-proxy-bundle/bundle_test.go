@@ -17,7 +17,7 @@ var _ = Describe("VM Console Proxy Bundle", func() {
 		bundle, err := ReadBundle("bundle-test.yaml")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(bundle.ServiceAccount).ToNot(BeNil(), "service account should not be nil")
-		Expect(bundle.ClusterRole).ToNot(BeNil(), "cluster role should not be nil")
+		Expect(bundle.ClusterRoles).ToNot(BeEmpty(), "cluster role should not be nil")
 		Expect(bundle.ClusterRoleBinding).ToNot(BeNil(), "cluster role binding should not be nil")
 		Expect(bundle.RoleBinding).ToNot(BeNil(), "role binding should not be nil")
 		Expect(bundle.Service).ToNot(BeNil(), "service should not be nil")
