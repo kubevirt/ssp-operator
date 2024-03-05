@@ -19,7 +19,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	authnv1 "k8s.io/api/authentication/v1"
 	core "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -287,7 +286,7 @@ var _ = Describe("Prometheus Alerts", func() {
 
 			Eventually(func(g Gomega) error {
 				return apiClient.Get(ctx, types.NamespacedName{Name: vmName, Namespace: strategy.GetNamespace()}, vm)
-			}).Should(MatchError(k8serrors.IsNotFound))
+			}).Should(MatchError(ContainSubstring(fmt.Sprintf("virtualmachines.kubevirt.io \"%s\" not found", vmName))))
 
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
 			alertShouldNotBeActive("VirtualMachineCRCErrors")
