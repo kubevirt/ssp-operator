@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/pointer"
 	kubevirtv1 "kubevirt.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
@@ -173,7 +174,7 @@ var _ = Describe("Prometheus Alerts", func() {
 
 		AfterEach(func() {
 			vmError := apiClient.Delete(ctx, vm)
-			Expect(vmError).ToNot(HaveOccurred())
+			Expect(client.IgnoreNotFound(vmError)).ToNot(HaveOccurred())
 
 			if pvc != nil {
 				pvcError := apiClient.Delete(ctx, pvc)
@@ -269,22 +270,26 @@ var _ = Describe("Prometheus Alerts", func() {
 			return vmName
 		}
 
-		It("[test_id:TODO] Should not create kubevirt_ssp_vm_rbd_volume when not using DataVolume or PVC", func() {
-			vmName := createResources(false, true)
-			seriesShouldNotBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_volume{name='%s'}", vmName))
-			alertShouldNotBeActive("VirtualMachineCRCErrors")
-		})
-
 		It("[test_id:TODO] Should not fire VirtualMachineCRCErrors when rxbounce is enabled", func() {
 			vmName := createResources(true, true)
-			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_volume{name='%s', rxbounce_enabled='true'}", vmName))
+			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
 			alertShouldNotBeActive("VirtualMachineCRCErrors")
 		})
 
 		It("[test_id:TODO] Should fire VirtualMachineCRCErrors when rxbounce is disabled", func() {
 			vmName := createResources(true, false)
-			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_volume{name='%s', rxbounce_enabled='false'}", vmName))
+			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 1", vmName))
 			waitForAlertToActivate("VirtualMachineCRCErrors")
+
+			err := apiClient.Delete(ctx, vm)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func(g Gomega) error {
+				return apiClient.Get(ctx, types.NamespacedName{Name: vmName, Namespace: strategy.GetNamespace()}, vm)
+			}).Should(MatchError(ContainSubstring(fmt.Sprintf("virtualmachines.kubevirt.io \"%s\" not found", vmName))))
+
+			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
+			alertShouldNotBeActive("VirtualMachineCRCErrors")
 		})
 	})
 })
@@ -299,7 +304,7 @@ func checkAlert(alertName string) (*promApiv1.Alert, error) {
 }
 
 func waitForAlertToActivate(alertName string) {
-	Eventually(func() error {
+	EventuallyWithOffset(1, func() error {
 		alert, err := checkAlert(alertName)
 		if err != nil {
 			return err
@@ -312,23 +317,23 @@ func waitForAlertToActivate(alertName string) {
 }
 
 func alertShouldNotBeActive(alertName string) {
-	Eventually(func() error {
+	EventuallyWithOffset(1, func() error {
 		alert, err := checkAlert(alertName)
 		if err != nil {
 			return err
 		}
-		if alert == nil {
+		if alert == nil || alert.State == "inactive" {
 			return nil
 		}
 		return fmt.Errorf("alert %s found", alertName)
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
-	Consistently(func() error {
+	ConsistentlyWithOffset(1, func() error {
 		alert, err := checkAlert(alertName)
 		if err != nil {
 			return err
 		}
-		if alert == nil {
+		if alert == nil || alert.State == "inactive" {
 			return nil
 		}
 		return fmt.Errorf("alert %s found", alertName)
@@ -336,29 +341,11 @@ func alertShouldNotBeActive(alertName string) {
 }
 
 func waitForSeriesToBeDetected(seriesName string) {
-	Eventually(func() bool {
+	EventuallyWithOffset(1, func() bool {
 		results, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
 		Expect(err).ShouldNot(HaveOccurred())
 		return results.String() != ""
 	}, env.Timeout(), 10*time.Second).Should(BeTrue())
-}
-
-func seriesShouldNotBeDetected(seriesName string) {
-	Eventually(func() bool {
-		results, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
-		if err != nil {
-			return false
-		}
-		return results.String() == ""
-	}, env.Timeout(), 10*time.Second).Should(BeTrue())
-
-	Consistently(func() bool {
-		results, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
-		if err != nil {
-			return false
-		}
-		return results.String() == ""
-	}, env.ShortTimeout(), 10*time.Second).Should(BeTrue())
 }
 
 func getAlertByName(alerts promApiv1.AlertsResult, alertName string) *promApiv1.Alert {

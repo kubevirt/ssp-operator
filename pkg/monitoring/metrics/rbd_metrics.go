@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/machadovilaca/operator-observability/pkg/operatormetrics"
@@ -16,36 +15,45 @@ var (
 
 	vmRbdVolume = operatormetrics.NewGaugeVec(
 		operatormetrics.MetricOpts{
-			Name: metricPrefix + "vm_rbd_volume",
-			Help: "VM with RBD mounted volume",
+			Name: metricPrefix + "vm_rbd_block_volume_without_rxbounce",
+			Help: "VM with RBD mounted Block volume (without rxbounce option set)",
 			ExtraFields: map[string]string{
 				"StabilityLevel": "ALPHA",
 			},
 		},
-		[]string{"name", "namespace", "pv_name", "volume_mode", "rxbounce_enabled"},
+		[]string{"name", "namespace"},
 	)
 )
 
 func SetVmWithVolume(vm *kubevirtv1.VirtualMachine, pvc *k8sv1.PersistentVolumeClaim, pv *k8sv1.PersistentVolume) {
-	if pv.Spec.PersistentVolumeSource.CSI == nil || !strings.Contains(pv.Spec.PersistentVolumeSource.CSI.Driver, "rbd.csi.ceph.com") {
+	if pv == nil || pvc == nil {
+		vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Set(0)
+		return
+	}
+
+	// If the volume is not using the RBD CSI driver, or if it is not using the block mode, it is not impacted by https://bugzilla.redhat.com/2109455
+	if !usesRbdCsiDriver(pv) || *pvc.Spec.VolumeMode != k8sv1.PersistentVolumeBlock {
+		vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Set(0)
 		return
 	}
 
 	mounter, ok := pv.Spec.PersistentVolumeSource.CSI.VolumeAttributes["mounter"]
+	// If mounter is not set, it is using the default mounter, which is "rbd"
 	if ok && mounter != "rbd" {
+		vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Set(0)
 		return
 	}
 
 	rxbounce, ok := pv.Spec.PersistentVolumeSource.CSI.VolumeAttributes["mapOptions"]
-	if !ok {
-		rxbounce = ""
+	// If mapOptions is not set, or if it is set but does not contain "krbd:rxbounce", it might be impacted by https://bugzilla.redhat.com/2109455
+	if !ok || !strings.Contains(rxbounce, "krbd:rxbounce") {
+		vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Set(1)
+		return
 	}
 
-	vmRbdVolume.WithLabelValues(
-		vm.Name,
-		vm.Namespace,
-		pv.Name,
-		string(*pvc.Spec.VolumeMode),
-		strconv.FormatBool(strings.Contains(rxbounce, "krbd:rxbounce")),
-	).Set(1)
+	vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Set(0)
+}
+
+func usesRbdCsiDriver(pv *k8sv1.PersistentVolume) bool {
+	return pv.Spec.PersistentVolumeSource.CSI != nil && strings.Contains(pv.Spec.PersistentVolumeSource.CSI.Driver, "rbd.csi.ceph.com")
 }

@@ -1,9 +1,6 @@
 package metrics
 
 import (
-	"strconv"
-	"strings"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -73,14 +70,7 @@ var _ = Describe("rbd_metrics", func() {
 			SetVmWithVolume(vm, pvc, pv)
 
 			dto := &ioprometheusclient.Metric{}
-			err := vmRbdVolume.WithLabelValues(
-				vm.Name,
-				vm.Namespace,
-				pv.Name,
-				string(*pvc.Spec.VolumeMode),
-				strconv.FormatBool(strings.Contains(mapOptions, "krbd:rxbounce")),
-			).Write(dto)
-
+			err := vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Write(dto)
 			Expect(err).ToNot(HaveOccurred())
 
 			if metricExists {
@@ -89,10 +79,10 @@ var _ = Describe("rbd_metrics", func() {
 				Expect(dto.GetGauge().GetValue()).To(Equal(float64(0)))
 			}
 		},
-		Entry("rbd driver and default mounter", rbdDriver, "", "krbd:rxbounce", true),
-		Entry("rbd driver and rbd mounter", rbdDriver, "rbd", "krbd:rxbounce", true),
-		Entry("non-rbd driver", "random", "rbd", "krbd:rxbounce", false),
-		Entry("non-rbd mounter", rbdDriver, "random", "krbd:rxbounce", false),
+		Entry("rbd driver and default mounter", rbdDriver, "", "krbd:rxbounce", false),
+		Entry("rbd driver and rbd mounter", rbdDriver, "rbd", "krbd:rxbounce", false),
+		Entry("non-rbd driver", "random", "rbd", "", false),
+		Entry("non-rbd mounter", rbdDriver, "random", "", false),
 		Entry("krbd:rxbounce not enabled", rbdDriver, "rbd", "random", true),
 	)
 })
