@@ -6,6 +6,9 @@ updates:
       interval: "daily"
     allow:
       - dependency-type: "all"
+    ignore:
+      # Ginkgo update needs a change in Makefile.
+      - dependency-name: "github.com/onsi/ginkgo/v2"
     groups:
       production-dependencies:
         dependency-type: "production"
@@ -17,7 +20,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"  
+      interval: "weekly"
     open-pull-requests-limit: 3
     labels:
       - "release-note-none"
