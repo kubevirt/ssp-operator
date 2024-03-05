@@ -291,7 +291,7 @@ var _ = Describe("Prometheus Alerts", func() {
 
 			Eventually(func(g Gomega) error {
 				return apiClient.Get(ctx, types.NamespacedName{Name: vmName, Namespace: strategy.GetNamespace()}, vm)
-			}).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+			}, 10*time.Second, time.Second).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
 			alertShouldNotBeActive("VMStorageClassWarning")
