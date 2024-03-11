@@ -15,7 +15,6 @@ import (
 const (
 	tektonTasksKubernetesBundleDir = "/data/tekton-tasks/kubernetes/"
 	tektonTasksOKDBundleDir        = "/data/tekton-tasks/okd/"
-	tektonPipelinesBundleDir       = "/data/tekton-pipelines/"
 )
 
 var (
@@ -39,20 +38,6 @@ type Bundle struct {
 	Pipelines []pipeline.Pipeline //nolint:staticcheck
 
 	ConfigMaps []v1.ConfigMap
-}
-
-var tektonPipelineBundlePaths = []string{
-	filepath.Join(tektonPipelinesBundleDir, "pipelines-rbac.yaml"),
-	filepath.Join(tektonPipelinesBundleDir, "windows-bios-installer-configmaps.yaml"),
-	filepath.Join(tektonPipelinesBundleDir, "windows-bios-installer-pipeline.yaml"),
-	filepath.Join(tektonPipelinesBundleDir, "windows-customize-configmaps.yaml"),
-	filepath.Join(tektonPipelinesBundleDir, "windows-customize-pipeline.yaml"),
-	filepath.Join(tektonPipelinesBundleDir, "windows-efi-installer-configmaps.yaml"),
-	filepath.Join(tektonPipelinesBundleDir, "windows-efi-installer-pipeline.yaml"),
-}
-
-func GetTektonPipelineBundlePaths() []string {
-	return tektonPipelineBundlePaths
 }
 
 func GetTektonTasksBundlePath(isOpenShift bool) string {

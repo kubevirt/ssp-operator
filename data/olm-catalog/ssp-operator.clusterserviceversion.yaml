@@ -190,8 +190,8 @@ spec:
           - configmaps
           verbs:
           - create
-          - delete
           - list
+          - update
           - watch
         - apiGroups:
           - ""
@@ -399,7 +399,6 @@ spec:
           - rolebindings
           verbs:
           - create
-          - delete
           - list
           - update
           - watch
@@ -464,7 +463,6 @@ spec:
           - pipelines
           verbs:
           - create
-          - delete
           - list
           - update
           - watch

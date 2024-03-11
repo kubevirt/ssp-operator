@@ -65,19 +65,12 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
 	}
 
-	tektonPipelinesBundlePaths := tekton_bundle.GetTektonPipelineBundlePaths()
-	tektonPipelinesBundle, err := tekton_bundle.ReadBundle(tektonPipelinesBundlePaths)
-	if err != nil {
-		return fmt.Errorf("failed to read tekton pipelines bundle: %w", err)
-	}
-
 	tektonTasksBundlePath := tekton_bundle.GetTektonTasksBundlePath(runningOnOpenShift)
 	tektonTasksBundle, err := tekton_bundle.ReadBundle([]string{tektonTasksBundlePath})
 	if err != nil {
 		return fmt.Errorf("failed to read tekton tasks bundle: %w", err)
 	}
 
-	tektonPipelinesOperand := tekton_pipelines.New(tektonPipelinesBundle)
 	tektonTasksOperand := tekton_tasks.New(tektonTasksBundle)
 
 	sspOperands := []operands.Operand{
@@ -89,7 +82,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		data_sources.New(templatesBundle.DataSources),
 		// Tekton Tasks Operand should be before Pipelines to avoid errors
 		tektonTasksOperand,
-		tektonPipelinesOperand,
+		tekton_pipelines.New(),
 	}
 
 	if runningOnOpenShift {

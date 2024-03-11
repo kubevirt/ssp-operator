@@ -132,8 +132,8 @@ rules:
   - configmaps
   verbs:
   - create
-  - delete
   - list
+  - update
   - watch
 - apiGroups:
   - ""
@@ -341,7 +341,6 @@ rules:
   - rolebindings
   verbs:
   - create
-  - delete
   - list
   - update
   - watch
@@ -406,7 +405,6 @@ rules:
   - pipelines
   verbs:
   - create
-  - delete
   - list
   - update
   - watch
