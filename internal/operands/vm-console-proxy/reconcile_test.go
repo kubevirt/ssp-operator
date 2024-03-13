@@ -28,6 +28,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/operands"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 )
@@ -52,7 +53,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 
 	var (
 		bundle  *vm_console_proxy_bundle.Bundle
-		operand *vmConsoleProxy
+		operand operands.Operand
 		request common.Request
 	)
 
@@ -72,7 +73,9 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceExists(bundle.ServiceAccount, request)
-		ExpectResourceExists(bundle.ClusterRole, request)
+		for _, clusterRole := range bundle.ClusterRoles {
+			ExpectResourceExists(&clusterRole, request)
+		}
 		ExpectResourceExists(bundle.ClusterRoleBinding, request)
 		ExpectResourceExists(bundle.RoleBinding, request)
 		ExpectResourceExists(bundle.ConfigMap, request)
@@ -117,7 +120,9 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceExists(bundle.ServiceAccount, request)
-		ExpectResourceExists(bundle.ClusterRole, request)
+		for _, clusterRole := range bundle.ClusterRoles {
+			ExpectResourceExists(&clusterRole, request)
+		}
 		ExpectResourceExists(bundle.ClusterRoleBinding, request)
 		ExpectResourceExists(bundle.RoleBinding, request)
 		ExpectResourceExists(bundle.ConfigMap, request)
@@ -129,7 +134,9 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceNotExists(bundle.ServiceAccount, request)
-		ExpectResourceNotExists(bundle.ClusterRole, request)
+		for _, clusterRole := range bundle.ClusterRoles {
+			ExpectResourceNotExists(&clusterRole, request)
+		}
 		ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
 		ExpectResourceNotExists(bundle.RoleBinding, request)
 		ExpectResourceNotExists(bundle.ConfigMap, request)
@@ -246,7 +253,9 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceExists(bundle.ServiceAccount, request)
-		ExpectResourceExists(bundle.ClusterRole, request)
+		for _, clusterRole := range bundle.ClusterRoles {
+			ExpectResourceExists(&clusterRole, request)
+		}
 		ExpectResourceExists(bundle.ClusterRoleBinding, request)
 		ExpectResourceExists(bundle.RoleBinding, request)
 		ExpectResourceExists(bundle.ConfigMap, request)
@@ -260,7 +269,9 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceNotExists(bundle.ServiceAccount, request)
-		ExpectResourceNotExists(bundle.ClusterRole, request)
+		for _, clusterRole := range bundle.ClusterRoles {
+			ExpectResourceNotExists(&clusterRole, request)
+		}
 		ExpectResourceNotExists(bundle.ClusterRoleBinding, request)
 		ExpectResourceNotExists(bundle.RoleBinding, request)
 		ExpectResourceNotExists(bundle.ConfigMap, request)
@@ -323,7 +334,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 				Labels:    map[string]string{"control-plane": "vm-console-proxy"},
 			},
 		},
-		ClusterRole: &rbac.ClusterRole{
+		ClusterRoles: []rbac.ClusterRole{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterRoleName,
 				Namespace: namespace,
@@ -346,7 +357,18 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 				Resources: []string{"subjectaccessreviews"},
 				Verbs:     []string{"create"},
 			}},
-		},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "token-generate",
+				Namespace: namespace,
+				Labels:    map[string]string{},
+			},
+			Rules: []rbac.PolicyRule{{
+				APIGroups: []string{"token.kubevirt.io"},
+				Resources: []string{"virtualmachines/vnc"},
+				Verbs:     []string{"get"},
+			}},
+		}},
 		ClusterRoleBinding: &rbac.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterRoleBindingName,

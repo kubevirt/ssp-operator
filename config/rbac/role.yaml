@@ -438,3 +438,9 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - token.kubevirt.io
+  resources:
+  - virtualmachines/vnc
+  verbs:
+  - get

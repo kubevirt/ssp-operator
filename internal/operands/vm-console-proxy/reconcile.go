@@ -43,6 +43,7 @@ const (
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=get;list;watch;create;update;delete;patch
 // +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+// +kubebuilder:rbac:groups=token.kubevirt.io,resources=virtualmachines/vnc,verbs=get
 
 func init() {
 	utilruntime.Must(routev1.Install(common.Scheme))
@@ -69,7 +70,7 @@ func WatchTypes() []operands.WatchType {
 
 type vmConsoleProxy struct {
 	serviceAccount     *core.ServiceAccount
-	clusterRole        *rbac.ClusterRole
+	clusterRoles       []rbac.ClusterRole
 	clusterRoleBinding *rbac.ClusterRoleBinding
 	roleBinding        *rbac.RoleBinding
 	service            *core.Service
@@ -80,10 +81,10 @@ type vmConsoleProxy struct {
 
 var _ operands.Operand = &vmConsoleProxy{}
 
-func New(bundle *vm_console_proxy_bundle.Bundle) *vmConsoleProxy {
+func New(bundle *vm_console_proxy_bundle.Bundle) operands.Operand {
 	return &vmConsoleProxy{
 		serviceAccount:     bundle.ServiceAccount,
-		clusterRole:        bundle.ClusterRole,
+		clusterRoles:       bundle.ClusterRoles,
 		clusterRoleBinding: bundle.ClusterRoleBinding,
 		roleBinding:        bundle.RoleBinding,
 		service:            bundle.Service,
@@ -120,15 +121,21 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 		return results, nil
 	}
 
-	reconcileResults, err := common.CollectResourceStatus(request,
+	reconcileFuncs := []common.ReconcileFunc{
 		reconcileServiceAccount(*v.serviceAccount.DeepCopy()),
-		reconcileClusterRole(*v.clusterRole.DeepCopy()),
+	}
+	for i := range v.clusterRoles {
+		reconcileFuncs = append(reconcileFuncs, reconcileClusterRole(*v.clusterRoles[i].DeepCopy()))
+	}
+	reconcileFuncs = append(reconcileFuncs,
 		reconcileClusterRoleBinding(*v.clusterRoleBinding.DeepCopy()),
 		reconcileRoleBinding(v.roleBinding.DeepCopy()),
 		reconcileConfigMap(*v.configMap.DeepCopy()),
 		reconcileService(*v.service.DeepCopy()),
 		reconcileDeployment(*v.deployment.DeepCopy()),
 		reconcileApiService(v.apiService.DeepCopy()))
+
+	reconcileResults, err := common.CollectResourceStatus(request, reconcileFuncs...)
 	if err != nil {
 		return nil, err
 	}
@@ -202,8 +209,11 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 	}
 	objectsToDelete = append(objectsToDelete, deployments...)
 
+	for i := range v.clusterRoles {
+		objectsToDelete = append(objectsToDelete, v.clusterRoles[i].DeepCopy())
+	}
+
 	objectsToDelete = append(objectsToDelete,
-		v.clusterRole.DeepCopy(),
 		v.clusterRoleBinding.DeepCopy(),
 		v.roleBinding.DeepCopy(),
 		v.apiService.DeepCopy())

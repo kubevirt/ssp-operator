@@ -33,7 +33,7 @@ const (
 
 type Bundle struct {
 	ServiceAccount     *core.ServiceAccount
-	ClusterRole        *rbac.ClusterRole
+	ClusterRoles       []rbac.ClusterRole
 	ClusterRoleBinding *rbac.ClusterRoleBinding
 	RoleBinding        *rbac.RoleBinding
 	Service            *core.Service
@@ -83,7 +83,9 @@ func loadBundleFromBytes(data []byte) (*Bundle, error) {
 		case rbac.ServiceAccountKind:
 			destObj = &(bundle.ServiceAccount)
 		case clusterRoleKind:
-			destObj = &(bundle.ClusterRole)
+			// Add a dummy object to the slice, it will be filled later
+			bundle.ClusterRoles = append(bundle.ClusterRoles, rbac.ClusterRole{})
+			destObj = &(bundle.ClusterRoles[len(bundle.ClusterRoles)-1])
 		case clusterRoleBindingsKind:
 			destObj = &(bundle.ClusterRoleBinding)
 		case roleBindingKind:
@@ -102,7 +104,7 @@ func loadBundleFromBytes(data []byte) (*Bundle, error) {
 			return nil, fmt.Errorf("unsupported Kind found in vm-console-proxy bundle: %s", kind)
 		}
 
-		if !reflect.ValueOf(destObj).Elem().IsNil() {
+		if kind != clusterRoleKind && !reflect.ValueOf(destObj).Elem().IsNil() {
 			return nil, fmt.Errorf("duplicate Kind found in vm-console-proxy bundle: %s", kind)
 		}
 
@@ -118,7 +120,7 @@ func validateBundle(bundle *Bundle) error {
 	if bundle.ServiceAccount == nil {
 		missingFields = append(missingFields, "ServiceAccount")
 	}
-	if bundle.ClusterRole == nil {
+	if len(bundle.ClusterRoles) == 0 {
 		missingFields = append(missingFields, "ClusterRole")
 	}
 	if bundle.ClusterRoleBinding == nil {
@@ -142,5 +144,6 @@ func validateBundle(bundle *Bundle) error {
 	if len(missingFields) > 0 {
 		return fmt.Errorf("bundle is missing these objects: %v", missingFields)
 	}
+
 	return nil
 }
