@@ -327,18 +327,7 @@ func alertShouldNotBeActive(alertName string) {
 			return nil
 		}
 		return fmt.Errorf("alert %s found", alertName)
-	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
-
-	ConsistentlyWithOffset(1, func() error {
-		alert, err := checkAlert(alertName)
-		if err != nil {
-			return err
-		}
-		if alert == nil || alert.State == "inactive" {
-			return nil
-		}
-		return fmt.Errorf("alert %s found", alertName)
-	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
+	}, env.Timeout(), 10*time.Second).MustPassRepeatedly(10).ShouldNot(HaveOccurred())
 }
 
 func waitForSeriesToBeDetected(seriesName string) {
