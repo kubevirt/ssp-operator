@@ -258,7 +258,6 @@ spec:
           - secrets
           verbs:
           - create
-          - delete
           - get
           - list
           - patch
@@ -376,8 +375,6 @@ spec:
           - clusterroles
           - rolebindings
           verbs:
-          - create
-          - delete
           - list
           - update
           - watch
@@ -471,8 +468,6 @@ spec:
           resources:
           - tasks
           verbs:
-          - create
-          - delete
           - list
           - update
           - watch

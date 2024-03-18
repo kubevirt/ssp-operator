@@ -14,9 +14,8 @@ const (
 	AppKubernetesManagedByLabel = "app.kubernetes.io/managed-by"
 	AppKubernetesComponentLabel = "app.kubernetes.io/component"
 
-	AppComponentTektonTasks           AppComponent = "tektonTasks"
-	AppKubernetesManagedByValue       string       = "ssp-operator"
-	TektonAppKubernetesManagedByValue string       = "tekton-tasks-operator"
+	AppKubernetesManagedByValue       string = "ssp-operator"
+	TektonAppKubernetesManagedByValue string = "tekton-tasks-operator"
 )
 
 type AppComponent string
@@ -30,6 +29,7 @@ const (
 	AppComponentSchedule        AppComponent = "schedule"
 	AppComponentTemplating      AppComponent = "templating"
 	AppComponentTektonPipelines AppComponent = "tektonPipelines"
+	AppComponentTektonTasks     AppComponent = "tektonTasks"
 )
 
 // AddAppLabels to the provided obj

@@ -1,136 +1,192 @@
 package tests
 
 import (
-	"strings"
-	"time"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	// pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/operator-framework/operator-lib/handler"
+	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	"kubevirt.io/ssp-operator/internal/common"
-	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
-	"kubevirt.io/ssp-operator/tests/env"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 var _ = Describe("Tekton Tasks Operand", func() {
-	Context("resource creation when DeployTektonTaskResources is set to true", func() {
-		BeforeEach(func() {
-			strategy.SkipSspUpdateTestsIfNeeded()
+	Context("annotations on old resources", Ordered, func() {
+		const (
+			tektonDeprecatedAnnotation = "tekton.dev/deprecated"
+			testResourceNamePrefix     = "ssp-tasks-test-"
+			operandName                = "tekton-tasks"
+		)
 
-			updateSsp(func(foundSsp *ssp.SSP) {
-				if foundSsp.Spec.FeatureGates == nil {
-					foundSsp.Spec.FeatureGates = &ssp.FeatureGates{}
-				}
-				foundSsp.Spec.FeatureGates.DeployTektonTaskResources = true
+		var (
+			serviceAccount *v1.ServiceAccount
+			clusterRole    *rbac.ClusterRole
+			roleBinding    *rbac.RoleBinding
+			task           *pipeline.Task //nolint:staticcheck
+
+			matchingLabels client.MatchingLabels
+		)
+
+		BeforeAll(func() {
+			// Adding fake resources to simulate resources left from the previous version
+			namespace := &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: testResourceNamePrefix,
+				},
+			}
+			Expect(apiClient.Create(ctx, namespace)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(apiClient.Delete(ctx, namespace)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+			})
+
+			ssp := getSsp()
+
+			commonAnnotations := map[string]string{
+				handler.TypeAnnotation:           sspv1beta2.GroupVersion.WithKind("SSP").GroupKind().String(),
+				handler.NamespacedNameAnnotation: ssp.GetNamespace() + "/" + ssp.GetName(),
+			}
+
+			commonLabels := map[string]string{
+				common.AppKubernetesNameLabel:      operandName,
+				common.AppKubernetesComponentLabel: common.AppComponentTektonTasks.String(),
+				common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+			}
+			if sspPartOfLabel, exists := ssp.Labels[common.AppKubernetesPartOfLabel]; exists {
+				commonLabels[common.AppKubernetesPartOfLabel] = sspPartOfLabel
+			}
+
+			serviceAccount = &v1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:    namespace.Name,
+					GenerateName: testResourceNamePrefix,
+					Annotations:  commonAnnotations,
+					Labels:       commonLabels,
+				},
+			}
+			Expect(apiClient.Create(ctx, serviceAccount)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(apiClient.Delete(ctx, serviceAccount)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+			})
+
+			clusterRole = &rbac.ClusterRole{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: testResourceNamePrefix,
+					Annotations:  commonAnnotations,
+					Labels:       commonLabels,
+				},
+			}
+			Expect(apiClient.Create(ctx, clusterRole)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(apiClient.Delete(ctx, clusterRole)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+			})
+
+			roleBinding = &rbac.RoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:    namespace.Name,
+					GenerateName: testResourceNamePrefix,
+					Annotations:  commonAnnotations,
+					Labels:       commonLabels,
+				},
+				Subjects: []rbac.Subject{{
+					Kind:      rbac.ServiceAccountKind,
+					Name:      serviceAccount.Name,
+					Namespace: serviceAccount.Namespace,
+				}},
+				RoleRef: rbac.RoleRef{
+					APIGroup: rbac.GroupName,
+					Kind:     "ClusterRole",
+					Name:     clusterRole.Name,
+				},
+			}
+			Expect(apiClient.Create(ctx, roleBinding)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(apiClient.Delete(ctx, roleBinding)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+			})
+
+			task = &pipeline.Task{ //nolint:staticcheck
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:    namespace.Name,
+					GenerateName: testResourceNamePrefix,
+					Annotations:  commonAnnotations,
+					Labels:       commonLabels,
+				},
+				Spec: pipeline.TaskSpec{
+					DisplayName: "test-task",
+					Description: "test-task",
+					Steps: []pipeline.Step{{
+						Name:  "test-step",
+						Image: "test-image",
+					}},
+				},
+			}
+			Expect(apiClient.Create(ctx, task)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(apiClient.Delete(ctx, task)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
 			})
 
 			waitUntilDeployed()
-		})
 
-		AfterEach(func() {
-			strategy.RevertToOriginalSspCr()
-		})
-
-		// It("[test_id:TODO] should create tasks", func() {
-		// 	taskList := &pipeline.TaskList{}
-
-		// 	Eventually(func() bool {
-		// 		err := apiClient.List(ctx, taskList,
-		// 			client.MatchingLabels{
-		// 				common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-		// 				common.AppKubernetesComponentLabel: string(common.AppComponentTektonTasks),
-		// 			},
-		// 		)
-		// 		Expect(err).ToNot(HaveOccurred())
-		// 		return len(taskList.Items) > 0
-		// 	}, env.ShortTimeout(), time.Second).Should(BeTrue())
-
-		// 	for _, task := range taskList.Items {
-		// 		if _, found := tekton_tasks.AllowedTasks[strings.TrimSuffix(task.Name, "-task")]; found {
-		// 			Expect(found).To(BeTrue(), "only allowed task is deployed - "+task.Name)
-		// 		}
-
-		// 		Expect(task.Labels[tekton_tasks.TektonTasksVersionLabel]).To(Equal(common.TektonTasksVersion), "version label should equal")
-		// 		Expect(task.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
-		// 		Expect(task.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonTasks)), "component label should equal")
-		// 	}
-		// })
-
-		It("[test_id:TODO] should create service accounts", func() {
-			serviceAccountList := &v1.ServiceAccountList{}
-
-			Eventually(func() bool {
-				err := apiClient.List(ctx, serviceAccountList,
-					client.MatchingLabels{
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-						common.AppKubernetesComponentLabel: string(common.AppComponentTektonTasks),
-					},
-				)
-				Expect(err).ToNot(HaveOccurred())
-				return len(serviceAccountList.Items) > 0
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
-
-			for _, serviceAccount := range serviceAccountList.Items {
-				if _, found := tekton_tasks.AllowedTasks[strings.TrimSuffix(serviceAccount.Name, "-task")]; found {
-					Expect(found).To(BeTrue(), "only allowed service account is deployed - "+serviceAccount.Name)
-				}
-
-				Expect(serviceAccount.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
-				Expect(serviceAccount.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonTasks)), "component label should equal")
+			matchingLabels = client.MatchingLabels{
+				common.AppKubernetesNameLabel:      operandName,
+				common.AppKubernetesComponentLabel: common.AppComponentTektonTasks.String(),
+				common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
 			}
 		})
 
-		It("[test_id:TODO] should create cluster roles", func() {
-			clusterRoleList := &rbac.ClusterRoleList{}
+		It("[test_id:TODO] check ServiceAccounts annotations", func() {
+			objList := &v1.ServiceAccountList{}
+			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			Eventually(func() bool {
-				err := apiClient.List(ctx, clusterRoleList,
-					client.MatchingLabels{
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-						common.AppKubernetesComponentLabel: string(common.AppComponentTektonTasks),
-					},
-				)
-				Expect(err).ToNot(HaveOccurred())
-				return len(clusterRoleList.Items) > 0
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
-
-			for _, clusterRole := range clusterRoleList.Items {
-				if _, found := tekton_tasks.AllowedTasks[strings.TrimSuffix(clusterRole.Name, "-task")]; found {
-					Expect(found).To(BeTrue(), "only allowed cluster role is deployed - "+clusterRole.Name)
-				}
-
-				Expect(clusterRole.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
-				Expect(clusterRole.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonTasks)), "component label should equal")
+			for _, obj := range objList.Items {
+				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ServiceAccount %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
 			}
+			Expect(objList.Items).To(ContainElement(Satisfy(func(obj v1.ServiceAccount) bool {
+				return obj.Namespace == serviceAccount.Namespace && obj.Name == serviceAccount.Name
+			})), "The fake ServiceAccount was not listed.")
 		})
 
-		It("[test_id:TODO] should create role bindings", func() {
-			roleBindingList := &rbac.RoleBindingList{}
+		It("[test_id:TODO] check ClusterRoles annotations", func() {
+			objList := &rbac.ClusterRoleList{}
+			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			Eventually(func() bool {
-				err := apiClient.List(ctx, roleBindingList,
-					client.MatchingLabels{
-						common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-						common.AppKubernetesComponentLabel: string(common.AppComponentTektonTasks),
-					},
-				)
-				Expect(err).ToNot(HaveOccurred())
-				return len(roleBindingList.Items) > 0
-			}, env.ShortTimeout(), time.Second).Should(BeTrue())
-
-			for _, roleBinding := range roleBindingList.Items {
-				if _, found := tekton_tasks.AllowedTasks[strings.TrimSuffix(roleBinding.Name, "-task")]; found {
-					Expect(found).To(BeTrue(), "only allowed role binding is deployed - "+roleBinding.Name)
-				}
-
-				Expect(roleBinding.Labels[common.AppKubernetesManagedByLabel]).To(Equal(common.AppKubernetesManagedByValue), "managed by label should equal")
-				Expect(roleBinding.Labels[common.AppKubernetesComponentLabel]).To(Equal(string(common.AppComponentTektonTasks)), "component label should equal")
+			for _, obj := range objList.Items {
+				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ClusterRole %s does not have deprecation annotation.", obj.Name))
 			}
+			Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.ClusterRole) bool {
+				return obj.Name == clusterRole.Name
+			})), "The fake ClusterRole was not listed.")
+		})
+
+		It("[test_id:TODO] check RoleBindings annotations", func() {
+			objList := &rbac.RoleBindingList{}
+			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+
+			for _, obj := range objList.Items {
+				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("RoleBinding %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+			}
+			Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.RoleBinding) bool {
+				return obj.Namespace == roleBinding.Namespace && obj.Name == roleBinding.Name
+			})), "The fake RoleBinding was not listed.")
+		})
+
+		It("[test_id:TODO] check Tasks annotations", func() {
+			objList := &pipeline.TaskList{}
+			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+
+			for _, obj := range objList.Items {
+				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("Task %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+			}
+			Expect(objList.Items).To(ContainElement(Satisfy(func(obj pipeline.Task) bool { //nolint:staticcheck
+				return obj.Namespace == task.Namespace && obj.Name == task.Name
+			})), "The fake Task was not listed.")
 		})
 	})
 })
