@@ -45,6 +45,10 @@ func BuildPrometheusRule(namespace string) (*promv1.PrometheusRule, error) {
 	)
 }
 
+func ListAlerts() []promv1.Rule {
+	return operatorrules.ListAlerts()
+}
+
 func ListRecordingRules() []operatorrules.RecordingRule {
 	return operatorrules.ListRecordingRules()
 }
