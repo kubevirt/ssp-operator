@@ -1,4 +1,4 @@
-package tekton_tasks
+package tekton_cleanup
 
 import (
 	"context"
@@ -30,12 +30,12 @@ import (
 
 const (
 	namespace = "kubevirt"
-	name      = "test-tekton"
+	sspName   = "test-ssp"
 
 	sspPartOfValue = "ssp-unit-tests"
 )
 
-var _ = Describe("tekton-tasks operand", func() {
+var _ = Describe("tekton-cleanup operand", func() {
 	var (
 		operand operands.Operand
 		request *common.Request
@@ -51,11 +51,15 @@ var _ = Describe("tekton-tasks operand", func() {
 		Expect(name).To(Equal(operandName), "should return correct name")
 	})
 
-	Context("with old resources in cluster", func() {
+	Context("with old Pipelines resources in cluster", func() {
+		const (
+			resourceName = "test-tekton"
+		)
+
 		BeforeEach(func() {
-			commonObjectMeta := metav1.ObjectMeta{
+			commonPipelinesMeta := metav1.ObjectMeta{
 				Namespace: namespace,
-				Name:      name,
+				Name:      resourceName,
 				Annotations: map[string]string{
 					libhandler.NamespacedNameAnnotation: types.NamespacedName{
 						Namespace: request.Instance.Namespace,
@@ -64,8 +68,73 @@ var _ = Describe("tekton-tasks operand", func() {
 					libhandler.TypeAnnotation: request.Instance.GroupVersionKind().GroupKind().String(),
 				},
 				Labels: map[string]string{
-					common.AppKubernetesNameLabel:      operandName,
-					common.AppKubernetesComponentLabel: operandComponent.String(),
+					common.AppKubernetesNameLabel:      operandPipelinesName,
+					common.AppKubernetesComponentLabel: common.AppComponentTektonPipelines.String(),
+					common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+					common.AppKubernetesPartOfLabel:    sspPartOfValue,
+				},
+			}
+
+			for _, resource := range []client.Object{
+				&rbac.ClusterRole{ObjectMeta: commonPipelinesMeta},
+				&rbac.RoleBinding{ObjectMeta: commonPipelinesMeta},
+				&v1.ServiceAccount{ObjectMeta: commonPipelinesMeta},
+				&v1.ConfigMap{ObjectMeta: commonPipelinesMeta},
+				&pipeline.Pipeline{ObjectMeta: commonPipelinesMeta}, //nolint:staticcheck
+			} {
+				Expect(request.Client.Create(request.Context, resource)).To(Succeed())
+			}
+		})
+
+		DescribeTable("should add deprecated annotation", func(obj client.Object) {
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(request.Client.Get(request.Context, client.ObjectKey{Namespace: namespace, Name: resourceName}, obj)).To(Succeed())
+
+			Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecated, "true"))
+		},
+			Entry("ClusterRoles", &rbac.ClusterRole{}),
+			Entry("RoleBindings", &rbac.RoleBinding{}),
+			Entry("ServiceAccounts", &v1.ServiceAccount{}),
+			Entry("ConfigMaps", &v1.ConfigMap{}),
+			Entry("Pipelines", &pipeline.Pipeline{}), //nolint:staticcheck
+		)
+
+		DescribeTable("should delete resource on Cleanup", func(obj client.Object) {
+			_, err := operand.Cleanup(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = request.Client.Get(request.Context, client.ObjectKey{Namespace: namespace, Name: resourceName}, obj)
+			Expect(err).To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+		},
+			Entry("ClusterRoles", &rbac.ClusterRole{}),
+			Entry("RoleBindings", &rbac.RoleBinding{}),
+			Entry("ServiceAccounts", &v1.ServiceAccount{}),
+			Entry("ConfigMaps", &v1.ConfigMap{}),
+			Entry("Pipelines", &pipeline.Pipeline{}), //nolint:staticcheck
+		)
+	})
+
+	Context("with old Tasks resources in cluster", func() {
+		const (
+			resourceName = "test-tekton"
+		)
+
+		BeforeEach(func() {
+			commonObjectMeta := metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      resourceName,
+				Annotations: map[string]string{
+					libhandler.NamespacedNameAnnotation: types.NamespacedName{
+						Namespace: request.Instance.Namespace,
+						Name:      request.Instance.Name,
+					}.String(),
+					libhandler.TypeAnnotation: request.Instance.GroupVersionKind().GroupKind().String(),
+				},
+				Labels: map[string]string{
+					common.AppKubernetesNameLabel:      operandTasksName,
+					common.AppKubernetesComponentLabel: common.AppComponentTektonTasks.String(),
 					common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
 					common.AppKubernetesPartOfLabel:    sspPartOfValue,
 				},
@@ -85,38 +154,38 @@ var _ = Describe("tekton-tasks operand", func() {
 			_, err := operand.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(request.Client.Get(request.Context, client.ObjectKey{Namespace: namespace, Name: name}, obj)).To(Succeed())
+			Expect(request.Client.Get(request.Context, client.ObjectKey{Namespace: namespace, Name: resourceName}, obj)).To(Succeed())
 
 			Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecated, "true"))
 		},
 			Entry("ClusterRoles", &rbac.ClusterRole{}),
 			Entry("RoleBindings", &rbac.RoleBinding{}),
 			Entry("ServiceAccounts", &v1.ServiceAccount{}),
-			Entry("Pipelines", &pipeline.Task{}), //nolint:staticcheck
+			Entry("Tasks", &pipeline.Task{}), //nolint:staticcheck
 		)
 
 		DescribeTable("should delete resource on Cleanup", func(obj client.Object) {
 			_, err := operand.Cleanup(request)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = request.Client.Get(request.Context, client.ObjectKey{Namespace: namespace, Name: name}, obj)
+			err = request.Client.Get(request.Context, client.ObjectKey{Namespace: namespace, Name: resourceName}, obj)
 			Expect(err).To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 		},
 			Entry("ClusterRoles", &rbac.ClusterRole{}),
 			Entry("RoleBindings", &rbac.RoleBinding{}),
 			Entry("ServiceAccounts", &v1.ServiceAccount{}),
-			Entry("Pipelines", &pipeline.Task{}), //nolint:staticcheck
+			Entry("Tasks", &pipeline.Task{}), //nolint:staticcheck
 		)
 	})
 })
 
-func TestTektonTasks(t *testing.T) {
+func TestTektonCleanup(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Tekton Tasks Suite")
+	RunSpecs(t, "Tekton Cleanup Suite")
 }
 
 func getMockedRequest() *common.Request {
-	log := logf.Log.WithName("tekton-tasks-operand")
+	log := logf.Log.WithName("tekton-pipelines-operand")
 
 	Expect(internalmeta.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(extv1.AddToScheme(scheme.Scheme)).To(Succeed())
@@ -144,18 +213,18 @@ func getMockedRequest() *common.Request {
 		Request: reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Namespace: namespace,
-				Name:      name,
+				Name:      sspName,
 			},
 		},
 		Client:  client,
 		Context: context.Background(),
 		Instance: &ssp.SSP{
 			TypeMeta: metav1.TypeMeta{
-				Kind:       "SSP",
 				APIVersion: ssp.GroupVersion.String(),
+				Kind:       "SSP",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
+				Name:      sspName,
 				Namespace: namespace,
 				Labels: map[string]string{
 					common.AppKubernetesPartOfLabel: sspPartOfValue,

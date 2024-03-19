@@ -1,4 +1,4 @@
-package tekton_pipelines
+package tekton_cleanup
 
 import (
 	"fmt"
@@ -6,22 +6,40 @@ import (
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 )
 
 // +kubebuilder:rbac:groups=tekton.dev,resources=pipelines,verbs=list;watch;create;update
+// +kubebuilder:rbac:groups=tekton.dev,resources=tasks,verbs=list;watch;update
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=list;watch;update
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;rolebindings,verbs=list;watch;update
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=list;watch;create;update
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=list;watch;create;update
+
+// Below are RBAC for deployed ClusterRoles. We still need these permissions so we can update annotations on existing ClusterRoles
+
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;update;delete
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=create
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;create;patch
+// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachineinstances;virtualmachines,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines/finalizers,verbs=get
+// +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datasources,verbs=get;create;delete
+// +kubebuilder:rbac:groups=subresources.kubevirt.io,resources=virtualmachines/restart;virtualmachines/start;virtualmachines/stop,verbs=update
+// +kubebuilder:rbac:groups=template.openshift.io,resources=processedtemplates,verbs=create
+// +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch;create;update;delete
 
 const (
-	operandName      = "tekton-pipelines"
-	operandComponent = common.AppComponentTektonPipelines
-	tektonCrd        = "tasks.tekton.dev"
+	operandName          = "tekton-cleanup"
+	operandPipelinesName = "tekton-pipelines"
+	operandTasksName     = "tekton-tasks"
+
+	tektonCrd = "tasks.tekton.dev"
 
 	tektonDeprecated = "tekton.dev/deprecated"
 )
@@ -33,34 +51,33 @@ func init() {
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
 		{Object: &v1.ConfigMap{}},
+		{Object: &rbac.ClusterRole{}},
 		{Object: &rbac.RoleBinding{}},
 		{Object: &v1.ServiceAccount{}},
-		{Object: &rbac.ClusterRole{}},
 	}
 }
 
-type tektonPipelines struct {
-}
+type tektonCleanup struct{}
 
-var _ operands.Operand = &tektonPipelines{}
+var _ operands.Operand = &tektonCleanup{}
 
 func New() operands.Operand {
-	return &tektonPipelines{}
+	return &tektonCleanup{}
 }
 
-func (t *tektonPipelines) Name() string {
+func (t *tektonCleanup) Name() string {
 	return operandName
 }
 
-func (t *tektonPipelines) WatchClusterTypes() []operands.WatchType {
+func (t *tektonCleanup) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
 }
 
-func (t *tektonPipelines) WatchTypes() []operands.WatchType {
+func (t *tektonCleanup) WatchTypes() []operands.WatchType {
 	return nil
 }
 
-func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
+func (t *tektonCleanup) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	deprecateFuncs := []func(*common.Request) error{
 		deprecateResource[rbac.ClusterRoleList, rbac.ClusterRole],
 		deprecateResource[rbac.RoleBindingList, rbac.RoleBinding],
@@ -69,10 +86,11 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 	}
 	if request.CrdList.CrdExists(tektonCrd) {
 		deprecateFuncs = append(deprecateFuncs, deprecateResource[pipeline.PipelineList, pipeline.Pipeline]) //nolint:staticcheck
+		deprecateFuncs = append(deprecateFuncs, deprecateResource[pipeline.TaskList, pipeline.Task])         //nolint:staticcheck
 	}
 
-	for _, deprecateFunc := range deprecateFuncs {
-		if err := deprecateFunc(request); err != nil {
+	for _, deprecate := range deprecateFuncs {
+		if err := deprecate(request); err != nil {
 			return nil, err
 		}
 	}
@@ -80,7 +98,7 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 	return nil, nil
 }
 
-func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
+func (t *tektonCleanup) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	cleanupFuncs := []func(*common.Request) ([]common.CleanupResult, error){
 		cleanupResource[rbac.ClusterRoleList, rbac.ClusterRole],
 		cleanupResource[rbac.RoleBindingList, rbac.RoleBinding],
@@ -89,6 +107,7 @@ func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResu
 	}
 	if request.CrdList.CrdExists(tektonCrd) {
 		cleanupFuncs = append(cleanupFuncs, cleanupResource[pipeline.PipelineList, pipeline.Pipeline]) //nolint:staticcheck
+		cleanupFuncs = append(cleanupFuncs, cleanupResource[pipeline.TaskList, pipeline.Task])         //nolint:staticcheck
 	}
 
 	var allResults []common.CleanupResult
@@ -114,7 +133,6 @@ func deprecateResource[L any, T any, PtrL interface {
 	if err != nil {
 		return fmt.Errorf("failed to list owned resources: %w", err)
 	}
-
 	for i := range resources {
 		resource := PtrT(&resources[i])
 		existingVal := resource.GetAnnotations()[tektonDeprecated]
@@ -123,7 +141,6 @@ func deprecateResource[L any, T any, PtrL interface {
 		}
 
 		resource.GetAnnotations()[tektonDeprecated] = "true"
-
 		if err := request.Client.Update(request.Context, resource); err != nil {
 			return fmt.Errorf("failed to update %s: %w", resource.GetObjectKind().GroupVersionKind().Kind, err)
 		}
@@ -155,14 +172,24 @@ func cleanupResource[L any, T any, PtrL interface {
 	return results, nil
 }
 
-func matchingLabelsOption(ssp *ssp.SSP) client.MatchingLabels {
-	result := client.MatchingLabels{
-		common.AppKubernetesNameLabel:      operandName,
-		common.AppKubernetesComponentLabel: operandComponent.String(),
-		common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
-	}
+func matchingLabelsOption(ssp *ssp.SSP) client.MatchingLabelsSelector {
+	selector := labels.NewSelector().Add(
+		newLabelRequirementOrPanic(common.AppKubernetesManagedByLabel, selection.Equals, []string{common.AppKubernetesManagedByValue}),
+		newLabelRequirementOrPanic(common.AppKubernetesComponentLabel, selection.In, []string{common.AppComponentTektonPipelines.String(), common.AppComponentTektonTasks.String()}),
+		newLabelRequirementOrPanic(common.AppKubernetesNameLabel, selection.In, []string{operandPipelinesName, operandTasksName}),
+	)
+
 	if sspPartOf, exists := ssp.Labels[common.AppKubernetesPartOfLabel]; exists {
-		result[common.AppKubernetesPartOfLabel] = sspPartOf
+		selector.Add(newLabelRequirementOrPanic(common.AppKubernetesPartOfLabel, selection.Equals, []string{sspPartOf}))
 	}
-	return result
+
+	return client.MatchingLabelsSelector{Selector: selector}
+}
+
+func newLabelRequirementOrPanic(key string, op selection.Operator, vals []string) labels.Requirement {
+	requirement, err := labels.NewRequirement(key, op, vals)
+	if err != nil {
+		panic(fmt.Errorf("invalid requirement: %w", err))
+	}
+	return *requirement
 }

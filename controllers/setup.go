@@ -16,8 +16,7 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
-	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
+	tekton_cleanup "kubevirt.io/ssp-operator/internal/operands/tekton-cleanup"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
@@ -71,9 +70,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 			common_instancetypes.BundleDir+common_instancetypes.ClusterPreferencesBundle,
 		),
 		data_sources.New(templatesBundle.DataSources),
-		// Tekton Tasks Operand should be before Pipelines to avoid errors
-		tekton_tasks.New(),
-		tekton_pipelines.New(),
+		tekton_cleanup.New(),
 	}
 
 	if runningOnOpenShift {

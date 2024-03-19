@@ -15,8 +15,7 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
-	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
+	tekton_cleanup "kubevirt.io/ssp-operator/internal/operands/tekton-cleanup"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 )
@@ -41,8 +40,7 @@ var _ = Describe("Cleanup", func() {
 			template_validator.WatchTypes,
 			template_validator.WatchClusterTypes,
 			vm_console_proxy.WatchClusterTypes,
-			tekton_pipelines.WatchClusterTypes,
-			tekton_tasks.WatchClusterTypes,
+			tekton_cleanup.WatchClusterTypes,
 		} {
 			allWatchTypes = append(allWatchTypes, f()...)
 		}
