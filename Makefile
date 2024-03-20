@@ -55,6 +55,7 @@ CRD_OPTIONS ?= "crd:generateEmbeddedObjectMeta=true"
 
 SRC_PATHS_TESTS = ./controllers/... ./internal/... ./hack/... ./webhooks/... ./pkg/...
 SRC_PATHS_CONTROLLER_GEN = {./controllers/..., ./internal/..., ./hack/..., ./webhooks/..., ./pkg/...}
+SRC_PATHS_MONITORING_LINTER = ./controllers/... ./internal/...  ./pkg/...
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -84,7 +85,7 @@ endif
 all: manager
 
 .PHONY: unittest
-unittest: generate lint fmt vet manifests metrics-rules-test
+unittest: generate lint fmt vet manifests metrics-rules-test lint-monitoring
 	go test -v -coverprofile cover.out $(SRC_PATHS_TESTS)
 	cd api && go test -v ./...
 
@@ -233,10 +234,12 @@ $(LOCALBIN):
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
+MONITORING_LINTER ?= $(LOCALBIN)/monitoringlinter
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v4.5.7
 CONTROLLER_TOOLS_VERSION ?= v0.10.0
+MONITORING_LINTER_REVISION ?= e2be790
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -325,6 +328,11 @@ lint:
 .PHONY: lint-metrics
 lint-metrics:
 	./hack/prom_metric_linter.sh  --operator-name="kubevirt" --sub-operator-name="ssp"
+
+.PHONY: lint-monitoring
+lint-monitoring: $(LOCALBIN)
+	test -s $(LOCALBIN)/monitoringlinter || GOBIN=$(LOCALBIN) go install github.com/kubevirt/monitoring/monitoringlinter/cmd/monitoringlinter@$(MONITORING_LINTER_REVISION)
+	$(MONITORING_LINTER) $(SRC_PATHS_MONITORING_LINTER)
 
 PROMTOOL ?= $(LOCALBIN)/promtool
 PROMTOOL_VERSION ?= 2.44.0
