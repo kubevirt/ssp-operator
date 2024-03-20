@@ -9,7 +9,7 @@ require (
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
 	github.com/machadovilaca/operator-observability v0.0.16
 	github.com/onsi/ginkgo/v2 v2.15.0
-	github.com/onsi/gomega v1.31.1
+	github.com/onsi/gomega v1.32.0
 	github.com/openshift/api v0.0.0-20231130063041-be20875a1373 // release-4.15
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/openshift/library-go v0.0.0-20231129101644-c7f15dcc10f5 // release-4.15
@@ -30,7 +30,7 @@ require (
 	k8s.io/kube-aggregator v0.29.3
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	kubevirt.io/api v1.2.0
-	kubevirt.io/containerized-data-importer-api v1.58.1
+	kubevirt.io/containerized-data-importer-api v1.58.2
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.8
 	kubevirt.io/ssp-operator/api v0.0.0
