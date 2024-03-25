@@ -18,7 +18,7 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.72.0
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/client_model v0.6.0
-	github.com/prometheus/common v0.50.0
+	github.com/prometheus/common v0.51.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/tektoncd/pipeline v0.58.0
@@ -30,7 +30,7 @@ require (
 	k8s.io/kube-aggregator v0.29.3
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	kubevirt.io/api v1.2.0
-	kubevirt.io/containerized-data-importer-api v1.58.2
+	kubevirt.io/containerized-data-importer-api v1.58.3
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.8
 	kubevirt.io/ssp-operator/api v0.0.0
@@ -94,7 +94,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/procfs v0.13.0 // indirect
-	github.com/prometheus/statsd_exporter v0.26.0 // indirect
+	github.com/prometheus/statsd_exporter v0.26.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
@@ -113,10 +113,10 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.19.0 // indirect
-	google.golang.org/api v0.170.0 // indirect
+	google.golang.org/api v0.171.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240205150955-31a09d347014 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311132316-a219d84964c2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240314234333-6e1732d8331c // indirect
 	google.golang.org/grpc v1.62.1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/evanphx/json-patch.v5 v5.9.0 // indirect
