@@ -466,35 +466,9 @@ func reconcileDataImportCrons(dataImportCrons []cdiv1beta1.DataImportCron, reque
 }
 
 func listAllOwnedDataSources(request *common.Request) ([]cdiv1beta1.DataSource, error) {
-	foundDataSources := &cdiv1beta1.DataSourceList{}
-	err := request.Client.List(request.Context, foundDataSources, client.InNamespace(internal.GoldenImagesNamespace))
-	if err != nil {
-		return nil, err
-	}
-
-	owned := make([]cdiv1beta1.DataSource, 0, len(foundDataSources.Items))
-	for _, item := range foundDataSources.Items {
-		if !common.CheckOwnerAnnotation(&item, request.Instance) {
-			continue
-		}
-		owned = append(owned, item)
-	}
-	return owned, nil
+	return common.ListOwnedResources[cdiv1beta1.DataSourceList, cdiv1beta1.DataSource](request, client.InNamespace(internal.GoldenImagesNamespace))
 }
 
 func listAllOwnedDataImportCrons(request *common.Request) ([]cdiv1beta1.DataImportCron, error) {
-	foundCrons := &cdiv1beta1.DataImportCronList{}
-	err := request.Client.List(request.Context, foundCrons)
-	if err != nil {
-		return nil, err
-	}
-
-	owned := make([]cdiv1beta1.DataImportCron, 0, len(foundCrons.Items))
-	for _, item := range foundCrons.Items {
-		if !common.CheckOwnerAnnotation(&item, request.Instance) {
-			continue
-		}
-		owned = append(owned, item)
-	}
-	return owned, nil
+	return common.ListOwnedResources[cdiv1beta1.DataImportCronList, cdiv1beta1.DataImportCron](request)
 }
