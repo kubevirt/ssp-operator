@@ -16,11 +16,9 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
-	tekton_pipelines "kubevirt.io/ssp-operator/internal/operands/tekton-pipelines"
-	tekton_tasks "kubevirt.io/ssp-operator/internal/operands/tekton-tasks"
+	tekton_cleanup "kubevirt.io/ssp-operator/internal/operands/tekton-cleanup"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
-	tekton_bundle "kubevirt.io/ssp-operator/internal/tekton-bundle"
 	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -65,21 +63,6 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
 	}
 
-	tektonPipelinesBundlePaths := tekton_bundle.GetTektonPipelineBundlePaths()
-	tektonPipelinesBundle, err := tekton_bundle.ReadBundle(tektonPipelinesBundlePaths)
-	if err != nil {
-		return fmt.Errorf("failed to read tekton pipelines bundle: %w", err)
-	}
-
-	tektonTasksBundlePath := tekton_bundle.GetTektonTasksBundlePath(runningOnOpenShift)
-	tektonTasksBundle, err := tekton_bundle.ReadBundle([]string{tektonTasksBundlePath})
-	if err != nil {
-		return fmt.Errorf("failed to read tekton tasks bundle: %w", err)
-	}
-
-	tektonPipelinesOperand := tekton_pipelines.New(tektonPipelinesBundle)
-	tektonTasksOperand := tekton_tasks.New(tektonTasksBundle)
-
 	sspOperands := []operands.Operand{
 		// The bundle paths are not hardcoded within New to allow tests to use a different path
 		common_instancetypes.New(
@@ -87,9 +70,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 			common_instancetypes.BundleDir+common_instancetypes.ClusterPreferencesBundle,
 		),
 		data_sources.New(templatesBundle.DataSources),
-		// Tekton Tasks Operand should be before Pipelines to avoid errors
-		tektonTasksOperand,
-		tektonPipelinesOperand,
+		tekton_cleanup.New(),
 	}
 
 	if runningOnOpenShift {

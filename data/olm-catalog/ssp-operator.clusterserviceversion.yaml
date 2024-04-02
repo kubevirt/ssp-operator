@@ -190,8 +190,8 @@ spec:
           - configmaps
           verbs:
           - create
-          - delete
           - list
+          - update
           - watch
         - apiGroups:
           - ""
@@ -258,7 +258,6 @@ spec:
           - secrets
           verbs:
           - create
-          - delete
           - get
           - list
           - patch
@@ -376,8 +375,6 @@ spec:
           - clusterroles
           - rolebindings
           verbs:
-          - create
-          - delete
           - list
           - update
           - watch
@@ -387,16 +384,6 @@ spec:
           - clusterroles
           - rolebindings
           - roles
-          verbs:
-          - create
-          - delete
-          - list
-          - update
-          - watch
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
-          - rolebindings
           verbs:
           - create
           - delete
@@ -464,7 +451,6 @@ spec:
           - pipelines
           verbs:
           - create
-          - delete
           - list
           - update
           - watch
@@ -473,8 +459,6 @@ spec:
           resources:
           - tasks
           verbs:
-          - create
-          - delete
           - list
           - update
           - watch
