@@ -23,13 +23,8 @@ _cluster_instancetypes_path="data/common-instancetypes-bundle/common-clusterinst
 _cluster_preferences_path="data/common-instancetypes-bundle/common-clusterpreferences-bundle.yaml"
 
 function latest_version() {
-    if [[ $target_branch == "main" ]]; then
-        curl --fail -s "https://api.github.com/repos/kubevirt/common-instancetypes/releases/latest" |
-            jq -r '.tag_name'
-    else
-        curl --fail -s https://api.github.com/repos/kubevirt/common-instancetypes/releases?per_page=100 |
-            jq -r '.[] | select(.target_commitish == '\""${target_branch}"\"') | .tag_name' | head -n1
-    fi
+    curl --fail -s https://api.github.com/repos/kubevirt/common-instancetypes/releases?per_page=100 |
+        jq -r '.[] | select(.target_commitish == '\""${target_branch}"\"') | .tag_name' | head -n1
 }
 
 function checksum() {
