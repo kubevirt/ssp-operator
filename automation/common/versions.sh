@@ -53,11 +53,11 @@ function latest_version() {
     tail -n1
 }
 
-# Latest released Kubevirt version
-KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
+# Fix kubevirt version to v1.1.x
+KUBEVIRT_VERSION=$(latest_patch_version "kubevirt" "v1.1")
 
-# Latest released CDI version
-CDI_VERSION=$(latest_version "kubevirt" "containerized-data-importer")
+# Fix CDI version to v.1.58.x
+CDI_VERSION=$(latest_patch_version "containerized-data-importer" "v1.58")
 
 # Latest released Tekton version
 TEKTON_VERSION=$(latest_version "tektoncd" "operator")
