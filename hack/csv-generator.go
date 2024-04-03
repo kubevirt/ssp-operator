@@ -36,19 +36,17 @@ import (
 )
 
 type generatorFlags struct {
-	file                     string
-	dumpCRDs                 bool
-	removeCerts              bool
-	webhookPort              int32
-	csvVersion               string
-	namespace                string
-	operatorImage            string
-	operatorVersion          string
-	validatorImage           string
-	tektonTasksImage         string
-	tektonTasksDiskVirtImage string
-	virtioImage              string
-	vmConsoleProxyImage      string
+	file                string
+	dumpCRDs            bool
+	removeCerts         bool
+	webhookPort         int32
+	csvVersion          string
+	namespace           string
+	operatorImage       string
+	operatorVersion     string
+	validatorImage      string
+	virtioImage         string
+	vmConsoleProxyImage string
 }
 
 var (
@@ -81,8 +79,6 @@ func init() {
 	rootCmd.Flags().StringVar(&f.operatorImage, "operator-image", "", "Link to operator image (required)")
 	rootCmd.Flags().StringVar(&f.operatorVersion, "operator-version", "", "Operator version (required)")
 	rootCmd.Flags().StringVar(&f.validatorImage, "validator-image", "", "Link to template-validator image")
-	rootCmd.Flags().StringVar(&f.tektonTasksImage, "tekton-tasks-image", "", "Link to tekton tasks image")
-	rootCmd.Flags().StringVar(&f.tektonTasksDiskVirtImage, "tekton-tasks-disk-virt-image", "", "Link to tekton tasks disk virt image")
 	rootCmd.Flags().StringVar(&f.virtioImage, "virtio-image", "", "Link to virtio image")
 	rootCmd.Flags().StringVar(&f.vmConsoleProxyImage, "vm-console-proxy-image", "", "Link to VM console proxy image")
 	rootCmd.Flags().Int32Var(&f.webhookPort, "webhook-port", 0, "Container port for the admission webhook")
@@ -194,22 +190,6 @@ func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
 		relatedImages = append(relatedImages, relatedImage)
 	}
 
-	if flags.tektonTasksImage != "" {
-		relatedImage, err := buildRelatedImage(flags.tektonTasksImage, "tekton-tasks")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
-	if flags.tektonTasksDiskVirtImage != "" {
-		relatedImage, err := buildRelatedImage(flags.tektonTasksDiskVirtImage, "tekton-tasks-disk-virt")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
 	if flags.virtioImage != "" {
 		relatedImage, err := buildRelatedImage(flags.virtioImage, "virtio-container")
 		if err != nil {
@@ -268,14 +248,6 @@ func updateContainerEnvVars(flags generatorFlags, container v1.Container) []v1.E
 		case common.OperatorVersionKey:
 			if flags.operatorVersion != "" {
 				envVariable.Value = flags.operatorVersion
-			}
-		case common.TektonTasksImageKey:
-			if flags.tektonTasksImage != "" {
-				envVariable.Value = flags.tektonTasksImage
-			}
-		case common.TektonTasksDiskVirtImageKey:
-			if flags.tektonTasksDiskVirtImage != "" {
-				envVariable.Value = flags.tektonTasksDiskVirtImage
 			}
 		case common.VirtioImageKey:
 			if flags.virtioImage != "" {

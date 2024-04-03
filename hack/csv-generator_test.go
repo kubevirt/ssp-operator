@@ -22,18 +22,14 @@ var _ = Describe("csv generator", func() {
 		namespace:       "testOperatorNamespace",
 		operatorVersion: "testOperatorVersion",
 
-		operatorImage:            "test",
-		validatorImage:           "test",
-		tektonTasksImage:         "testTektonTasksImage",
-		tektonTasksDiskVirtImage: "testTektonTasksDiskVirtImage",
-		virtioImage:              "testVirtioImage",
-		vmConsoleProxyImage:      "testVmConsoleProxyImage",
+		operatorImage:       "test",
+		validatorImage:      "test",
+		virtioImage:         "testVirtioImage",
+		vmConsoleProxyImage: "testVmConsoleProxyImage",
 	}
 	envValues := []v1.EnvVar{
 		{Name: common.TemplateValidatorImageKey},
 		{Name: common.OperatorVersionKey},
-		{Name: common.TektonTasksImageKey},
-		{Name: common.TektonTasksDiskVirtImageKey},
 		{Name: common.VirtioImageKey},
 	}
 
@@ -81,12 +77,6 @@ var _ = Describe("csv generator", func() {
 					}
 					if envVariable.Name == common.OperatorVersionKey {
 						Expect(envVariable.Value).To(Equal(flags.operatorVersion))
-					}
-					if envVariable.Name == common.TektonTasksImageKey {
-						Expect(envVariable.Value).To(Equal(flags.tektonTasksImage))
-					}
-					if envVariable.Name == common.TektonTasksDiskVirtImageKey {
-						Expect(envVariable.Value).To(Equal(flags.tektonTasksDiskVirtImage))
 					}
 					if envVariable.Name == common.VirtioImageKey {
 						Expect(envVariable.Value).To(Equal(flags.virtioImage))
