@@ -10,8 +10,6 @@ that defines the desired state of SSP.
 - [Annotations](#annotations)
 - [Common Templates](#common-templates)
 - [Template Validator](#template-validator)
-- [Tekton Pipelines](#tekton-pipelines)
-- [Tekton Tasks](#tekton-tasks)
 - [Feature Gates](#feature-gates)
 
 ## SSP Custom Resource (CR)
@@ -29,28 +27,10 @@ spec:
   templateValidator:
     replicas: 2
   featureGates:
-    deployTektonTaskResources: true
     deployVmConsoleProxy: true
-  tektonPipelines:
-    namespace: kubevirt
-  tektonTasks:
-    namespace: kubevirt
 ```
 
 ## Annotations
-
-### VM Console Proxy
-
-This annotation is used by VM console proxy operand.
-
-```
-apiVersion: ssp.kubevirt.io/v1beta1
-kind: SSP
-metadata:
-  name: ssp-sample
-  namespace: kubevirt
-spec: {}
-```
 
 ### Pause Operator
 
@@ -101,36 +81,6 @@ spec:
     replicas: 2 # Customize the number of replicas for the validator deployment
 ```
 
-## Tekton Pipelines
-
-Specify the deployment namespace for Tekton Pipelines.
-
-```
-apiVersion: ssp.kubevirt.io/v1beta2
-kind: SSP
-metadata:
-  name: ssp-sample
-  namespace: kubevirt
-spec:
-  tektonPipelines:
-    namespace: kubevirt
-```
-
-## Tekton Tasks
-
-Specify the deployment namespace for Tekton Tasks.
-
-```
-apiVersion: ssp.kubevirt.io/v1beta2
-kind: SSP
-metadata:
-  name: ssp-sample
-  namespace: kubevirt
-spec:
-  tektonTasks:
-    namespace: kubevirt
-```
-
 ## Feature Gates
 
 The `featureGates` field is an optional set of optional boolean feature enabler.
@@ -138,25 +88,6 @@ The features in the list are experimental features that are not enabled by defau
 
 To enable a feature, add its name to the `featureGates` list and set it to true.
 Missing or false feature gates disables the feature.
-
-### `deployTektonTaskResources`
-
-Set the `deployTektonTaskResources` feature gate to true to allow the operator
-to deploy Tekton resources.
-
-Example pipelines and tasks will be deployed, enabling Tekton to work with
-Virtual Machines (VMs), disks, and common templates.
-
-```
-apiVersion: ssp.kubevirt.io/v1beta2
-kind: SSP
-metadata:
-  name: ssp-sample
-  namespace: kubevirt
-spec:
-  featureGates:
-    deployTektonTaskResources: true
-```
 
 ### `deployVmConsoleProxy`
 
