@@ -20,18 +20,10 @@ import (
 const (
 	OperatorVersionKey        = "OPERATOR_VERSION"
 	TemplateValidatorImageKey = "VALIDATOR_IMAGE"
-	VirtioImageKey            = "VIRTIO_IMG"
 	VmConsoleProxyImageKey    = "VM_CONSOLE_PROXY_IMAGE"
-
-	DefaultVirtioIMG = "quay.io/kubevirt/virtio-container-disk:v1.2.0"
 
 	defaultOperatorVersion = "devel"
 )
-
-// GetVirtioImage returns virtio image url
-func GetVirtioImage() string {
-	return EnvOrDefault(VirtioImageKey, DefaultVirtioIMG)
-}
 
 func EnvOrDefault(envName string, defVal string) string {
 	val := os.Getenv(envName)

@@ -24,13 +24,11 @@ var _ = Describe("csv generator", func() {
 
 		operatorImage:       "test",
 		validatorImage:      "test",
-		virtioImage:         "testVirtioImage",
 		vmConsoleProxyImage: "testVmConsoleProxyImage",
 	}
 	envValues := []v1.EnvVar{
 		{Name: common.TemplateValidatorImageKey},
 		{Name: common.OperatorVersionKey},
-		{Name: common.VirtioImageKey},
 	}
 
 	csv := csvv1.ClusterServiceVersion{
@@ -77,9 +75,6 @@ var _ = Describe("csv generator", func() {
 					}
 					if envVariable.Name == common.OperatorVersionKey {
 						Expect(envVariable.Value).To(Equal(flags.operatorVersion))
-					}
-					if envVariable.Name == common.VirtioImageKey {
-						Expect(envVariable.Value).To(Equal(flags.virtioImage))
 					}
 					if envVariable.Name == common.VmConsoleProxyImageKey {
 						Expect(envVariable.Value).To(Equal(flags.vmConsoleProxyImage))

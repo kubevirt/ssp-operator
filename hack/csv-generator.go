@@ -45,7 +45,6 @@ type generatorFlags struct {
 	operatorImage       string
 	operatorVersion     string
 	validatorImage      string
-	virtioImage         string
 	vmConsoleProxyImage string
 }
 
@@ -79,7 +78,6 @@ func init() {
 	rootCmd.Flags().StringVar(&f.operatorImage, "operator-image", "", "Link to operator image (required)")
 	rootCmd.Flags().StringVar(&f.operatorVersion, "operator-version", "", "Operator version (required)")
 	rootCmd.Flags().StringVar(&f.validatorImage, "validator-image", "", "Link to template-validator image")
-	rootCmd.Flags().StringVar(&f.virtioImage, "virtio-image", "", "Link to virtio image")
 	rootCmd.Flags().StringVar(&f.vmConsoleProxyImage, "vm-console-proxy-image", "", "Link to VM console proxy image")
 	rootCmd.Flags().Int32Var(&f.webhookPort, "webhook-port", 0, "Container port for the admission webhook")
 	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
@@ -190,14 +188,6 @@ func buildRelatedImages(flags generatorFlags) ([]interface{}, error) {
 		relatedImages = append(relatedImages, relatedImage)
 	}
 
-	if flags.virtioImage != "" {
-		relatedImage, err := buildRelatedImage(flags.virtioImage, "virtio-container")
-		if err != nil {
-			return nil, err
-		}
-		relatedImages = append(relatedImages, relatedImage)
-	}
-
 	if flags.vmConsoleProxyImage != "" {
 		relatedImage, err := buildRelatedImage(flags.vmConsoleProxyImage, "vm-console-proxy")
 		if err != nil {
@@ -248,10 +238,6 @@ func updateContainerEnvVars(flags generatorFlags, container v1.Container) []v1.E
 		case common.OperatorVersionKey:
 			if flags.operatorVersion != "" {
 				envVariable.Value = flags.operatorVersion
-			}
-		case common.VirtioImageKey:
-			if flags.virtioImage != "" {
-				envVariable.Value = flags.virtioImage
 			}
 		case common.VmConsoleProxyImageKey:
 			if flags.vmConsoleProxyImage != "" {

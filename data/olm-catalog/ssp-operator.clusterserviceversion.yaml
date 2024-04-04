@@ -508,7 +508,6 @@ spec:
                 env:
                 - name: VALIDATOR_IMAGE
                   value: quay.io/kubevirt/kubevirt-template-validator:latest
-                - name: VIRTIO_IMG
                 - name: OPERATOR_VERSION
                   value: 0.14.0
                 - name: VM_CONSOLE_PROXY_IMAGE
