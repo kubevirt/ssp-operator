@@ -29,7 +29,6 @@ const (
 
 func ServiceObject(namespace string, appKubernetesPartOfValue string) *v1.Service {
 	policyCluster := v1.ServiceInternalTrafficPolicyCluster
-	familyPolicy := v1.IPFamilyPolicySingleStack
 	labels := map[string]string{
 		common.AppKubernetesManagedByLabel: ServiceManagedByLabelValue,
 		common.AppKubernetesVersionLabel:   common.GetOperatorVersion(),
@@ -47,8 +46,6 @@ func ServiceObject(namespace string, appKubernetesPartOfValue string) *v1.Servic
 		},
 		Spec: v1.ServiceSpec{
 			InternalTrafficPolicy: &policyCluster,
-			IPFamilies:            []v1.IPFamily{v1.IPv4Protocol},
-			IPFamilyPolicy:        &familyPolicy,
 			Ports: []v1.ServicePort{
 				{
 					Name:       metrics.MetricsPortName,
