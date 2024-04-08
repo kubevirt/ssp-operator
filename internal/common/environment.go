@@ -18,34 +18,12 @@ import (
 )
 
 const (
-	OperatorVersionKey          = "OPERATOR_VERSION"
-	TemplateValidatorImageKey   = "VALIDATOR_IMAGE"
-	TektonTasksImageKey         = "TEKTON_TASKS_IMAGE"
-	TektonTasksDiskVirtImageKey = "TEKTON_TASKS_DISK_VIRT_IMAGE"
-	VirtioImageKey              = "VIRTIO_IMG"
-	VmConsoleProxyImageKey      = "VM_CONSOLE_PROXY_IMAGE"
-
-	DefaultTektonTasksIMG         = "quay.io/kubevirt/tekton-tasks:" + TektonTasksVersion
-	DeafultTektonTasksDiskVirtIMG = "quay.io/kubevirt/tekton-tasks-disk-virt:" + TektonTasksVersion
-	DefaultVirtioIMG              = "quay.io/kubevirt/virtio-container-disk:v1.2.0"
+	OperatorVersionKey        = "OPERATOR_VERSION"
+	TemplateValidatorImageKey = "VALIDATOR_IMAGE"
+	VmConsoleProxyImageKey    = "VM_CONSOLE_PROXY_IMAGE"
 
 	defaultOperatorVersion = "devel"
 )
-
-// GetSSHKeysStatusImage returns generate-ssh-keys task image url
-func GetTektonTasksImage() string {
-	return EnvOrDefault(TektonTasksImageKey, DefaultTektonTasksIMG)
-}
-
-// GetDiskVirtSysprepImage returns disk-virt-sysprep task image url
-func GetTektonTasksDiskVirtImage() string {
-	return EnvOrDefault(TektonTasksDiskVirtImageKey, DeafultTektonTasksDiskVirtIMG)
-}
-
-// GetVirtioImage returns virtio image url
-func GetVirtioImage() string {
-	return EnvOrDefault(VirtioImageKey, DefaultVirtioIMG)
-}
 
 func EnvOrDefault(envName string, defVal string) string {
 	val := os.Getenv(envName)

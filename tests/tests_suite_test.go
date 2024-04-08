@@ -121,15 +121,8 @@ func (s *newSspStrategy) Init() {
 			CommonTemplates: sspv1beta2.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),
 			},
-			TektonPipelines: &sspv1beta2.TektonPipelines{
-				Namespace: s.GetNamespace(),
-			},
-			TektonTasks: &sspv1beta2.TektonTasks{
-				Namespace: s.GetNamespace(),
-			},
 			FeatureGates: &sspv1beta2.FeatureGates{
-				DeployTektonTaskResources: false,
-				DeployVmConsoleProxy:      true,
+				DeployVmConsoleProxy: true,
 			},
 		},
 	}
