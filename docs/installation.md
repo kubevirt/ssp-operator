@@ -26,8 +26,6 @@ for successful deployment across different Kubernetes distributions.
 | `template.openshift.io/v1`                                              | `common-templates` operand (Kind `Template`)                              |
 | `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1beta1`  | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
 | `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1beta1`    | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
-| `pipelines.tekton.dev`                                                  | `tekton-pipelines` operand (Kind `Pipeline`)                              |
-| `tasks.tekton.dev`                                                      | `tekton-tasks` operand (Kind `Task`)                                      |
 | `virtualMachine.kubevirt.io`                                            | `vm-controller` operand (Kind `VirtualMachine`)                           |
 
 ### Kubernetes
@@ -36,8 +34,6 @@ for successful deployment across different Kubernetes distributions.
 | ------------------------------------------------------------------------| --------------------------------------------------------------------------|
 | `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1beta1`  | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
 | `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1beta1`    | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
-| `pipelines.tekton.dev`                                                  | `tekton-pipelines` operand (Kind `Pipeline`)                              |
-| `tasks.tekton.dev`                                                      | `tekton-tasks` operand (Kind `Task`)                                      |
 | `virtualMachine.kubevirt.io`                                            | `vm-controller` operand (Kind `VirtualMachine`)                           |
 
 ## Hyperconverged Cluster Operator (HCO) Installation

@@ -142,10 +142,14 @@ Installs prometheus monitoring rules for `ssp-operator` metrics. The available
 metrics can be found in `docs/metrics.md`. The installed rules can be found in
 `internal/operands/metrics/resources.go`.
 
+#### `tekton-cleanup`
+
+Sets a deprecation annotation on old tekton resources created by a previous version of this operator.
+
 #### `template-validator`
 
 The main `template-validator` runs in at least one separate container than the
-`ssp-operator`. Is is built with `validator.Dockerfile`.
+`ssp-operator`. It is built with `validator.Dockerfile`.
 
 This operand deploys the `template-validator` found in
 `internal/template-validator` and installs an admission webhook, so the
@@ -160,21 +164,6 @@ for more docs.
 Installs the VM console proxy found in `data/vm-console-proxy-bundle`.
 A pull request (PR) for updating the bundle is automatically created when a new version
 of the [vm-console-proxy](https://github.com/kubevirt/vm-console-proxy) is released.
-
-#### `tekton-pipelines`
-
-Installs the Tekton Pipelines found in `data/tekton-pipelines`.
-
-Pipelines eliminate the need for manual updates when new tasks are added.
-They simply refer to tasks by their names. So, pipelines only require changes if a task's
-name is modified or if there are functional adjustments, but otherwise,
-they don't need to be updated.
-
-#### `tekton-tasks`
-
-Installs the Tekton Tasks found in `data/tekton-tasks`.
-A pull request (PR) for updating the bundle is automatically created when a new version
-of the [kubevirt-tekton-tasks](https://github.com/kubevirt/kubevirt-tekton-tasks) is released.
 
 ## Golang CI Linter
 
