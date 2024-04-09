@@ -14,13 +14,14 @@ import (
 
 type Request struct {
 	reconcile.Request
-	Client         client.Client
-	UncachedReader client.Reader
-	Context        context.Context
-	Instance       *ssp.SSP
-	Logger         logr.Logger
-	VersionCache   VersionCache
-	TopologyMode   osconfv1.TopologyMode
+	Client          client.Client
+	UncachedReader  client.Reader
+	Context         context.Context
+	Instance        *ssp.SSP
+	InstanceChanged bool
+	Logger          logr.Logger
+	VersionCache    VersionCache
+	TopologyMode    osconfv1.TopologyMode
 
 	CrdList crd_watch.CrdList
 }
