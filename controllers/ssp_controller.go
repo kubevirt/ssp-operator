@@ -148,18 +148,20 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-	r.clearCacheIfNeeded(instance)
+
+	sspChanged := r.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
-		Request:        req,
-		Client:         r.client,
-		UncachedReader: r.uncachedReader,
-		Context:        ctx,
-		Instance:       instance,
-		Logger:         reqLogger,
-		VersionCache:   r.subresourceCache,
-		TopologyMode:   r.topologyMode,
-		CrdList:        r.crdList,
+		Request:         req,
+		Client:          r.client,
+		UncachedReader:  r.uncachedReader,
+		Context:         ctx,
+		Instance:        instance,
+		InstanceChanged: sspChanged,
+		Logger:          reqLogger,
+		VersionCache:    r.subresourceCache,
+		TopologyMode:    r.topologyMode,
+		CrdList:         r.crdList,
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -230,11 +232,13 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	return ctrl.Result{}, nil
 }
 
-func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) {
+func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) bool {
 	if !reflect.DeepEqual(r.lastSspSpec, sspObj.Spec) {
 		r.subresourceCache = common.VersionCache{}
 		r.lastSspSpec = sspObj.Spec
+		return true
 	}
+	return false
 }
 
 func (r *sspReconciler) clearCache() {
