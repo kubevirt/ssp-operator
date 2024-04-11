@@ -76,6 +76,7 @@ type TestSuiteStrategy interface {
 	SkipUnlessSingleReplicaTopologyMode()
 	SkipIfUpgradeLane()
 	SkipIfDeployedByHCO()
+	SkipIfNotDeployedByHCO()
 }
 
 type newSspStrategy struct {
@@ -236,9 +237,19 @@ func (s *newSspStrategy) SkipIfDeployedByHCO() {
 	skipIfDeployedByHCO()
 }
 
+func (s *newSspStrategy) SkipIfNotDeployedByHCO() {
+	skipIfNotDeployedByHCO()
+}
+
 func skipIfDeployedByHCO() {
 	if env.IsDeployedByHCO() {
 		Skip("Skipping as SSP was deployed by HCO", 1)
+	}
+}
+
+func skipIfNotDeployedByHCO() {
+	if !env.IsDeployedByHCO() {
+		Skip("Skipping as SSP was not deployed by HCO", 1)
 	}
 }
 
@@ -375,6 +386,10 @@ func (s *existingSspStrategy) SkipIfUpgradeLane() {
 
 func (s *existingSspStrategy) SkipIfDeployedByHCO() {
 	skipIfDeployedByHCO()
+}
+
+func (s *existingSspStrategy) SkipIfNotDeployedByHCO() {
+	skipIfNotDeployedByHCO()
 }
 
 var (

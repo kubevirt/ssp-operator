@@ -132,6 +132,39 @@ var _ = Describe("Common Instance Types", func() {
 			}
 		})
 	})
+
+	Context("when SSP is deployed by HCO", func() {
+
+		BeforeEach(func() {
+			strategy.SkipIfNotDeployedByHCO()
+		})
+
+		It("should not claim ownership or remove existing resources deployed by virt-operator", func() {
+			virtualMachineClusterInstancetypes, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundle)
+			Expect(err).ToNot(HaveOccurred())
+
+			virtualMachineClusterPreferences, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundle)
+			Expect(err).ToNot(HaveOccurred())
+
+			assertObjectManagedByVirtOperator := func(name string, obj client.Object) {
+				// The SSP provided bundle may be out of sync with virt-operator so don't assert err here and ignore any missing resources
+				if err := apiClient.Get(ctx, client.ObjectKey{Name: name}, obj); err == nil {
+					// Assert that anything we do find is managed by virt-operator
+					Expect(obj.GetLabels()).To(HaveKeyWithValue(virtv1.ManagedByLabel, virtv1.ManagedByLabelOperatorValue))
+				}
+			}
+
+			for _, instancetype := range virtualMachineClusterInstancetypes {
+				assertObjectManagedByVirtOperator(instancetype.Name, &instancetypev1beta1.VirtualMachineClusterInstancetype{})
+			}
+
+			for _, preference := range virtualMachineClusterPreferences {
+				assertObjectManagedByVirtOperator(preference.Name, &instancetypev1beta1.VirtualMachineClusterPreference{})
+			}
+		})
+
+	})
+
 	Context("webhook", func() {
 		DescribeTable("should reject URL", func(URL string) {
 			sspObj := getSsp()
