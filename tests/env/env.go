@@ -20,6 +20,7 @@ const (
 	envSspDeploymentName      = "SSP_DEPLOYMENT_NAME"
 	envSspDeploymentNamespace = "SSP_DEPLOYMENT_NAMESPACE"
 	envSspWebhookServiceName  = "SSP_WEBHOOK_SERVICE_NAME"
+	envSkipDeployedByHCO      = "SKIP_SSP_DEPLOYED_BY_HCO"
 )
 
 const (
@@ -45,6 +46,10 @@ func SkipUpdateSspTests() bool {
 
 func ShouldSkipCleanupAfterTests() bool {
 	return getBoolEnv(envSkipCleanupAfterTests)
+}
+
+func IsDeployedByHCO() bool {
+	return getBoolEnv(envSkipDeployedByHCO)
 }
 
 var timeout time.Duration

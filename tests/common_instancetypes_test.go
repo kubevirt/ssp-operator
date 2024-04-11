@@ -24,7 +24,12 @@ var _ = Describe("Common Instance Types", func() {
 		strategy.RevertToOriginalSspCr()
 	})
 
-	Context("operand", func() {
+	Context("when SSP is not deployed by HCO", func() {
+
+		BeforeEach(func() {
+			strategy.SkipIfDeployedByHCO()
+		})
+
 		It("should reconcile resources from internal bundle by default", func() {
 			virtualMachineClusterInstancetypes, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundle)
 			Expect(err).ToNot(HaveOccurred())
