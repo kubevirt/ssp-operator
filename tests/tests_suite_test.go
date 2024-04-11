@@ -128,6 +128,11 @@ func (s *newSspStrategy) Init() {
 		},
 	}
 
+	// When the original env is deployed by HCO skip common-instancetypes deployment and tests
+	if env.IsDeployedByHCO() {
+		newSsp.Spec.FeatureGates.DeployCommonInstancetypes = ptr.To(false)
+	}
+
 	Eventually(func() error {
 		return apiClient.Create(ctx, newSsp)
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
