@@ -73,7 +73,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 		return nil, err
 	}
 
-	if !isUpgradingNow(request) {
+	if !operatorIsUpgrading(request) && !request.InstanceChanged {
 		incrementTemplatesRestoredMetric(reconcileTemplatesResults, request.Logger)
 	}
 
@@ -90,7 +90,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 	return append(reconcileTemplatesResults, oldTemplatesResults...), nil
 }
 
-func isUpgradingNow(request *common.Request) bool {
+func operatorIsUpgrading(request *common.Request) bool {
 	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
 }
 

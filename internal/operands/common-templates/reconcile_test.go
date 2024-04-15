@@ -72,6 +72,10 @@ var _ = Describe("Common-Templates operand", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
+					Labels: map[string]string{
+						common.AppKubernetesPartOfLabel:  "template-unit-tests",
+						common.AppKubernetesVersionLabel: "v1.0.0",
+					},
 				},
 				Spec: ssp.SSPSpec{
 					CommonTemplates: ssp.CommonTemplates{
@@ -84,8 +88,9 @@ var _ = Describe("Common-Templates operand", func() {
 					},
 				},
 			},
-			Logger:       log,
-			VersionCache: common.VersionCache{},
+			InstanceChanged: false,
+			Logger:          log,
+			VersionCache:    common.VersionCache{},
 		}
 	})
 
@@ -320,6 +325,26 @@ var _ = Describe("Common-Templates operand", func() {
 
 			updatedTpl := getTemplate(request, template)
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
+
+			value, err := metrics.GetCommonTemplatesRestored()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(value).To(Equal(initialMetricValue))
+		})
+
+		It("should not increase when SSP CR is changed", func() {
+			const updatedPartOf = "updated-part-of"
+			const updatedVersion = "v2.0.0"
+
+			request.Instance.Labels[common.AppKubernetesPartOfLabel] = updatedPartOf
+			request.Instance.Labels[common.AppKubernetesVersionLabel] = updatedVersion
+			request.InstanceChanged = true
+
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			updatedTemplate := getTemplate(request, template)
+			Expect(updatedTemplate.Labels).To(HaveKeyWithValue(common.AppKubernetesPartOfLabel, updatedPartOf))
+			Expect(updatedTemplate.Labels).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, updatedVersion))
 
 			value, err := metrics.GetCommonTemplatesRestored()
 			Expect(err).ToNot(HaveOccurred())
