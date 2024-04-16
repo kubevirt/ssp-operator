@@ -1,7 +1,7 @@
 # SSP Operator metrics
 
 ### cnv:vmi_status_running:count
-The total number of running VMIs by status. Type: Gauge.
+The total number of running VMIs, labeled with node, instance type, preference and guest OS information. Type: Gauge.
 
 ### kubevirt_ssp_common_templates_restored_increase
 The increase in the number of common templates restored by the operator back to their original state, over the last hour. Type: Gauge.
