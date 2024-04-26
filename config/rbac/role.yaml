@@ -132,6 +132,7 @@ rules:
   - configmaps
   verbs:
   - create
+  - delete
   - list
   - update
   - watch
@@ -317,6 +318,7 @@ rules:
   - clusterroles
   - rolebindings
   verbs:
+  - delete
   - list
   - update
   - watch
@@ -393,6 +395,7 @@ rules:
   - pipelines
   verbs:
   - create
+  - delete
   - list
   - update
   - watch
@@ -401,6 +404,7 @@ rules:
   resources:
   - tasks
   verbs:
+  - delete
   - list
   - update
   - watch

@@ -110,8 +110,8 @@ type TektonTasks struct {
 
 // FeatureGates for SSP
 type FeatureGates struct {
-	// +kubebuilder:deprecatedversion:warning="tekton task resources are no longer deployed by SSP"
-	// Deprecated: This field is ignored.
+	// +kubebuilder:deprecatedversion:warning="This feature gate can only be used to remove existing tekton resources by setting it to false"
+	// Deprecated: This feature gate can only be used to remove existing tekton resources by setting it to "false".
 	DeployTektonTaskResources bool `json:"deployTektonTaskResources,omitempty"`
 
 	DeployVmConsoleProxy bool `json:"deployVmConsoleProxy,omitempty"`

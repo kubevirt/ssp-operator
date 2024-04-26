@@ -164,6 +164,21 @@ var _ = Describe("tekton-cleanup operand", func() {
 			Entry("Tasks", &pipeline.Task{}), //nolint:staticcheck
 		)
 
+		DescribeTable("should delete resource if feature gate is disabled", func(obj client.Object) {
+			request.Instance.Spec.FeatureGates.DeployTektonTaskResources = false
+
+			_, err := operand.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = request.Client.Get(request.Context, client.ObjectKey{Namespace: namespace, Name: resourceName}, obj)
+			Expect(err).To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+		},
+			Entry("ClusterRoles", &rbac.ClusterRole{}),
+			Entry("RoleBindings", &rbac.RoleBinding{}),
+			Entry("ServiceAccounts", &v1.ServiceAccount{}),
+			Entry("Tasks", &pipeline.Task{}), //nolint:staticcheck
+		)
+
 		DescribeTable("should delete resource on Cleanup", func(obj client.Object) {
 			_, err := operand.Cleanup(request)
 			Expect(err).ToNot(HaveOccurred())
@@ -230,7 +245,11 @@ func getMockedRequest() *common.Request {
 					common.AppKubernetesPartOfLabel: sspPartOfValue,
 				},
 			},
-			Spec: ssp.SSPSpec{},
+			Spec: ssp.SSPSpec{
+				FeatureGates: &ssp.FeatureGates{
+					DeployTektonTaskResources: true,
+				},
+			},
 		},
 		Logger:       log,
 		VersionCache: common.VersionCache{},

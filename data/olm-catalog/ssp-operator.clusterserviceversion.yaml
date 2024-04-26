@@ -183,6 +183,7 @@ spec:
           - configmaps
           verbs:
           - create
+          - delete
           - list
           - update
           - watch
@@ -368,6 +369,7 @@ spec:
           - clusterroles
           - rolebindings
           verbs:
+          - delete
           - list
           - update
           - watch
@@ -444,6 +446,7 @@ spec:
           - pipelines
           verbs:
           - create
+          - delete
           - list
           - update
           - watch
@@ -452,6 +455,7 @@ spec:
           resources:
           - tasks
           verbs:
+          - delete
           - list
           - update
           - watch

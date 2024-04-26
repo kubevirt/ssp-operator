@@ -4489,7 +4489,8 @@ spec:
                       defaults to true.
                     type: boolean
                   deployTektonTaskResources:
-                    description: 'Deprecated: This field is ignored.'
+                    description: 'Deprecated: This feature gate can only be used to
+                      remove existing tekton resources by setting it to "false".'
                     type: boolean
                   deployVmConsoleProxy:
                     type: boolean

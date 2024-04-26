@@ -16,11 +16,11 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands"
 )
 
-// +kubebuilder:rbac:groups=tekton.dev,resources=pipelines,verbs=list;watch;create;update
-// +kubebuilder:rbac:groups=tekton.dev,resources=tasks,verbs=list;watch;update
-// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=list;watch;update
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;rolebindings,verbs=list;watch;update
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=list;watch;create;update
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelines,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=tekton.dev,resources=tasks,verbs=list;watch;update;delete
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=list;watch;update;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;rolebindings,verbs=list;watch;update;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=list;watch;create;update;delete
 
 // Below are RBAC for deployed ClusterRoles. We still need these permissions so we can update annotations on existing ClusterRoles
 
@@ -78,6 +78,21 @@ func (t *tektonCleanup) WatchTypes() []operands.WatchType {
 }
 
 func (t *tektonCleanup) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
+	// If the feature gate is "false", cleanup.
+	if request.Instance.Spec.FeatureGates == nil || !request.Instance.Spec.FeatureGates.DeployTektonTaskResources {
+		cleanupResults, err := t.Cleanup(request)
+		if err != nil {
+			return nil, err
+		}
+		var results []common.ReconcileResult
+		for _, cleanupResult := range cleanupResults {
+			if !cleanupResult.Deleted {
+				results = append(results, common.ResourceDeletedResult(cleanupResult.Resource, common.OperationResultDeleted))
+			}
+		}
+		return results, nil
+	}
+
 	deprecateFuncs := []func(*common.Request) error{
 		deprecateResource[rbac.ClusterRoleList, rbac.ClusterRole],
 		deprecateResource[rbac.RoleBindingList, rbac.RoleBinding],
@@ -99,15 +114,17 @@ func (t *tektonCleanup) Reconcile(request *common.Request) ([]common.ReconcileRe
 }
 
 func (t *tektonCleanup) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	cleanupFuncs := []func(*common.Request) ([]common.CleanupResult, error){
+	cleanupFuncs := []common.CleanupFunc{
 		cleanupResource[rbac.ClusterRoleList, rbac.ClusterRole],
 		cleanupResource[rbac.RoleBindingList, rbac.RoleBinding],
 		cleanupResource[v1.ServiceAccountList, v1.ServiceAccount],
 		cleanupResource[v1.ConfigMapList, v1.ConfigMap],
 	}
 	if request.CrdList.CrdExists(tektonCrd) {
-		cleanupFuncs = append(cleanupFuncs, cleanupResource[pipeline.PipelineList, pipeline.Pipeline]) //nolint:staticcheck
-		cleanupFuncs = append(cleanupFuncs, cleanupResource[pipeline.TaskList, pipeline.Task])         //nolint:staticcheck
+		// The operator is not watching Pipelines and Tasks, so we consider them to be always deleted.
+		// Otherwise, it would be waiting for a deletion event that would not arrive.
+		cleanupFuncs = append(cleanupFuncs, alwaysDeleted(cleanupResource[pipeline.PipelineList, pipeline.Pipeline])) //nolint:staticcheck
+		cleanupFuncs = append(cleanupFuncs, alwaysDeleted(cleanupResource[pipeline.TaskList, pipeline.Task]))         //nolint:staticcheck
 	}
 
 	var allResults []common.CleanupResult
@@ -170,6 +187,19 @@ func cleanupResource[L any, T any, PtrL interface {
 		results = append(results, cleanupResult)
 	}
 	return results, nil
+}
+
+func alwaysDeleted(cleanupFunc common.CleanupFunc) common.CleanupFunc {
+	return func(request *common.Request) ([]common.CleanupResult, error) {
+		results, err := cleanupFunc(request)
+		if err != nil {
+			return nil, err
+		}
+		for i := range results {
+			results[i].Deleted = true
+		}
+		return results, nil
+	}
 }
 
 func matchingLabelsOption(ssp *ssp.SSP) client.MatchingLabelsSelector {

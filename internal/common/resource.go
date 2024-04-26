@@ -55,6 +55,7 @@ type CleanupResult struct {
 }
 
 type ReconcileFunc = func(*Request) (ReconcileResult, error)
+type CleanupFunc = func(*Request) ([]CleanupResult, error)
 
 func CollectResourceStatus(request *Request, funcs ...ReconcileFunc) ([]ReconcileResult, error) {
 	res := make([]ReconcileResult, 0, len(funcs))
