@@ -29,6 +29,10 @@ var _ = Describe("Webhook controller", func() {
 
 	BeforeEach(func() {
 		webhookConfig = &admissionv1.ValidatingWebhookConfiguration{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: admissionv1.SchemeGroupVersion.String(),
+				Kind:       "ValidatingWebhookConfiguration",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-webhook",
 				Labels: map[string]string{

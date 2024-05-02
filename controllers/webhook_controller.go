@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"slices"
 
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -94,7 +93,7 @@ func updateWebhookConfiguration(webhookConfig *admissionv1.ValidatingWebhookConf
 		// Check if the webhook reacts to SSP resource.
 		var hasSspRule bool
 		for _, rule := range webhook.Rules {
-			if slices.Contains(rule.APIGroups, sspv1beta2.GroupVersion.Group) {
+			if containsString(rule.APIGroups, sspv1beta2.GroupVersion.Group) {
 				hasSspRule = true
 				break
 			}
@@ -107,4 +106,13 @@ func updateWebhookConfiguration(webhookConfig *admissionv1.ValidatingWebhookConf
 		changed = true
 	}
 	return changed
+}
+
+func containsString(slice []string, value string) bool {
+	for _, s := range slice {
+		if s == value {
+			return true
+		}
+	}
+	return false
 }
