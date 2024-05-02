@@ -9,7 +9,7 @@ import (
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -28,7 +28,12 @@ var _ = Describe("Webhook controller", func() {
 	)
 
 	BeforeEach(func() {
+		sideEffectsNone := admissionv1.SideEffectClassNone
 		webhookConfig = &admissionv1.ValidatingWebhookConfiguration{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: admissionv1.SchemeGroupVersion.String(),
+				Kind:       "ValidatingWebhookConfiguration",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-webhook",
 				Labels: map[string]string{
@@ -41,7 +46,7 @@ var _ = Describe("Webhook controller", func() {
 					Service: &admissionv1.ServiceReference{
 						Namespace: "test-namespace",
 						Name:      "test-name",
-						Path:      ptr.To("/webhook"),
+						Path:      pointer.String("/webhook"),
 					},
 				},
 				Rules: []admissionv1.RuleWithOperations{{
@@ -59,7 +64,7 @@ var _ = Describe("Webhook controller", func() {
 						"test-namespace-label": "some-value",
 					},
 				},
-				SideEffects:             ptr.To(admissionv1.SideEffectClassNone),
+				SideEffects:             &sideEffectsNone,
 				AdmissionReviewVersions: []string{"v1"},
 			}},
 		}

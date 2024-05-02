@@ -8,7 +8,6 @@ import (
 
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
@@ -20,6 +19,7 @@ var _ = Describe("Webhook controller", func() {
 	var webhook *admissionv1.ValidatingWebhookConfiguration
 
 	BeforeEach(func() {
+		sideEffectsNone := admissionv1.SideEffectClassNone
 		webhook = &admissionv1.ValidatingWebhookConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "ssp.kubevirt.io-test-webhook-",
@@ -49,7 +49,7 @@ var _ = Describe("Webhook controller", func() {
 						"ssp-webhook-test-label": "ssp-webhook-test-label-vale",
 					},
 				},
-				SideEffects:             ptr.To(admissionv1.SideEffectClassNone),
+				SideEffects:             &sideEffectsNone,
 				AdmissionReviewVersions: []string{"v1"},
 			}},
 		}
