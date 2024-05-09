@@ -52,4 +52,5 @@ USER 1000
 
 # Copy csv generator
 COPY --from=builder /workspace/bin/csv-generator .
+COPY bundle/manifests/ bundle/manifests/
 ENTRYPOINT ["/manager"]
