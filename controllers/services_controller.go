@@ -130,7 +130,7 @@ func getOperatorDeployment(ctx context.Context, namespace string, apiReader clie
 
 func newServiceReconciler(ctx context.Context, mgr ctrl.Manager) (*serviceReconciler, error) {
 	logger := ctrl.Log.WithName("controllers").WithName("Resources")
-	namespace, err := env.GetOperatorNamespace(logger)
+	namespace, err := env.GetOperatorNamespace()
 	if err != nil {
 		return nil, fmt.Errorf("in newServiceReconciler: %w", err)
 	}

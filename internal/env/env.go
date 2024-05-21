@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/go-logr/logr"
 	osconfv1 "github.com/openshift/api/config/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -21,6 +19,8 @@ const (
 	OperatorVersionKey        = "OPERATOR_VERSION"
 	TemplateValidatorImageKey = "VALIDATOR_IMAGE"
 	VmConsoleProxyImageKey    = "VM_CONSOLE_PROXY_IMAGE"
+
+	podNamespaceKey = "POD_NAMESPACE"
 
 	defaultOperatorVersion = "devel"
 )
@@ -63,12 +63,10 @@ func GetInfrastructureTopology(ctx context.Context, c client.Reader) (osconfv1.T
 	return infraConfig.Status.InfrastructureTopology, nil
 }
 
-func GetOperatorNamespace(logger logr.Logger) (string, error) {
-	nsBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	if err != nil {
-		return "", fmt.Errorf("in getOperatorNamespace failed in call to downward API: %w", err)
+func GetOperatorNamespace() (string, error) {
+	namespace, exists := os.LookupEnv(podNamespaceKey)
+	if !exists {
+		return "", fmt.Errorf("environment variable %s is not specified", podNamespaceKey)
 	}
-	ns := strings.TrimSpace(string(nsBytes))
-	logger.Info("Found namespace", "Namespace", ns)
-	return ns, nil
+	return namespace, nil
 }

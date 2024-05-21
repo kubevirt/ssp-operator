@@ -20,6 +20,24 @@ var _ = Describe("environments", func() {
 		res := GetOperatorVersion()
 		Expect(res).To(Equal(defaultOperatorVersion), "OPERATOR_VERSION should equal")
 	})
+
+	It("should return namespace from POD_NAMESAPCE env", func() {
+		const namespaceValue = "test-namespace"
+		Expect(os.Setenv(podNamespaceKey, namespaceValue)).To(Succeed())
+		defer func() {
+			Expect(os.Unsetenv(podNamespaceKey)).To(Succeed())
+		}()
+
+		namespace, err := GetOperatorNamespace()
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(namespace).To(Equal(namespaceValue))
+	})
+
+	It("should fail if POD_NAMESPACE is not defined", func() {
+		_, err := GetOperatorNamespace()
+		Expect(err).To(MatchError(ContainSubstring("environment variable")))
+	})
 })
 
 func TestEnv(t *testing.T) {
