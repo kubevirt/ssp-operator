@@ -3510,8 +3510,9 @@ spec:
             description: SSPSpec defines the desired state of SSP
             properties:
               commonInstancetypes:
-                description: CommonInstancetypes is the configuration of the common-instancetypes
-                  operand
+                description: "CommonInstancetypes is the configuration of the common-instancetypes
+                  operand \n Deprecated: This functionality will be removed in a future
+                  release."
                 properties:
                   url:
                     description: "URL of a remote Kustomize target from which to generate
