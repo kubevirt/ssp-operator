@@ -31,8 +31,9 @@ import (
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"kubevirt.io/ssp-operator/internal/common"
 	sigsyaml "sigs.k8s.io/yaml"
+
+	"kubevirt.io/ssp-operator/internal/env"
 )
 
 type generatorFlags struct {
@@ -231,15 +232,15 @@ func updateContainerEnvVars(flags generatorFlags, container v1.Container) []v1.E
 	updatedVariables := make([]v1.EnvVar, 0)
 	for _, envVariable := range container.Env {
 		switch envVariable.Name {
-		case common.TemplateValidatorImageKey:
+		case env.TemplateValidatorImageKey:
 			if flags.validatorImage != "" {
 				envVariable.Value = flags.validatorImage
 			}
-		case common.OperatorVersionKey:
+		case env.OperatorVersionKey:
 			if flags.operatorVersion != "" {
 				envVariable.Value = flags.operatorVersion
 			}
-		case common.VmConsoleProxyImageKey:
+		case env.VmConsoleProxyImageKey:
 			if flags.vmConsoleProxyImage != "" {
 				envVariable.Value = flags.vmConsoleProxyImage
 			}

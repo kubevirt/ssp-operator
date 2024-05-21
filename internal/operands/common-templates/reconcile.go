@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/blang/semver/v4"
+	"github.com/go-logr/logr"
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -12,10 +14,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/blang/semver/v4"
-	"github.com/go-logr/logr"
-
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
 	metrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
@@ -91,7 +91,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 }
 
 func operatorIsUpgrading(request *common.Request) bool {
-	return request.Instance.Status.ObservedVersion != common.GetOperatorVersion()
+	return request.Instance.Status.ObservedVersion != env.GetOperatorVersion()
 }
 
 func incrementTemplatesRestoredMetric(reconcileResults []common.ReconcileResult, logger logr.Logger) {

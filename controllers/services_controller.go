@@ -10,14 +10,16 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"kubevirt.io/ssp-operator/internal/common"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/env"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 )
 
 const (
@@ -31,7 +33,7 @@ func ServiceObject(namespace string, appKubernetesPartOfValue string) *v1.Servic
 	policyCluster := v1.ServiceInternalTrafficPolicyCluster
 	labels := map[string]string{
 		common.AppKubernetesManagedByLabel: ServiceManagedByLabelValue,
-		common.AppKubernetesVersionLabel:   common.GetOperatorVersion(),
+		common.AppKubernetesVersionLabel:   env.GetOperatorVersion(),
 		common.AppKubernetesComponentLabel: ServiceControllerName,
 		metrics.PrometheusLabelKey:         metrics.PrometheusLabelValue,
 	}
@@ -128,7 +130,7 @@ func getOperatorDeployment(ctx context.Context, namespace string, apiReader clie
 
 func newServiceReconciler(ctx context.Context, mgr ctrl.Manager) (*serviceReconciler, error) {
 	logger := ctrl.Log.WithName("controllers").WithName("Resources")
-	namespace, err := common.GetOperatorNamespace(logger)
+	namespace, err := env.GetOperatorNamespace(logger)
 	if err != nil {
 		return nil, fmt.Errorf("in newServiceReconciler: %w", err)
 	}

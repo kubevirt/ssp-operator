@@ -50,6 +50,7 @@ import (
 	handler_hook "kubevirt.io/ssp-operator/internal/controller/handler-hook"
 	"kubevirt.io/ssp-operator/internal/controller/predicates"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
+	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
 	"kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
@@ -453,7 +454,7 @@ func (r *sspReconciler) reconcileOperands(sspRequest *common.Request) ([]common.
 }
 
 func preUpdateStatus(request *common.Request) error {
-	operatorVersion := common.GetOperatorVersion()
+	operatorVersion := env.GetOperatorVersion()
 
 	sspStatus := &request.Instance.Status
 	sspStatus.Phase = lifecycleapi.PhaseDeploying
@@ -592,7 +593,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 	sspStatus.ObservedGeneration = request.Instance.Generation
 	if len(notAvailable) == 0 && len(progressing) == 0 && len(degraded) == 0 {
 		sspStatus.Phase = lifecycleapi.PhaseDeployed
-		sspStatus.ObservedVersion = common.GetOperatorVersion()
+		sspStatus.ObservedVersion = env.GetOperatorVersion()
 	} else {
 		sspStatus.Phase = lifecycleapi.PhaseDeploying
 	}

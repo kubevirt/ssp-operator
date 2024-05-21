@@ -9,8 +9,11 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/openshift/api/config/v1"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-	"kubevirt.io/ssp-operator/internal/common"
+	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
+	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
 	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
@@ -21,8 +24,6 @@ import (
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
 	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
-	controllerruntime "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // Need to watch CRDs
@@ -46,7 +47,7 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 }
 
 func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager) error {
-	runningOnOpenShift, err := common.RunningOnOpenshift(ctx, mgr.GetAPIReader())
+	runningOnOpenShift, err := env.RunningOnOpenshift(ctx, mgr.GetAPIReader())
 	if err != nil {
 		return fmt.Errorf("failed to check if running on openshift: %w", err)
 	}
@@ -110,7 +111,7 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 
 	infrastructureTopology := v1.HighlyAvailableTopologyMode
 	if runningOnOpenShift {
-		infrastructureTopology, err = common.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
+		infrastructureTopology, err = env.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
 		if err != nil {
 			return fmt.Errorf("failed to get infrastructure topology: %w", err)
 		}

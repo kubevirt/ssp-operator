@@ -1,7 +1,8 @@
-package common
+package env
 
 import (
 	"os"
+	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,3 +21,8 @@ var _ = Describe("environments", func() {
 		Expect(res).To(Equal(defaultOperatorVersion), "OPERATOR_VERSION should equal")
 	})
 })
+
+func TestEnv(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Env Suite")
+}
