@@ -301,6 +301,9 @@ func (c *CommonInstancetypes) Reconcile(request *common.Request) ([]common.Recon
 		return c.cleanupReconcile(request)
 	}
 
+	// Log that this functionality is now deprecated ahead of removal in a future release
+	request.Logger.Info("deployment of common-instancetypes by this operator is now deprecated and will be removed in a future release")
+
 	if request.Instance.Spec.CommonInstancetypes != nil && request.Instance.Spec.CommonInstancetypes.URL != nil {
 		return c.reconcileFromURL(request)
 	}
