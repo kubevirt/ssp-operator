@@ -240,11 +240,6 @@ func (c *CommonInstancetypes) reconcileRemovedResources(request *common.Request)
 }
 
 func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]common.ReconcileResult, error) {
-	// Handle the featureGate being disabled by ensuring any resources previously reconciled are cleaned up
-	if !isFeatureGateEnabled(request) {
-		return c.cleanupReconcile(request)
-	}
-
 	// TODO - In the future we should handle cases where the URL remains the same but the provided resources change.
 	if c.resourceURL != "" && c.resourceURL == *request.Instance.Spec.CommonInstancetypes.URL {
 		request.Logger.Info(fmt.Sprintf("Skipping reconcile of common-instancetypes from URL %s, force with a restart of the service.", *request.Instance.Spec.CommonInstancetypes.URL))
@@ -274,11 +269,6 @@ func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]commo
 }
 
 func (c *CommonInstancetypes) reconcileFromBundle(request *common.Request) ([]common.ReconcileResult, error) {
-	// Handle the featureGate being disabled by ensuring any resources previously reconciled are cleaned up
-	if !isFeatureGateEnabled(request) {
-		return c.cleanupReconcile(request)
-	}
-
 	request.Logger.Info("Reconciling common-instancetypes from internal bundle")
 	var err error
 	c.virtualMachineClusterInstancetypes, c.virtualMachineClusterPreferences, err = c.fetchResourcesFromBundle()
@@ -306,6 +296,11 @@ func isFeatureGateEnabled(request *common.Request) bool {
 }
 
 func (c *CommonInstancetypes) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
+	// Handle the featureGate being disabled by ensuring any resources previously reconciled are cleaned up
+	if !isFeatureGateEnabled(request) {
+		return c.cleanupReconcile(request)
+	}
+
 	if request.Instance.Spec.CommonInstancetypes != nil && request.Instance.Spec.CommonInstancetypes.URL != nil {
 		return c.reconcileFromURL(request)
 	}
