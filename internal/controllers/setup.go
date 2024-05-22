@@ -130,9 +130,9 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("error adding service controller: %w", err)
 	}
 
-	webhookConfigController := NewWebhookConfigurationController(mgr.GetClient())
-	if err = mgr.Add(getRunnable(mgr, webhookConfigController)); err != nil {
-		return fmt.Errorf("error adding webhook configuration controller: %w", err)
+	webhookConfigController := NewWebhookConfigurationController()
+	if err = webhookConfigController.AddToManager(mgr); err != nil {
+		return fmt.Errorf("error adding %s: %w", webhookConfigController.Name(), err)
 	}
 
 	if crdWatch.CrdExists(vmCRD) {
