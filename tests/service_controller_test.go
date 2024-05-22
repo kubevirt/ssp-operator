@@ -13,8 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/controllers"
 	sspenv "kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/tests/env"

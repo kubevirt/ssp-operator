@@ -24,7 +24,6 @@ COPY vendor/ vendor/
 COPY Makefile Makefile
 COPY main.go main.go
 COPY api/ api/
-COPY controllers/ controllers/
 COPY internal/ internal/
 COPY pkg/ pkg/
 COPY webhooks/ webhooks/
