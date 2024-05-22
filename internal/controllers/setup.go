@@ -136,15 +136,10 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 	}
 
 	if crdWatch.CrdExists(vmCRD) {
-		vmController, cErr := CreateVmController(mgr)
-		if cErr != nil {
-			return fmt.Errorf("[vm controller] failed to create vm controller: %w", cErr)
+		vmCtrl := CreateVmController()
+		if cErr := vmCtrl.AddToManager(mgr); cErr != nil {
+			return fmt.Errorf("error adding %s: %w", vmCtrl.Name(), err)
 		}
-
-		if cErr = mgr.Add(getRunnable(mgr, vmController)); cErr != nil {
-			return fmt.Errorf("[vm controller] error adding: %w", cErr)
-		}
-
 		mgr.GetLogger().Info("[vm controller] added")
 	}
 

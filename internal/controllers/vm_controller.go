@@ -21,43 +21,37 @@ import (
 
 const vmControllerName = "vm-controller"
 
-type VmReconciler struct {
+type vmController struct {
+	log logr.Logger
+
 	client client.Client
-	log    logr.Logger
 }
 
-func CreateVmController(mgr ctrl.Manager) (*VmReconciler, error) {
-	return newVmReconciler(mgr)
+var _ Controller = &vmController{}
+var _ reconcile.Reconciler = &vmController{}
+
+func CreateVmController() Controller {
+	return &vmController{
+		log: ctrl.Log.WithName("controllers").WithName("VirtualMachines"),
+	}
 }
 
-func (r *VmReconciler) Name() string {
+func (v *vmController) Name() string {
 	return vmControllerName
 }
 
-func (r *VmReconciler) Start(_ context.Context, mgr ctrl.Manager) error {
-	return r.setupController(mgr)
-}
+func (v *vmController) AddToManager(mgr ctrl.Manager) error {
+	v.client = mgr.GetClient()
 
-func newVmReconciler(mgr ctrl.Manager) (*VmReconciler, error) {
-	logger := ctrl.Log.WithName("controllers").WithName("VirtualMachines")
-	reconciler := &VmReconciler{
-		client: mgr.GetClient(),
-		log:    logger,
-	}
-
-	return reconciler, nil
-}
-
-func (r *VmReconciler) setupController(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(vmControllerName).
 		For(&kubevirtv1.VirtualMachine{}).
-		Complete(r)
+		Complete(v)
 }
 
-func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (v *vmController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	vm := kubevirtv1.VirtualMachine{}
-	if err := r.client.Get(ctx, req.NamespacedName, &vm); err != nil {
+	if err := v.client.Get(ctx, req.NamespacedName, &vm); err != nil {
 		if errors.IsNotFound(err) {
 			// VM was deleted
 			vm.Name = req.Name
@@ -67,7 +61,7 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			return ctrl.Result{}, nil
 		}
 
-		r.log.Error(err, "Could not find VM", "vm", req.NamespacedName)
+		v.log.Error(err, "Could not find VM", "vm", req.NamespacedName)
 		return ctrl.Result{
 			Requeue:      true,
 			RequeueAfter: 5 * time.Second,
@@ -80,8 +74,8 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.setVmVolumesMetrics(ctx, &vm); err != nil {
-		r.log.Error(err, "Could not set vm volumes metrics", "vm", req.NamespacedName)
+	if err := v.setVmVolumesMetrics(ctx, &vm); err != nil {
+		v.log.Error(err, "Could not set vm volumes metrics", "vm", req.NamespacedName)
 		return ctrl.Result{
 			Requeue:      true,
 			RequeueAfter: 5 * time.Second,
@@ -91,7 +85,7 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	return ctrl.Result{}, nil
 }
 
-func (r *VmReconciler) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.VirtualMachine) error {
+func (v *vmController) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.VirtualMachine) error {
 	var result error
 
 	for _, volume := range vm.Spec.Template.Spec.Volumes {
@@ -104,11 +98,11 @@ func (r *VmReconciler) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.V
 			continue
 		}
 
-		pvc, err := r.getPVC(ctx, vm, volumeName)
+		pvc, err := v.getPVC(ctx, vm, volumeName)
 		if err != nil {
 			return err
 		}
-		pv, err := r.getPV(ctx, vm, pvc)
+		pv, err := v.getPV(ctx, vm, pvc)
 		if err != nil {
 			return err
 		}
@@ -119,9 +113,9 @@ func (r *VmReconciler) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.V
 	return result
 }
 
-func (r *VmReconciler) getPVC(ctx context.Context, vm *kubevirtv1.VirtualMachine, name string) (*corev1.PersistentVolumeClaim, error) {
+func (v *vmController) getPVC(ctx context.Context, vm *kubevirtv1.VirtualMachine, name string) (*corev1.PersistentVolumeClaim, error) {
 	pvc := &corev1.PersistentVolumeClaim{}
-	err := r.client.Get(
+	err := v.client.Get(
 		ctx,
 		client.ObjectKey{
 			Namespace: vm.Namespace,
@@ -132,9 +126,9 @@ func (r *VmReconciler) getPVC(ctx context.Context, vm *kubevirtv1.VirtualMachine
 	return pvc, err
 }
 
-func (r *VmReconciler) getPV(ctx context.Context, vm *kubevirtv1.VirtualMachine, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolume, error) {
+func (v *vmController) getPV(ctx context.Context, vm *kubevirtv1.VirtualMachine, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolume, error) {
 	pv := &corev1.PersistentVolume{}
-	err := r.client.Get(
+	err := v.client.Get(
 		ctx,
 		client.ObjectKey{
 			Namespace: vm.Namespace,
@@ -144,5 +138,3 @@ func (r *VmReconciler) getPV(ctx context.Context, vm *kubevirtv1.VirtualMachine,
 	)
 	return pv, err
 }
-
-var _ reconcile.Reconciler = &VmReconciler{}
