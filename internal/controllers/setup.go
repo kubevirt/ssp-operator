@@ -142,9 +142,8 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		mgr.GetLogger().Info("[vm controller] added")
 	}
 
-	reconciler := NewSspReconciler(mgr.GetClient(), mgr.GetAPIReader(), infrastructureTopology, sspOperands, crdWatch)
-
-	return reconciler.setupController(mgr)
+	sspCtrl := NewSspController(infrastructureTopology, sspOperands, crdWatch)
+	return sspCtrl.AddToManager(mgr)
 }
 
 func getRequiredCrds(operand operands.Operand) []string {
