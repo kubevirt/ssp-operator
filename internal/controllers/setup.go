@@ -10,7 +10,6 @@ import (
 	v1 "github.com/openshift/api/config/v1"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/env"
@@ -121,13 +120,13 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("failed to add CRD watch to manager: %w", err)
 	}
 
-	serviceController, err := CreateServiceController(ctx, mgr)
+	serviceController, err := CreateServiceController()
 	if err != nil {
 		return fmt.Errorf("failed to create service controller: %w", err)
 	}
 
-	if err = mgr.Add(getRunnable(mgr, serviceController)); err != nil {
-		return fmt.Errorf("error adding service controller: %w", err)
+	if err = serviceController.AddToManager(mgr); err != nil {
+		return fmt.Errorf("error adding %s: %w", serviceController.Name(), err)
 	}
 
 	webhookConfigController := NewWebhookConfigurationController()
@@ -161,18 +160,4 @@ func getRequiredCrds(operand operands.Operand) []string {
 		}
 	}
 	return result
-}
-
-func getRunnable(mgr controllerruntime.Manager, ctrl ControllerReconciler) manager.Runnable {
-	return manager.RunnableFunc(func(ctx context.Context) error {
-		mgr.GetLogger().Info(fmt.Sprintf("Starting %s", ctrl.Name()))
-		err := ctrl.Start(ctx, mgr)
-		if err != nil {
-			return fmt.Errorf("error starting %s: %w", ctrl.Name(), err)
-		}
-
-		mgr.GetLogger().Info(fmt.Sprintf("%s started", ctrl.Name()))
-
-		return nil
-	})
 }
