@@ -123,6 +123,10 @@ func (s *serviceReconciler) AddToManager(mgr ctrl.Manager, _ crd_watch.CrdList) 
 	}))
 }
 
+func (s *serviceReconciler) RequiredCrds() []string {
+	return nil
+}
+
 func (s *serviceReconciler) setServiceOwnerReference(service *v1.Service) error {
 	return controllerutil.SetOwnerReference(s.deployment, service, s.client.Scheme())
 }

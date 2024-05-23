@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/openshift/api/config/v1"
-	kubevirtv1 "kubevirt.io/api/core/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/env"
@@ -33,7 +32,12 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 	defer cancel()
 	mgrCtx = logr.NewContext(mgrCtx, mgr.GetLogger())
 
-	if err := setupManager(mgrCtx, cancel, mgr); err != nil {
+	controllers, err := createControllres(mgrCtx, mgr.GetAPIReader())
+	if err != nil {
+		return fmt.Errorf("failed to create controllers: %w", err)
+	}
+
+	if err := setupManager(mgrCtx, cancel, mgr, controllers); err != nil {
 		return fmt.Errorf("failed to setup manager: %w", err)
 	}
 
@@ -45,22 +49,22 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 	return nil
 }
 
-func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager) error {
-	runningOnOpenShift, err := env.RunningOnOpenshift(ctx, mgr.GetAPIReader())
+func createControllres(ctx context.Context, apiReader client.Reader) ([]Controller, error) {
+	runningOnOpenShift, err := env.RunningOnOpenshift(ctx, apiReader)
 	if err != nil {
-		return fmt.Errorf("failed to check if running on openshift: %w", err)
+		return nil, fmt.Errorf("failed to check if running on openshift: %w", err)
 	}
 
 	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
 	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
 	if err != nil {
-		return fmt.Errorf("failed to read template bundle: %w", err)
+		return nil, fmt.Errorf("failed to read template bundle: %w", err)
 	}
 
 	vmConsoleProxyBundlePath := vm_console_proxy_bundle.GetBundlePath()
 	vmConsoleProxyBundle, err := vm_console_proxy_bundle.ReadBundle(vmConsoleProxyBundlePath)
 	if err != nil {
-		return fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
+		return nil, fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
 	}
 
 	sspOperands := []operands.Operand{
@@ -82,23 +86,39 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		)
 	}
 
-	var requiredCrds []string
-
-	for i := range sspOperands {
-		requiredCrds = append(requiredCrds, getRequiredCrds(sspOperands[i])...)
+	infrastructureTopology := v1.HighlyAvailableTopologyMode
+	if runningOnOpenShift {
+		infrastructureTopology, err = env.GetInfrastructureTopology(ctx, apiReader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get infrastructure topology: %w", err)
+		}
 	}
 
-	// Add VMController necessary VirtualMachine CRD
-	vmKind := strings.ToLower(kubevirtv1.VirtualMachineGroupVersionKind.Kind) + "s"
-	vmCRD := vmKind + "." + kubevirtv1.VirtualMachineGroupVersionKind.Group
-	requiredCrds = append(requiredCrds, vmCRD)
+	serviceController, err := CreateServiceController()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create service controller: %w", err)
+	}
+
+	return []Controller{
+		serviceController,
+		NewWebhookConfigurationController(),
+		CreateVmController(),
+		NewSspController(infrastructureTopology, sspOperands),
+	}, nil
+}
+
+func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager, controllers []Controller) error {
+	var requiredCrds []string
+	for _, controller := range controllers {
+		requiredCrds = append(requiredCrds, controller.RequiredCrds()...)
+	}
 
 	crdWatch := crd_watch.New(mgr.GetCache(), requiredCrds...)
 	// Cleanly stops the manager and exit. The pod will be restarted.
 	crdWatch.AllCrdsAddedHandler = cancel
 	crdWatch.SomeCrdRemovedHandler = cancel
 
-	if err = crdWatch.Init(ctx, mgr.GetAPIReader()); err != nil {
+	if err := crdWatch.Init(ctx, mgr.GetAPIReader()); err != nil {
 		return fmt.Errorf("failed to initialize CRD watch: %w", err)
 	}
 
@@ -108,52 +128,14 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		)
 	}
 
-	infrastructureTopology := v1.HighlyAvailableTopologyMode
-	if runningOnOpenShift {
-		infrastructureTopology, err = env.GetInfrastructureTopology(ctx, mgr.GetAPIReader())
-		if err != nil {
-			return fmt.Errorf("failed to get infrastructure topology: %w", err)
-		}
-	}
-
-	if err = mgr.Add(crdWatch); err != nil {
+	if err := mgr.Add(crdWatch); err != nil {
 		return fmt.Errorf("failed to add CRD watch to manager: %w", err)
 	}
 
-	serviceController, err := CreateServiceController()
-	if err != nil {
-		return fmt.Errorf("failed to create service controller: %w", err)
-	}
-
-	if err = serviceController.AddToManager(mgr, crdWatch); err != nil {
-		return fmt.Errorf("error adding %s: %w", serviceController.Name(), err)
-	}
-
-	webhookConfigController := NewWebhookConfigurationController()
-	if err = webhookConfigController.AddToManager(mgr, crdWatch); err != nil {
-		return fmt.Errorf("error adding %s: %w", webhookConfigController.Name(), err)
-	}
-
-	vmCtrl := CreateVmController()
-	if cErr := vmCtrl.AddToManager(mgr, crdWatch); cErr != nil {
-		return fmt.Errorf("error adding %s: %w", vmCtrl.Name(), err)
-	}
-
-	sspCtrl := NewSspController(infrastructureTopology, sspOperands)
-	return sspCtrl.AddToManager(mgr, crdWatch)
-}
-
-func getRequiredCrds(operand operands.Operand) []string {
-	var result []string
-	for _, watchType := range operand.WatchTypes() {
-		if watchType.Crd != "" {
-			result = append(result, watchType.Crd)
+	for _, controller := range controllers {
+		if err := controller.AddToManager(mgr, crdWatch); err != nil {
+			return fmt.Errorf("error adding %s: %w", controller.Name(), err)
 		}
 	}
-	for _, watchType := range operand.WatchClusterTypes() {
-		if watchType.Crd != "" {
-			result = append(result, watchType.Crd)
-		}
-	}
-	return result
+	return nil
 }

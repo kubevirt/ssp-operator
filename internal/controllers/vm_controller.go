@@ -30,6 +30,7 @@ type vmController struct {
 }
 
 var _ Controller = &vmController{}
+
 var _ reconcile.Reconciler = &vmController{}
 
 func CreateVmController() Controller {
@@ -45,10 +46,7 @@ func (v *vmController) Name() string {
 func (v *vmController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList) error {
 	v.client = mgr.GetClient()
 
-	vmKind := strings.ToLower(kubevirtv1.VirtualMachineGroupVersionKind.Kind) + "s"
-	vmCRD := vmKind + "." + kubevirtv1.VirtualMachineGroupVersionKind.Group
-
-	if !crdList.CrdExists(vmCRD) {
+	if !crdList.CrdExists(getVmCrd()) {
 		// If VM CRD doesn't exist, this controller does nothing
 		return nil
 	}
@@ -57,6 +55,10 @@ func (v *vmController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList)
 		Named(vmControllerName).
 		For(&kubevirtv1.VirtualMachine{}).
 		Complete(v)
+}
+
+func (v *vmController) RequiredCrds() []string {
+	return []string{getVmCrd()}
 }
 
 func (v *vmController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -93,6 +95,11 @@ func (v *vmController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func getVmCrd() string {
+	vmKind := strings.ToLower(kubevirtv1.VirtualMachineGroupVersionKind.Kind) + "s"
+	return vmKind + "." + kubevirtv1.VirtualMachineGroupVersionKind.Group
 }
 
 func (v *vmController) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.VirtualMachine) error {

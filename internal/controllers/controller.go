@@ -9,4 +9,5 @@ import (
 type Controller interface {
 	Name() string
 	AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList) error
+	RequiredCrds() []string
 }

@@ -60,6 +60,10 @@ func (w *webhookCtrl) AddToManager(mgr ctrl.Manager, _ crd_watch.CrdList) error 
 		Complete(w)
 }
 
+func (w *webhookCtrl) RequiredCrds() []string {
+	return nil
+}
+
 func (w *webhookCtrl) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	webhookConfig := &admissionv1.ValidatingWebhookConfiguration{}
 	if err := w.apiClient.Get(ctx, request.NamespacedName, webhookConfig); err != nil {

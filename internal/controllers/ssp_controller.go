@@ -131,6 +131,29 @@ func (s *sspController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList
 	return builder.Complete(s)
 }
 
+func (r *sspController) RequiredCrds() []string {
+	var result []string
+	for _, operand := range r.operands {
+		result = append(result, getRequiredCrds(operand)...)
+	}
+	return result
+}
+
+func getRequiredCrds(operand operands.Operand) []string {
+	var result []string
+	for _, watchType := range operand.WatchTypes() {
+		if watchType.Crd != "" {
+			result = append(result, watchType.Crd)
+		}
+	}
+	for _, watchType := range operand.WatchClusterTypes() {
+		if watchType.Crd != "" {
+			result = append(result, watchType.Crd)
+		}
+	}
+	return result
+}
+
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 //
