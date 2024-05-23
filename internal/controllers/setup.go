@@ -27,15 +27,10 @@ import (
 // Need to watch CRDs
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list;watch
 
-func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager) error {
+func StartControllers(ctx context.Context, mgr controllerruntime.Manager, controllers []Controller) error {
 	mgrCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	mgrCtx = logr.NewContext(mgrCtx, mgr.GetLogger())
-
-	controllers, err := createControllres(mgrCtx, mgr.GetAPIReader())
-	if err != nil {
-		return fmt.Errorf("failed to create controllers: %w", err)
-	}
 
 	if err := setupManager(mgrCtx, cancel, mgr, controllers); err != nil {
 		return fmt.Errorf("failed to setup manager: %w", err)
@@ -49,7 +44,7 @@ func CreateAndStartReconciler(ctx context.Context, mgr controllerruntime.Manager
 	return nil
 }
 
-func createControllres(ctx context.Context, apiReader client.Reader) ([]Controller, error) {
+func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controller, error) {
 	runningOnOpenShift, err := env.RunningOnOpenshift(ctx, apiReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if running on openshift: %w", err)
