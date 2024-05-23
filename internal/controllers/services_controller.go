@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 )
@@ -102,7 +103,7 @@ func (s *serviceReconciler) Name() string {
 	return ServiceControllerName
 }
 
-func (s *serviceReconciler) AddToManager(mgr ctrl.Manager) error {
+func (s *serviceReconciler) AddToManager(mgr ctrl.Manager, _ crd_watch.CrdList) error {
 	return mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 		// Using API reader to not create an informer in the cache
 		deployment, err := getOperatorDeployment(ctx, s.operatorNamespace, mgr.GetAPIReader())

@@ -6,6 +6,7 @@ import (
 
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,7 +49,7 @@ func (w *webhookCtrl) Name() string {
 	return "validating-webhook-controller"
 }
 
-func (w *webhookCtrl) AddToManager(mgr ctrl.Manager) error {
+func (w *webhookCtrl) AddToManager(mgr ctrl.Manager, _ crd_watch.CrdList) error {
 	w.apiClient = mgr.GetClient()
 
 	return ctrl.NewControllerManagedBy(mgr).

@@ -125,25 +125,22 @@ func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controller
 		return fmt.Errorf("failed to create service controller: %w", err)
 	}
 
-	if err = serviceController.AddToManager(mgr); err != nil {
+	if err = serviceController.AddToManager(mgr, crdWatch); err != nil {
 		return fmt.Errorf("error adding %s: %w", serviceController.Name(), err)
 	}
 
 	webhookConfigController := NewWebhookConfigurationController()
-	if err = webhookConfigController.AddToManager(mgr); err != nil {
+	if err = webhookConfigController.AddToManager(mgr, crdWatch); err != nil {
 		return fmt.Errorf("error adding %s: %w", webhookConfigController.Name(), err)
 	}
 
-	if crdWatch.CrdExists(vmCRD) {
-		vmCtrl := CreateVmController()
-		if cErr := vmCtrl.AddToManager(mgr); cErr != nil {
-			return fmt.Errorf("error adding %s: %w", vmCtrl.Name(), err)
-		}
-		mgr.GetLogger().Info("[vm controller] added")
+	vmCtrl := CreateVmController()
+	if cErr := vmCtrl.AddToManager(mgr, crdWatch); cErr != nil {
+		return fmt.Errorf("error adding %s: %w", vmCtrl.Name(), err)
 	}
 
-	sspCtrl := NewSspController(infrastructureTopology, sspOperands, crdWatch)
-	return sspCtrl.AddToManager(mgr)
+	sspCtrl := NewSspController(infrastructureTopology, sspOperands)
+	return sspCtrl.AddToManager(mgr, crdWatch)
 }
 
 func getRequiredCrds(operand operands.Operand) []string {

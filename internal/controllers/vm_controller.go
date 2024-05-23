@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -12,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
 
@@ -40,8 +42,16 @@ func (v *vmController) Name() string {
 	return vmControllerName
 }
 
-func (v *vmController) AddToManager(mgr ctrl.Manager) error {
+func (v *vmController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList) error {
 	v.client = mgr.GetClient()
+
+	vmKind := strings.ToLower(kubevirtv1.VirtualMachineGroupVersionKind.Kind) + "s"
+	vmCRD := vmKind + "." + kubevirtv1.VirtualMachineGroupVersionKind.Group
+
+	if !crdList.CrdExists(vmCRD) {
+		// If VM CRD doesn't exist, this controller does nothing
+		return nil
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(vmControllerName).

@@ -76,20 +76,19 @@ type sspController struct {
 	lastSspSpec      ssp.SSPSpec
 	subresourceCache common.VersionCache
 	topologyMode     osconfv1.TopologyMode
-	crdList          crd_watch.CrdList
 	areCrdsMissing   bool
 
 	client         client.Client
 	uncachedReader client.Reader
+	crdList        crd_watch.CrdList
 }
 
-func NewSspController(infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, crdList crd_watch.CrdList) Controller {
+func NewSspController(infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand) Controller {
 	return &sspController{
 		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
 		operands:         operands,
 		subresourceCache: common.VersionCache{},
 		topologyMode:     infrastructureTopology,
-		crdList:          crdList,
 	}
 }
 
@@ -107,9 +106,10 @@ func (s *sspController) Name() string {
 	return "ssp-controller"
 }
 
-func (s *sspController) AddToManager(mgr ctrl.Manager) error {
+func (s *sspController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList) error {
 	s.client = mgr.GetClient()
 	s.uncachedReader = mgr.GetAPIReader()
+	s.crdList = crdList
 
 	eventHandlerHook := func(request ctrl.Request, obj client.Object) {
 		s.log.Info("Reconciliation event received",
