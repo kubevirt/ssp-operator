@@ -60,8 +60,10 @@ func (w *webhookCtrl) AddToManager(mgr ctrl.Manager, _ crd_watch.CrdList) error 
 		Complete(w)
 }
 
-func (w *webhookCtrl) RequiredCrds() []string {
-	return nil
+func (w *webhookCtrl) GetWatchObjects() []WatchObject {
+	return []WatchObject{{
+		Object: &admissionv1.ValidatingWebhookConfiguration{},
+	}}
 }
 
 func (w *webhookCtrl) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {

@@ -131,27 +131,31 @@ func (s *sspController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList
 	return builder.Complete(s)
 }
 
-func (r *sspController) RequiredCrds() []string {
-	var result []string
-	for _, operand := range r.operands {
-		result = append(result, getRequiredCrds(operand)...)
-	}
-	return result
-}
+func (s *sspController) GetWatchObjects() []WatchObject {
+	var results []WatchObject
 
-func getRequiredCrds(operand operands.Operand) []string {
-	var result []string
-	for _, watchType := range operand.WatchTypes() {
-		if watchType.Crd != "" {
-			result = append(result, watchType.Crd)
+	results = append(results, WatchObject{
+		Object:                     &ssp.SSP{},
+		CrdName:                    "ssps.ssp.kubevirt.io",
+		WatchOnlyOperatorNamespace: true,
+	})
+
+	for _, operand := range s.operands {
+		for _, watchType := range operand.WatchTypes() {
+			results = append(results, WatchObject{
+				Object:  watchType.Object,
+				CrdName: watchType.Crd,
+			})
+		}
+		for _, watchType := range operand.WatchClusterTypes() {
+			results = append(results, WatchObject{
+				Object:  watchType.Object,
+				CrdName: watchType.Crd,
+			})
 		}
 	}
-	for _, watchType := range operand.WatchClusterTypes() {
-		if watchType.Crd != "" {
-			result = append(result, watchType.Crd)
-		}
-	}
-	return result
+
+	return results
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to

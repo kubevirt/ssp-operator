@@ -32,10 +32,12 @@ import (
 	ocpconfigv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/library-go/pkg/crypto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -45,10 +47,10 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/controllers"
+	"kubevirt.io/ssp-operator/internal/env"
 	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 	"kubevirt.io/ssp-operator/webhooks"
-	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -229,18 +231,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Using closure so that the temporary client is cleaned up after it is not needed anymore.
-	ctrls, err := func() ([]controllers.Controller, error) {
-		apiClient, err := client.New(apiConfig, client.Options{
-			Scheme: common.Scheme,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return controllers.CreateControllers(ctx, apiClient)
-	}()
+	apiClient, err := client.New(apiConfig, client.Options{
+		Scheme: common.Scheme,
+	})
+	if err != nil {
+		setupLog.Error(err, "error creating API client")
+		os.Exit(1)
+	}
+
+	ctrls, err := controllers.CreateControllers(ctx, apiClient)
 	if err != nil {
 		setupLog.Error(err, "error creating controllers")
+		os.Exit(1)
+	}
+
+	operatorNamespace, err := env.GetOperatorNamespace()
+	if err != nil {
+		setupLog.Error(err, "error getting operator namespace")
 		os.Exit(1)
 	}
 
@@ -252,8 +259,15 @@ func main() {
 		}
 	}
 
+	cacheOptions, err := createCacheOptions(ctrls, operatorNamespace)
+	if err != nil {
+		setupLog.Error(err, "error creating cache options")
+		os.Exit(1)
+	}
+
 	mgr, err = ctrl.NewManager(apiConfig, ctrl.Options{
 		Scheme: common.Scheme,
+		Cache:  cacheOptions,
 		Metrics: metricsserver.Options{
 			BindAddress: "0",
 		},
@@ -272,7 +286,7 @@ func main() {
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = webhooks.Setup(mgr); err != nil {
+		if err = webhooks.Setup(apiClient, operatorNamespace, mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "SSP")
 			os.Exit(1)
 		}
@@ -336,4 +350,45 @@ func createCertificateSymlinks() error {
 	}
 
 	return nil
+}
+
+func createCacheOptions(ctrls []controllers.Controller, operatorNamespace string) (cache.Options, error) {
+	watchObjectsMap := map[schema.GroupVersionKind]controllers.WatchObject{}
+	for _, controller := range ctrls {
+		watchObjects := controller.GetWatchObjects()
+		for _, watchObject := range watchObjects {
+			gvk, err := apiutil.GVKForObject(watchObject.Object, common.Scheme)
+			if err != nil {
+				return cache.Options{}, err
+			}
+			existingObject, exists := watchObjectsMap[gvk]
+			if !exists {
+				watchObjectsMap[gvk] = watchObject
+				continue
+			}
+
+			// If one of the objects wants to watch all namespaces,
+			// then the resulting WatchObject should too.
+			if !watchObject.WatchOnlyOperatorNamespace {
+				existingObject.WatchOnlyOperatorNamespace = false
+			}
+			watchObjectsMap[gvk] = existingObject
+		}
+	}
+
+	cacheOptions := cache.Options{
+		ByObject: map[client.Object]cache.ByObject{},
+	}
+	for _, watchObject := range watchObjectsMap {
+		if !watchObject.WatchOnlyOperatorNamespace {
+			continue
+		}
+		cacheOptions.ByObject[watchObject.Object] = cache.ByObject{
+			Namespaces: map[string]cache.Config{
+				operatorNamespace: {},
+			},
+		}
+	}
+
+	return cacheOptions, nil
 }

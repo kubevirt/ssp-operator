@@ -39,7 +39,7 @@ import (
 
 var ssplog = logf.Log.WithName("ssp-resource")
 
-func Setup(mgr ctrl.Manager) error {
+func Setup(uncachedClient client.Client, namespace string, mgr ctrl.Manager) error {
 	// This is a hack. Using Unstructured allows the webhook to correctly decode different versions of objects.
 	// Controller-runtime currently does not support a single webhook for multiple versions.
 
@@ -49,7 +49,7 @@ func Setup(mgr ctrl.Manager) error {
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(obj).
-		WithValidator(newSspValidator(mgr.GetClient())).
+		WithValidator(newSspValidator(uncachedClient, namespace)).
 		Complete()
 }
 
@@ -57,6 +57,7 @@ func Setup(mgr ctrl.Manager) error {
 
 type sspValidator struct {
 	apiClient client.Client
+	namespace string
 }
 
 var _ admission.CustomValidator = &sspValidator{}
@@ -67,10 +68,13 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (
 		return nil, err
 	}
 
-	var ssps sspv1beta2.SSPList
-
-	// Check if no other SSP resources are present in the cluster
 	ssplog.Info("validate create", "name", sspObj.Name)
+
+	if sspObj.Namespace != s.namespace {
+		return nil, fmt.Errorf("SSP object must be in namespace: %s", s.namespace)
+	}
+
+	var ssps sspv1beta2.SSPList
 	err = s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
@@ -229,6 +233,6 @@ func validateCommonInstancetypes(ssp *sspv1beta2.SSP) error {
 	return nil
 }
 
-func newSspValidator(clt client.Client) *sspValidator {
-	return &sspValidator{apiClient: clt}
+func newSspValidator(clt client.Client, namespace string) *sspValidator {
+	return &sspValidator{apiClient: clt, namespace: namespace}
 }

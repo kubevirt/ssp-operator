@@ -57,8 +57,15 @@ func (v *vmController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList)
 		Complete(v)
 }
 
-func (v *vmController) RequiredCrds() []string {
-	return []string{getVmCrd()}
+func (v *vmController) GetWatchObjects() []WatchObject {
+	return []WatchObject{{
+		Object:  &kubevirtv1.VirtualMachine{},
+		CrdName: getVmCrd(),
+	}, {
+		Object: &corev1.PersistentVolumeClaim{},
+	}, {
+		Object: &corev1.PersistentVolume{},
+	}}
 }
 
 func (v *vmController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

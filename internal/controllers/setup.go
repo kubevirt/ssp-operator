@@ -105,7 +105,11 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 func setupManager(ctx context.Context, cancel context.CancelFunc, mgr controllerruntime.Manager, controllers []Controller) error {
 	var requiredCrds []string
 	for _, controller := range controllers {
-		requiredCrds = append(requiredCrds, controller.RequiredCrds()...)
+		for _, watchObject := range controller.GetWatchObjects() {
+			if watchObject.CrdName != "" {
+				requiredCrds = append(requiredCrds, watchObject.CrdName)
+			}
+		}
 	}
 
 	crdWatch := crd_watch.New(mgr.GetCache(), requiredCrds...)
