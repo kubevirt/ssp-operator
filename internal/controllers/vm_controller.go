@@ -33,7 +33,7 @@ var _ Controller = &vmController{}
 
 var _ reconcile.Reconciler = &vmController{}
 
-func CreateVmController() Controller {
+func NewVmController() Controller {
 	return &vmController{
 		log: ctrl.Log.WithName("controllers").WithName("VirtualMachines"),
 	}
