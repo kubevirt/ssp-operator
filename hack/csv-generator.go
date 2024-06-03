@@ -31,8 +31,9 @@ import (
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"kubevirt.io/ssp-operator/internal/common"
 	sigsyaml "sigs.k8s.io/yaml"
+
+	"kubevirt.io/ssp-operator/internal/common"
 )
 
 type generatorFlags struct {
@@ -72,7 +73,7 @@ func main() {
 }
 
 func init() {
-	rootCmd.Flags().StringVar(&f.file, "file", "data/olm-catalog/ssp-operator.clusterserviceversion.yaml", "Location of the CSV yaml to modify")
+	rootCmd.Flags().StringVar(&f.file, "file", "bundle/manifests/ssp-operator.clusterserviceversion.yaml", "Location of the CSV yaml to modify")
 	rootCmd.Flags().StringVar(&f.csvVersion, "csv-version", "", "Version of csv manifest (required)")
 	rootCmd.Flags().StringVar(&f.namespace, "namespace", "", "Namespace in which ssp operator will be deployed (required)")
 	rootCmd.Flags().StringVar(&f.operatorImage, "operator-image", "", "Link to operator image (required)")
@@ -131,38 +132,20 @@ func runGenerator() error {
 	if !f.dumpCRDs {
 		return nil
 	}
-	files, err := os.ReadDir("data/crd")
+
+	crdFile, err := os.ReadFile("bundle/manifests/ssp.kubevirt.io_ssps.yaml")
 	if err != nil {
 		return err
 	}
-	for _, file := range files {
-		crd := extv1.CustomResourceDefinition{}
 
-		fsInfo, err := file.Info()
-		if err != nil {
-			return err
-		}
-
-		err = readAndDecodeToCRD(fsInfo, &crd)
-		if err != nil {
-			return err
-		}
-
-		err = marshallObject(crd, nil, os.Stdout)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func readAndDecodeToCRD(file os.FileInfo, crd *extv1.CustomResourceDefinition) error {
-	crdFile, err := os.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
-	if err != nil {
-		return err
-	}
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(crdFile), 1024)
+	crd := extv1.CustomResourceDefinition{}
+	decoder = yaml.NewYAMLOrJSONDecoder(bytes.NewReader(crdFile), 1024)
 	err = decoder.Decode(&crd)
+	if err != nil {
+		return err
+	}
+
+	err = marshallObject(crd, nil, os.Stdout)
 	if err != nil {
 		return err
 	}

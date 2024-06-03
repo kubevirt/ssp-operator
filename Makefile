@@ -185,10 +185,6 @@ generate: controller-gen
 # Build the container image
 .PHONY: container-build
 container-build: unittest bundle
-	mkdir -p data/olm-catalog
-	mkdir -p data/crd
-	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
-	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
 	${SSP_BUILD_RUNTIME} build -t ${IMG} \
 		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
 		--build-arg IMG_TAG=${IMG_TAG} \
