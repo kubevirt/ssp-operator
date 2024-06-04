@@ -143,8 +143,9 @@ func (s *sspController) GetWatchObjects() []WatchObject {
 	for _, operand := range s.operands {
 		for _, watchType := range operand.WatchTypes() {
 			results = append(results, WatchObject{
-				Object:  watchType.Object,
-				CrdName: watchType.Crd,
+				Object:                     watchType.Object,
+				CrdName:                    watchType.Crd,
+				WatchOnlyOperatorNamespace: true,
 			})
 		}
 		for _, watchType := range operand.WatchClusterTypes() {
