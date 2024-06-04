@@ -50,6 +50,7 @@ import (
 	handler_hook "kubevirt.io/ssp-operator/internal/controller/handler-hook"
 	"kubevirt.io/ssp-operator/internal/controller/predicates"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
+	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
 	"kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
@@ -68,32 +69,32 @@ var kvsspCRDs = map[string]string{
 	"kubevirtcommontemplatesbundles.ssp.kubevirt.io": "KubevirtCommonTemplatesBundle",
 }
 
-// sspReconciler reconciles a SSP object
-type sspReconciler struct {
-	client           client.Client
-	uncachedReader   client.Reader
+// sspController reconciles a SSP object
+type sspController struct {
 	log              logr.Logger
 	operands         []operands.Operand
 	lastSspSpec      ssp.SSPSpec
 	subresourceCache common.VersionCache
 	topologyMode     osconfv1.TopologyMode
-	crdList          crd_watch.CrdList
 	areCrdsMissing   bool
+
+	client         client.Client
+	uncachedReader client.Reader
+	crdList        crd_watch.CrdList
 }
 
-func NewSspReconciler(client client.Client, uncachedReader client.Reader, infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, crdList crd_watch.CrdList) *sspReconciler {
-	return &sspReconciler{
-		client:           client,
-		uncachedReader:   uncachedReader,
+func NewSspController(infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand) Controller {
+	return &sspController{
 		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
 		operands:         operands,
 		subresourceCache: common.VersionCache{},
 		topologyMode:     infrastructureTopology,
-		crdList:          crdList,
 	}
 }
 
-var _ reconcile.Reconciler = &sspReconciler{}
+var _ Controller = &sspController{}
+
+var _ reconcile.Reconciler = &sspController{}
 
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=list;watch;update
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=update
@@ -101,9 +102,17 @@ var _ reconcile.Reconciler = &sspReconciler{}
 // +kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures;clusterversions,verbs=get
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list
 
-func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
+func (s *sspController) Name() string {
+	return "ssp-controller"
+}
+
+func (s *sspController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList) error {
+	s.client = mgr.GetClient()
+	s.uncachedReader = mgr.GetAPIReader()
+	s.crdList = crdList
+
 	eventHandlerHook := func(request ctrl.Request, obj client.Object) {
-		r.log.Info("Reconciliation event received",
+		s.log.Info("Reconciliation event received",
 			"ssp", request.NamespacedName,
 			"cause_type", reflect.TypeOf(obj).Elem().Name(),
 			"cause_object", obj.GetNamespace()+"/"+obj.GetName(),
@@ -113,13 +122,36 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 	builder := ctrl.NewControllerManagedBy(mgr)
 	watchSspResource(builder)
 
-	r.areCrdsMissing = len(r.crdList.MissingCrds()) > 0
+	s.areCrdsMissing = len(s.crdList.MissingCrds()) > 0
 
 	// Register watches for created objects only if all required CRDs exist
-	watchClusterResources(builder, r.crdList, r.operands, eventHandlerHook)
-	watchNamespacedResources(builder, r.crdList, r.operands, eventHandlerHook, mgr.GetScheme(), mgr.GetRESTMapper())
+	watchClusterResources(builder, s.crdList, s.operands, eventHandlerHook)
+	watchNamespacedResources(builder, s.crdList, s.operands, eventHandlerHook, mgr.GetScheme(), mgr.GetRESTMapper())
 
-	return builder.Complete(r)
+	return builder.Complete(s)
+}
+
+func (r *sspController) RequiredCrds() []string {
+	var result []string
+	for _, operand := range r.operands {
+		result = append(result, getRequiredCrds(operand)...)
+	}
+	return result
+}
+
+func getRequiredCrds(operand operands.Operand) []string {
+	var result []string
+	for _, watchType := range operand.WatchTypes() {
+		if watchType.Crd != "" {
+			result = append(result, watchType.Crd)
+		}
+	}
+	for _, watchType := range operand.WatchClusterTypes() {
+		if watchType.Crd != "" {
+			result = append(result, watchType.Crd)
+		}
+	}
+	return result
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -127,18 +159,18 @@ func (r *sspReconciler) setupController(mgr ctrl.Manager) error {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
-func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+func (s *sspController) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	defer func() {
 		if err != nil {
 			metrics.SetSspOperatorReconcileSucceeded(false)
 		}
 	}()
-	reqLogger := r.log.WithValues("ssp", req.NamespacedName)
+	reqLogger := s.log.WithValues("ssp", req.NamespacedName)
 	reqLogger.Info("Starting reconciliation")
 
 	// Fetch the SSP instance
 	instance := &ssp.SSP{}
-	err = r.client.Get(ctx, req.NamespacedName, instance)
+	err = s.client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -150,19 +182,19 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		return ctrl.Result{}, err
 	}
 
-	sspChanged := r.clearCacheIfNeeded(instance)
+	sspChanged := s.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
 		Request:         req,
-		Client:          r.client,
-		UncachedReader:  r.uncachedReader,
+		Client:          s.client,
+		UncachedReader:  s.uncachedReader,
 		Context:         ctx,
 		Instance:        instance,
 		InstanceChanged: sspChanged,
 		Logger:          reqLogger,
-		VersionCache:    r.subresourceCache,
-		TopologyMode:    r.topologyMode,
-		CrdList:         r.crdList,
+		VersionCache:    s.subresourceCache,
+		TopologyMode:    s.topologyMode,
+		CrdList:         s.crdList,
 	}
 
 	if !isInitialized(sspRequest.Instance) {
@@ -178,11 +210,11 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	}
 
 	if isBeingDeleted(sspRequest.Instance) {
-		err := r.cleanup(sspRequest)
+		err := s.cleanup(sspRequest)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		r.clearCache()
+		s.clearCache()
 		return ctrl.Result{}, nil
 	}
 
@@ -193,12 +225,12 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		reqLogger.Info(fmt.Sprintf("Pausing SSP operator on resource: %v/%v", instance.Namespace, instance.Name))
 		instance.Status.Paused = true
 		instance.Status.ObservedGeneration = instance.Generation
-		err := r.client.Status().Update(ctx, instance)
+		err := s.client.Status().Update(ctx, instance)
 		return ctrl.Result{}, err
 	}
 
-	if r.areCrdsMissing {
-		err := updateStatusMissingCrds(sspRequest, r.crdList.MissingCrds())
+	if s.areCrdsMissing {
+		err := updateStatusMissingCrds(sspRequest, s.crdList.MissingCrds())
 		return ctrl.Result{}, err
 	}
 
@@ -211,7 +243,7 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspRequest.Logger.V(1).Info("CR status updated")
 
 	sspRequest.Logger.Info("Reconciling operands...")
-	reconcileResults, err := r.reconcileOperands(sspRequest)
+	reconcileResults, err := s.reconcileOperands(sspRequest)
 	if err != nil {
 		return handleError(sspRequest, err, sspRequest.Logger)
 	}
@@ -233,18 +265,18 @@ func (r *sspReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	return ctrl.Result{}, nil
 }
 
-func (r *sspReconciler) clearCacheIfNeeded(sspObj *ssp.SSP) bool {
-	if !reflect.DeepEqual(r.lastSspSpec, sspObj.Spec) {
-		r.subresourceCache = common.VersionCache{}
-		r.lastSspSpec = sspObj.Spec
+func (s *sspController) clearCacheIfNeeded(sspObj *ssp.SSP) bool {
+	if !reflect.DeepEqual(s.lastSspSpec, sspObj.Spec) {
+		s.subresourceCache = common.VersionCache{}
+		s.lastSspSpec = sspObj.Spec
 		return true
 	}
 	return false
 }
 
-func (r *sspReconciler) clearCache() {
-	r.lastSspSpec = ssp.SSPSpec{}
-	r.subresourceCache = common.VersionCache{}
+func (s *sspController) clearCache() {
+	s.lastSspSpec = ssp.SSPSpec{}
+	s.subresourceCache = common.VersionCache{}
 }
 
 func isPaused(object metav1.Object) bool {
@@ -308,7 +340,7 @@ func updateSspResource(request *common.Request) error {
 	return setSspResourceDeploying(request)
 }
 
-func (r *sspReconciler) cleanup(request *common.Request) error {
+func (s *sspController) cleanup(request *common.Request) error {
 	if controllerutil.ContainsFinalizer(request.Instance, finalizerName) ||
 		controllerutil.ContainsFinalizer(request.Instance, oldFinalizerName) {
 		sspStatus := &request.Instance.Status
@@ -339,7 +371,7 @@ func (r *sspReconciler) cleanup(request *common.Request) error {
 		}
 
 		pendingCount := 0
-		for _, operand := range r.operands {
+		for _, operand := range s.operands {
 			cleanupResults, err := operand.Cleanup(request)
 			if err != nil {
 				return err
@@ -428,7 +460,7 @@ func listExistingCRDKinds(sspRequest *common.Request) []string {
 	return foundKinds
 }
 
-func (r *sspReconciler) reconcileOperands(sspRequest *common.Request) ([]common.ReconcileResult, error) {
+func (s *sspController) reconcileOperands(sspRequest *common.Request) ([]common.ReconcileResult, error) {
 	kinds := listExistingCRDKinds(sspRequest)
 
 	// Mark existing CRs as paused
@@ -438,8 +470,8 @@ func (r *sspReconciler) reconcileOperands(sspRequest *common.Request) ([]common.
 	}
 
 	// Reconcile all operands
-	allReconcileResults := make([]common.ReconcileResult, 0, len(r.operands))
-	for _, operand := range r.operands {
+	allReconcileResults := make([]common.ReconcileResult, 0, len(s.operands))
+	for _, operand := range s.operands {
 		sspRequest.Logger.V(1).Info(fmt.Sprintf("Reconciling operand: %s", operand.Name()))
 		reconcileResults, err := operand.Reconcile(sspRequest)
 		if err != nil {
@@ -453,7 +485,7 @@ func (r *sspReconciler) reconcileOperands(sspRequest *common.Request) ([]common.
 }
 
 func preUpdateStatus(request *common.Request) error {
-	operatorVersion := common.GetOperatorVersion()
+	operatorVersion := env.GetOperatorVersion()
 
 	sspStatus := &request.Instance.Status
 	sspStatus.Phase = lifecycleapi.PhaseDeploying
@@ -592,7 +624,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 	sspStatus.ObservedGeneration = request.Instance.Generation
 	if len(notAvailable) == 0 && len(progressing) == 0 && len(degraded) == 0 {
 		sspStatus.Phase = lifecycleapi.PhaseDeployed
-		sspStatus.ObservedVersion = common.GetOperatorVersion()
+		sspStatus.ObservedVersion = env.GetOperatorVersion()
 	} else {
 		sspStatus.Phase = lifecycleapi.PhaseDeploying
 	}

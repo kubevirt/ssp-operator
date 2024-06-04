@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
-	"kubevirt.io/ssp-operator/controllers"
+	"kubevirt.io/ssp-operator/internal/controllers"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 

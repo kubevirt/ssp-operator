@@ -13,8 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/controllers"
+	sspenv "kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -44,7 +45,7 @@ var _ = Describe("Service Controller", func() {
 		Expect(serviceErr).ToNot(HaveOccurred(), "Failed to get ssp-operator-metrics service")
 
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesManagedByLabel, controllers.ServiceManagedByLabelValue))
-		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, common.GetOperatorVersion()))
+		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, sspenv.GetOperatorVersion()))
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesComponentLabel, controllers.ServiceControllerName))
 		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(BeEmpty())
 	})

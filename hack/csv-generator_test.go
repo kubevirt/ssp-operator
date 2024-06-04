@@ -11,7 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 
-	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/env"
 )
 
 var _ = Describe("csv generator", func() {
@@ -27,8 +27,8 @@ var _ = Describe("csv generator", func() {
 		vmConsoleProxyImage: "testVmConsoleProxyImage",
 	}
 	envValues := []v1.EnvVar{
-		{Name: common.TemplateValidatorImageKey},
-		{Name: common.OperatorVersionKey},
+		{Name: env.TemplateValidatorImageKey},
+		{Name: env.OperatorVersionKey},
 	}
 
 	csv := csvv1.ClusterServiceVersion{
@@ -70,13 +70,13 @@ var _ = Describe("csv generator", func() {
 				Expect(container.Image).To(Equal(flags.operatorImage))
 
 				for _, envVariable := range container.Env {
-					if envVariable.Name == common.TemplateValidatorImageKey {
+					if envVariable.Name == env.TemplateValidatorImageKey {
 						Expect(envVariable.Value).To(Equal(flags.validatorImage))
 					}
-					if envVariable.Name == common.OperatorVersionKey {
+					if envVariable.Name == env.OperatorVersionKey {
 						Expect(envVariable.Value).To(Equal(flags.operatorVersion))
 					}
-					if envVariable.Name == common.VmConsoleProxyImageKey {
+					if envVariable.Name == env.VmConsoleProxyImageKey {
 						Expect(envVariable.Value).To(Equal(flags.vmConsoleProxyImage))
 					}
 				}

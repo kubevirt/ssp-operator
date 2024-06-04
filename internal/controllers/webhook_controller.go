@@ -6,6 +6,7 @@ import (
 
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,21 +33,25 @@ const (
 //
 // The SSP operator already watches all ValidatingWebhookConfigurations, because
 // of template validator operand, so this controller is not a performance issue.
-func NewWebhookConfigurationController(apiClient client.Client) ControllerReconciler {
-	return &webhookCtrl{
-		apiClient: apiClient,
-	}
+func NewWebhookConfigurationController() Controller {
+	return &webhookCtrl{}
 }
 
 type webhookCtrl struct {
 	apiClient client.Client
 }
 
-var _ ControllerReconciler = &webhookCtrl{}
+var _ Controller = &webhookCtrl{}
 
 var _ reconcile.Reconciler = &webhookCtrl{}
 
-func (w *webhookCtrl) Start(_ context.Context, mgr ctrl.Manager) error {
+func (w *webhookCtrl) Name() string {
+	return "validating-webhook-controller"
+}
+
+func (w *webhookCtrl) AddToManager(mgr ctrl.Manager, _ crd_watch.CrdList) error {
+	w.apiClient = mgr.GetClient()
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(w.Name()).
 		For(&admissionv1.ValidatingWebhookConfiguration{}, builder.WithPredicates(
@@ -55,8 +60,8 @@ func (w *webhookCtrl) Start(_ context.Context, mgr ctrl.Manager) error {
 		Complete(w)
 }
 
-func (w *webhookCtrl) Name() string {
-	return "validating-webhook-controller"
+func (w *webhookCtrl) RequiredCrds() []string {
+	return nil
 }
 
 func (w *webhookCtrl) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {

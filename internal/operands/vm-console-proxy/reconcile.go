@@ -10,10 +10,11 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
-	"kubevirt.io/ssp-operator/internal/common"
-	"kubevirt.io/ssp-operator/internal/operands"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/env"
+	"kubevirt.io/ssp-operator/internal/operands"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 )
 
@@ -331,7 +332,7 @@ func reconcileApiService(apiService *apiregv1.APIService) common.ReconcileFunc {
 }
 
 func getVmConsoleProxyImage() string {
-	return common.EnvOrDefault(common.VmConsoleProxyImageKey, defaultVmConsoleProxyImage)
+	return env.EnvOrDefault(env.VmConsoleProxyImageKey, defaultVmConsoleProxyImage)
 }
 
 func findResourcesUsingLabels[PtrL interface {

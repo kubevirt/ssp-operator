@@ -17,6 +17,7 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/env"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	metrics "kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
@@ -47,7 +48,7 @@ func CommonLabels() map[string]string {
 }
 
 func getTemplateValidatorImage() string {
-	return common.EnvOrDefault(common.TemplateValidatorImageKey, defaultTemplateValidatorImage)
+	return env.EnvOrDefault(env.TemplateValidatorImageKey, defaultTemplateValidatorImage)
 }
 
 func newClusterRole() *rbac.ClusterRole {

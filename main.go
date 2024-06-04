@@ -35,6 +35,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -42,8 +43,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	"kubevirt.io/ssp-operator/controllers"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/controllers"
 	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 	"kubevirt.io/ssp-operator/webhooks"
@@ -222,6 +223,27 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
+	apiConfig, err := ctrl.GetConfig()
+	if err != nil {
+		setupLog.Error(err, "error getting API config")
+		os.Exit(1)
+	}
+
+	// Using closure so that the temporary client is cleaned up after it is not needed anymore.
+	ctrls, err := func() ([]controllers.Controller, error) {
+		apiClient, err := client.New(apiConfig, client.Options{
+			Scheme: common.Scheme,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return controllers.CreateControllers(ctx, apiClient)
+	}()
+	if err != nil {
+		setupLog.Error(err, "error creating controllers")
+		os.Exit(1)
+	}
+
 	var mgr ctrl.Manager
 
 	getTLSOptsFunc := func(cfg *tls.Config) {
@@ -230,7 +252,7 @@ func main() {
 		}
 	}
 
-	mgr, err = ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err = ctrl.NewManager(apiConfig, ctrl.Options{
 		Scheme: common.Scheme,
 		Metrics: metricsserver.Options{
 			BindAddress: "0",
@@ -278,7 +300,7 @@ func main() {
 	}
 
 	// +kubebuilder:scaffold:builder
-	if err = controllers.CreateAndStartReconciler(ctx, mgr); err != nil {
+	if err = controllers.StartControllers(ctx, mgr, ctrls); err != nil {
 		setupLog.Error(err, "unable to create or start controller", "controller", "SSP")
 		os.Exit(1)
 	}

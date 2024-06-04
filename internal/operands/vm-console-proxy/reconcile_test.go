@@ -28,6 +28,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
@@ -85,12 +86,12 @@ var _ = Describe("VM Console Proxy Operand", func() {
 	})
 
 	It("should read deployment image the environment variable", func() {
-		originalImage := os.Getenv(common.VmConsoleProxyImageKey)
+		originalImage := os.Getenv(env.VmConsoleProxyImageKey)
 
 		newImage := "www.example.org/images/vm-console-proxy:latest"
-		Expect(os.Setenv(common.VmConsoleProxyImageKey, newImage)).To(Succeed())
+		Expect(os.Setenv(env.VmConsoleProxyImageKey, newImage)).To(Succeed())
 		DeferCleanup(func() {
-			Expect(os.Setenv(common.VmConsoleProxyImageKey, originalImage)).To(Succeed())
+			Expect(os.Setenv(env.VmConsoleProxyImageKey, originalImage)).To(Succeed())
 		})
 
 		_, err := operand.Reconcile(&request)

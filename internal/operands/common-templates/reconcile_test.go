@@ -20,6 +20,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 	metrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
@@ -84,7 +85,7 @@ var _ = Describe("Common-Templates operand", func() {
 				},
 				Status: ssp.SSPStatus{
 					Status: lifecycleapi.Status{
-						ObservedVersion: common.GetOperatorVersion(),
+						ObservedVersion: env.GetOperatorVersion(),
 					},
 				},
 			},

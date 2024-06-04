@@ -23,7 +23,7 @@ var _ = Describe("Webhook controller", func() {
 	var (
 		webhookConfig  *admissionv1.ValidatingWebhookConfiguration
 		fakeClient     client.Client
-		testController ControllerReconciler
+		testController *webhookCtrl
 		testRequest    reconcile.Request
 	)
 
@@ -66,7 +66,8 @@ var _ = Describe("Webhook controller", func() {
 
 		fakeClient = fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 
-		testController = NewWebhookConfigurationController(fakeClient)
+		testController = NewWebhookConfigurationController().(*webhookCtrl)
+		testController.apiClient = fakeClient
 
 		testRequest = reconcile.Request{
 			NamespacedName: types.NamespacedName{
