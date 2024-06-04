@@ -165,6 +165,7 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 	found := newEmptyResource(r.resource)
 	found.SetName(r.resource.GetName())
 	found.SetNamespace(r.resource.GetNamespace())
+	// TODO -- consider refactoring this mutateFn out.
 	mutateFn := func() error {
 		if !found.GetDeletionTimestamp().IsZero() {
 			// Skip update, because the resource is being deleted
@@ -177,11 +178,22 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 
 		UpdateLabels(r.resource, found)
 		updateAnnotations(r.resource, found)
+		// TODO -- consider how the watch label relates to version cache
 		if r.options.AlwaysCallUpdateFunc || !r.request.VersionCache.Contains(found) {
 			// The generation was updated by other cluster components,
 			// operator needs to update the resource
 			r.updateFunc(r.resource, found)
 		}
+
+		// TODO -- move to a different function, because this label is needed
+		//  by all resources
+
+		// Adding this label after, so that updateFunc cannot remove it.
+		if found.GetLabels() == nil {
+			found.SetLabels(map[string]string{})
+		}
+		found.GetLabels()[WatchedObjectLabel] = "true"
+
 		return nil
 	}
 
@@ -287,10 +299,27 @@ func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f 
 		if err := mutate(f, key, obj); err != nil {
 			return OperationResultNone, nil, err
 		}
-		if err := r.request.Client.Create(r.request.Context, obj); err != nil {
+
+		err := r.request.Client.Create(r.request.Context, obj)
+		if err == nil {
+			return OperationResultCreated, nil, nil
+		}
+		if !errors.IsAlreadyExists(err) {
 			return OperationResultNone, nil, err
 		}
-		return OperationResultCreated, nil, nil
+
+		// If the get operation above does not find the object and
+		// create returns an error, because the object already exists,
+		// then it means that cache is stale. This can happen
+		// if the cache only watches objects with a certain label,
+		// and the object was created without the label.
+		//
+		// Using uncached client to read the object again.
+
+		// TODO -- validate that this is correct.
+		if err = r.request.UncachedReader.Get(r.request.Context, key, obj); err != nil {
+			return OperationResultNone, nil, err
+		}
 	}
 
 	existing := obj.DeepCopyObject().(client.Object)

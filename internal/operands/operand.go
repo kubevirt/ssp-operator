@@ -34,4 +34,8 @@ type WatchType struct {
 	// Otherwise, only these changes in spec, labels, and annotations.
 	// If an object does not have spec field, the full object is watched by default.
 	WatchFullObject bool
+
+	// WatchOnlyWithLabel sets if the cache should only watch objets
+	/// with label "ssp.kubevirt.io/watched".
+	WatchOnlyWithLabel bool
 }

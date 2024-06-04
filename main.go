@@ -32,7 +32,9 @@ import (
 	ocpconfigv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/library-go/pkg/crypto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
@@ -367,11 +369,16 @@ func createCacheOptions(ctrls []controllers.Controller, operatorNamespace string
 				continue
 			}
 
-			// If one of the objects wants to watch all namespaces,
+			// If one of the objects wants to watch all namespaces or
+			// objects without labels,
 			// then the resulting WatchObject should too.
 			if !watchObject.WatchOnlyOperatorNamespace {
 				existingObject.WatchOnlyOperatorNamespace = false
 			}
+			if !watchObject.WatchOnlyObjectsWithLabel {
+				existingObject.WatchOnlyObjectsWithLabel = false
+			}
+
 			watchObjectsMap[gvk] = existingObject
 		}
 	}
@@ -380,14 +387,28 @@ func createCacheOptions(ctrls []controllers.Controller, operatorNamespace string
 		ByObject: map[client.Object]cache.ByObject{},
 	}
 	for _, watchObject := range watchObjectsMap {
-		if !watchObject.WatchOnlyOperatorNamespace {
+		if !watchObject.WatchOnlyOperatorNamespace && !watchObject.WatchOnlyObjectsWithLabel {
 			continue
 		}
-		cacheOptions.ByObject[watchObject.Object] = cache.ByObject{
-			Namespaces: map[string]cache.Config{
+
+		byObject := cache.ByObject{}
+		if watchObject.WatchOnlyOperatorNamespace {
+			byObject.Namespaces = map[string]cache.Config{
+				// TODO -- verify that the label selector is defaulted to the below selector
 				operatorNamespace: {},
-			},
+			}
 		}
+
+		if watchObject.WatchOnlyObjectsWithLabel {
+			requirement, err := labels.NewRequirement(common.WatchedObjectLabel, selection.Equals, []string{"true"})
+			if err != nil {
+				// It is ok to panic, because the above function has constant arguments, so any error is a programmer's mistake.
+				panic(fmt.Sprintf("Could not create label selector: %v", err))
+			}
+			byObject.Label = labels.NewSelector().Add(*requirement)
+		}
+
+		cacheOptions.ByObject[watchObject.Object] = byObject
 	}
 
 	return cacheOptions, nil

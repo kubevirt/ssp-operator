@@ -23,4 +23,8 @@ type WatchObject struct {
 	// WatchOnlyOperatorNamespace sets if the cache should only watch the object type
 	// in the same namespace where the operator is defined.
 	WatchOnlyOperatorNamespace bool
+
+	// WatchOnlyObjectsWithLabel sets if the cache should only watch objets
+	/// with label "ssp.kubevirt.io/watched".
+	WatchOnlyObjectsWithLabel bool
 }

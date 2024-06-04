@@ -24,8 +24,8 @@ import (
 )
 
 // Define RBAC rules needed by this operand:
-// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterinstancetypes,verbs=list;watch;create;update;delete
-// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterpreferences,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterinstancetypes,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterpreferences,verbs=get;list;watch;create;update;delete
 
 const (
 	operandName                          = "common-instancetypes"
@@ -57,10 +57,17 @@ func (c *CommonInstancetypes) Name() string {
 }
 
 func WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &instancetypev1beta1.VirtualMachineClusterInstancetype{}, Crd: virtualMachineClusterInstancetypeCrd, WatchFullObject: true},
-		{Object: &instancetypev1beta1.VirtualMachineClusterPreference{}, Crd: virtualMachineClusterPreferenceCrd, WatchFullObject: true},
-	}
+	return []operands.WatchType{{
+		Object:             &instancetypev1beta1.VirtualMachineClusterInstancetype{},
+		Crd:                virtualMachineClusterInstancetypeCrd,
+		WatchFullObject:    true,
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &instancetypev1beta1.VirtualMachineClusterPreference{},
+		Crd:                virtualMachineClusterPreferenceCrd,
+		WatchFullObject:    true,
+		WatchOnlyWithLabel: true,
+	}}
 }
 
 func (c *CommonInstancetypes) WatchClusterTypes() []operands.WatchType {

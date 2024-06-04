@@ -96,11 +96,11 @@ var _ Controller = &sspController{}
 
 var _ reconcile.Reconciler = &sspController{}
 
-// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=list;watch;update
+// +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/status,verbs=update
 // +kubebuilder:rbac:groups=ssp.kubevirt.io,resources=ssps/finalizers,verbs=update
 // +kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures;clusterversions,verbs=get
-// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=list
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list
 
 func (s *sspController) Name() string {
 	return "ssp-controller"
@@ -146,12 +146,14 @@ func (s *sspController) GetWatchObjects() []WatchObject {
 				Object:                     watchType.Object,
 				CrdName:                    watchType.Crd,
 				WatchOnlyOperatorNamespace: true,
+				WatchOnlyObjectsWithLabel:  watchType.WatchOnlyWithLabel,
 			})
 		}
 		for _, watchType := range operand.WatchClusterTypes() {
 			results = append(results, WatchObject{
-				Object:  watchType.Object,
-				CrdName: watchType.Crd,
+				Object:                    watchType.Object,
+				CrdName:                   watchType.Crd,
+				WatchOnlyObjectsWithLabel: watchType.WatchOnlyWithLabel,
 			})
 		}
 	}
