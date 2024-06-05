@@ -241,12 +241,14 @@ func (c *CommonInstancetypes) reconcileRemovedResources(request *common.Request)
 
 func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]common.ReconcileResult, error) {
 	// TODO - In the future we should handle cases where the URL remains the same but the provided resources change.
+	//nolint:staticcheck
 	if c.resourceURL != "" && c.resourceURL == *request.Instance.Spec.CommonInstancetypes.URL {
 		request.Logger.Info(fmt.Sprintf("Skipping reconcile of common-instancetypes from URL %s, force with a restart of the service.", *request.Instance.Spec.CommonInstancetypes.URL))
 		return nil, nil
 	}
 
 	// Cache the URL so we can check if it changes with future reconcile attempts above
+	//nolint:staticcheck
 	c.resourceURL = *request.Instance.Spec.CommonInstancetypes.URL
 	request.Logger.Info(fmt.Sprintf("Reconciling common-instancetypes from URL %s", c.resourceURL))
 	var err error
@@ -304,6 +306,7 @@ func (c *CommonInstancetypes) Reconcile(request *common.Request) ([]common.Recon
 	// Log that this functionality is now deprecated ahead of removal in a future release
 	request.Logger.Info("deployment of common-instancetypes by this operator is now deprecated and will be removed in a future release")
 
+	//nolint:staticcheck
 	if request.Instance.Spec.CommonInstancetypes != nil && request.Instance.Spec.CommonInstancetypes.URL != nil {
 		return c.reconcileFromURL(request)
 	}
