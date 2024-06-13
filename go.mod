@@ -1,6 +1,7 @@
 module kubevirt.io/ssp-operator
 
 go 1.21
+toolchain go1.22.3
 
 require (
 	github.com/blang/semver/v4 v4.0.0
@@ -23,10 +24,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tektoncd/pipeline v0.58.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
-	k8s.io/api v0.29.4
+	k8s.io/api v0.30.2
 	k8s.io/apiextensions-apiserver v0.29.4
-	k8s.io/apimachinery v0.29.4
-	k8s.io/client-go v0.29.4
+	k8s.io/apimachinery v0.30.2
+	k8s.io/client-go v0.30.2
 	k8s.io/kube-aggregator v0.29.4
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
 	kubevirt.io/api v1.2.0
@@ -73,6 +74,7 @@ require (
 	github.com/google/pprof v0.0.0-20230510103437-eeec1cb781c3 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -123,9 +125,9 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiserver v0.29.4 // indirect
-	k8s.io/component-base v0.29.4 // indirect
+	k8s.io/component-base v0.30.2 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20240221221325-2ac9dc51f3f1 // indirect
+	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
