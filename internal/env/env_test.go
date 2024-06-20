@@ -6,6 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"kubevirt.io/ssp-operator/internal"
 )
 
 var _ = Describe("environments", func() {
@@ -18,7 +20,7 @@ var _ = Describe("environments", func() {
 
 	It("should return correct value for OPERATOR_VERSION when variable is not set", func() {
 		res := GetOperatorVersion()
-		Expect(res).To(Equal(defaultOperatorVersion), "OPERATOR_VERSION should equal")
+		Expect(res).To(Equal(internal.DefaultOperatorVersion), "OPERATOR_VERSION should equal")
 	})
 
 	It("should return namespace from POD_NAMESAPCE env", func() {
