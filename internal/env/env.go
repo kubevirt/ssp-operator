@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"kubevirt.io/ssp-operator/internal"
 )
 
 const (
@@ -21,8 +23,6 @@ const (
 	VmConsoleProxyImageKey    = "VM_CONSOLE_PROXY_IMAGE"
 
 	podNamespaceKey = "POD_NAMESPACE"
-
-	defaultOperatorVersion = "devel"
 )
 
 func EnvOrDefault(envName string, defVal string) string {
@@ -34,7 +34,7 @@ func EnvOrDefault(envName string, defVal string) string {
 }
 
 func GetOperatorVersion() string {
-	return EnvOrDefault(OperatorVersionKey, defaultOperatorVersion)
+	return EnvOrDefault(OperatorVersionKey, internal.DefaultOperatorVersion)
 }
 
 func RunningOnOpenshift(ctx context.Context, cl client.Reader) (bool, error) {
