@@ -43,6 +43,7 @@ var _ = Describe("Common Instance Types", func() {
 		It("should reconcile from URL when provided", func() {
 			URL := "https://github.com/kubevirt/common-instancetypes//VirtualMachineClusterPreferences?ref=v0.3.3"
 			sspObj := getSsp()
+			//nolint:staticcheck
 			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 				URL: ptr.To(URL),
 			}
@@ -130,6 +131,7 @@ var _ = Describe("Common Instance Types", func() {
 	Context("webhook", func() {
 		DescribeTable("should reject URL", func(URL string) {
 			sspObj := getSsp()
+			//nolint:staticcheck
 			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 				URL: ptr.To(URL),
 			}

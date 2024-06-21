@@ -312,6 +312,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
+		//nolint:staticcheck
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
@@ -341,6 +342,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 			return mockResMap, nil
 		}
 
+		//nolint:staticcheck
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
@@ -359,6 +361,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		operand.KustomizeRunFunc = func(_ filesys.FileSystem, _ string) (resmap.ResMap, error) {
 			return mockResMap, nil
 		}
+		//nolint:staticcheck
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 			URL: ptr.To("https://foo.com/bar?ref=2"),
 		}
@@ -390,6 +393,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		// Update the SSP CR to use a URL so that it calls KustomizeRunFunc
+		//nolint:staticcheck
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
@@ -463,6 +467,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
+		//nolint:staticcheck
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
@@ -485,6 +490,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		}
 
 		// Update the SSP CR to use a URL so that it calls our mock KustomizeRunFunc
+		//nolint:staticcheck
 		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
 			URL: ptr.To("https://foo.com/bar?ref=1"),
 		}
