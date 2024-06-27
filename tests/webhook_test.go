@@ -134,6 +134,31 @@ var _ = Describe("Validation webhook", func() {
 				})
 			})
 
+			Context("with second namespace", func() {
+				var (
+					namespace *corev1.Namespace
+				)
+
+				BeforeEach(func() {
+					namespace = &corev1.Namespace{
+						ObjectMeta: v1.ObjectMeta{
+							GenerateName: "test-webhook-namespace-",
+						},
+					}
+					Expect(apiClient.Create(ctx, namespace)).To(Succeed())
+				})
+
+				AfterEach(func() {
+					Expect(apiClient.Delete(ctx, namespace)).To(Succeed())
+				})
+
+				It("[test_id:TODO] should fail to create SSP CR in a different namespace", func() {
+					newSsp.Namespace = namespace.Name
+					Expect(apiClient.Create(ctx, newSsp, client.DryRunAll)).
+						To(MatchError(ContainSubstring("SSP object must be in namespace:")))
+				})
+			})
+
 			It("[test_id:TODO] should fail when DataImportCronTemplate does not have a name", func() {
 				newSsp.Spec.CommonTemplates.DataImportCronTemplates = []sspv1beta2.DataImportCronTemplate{{
 					ObjectMeta: metav1.ObjectMeta{Name: ""},

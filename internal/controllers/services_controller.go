@@ -123,8 +123,10 @@ func (s *serviceReconciler) AddToManager(mgr ctrl.Manager, _ crd_watch.CrdList) 
 	}))
 }
 
-func (s *serviceReconciler) RequiredCrds() []string {
-	return nil
+func (s *serviceReconciler) GetWatchObjects() []WatchObject {
+	return []WatchObject{{
+		Object: &v1.Service{},
+	}}
 }
 
 func (s *serviceReconciler) setServiceOwnerReference(service *v1.Service) error {

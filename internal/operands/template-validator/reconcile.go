@@ -13,11 +13,11 @@ import (
 )
 
 // Define RBAC rules needed by this operand:
-// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;delete
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=list;watch;create;update;delete
-// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=get;list;watch;create;update;delete
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=list;watch
@@ -32,11 +32,16 @@ func WatchTypes() []operands.WatchType {
 }
 
 func WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &rbac.ClusterRole{}},
-		{Object: &rbac.ClusterRoleBinding{}},
-		{Object: &admission.ValidatingWebhookConfiguration{}},
-	}
+	return []operands.WatchType{{
+		Object:             &rbac.ClusterRole{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &rbac.ClusterRoleBinding{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &admission.ValidatingWebhookConfiguration{},
+		WatchOnlyWithLabel: true,
+	}}
 }
 
 type templateValidator struct{}
