@@ -75,6 +75,8 @@ type TestSuiteStrategy interface {
 	SkipUnlessHighlyAvailableTopologyMode()
 	SkipUnlessSingleReplicaTopologyMode()
 	SkipIfUpgradeLane()
+	SkipIfDeployedByHCO()
+	SkipIfNotDeployedByHCO()
 }
 
 type newSspStrategy struct {
@@ -125,6 +127,11 @@ func (s *newSspStrategy) Init() {
 				DeployVmConsoleProxy: true,
 			},
 		},
+	}
+
+	// When the original env is deployed by HCO skip common-instancetypes deployment and tests
+	if env.IsDeployedByHCO() {
+		newSsp.Spec.FeatureGates.DeployCommonInstancetypes = ptr.To(false)
 	}
 
 	Eventually(func() error {
@@ -223,6 +230,26 @@ func (s *newSspStrategy) SkipIfUpgradeLane() {
 func skipIfUpgradeLane() {
 	if env.IsUpgradeLane() {
 		Skip("Skipping in Upgrade Lane", 1)
+	}
+}
+
+func (s *newSspStrategy) SkipIfDeployedByHCO() {
+	skipIfDeployedByHCO()
+}
+
+func (s *newSspStrategy) SkipIfNotDeployedByHCO() {
+	skipIfNotDeployedByHCO()
+}
+
+func skipIfDeployedByHCO() {
+	if env.IsDeployedByHCO() {
+		Skip("Skipping as SSP was deployed by HCO", 1)
+	}
+}
+
+func skipIfNotDeployedByHCO() {
+	if !env.IsDeployedByHCO() {
+		Skip("Skipping as SSP was not deployed by HCO", 1)
 	}
 }
 
@@ -355,6 +382,14 @@ func (s *existingSspStrategy) SkipUnlessHighlyAvailableTopologyMode() {
 
 func (s *existingSspStrategy) SkipIfUpgradeLane() {
 	skipIfUpgradeLane()
+}
+
+func (s *existingSspStrategy) SkipIfDeployedByHCO() {
+	skipIfDeployedByHCO()
+}
+
+func (s *existingSspStrategy) SkipIfNotDeployedByHCO() {
+	skipIfNotDeployedByHCO()
 }
 
 var (
