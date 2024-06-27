@@ -82,6 +82,15 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
+# Get the current architecture
+ARCH := $(shell uname -m)
+ifeq ($(ARCH), x86_64)
+	ARCH := amd64
+endif
+
+# Get the current OS
+OS := $(shell uname | tr '[:upper:]' '[:lower:]')
+
 all: manager
 
 .PHONY: unittest
@@ -340,8 +349,8 @@ PROMTOOL_VERSION ?= 2.44.0
 .PHONY: promtool
 promtool: $(PROMTOOL)
 $(PROMTOOL): $(LOCALBIN)
-	test -s $(PROMTOOL) || curl -sSfL "https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).linux-amd64.tar.gz" | \
- 		tar xvzf - --directory=$(LOCALBIN) "prometheus-$(PROMTOOL_VERSION).linux-amd64"/promtool --strip-components=1
+	test -s $(PROMTOOL) || curl -sSfL "https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).${OS}-$(ARCH).tar.gz" | \
+		tar xvzf - --directory=$(LOCALBIN) "prometheus-$(PROMTOOL_VERSION).${OS}-$(ARCH)"/promtool --strip-components=1
 
 METRIC_RULES_WRITER ?= $(LOCALBIN)/metrics-rules-writer
 
