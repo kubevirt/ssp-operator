@@ -247,18 +247,21 @@ var _ = Describe("SSP Validation", func() {
 		})
 
 		It("should reject URL without https:// or ssh://", func() {
+			//nolint:staticcheck
 			sspObj.Spec.CommonInstancetypes.URL = ptr.To("file://foo/bar")
 			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should reject URL without ?ref= or ?version=", func() {
+			//nolint:staticcheck
 			sspObj.Spec.CommonInstancetypes.URL = ptr.To("https://foo.com/bar")
 			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
 			Expect(err).To(HaveOccurred())
 		})
 
 		DescribeTable("should accept a valid remote kustomize target URL", func(url string) {
+			//nolint:staticcheck
 			sspObj.Spec.CommonInstancetypes.URL = ptr.To(url)
 			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
 			Expect(err).ToNot(HaveOccurred())

@@ -213,10 +213,12 @@ func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
 }
 
 func validateCommonInstancetypes(ssp *sspv1beta2.SSP) error {
+	//nolint:staticcheck
 	if ssp.Spec.CommonInstancetypes == nil || ssp.Spec.CommonInstancetypes.URL == nil {
 		return nil
 	}
 
+	//nolint:staticcheck
 	url := *ssp.Spec.CommonInstancetypes.URL
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "ssh://") {
 		return fmt.Errorf("%s is invalid, only https:// or ssh:// are supported as a remote kustomize target for commonInstancetypes", url)
