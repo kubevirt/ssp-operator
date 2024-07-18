@@ -1,6 +1,6 @@
 module kubevirt.io/ssp-operator/api
 
-go 1.21
+go 1.22.4
 
 require (
 	github.com/openshift/api v0.0.0-20240419172957-f39cf2ef93fd // release-4.16
