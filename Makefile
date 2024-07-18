@@ -102,7 +102,7 @@ unittest: generate lint fmt vet manifests metrics-rules-test lint-monitoring
 build-functests:
 	go test -c ./tests
 
-GINKGO_VERSION ?= v2.15.0
+GINKGO_VERSION ?= v2.17.1
 GINKGO_TIMEOUT ?= 2h
 
 .PHONY: ginkgo

@@ -4,6 +4,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
 )
@@ -82,7 +83,7 @@ func newServiceMonitorCR(namespace string) *promv1.ServiceMonitor {
 					Scheme: "https",
 					TLSConfig: &promv1.TLSConfig{
 						SafeTLSConfig: promv1.SafeTLSConfig{
-							InsecureSkipVerify: true,
+							InsecureSkipVerify: ptr.To(true),
 						},
 					},
 					HonorLabels: true,

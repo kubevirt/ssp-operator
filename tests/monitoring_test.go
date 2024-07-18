@@ -384,7 +384,7 @@ func initializePromClient(prometheusUrl string, token string) promApiv1.API {
 
 	c, err := promApi.NewClient(promApi.Config{
 		Address:      prometheusUrl,
-		RoundTripper: promConfig.NewAuthorizationCredentialsRoundTripper("Bearer", promConfig.Secret(token), defaultRoundTripper),
+		RoundTripper: promConfig.NewAuthorizationCredentialsRoundTripper("Bearer", promConfig.NewInlineSecret(token), defaultRoundTripper),
 	})
 	Expect(err).ShouldNot(HaveOccurred())
 	return promApiv1.NewAPI(c)
