@@ -102,7 +102,7 @@ unittest: generate lint fmt vet manifests metrics-rules-test lint-monitoring
 build-functests:
 	go test -c ./tests
 
-GINKGO_VERSION ?= v2.15.0
+GINKGO_VERSION ?= v2.17.1
 GINKGO_TIMEOUT ?= 2h
 
 .PHONY: ginkgo
@@ -177,8 +177,9 @@ vet:
 # Update vendor modules
 .PHONY: vendor
 vendor:
+	cd api && go mod tidy
 	go mod tidy
-	go mod vendor
+	go work vendor
 
 # Validate that this repository does not contain offensive language
 .PHONY: validate-no-offensive-lang

@@ -749,7 +749,7 @@ func watchNamespacedResources(builder *ctrl.Builder, crdList crd_watch.CrdList, 
 func watchClusterResources(builder *ctrl.Builder, crdList crd_watch.CrdList, sspOperands []operands.Operand, eventHandlerHook handler_hook.HookFunc) {
 	watchResources(builder,
 		crdList,
-		&libhandler.EnqueueRequestForAnnotation{
+		&libhandler.EnqueueRequestForAnnotation[client.Object]{
 			Type: schema.GroupKind{
 				Group: ssp.GroupVersion.Group,
 				Kind:  "SSP",
