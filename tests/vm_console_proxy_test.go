@@ -41,10 +41,9 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
 
 		updateSsp(func(foundSsp *ssp.SSP) {
-			if foundSsp.Spec.FeatureGates == nil {
-				foundSsp.Spec.FeatureGates = &ssp.FeatureGates{}
+			foundSsp.Spec.TokenGenerationService = &ssp.TokenGenerationService{
+				Enabled: true,
 			}
-			foundSsp.Spec.FeatureGates.DeployVmConsoleProxy = true
 		})
 
 		expectedLabels := expectedLabelsFor("vm-console-proxy", "vm-console-proxy")

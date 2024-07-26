@@ -249,7 +249,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		}
 	})
 
-	It("should delete resources when feature gate was disabled", func() {
+	It("should delete resources when TokenGenerationService is disabled", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -264,7 +264,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceExists(bundle.Deployment, request)
 		ExpectResourceExists(bundle.ApiService, request)
 
-		request.Instance.Spec.FeatureGates.DeployVmConsoleProxy = false
+		request.Instance.Spec.TokenGenerationService.Enabled = false
 
 		_, err = operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -310,8 +310,8 @@ func getMockedRequest() common.Request {
 				Namespace: namespace,
 			},
 			Spec: ssp.SSPSpec{
-				FeatureGates: &ssp.FeatureGates{
-					DeployVmConsoleProxy: true,
+				TokenGenerationService: &ssp.TokenGenerationService{
+					Enabled: true,
 				},
 			},
 		},
