@@ -177,9 +177,9 @@ vet:
 # Update vendor modules
 .PHONY: vendor
 vendor:
-	cd api && go mod tidy
+	cd api && go mod tidy && go mod vendor
 	go mod tidy
-	go work vendor
+	go mod vendor
 
 # Validate that this repository does not contain offensive language
 .PHONY: validate-no-offensive-lang

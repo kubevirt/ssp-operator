@@ -18,8 +18,6 @@ WORKDIR /workspace
 # Copy the Go Modules manifests and vendor directory
 COPY go.mod go.mod
 COPY go.sum go.sum
-COPY go.work go.work
-COPY go.work.sum go.work.sum
 COPY vendor/ vendor/
 
 # Copy the go source
