@@ -71,6 +71,8 @@ const (
 	sdkTLSKey = "tls.key"
 
 	webhookPort = 9443
+
+	uselessConstant = "unused"
 )
 
 // This callback executes on each client call returning a new config to be used
