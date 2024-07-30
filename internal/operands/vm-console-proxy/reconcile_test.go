@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	ocpv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	apps "k8s.io/api/apps/v1"
@@ -22,10 +23,12 @@ import (
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/utils/ptr"
 	kubevirt "kubevirt.io/api/core"
+	proxyv1 "kubevirt.io/vm-console-proxy/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -138,6 +141,30 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		key := client.ObjectKeyFromObject(oldApiService)
 		Expect(request.Client.Get(request.Context, key, &apiregv1.APIService{})).
 			To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+	})
+
+	It("should write TLS configuration to ConfigMap", func() {
+		request.Instance.Spec.TLSSecurityProfile = &ocpv1.TLSSecurityProfile{
+			Type:         ocpv1.TLSProfileIntermediateType,
+			Intermediate: &ocpv1.IntermediateTLSProfile{},
+		}
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		configMapKey := client.ObjectKeyFromObject(bundle.ConfigMap)
+
+		configMap := &core.ConfigMap{}
+		Expect(request.Client.Get(request.Context, configMapKey, configMap)).To(Succeed())
+
+		const tlsConfigFilename = "tls-profile-v1.yaml"
+		tlsConfig, exists := configMap.Data[tlsConfigFilename]
+		Expect(exists).To(BeTrue(), "ConfigMap should have TLS configuration file: "+tlsConfigFilename)
+
+		proxyProfile := &proxyv1.TlsProfile{}
+		Expect(yaml.Unmarshal([]byte(tlsConfig), proxyProfile)).To(Succeed())
+
+		Expect(proxyProfile.MinTLSVersion).To(Equal(proxyv1.VersionTLS12))
 	})
 
 	It("should remove cluster resources on cleanup", func() {
