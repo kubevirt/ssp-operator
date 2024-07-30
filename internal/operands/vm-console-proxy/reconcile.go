@@ -8,6 +8,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -141,12 +142,21 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 		return nil, err
 	}
 
+	var cleanupResults []common.CleanupResult
+	oldApiServiceCleanup, err := deleteOldApiService(request)
+	if err != nil {
+		return nil, err
+	}
+	cleanupResults = append(cleanupResults, oldApiServiceCleanup)
+
 	// Route is no longer needed.
 	routeCleanupResults, err := v.deleteRoute(request)
 	if err != nil {
 		return nil, err
 	}
-	for _, cleanupResult := range routeCleanupResults {
+	cleanupResults = append(cleanupResults, routeCleanupResults...)
+
+	for _, cleanupResult := range cleanupResults {
 		if !cleanupResult.Deleted {
 			reconcileResults = append(reconcileResults, common.ResourceDeletedResult(cleanupResult.Resource, common.OperationResultDeleted))
 		}
@@ -159,10 +169,19 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 	// We need to use labels to find resources that were deployed by this operand,
 	// because namespace annotation may not be present.
 
+	var allResults []common.CleanupResult
+
 	routeCleanupResults, err := v.deleteRoute(request)
 	if err != nil {
 		return nil, err
 	}
+	allResults = append(allResults, routeCleanupResults...)
+
+	oldApiServiceCleanup, err := deleteOldApiService(request)
+	if err != nil {
+		return nil, err
+	}
+	allResults = append(allResults, oldApiServiceCleanup)
 
 	var objectsToDelete []client.Object
 
@@ -224,7 +243,9 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 		return nil, err
 	}
 
-	return append(cleanupResults, routeCleanupResults...), nil
+	allResults = append(allResults, cleanupResults...)
+
+	return allResults, nil
 }
 
 func (v *vmConsoleProxy) deleteRoute(request *common.Request) ([]common.CleanupResult, error) {
@@ -239,6 +260,15 @@ func (v *vmConsoleProxy) deleteRoute(request *common.Request) ([]common.CleanupR
 	}
 
 	return common.DeleteAll(request, routes...)
+}
+
+func deleteOldApiService(request *common.Request) (common.CleanupResult, error) {
+	return common.Cleanup(request, &apiregv1.APIService{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "v1alpha1.token.kubevirt.io",
+		},
+	})
 }
 
 func reconcileServiceAccount(serviceAccount core.ServiceAccount) common.ReconcileFunc {

@@ -129,7 +129,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			},
 		}
 		apiServiceResource = testResource{
-			Name:           "v1alpha1.token.kubevirt.io",
+			Name:           "v1.token.kubevirt.io",
 			Resource:       &apiregv1.APIService{},
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(apiService *apiregv1.APIService) {
@@ -319,7 +319,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			vmNamespace := strategy.GetNamespace()
 			vmName := "non-existing-vm"
 
-			url := apiServerHostname + "/apis/token.kubevirt.io/v1alpha1/namespaces/" + vmNamespace + "/virtualmachines/" + vmName + "/vnc"
+			url := apiServerHostname + "/apis/token.kubevirt.io/v1/namespaces/" + vmNamespace + "/virtualmachines/" + vmName + "/vnc"
 
 			// It may take a moment for the service to be reachable
 			Eventually(func(g Gomega) {

@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	routev1 "github.com/openshift/api/route/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
@@ -116,6 +117,29 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(apiService.Spec.Service.Namespace).To(Equal(namespace))
 	})
 
+	It("should remove old APIService on reconcile", func() {
+		oldApiService := &apiregv1.APIService{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "v1alpha1.token.kubevirt.io",
+				Labels: map[string]string{
+					common.AppKubernetesNameLabel:      operandName,
+					common.AppKubernetesComponentLabel: operandComponent,
+					common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+				},
+			},
+		}
+		Expect(libhandler.SetOwnerAnnotations(request.Instance, oldApiService)).To(Succeed())
+
+		Expect(request.Client.Create(request.Context, oldApiService)).To(Succeed())
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		key := client.ObjectKeyFromObject(oldApiService)
+		Expect(request.Client.Get(request.Context, key, &apiregv1.APIService{})).
+			To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+	})
+
 	It("should remove cluster resources on cleanup", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -144,6 +168,29 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceNotExists(bundle.Service, request)
 		ExpectResourceNotExists(bundle.Deployment, request)
 		ExpectResourceNotExists(bundle.ApiService, request)
+	})
+
+	It("should remove old APIService on cleanup", func() {
+		oldApiService := &apiregv1.APIService{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "v1alpha1.token.kubevirt.io",
+				Labels: map[string]string{
+					common.AppKubernetesNameLabel:      operandName,
+					common.AppKubernetesComponentLabel: operandComponent,
+					common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+				},
+			},
+		}
+		Expect(libhandler.SetOwnerAnnotations(request.Instance, oldApiService)).To(Succeed())
+
+		Expect(request.Client.Create(request.Context, oldApiService)).To(Succeed())
+
+		_, err := operand.Cleanup(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		key := client.ObjectKeyFromObject(oldApiService)
+		Expect(request.Client.Get(request.Context, key, &apiregv1.APIService{})).
+			To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 	})
 
 	DescribeTable("should delete Route leftover from previous version", func(op func() error) {
@@ -536,12 +583,12 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 		},
 		ApiService: &apiregv1.APIService{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "v1alpha1.token.kubevirt.io",
+				Name: "v1.token.kubevirt.io",
 			},
 			Spec: apiregv1.APIServiceSpec{
 				Group:                "token.kubevirt.io",
 				GroupPriorityMinimum: 2000,
-				Version:              "v1alpha1",
+				Version:              "v1",
 				VersionPriority:      10,
 				Service: &apiregv1.ServiceReference{
 					Name:      serviceName,
