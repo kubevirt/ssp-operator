@@ -108,7 +108,7 @@ func (v *vmConsoleProxy) WatchClusterTypes() []operands.WatchType {
 }
 
 func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	if request.Instance.Spec.FeatureGates == nil || !request.Instance.Spec.FeatureGates.DeployVmConsoleProxy {
+	if request.Instance.Spec.TokenGenerationService == nil || !request.Instance.Spec.TokenGenerationService.Enabled {
 		cleanupResults, err := v.Cleanup(request)
 		if err != nil {
 			return nil, err
