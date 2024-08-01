@@ -5,8 +5,9 @@ set -o pipefail
 
 # This function will be used in release branches
 function latest_patch_version() {
-  local repo="$1"
-  local minor_version="$2"
+  local org="$1"
+  local repo="$2"
+  local minor_version="$3"
 
   # The loop is necessary, because GitHub API call cannot return more than 100 items
   local latest_version=""
@@ -15,7 +16,7 @@ function latest_patch_version() {
     # Declared separately to not mask return value
     local versions_in_page
     versions_in_page=$(
-      curl --fail -s "https://api.github.com/repos/kubevirt/${repo}/releases?per_page=100&page=${page}" |
+      curl --fail -s "https://api.github.com/repos/${org}/${repo}/releases?per_page=100&page=${page}" |
       jq '.[] | select(.prerelease==false) | .tag_name' |
       tr -d '"'
     )
@@ -53,11 +54,11 @@ function latest_version() {
     tail -n1
 }
 
-# Latest released Kubevirt version
-KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
+# Fix kubevirt version to v1.2.x
+KUBEVIRT_VERSION=$(latest_patch_version "kubevirt" "kubevirt" "v1.2")
 
-# Latest released CDI version
-CDI_VERSION=$(latest_version "kubevirt" "containerized-data-importer")
+# Fix CDI version to v.1.59.x
+CDI_VERSION=$(latest_patch_version "kubevirt" "containerized-data-importer" "v1.59")
 
-# Latest released Tekton version
-TEKTON_VERSION=$(latest_version "tektoncd" "operator")
+# Using LTS tekton version v0.67
+TEKTON_VERSION=$(latest_patch_version "tektoncd" "operator" "v0.67")
