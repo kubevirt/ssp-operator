@@ -1,10 +1,10 @@
 package common
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -36,24 +36,28 @@ const (
 // Name will translate into the AppKubernetesNameLabel
 // Component will translate into the AppKubernetesComponentLabel
 // Instance wide labels will be taken from the request if available
-func AddAppLabels(requestInstance *ssp.SSP, name string, component AppComponent, obj client.Object) client.Object {
+func AddAppLabels(requestInstance *ssp.SSP, name string, component AppComponent, obj metav1.Object) metav1.Object {
 	labels := getOrCreateLabels(obj)
-	addInstanceLabels(requestInstance, labels)
-
-	labels[AppKubernetesNameLabel] = name
-	labels[AppKubernetesComponentLabel] = component.String()
-	labels[AppKubernetesManagedByLabel] = AppKubernetesManagedByValue
+	addCommonLabels(labels, requestInstance, name, component)
 
 	return obj
 }
 
-func getOrCreateLabels(obj client.Object) map[string]string {
+func getOrCreateLabels(obj metav1.Object) map[string]string {
 	labels := obj.GetLabels()
 	if labels == nil {
 		labels = map[string]string{}
 		obj.SetLabels(labels)
 	}
 	return labels
+}
+
+func addCommonLabels(labels map[string]string, requestInstance *ssp.SSP, name string, component AppComponent) {
+	addInstanceLabels(requestInstance, labels)
+
+	labels[AppKubernetesNameLabel] = name
+	labels[AppKubernetesComponentLabel] = component.String()
+	labels[AppKubernetesManagedByLabel] = AppKubernetesManagedByValue
 }
 
 func addInstanceLabels(requestInstance *ssp.SSP, to map[string]string) {
