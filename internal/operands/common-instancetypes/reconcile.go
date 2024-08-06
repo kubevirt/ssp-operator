@@ -272,6 +272,11 @@ func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]commo
 
 func (c *CommonInstancetypes) reconcileFromBundle(request *common.Request) ([]common.ReconcileResult, error) {
 	request.Logger.Info("Reconciling common-instancetypes from internal bundle")
+
+	// We need to clear the resourceURL, otherwise when switching between using and not using URL,
+	// the operator would not deploy resources from the URL.
+	c.resourceURL = ""
+
 	var err error
 	c.virtualMachineClusterInstancetypes, c.virtualMachineClusterPreferences, err = c.fetchResourcesFromBundle()
 	if err != nil {
