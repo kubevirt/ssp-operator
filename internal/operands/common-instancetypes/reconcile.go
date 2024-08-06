@@ -242,23 +242,25 @@ func (c *CommonInstancetypes) reconcileRemovedResources(request *common.Request)
 func (c *CommonInstancetypes) reconcileFromURL(request *common.Request) ([]common.ReconcileResult, error) {
 	// TODO - In the future we should handle cases where the URL remains the same but the provided resources change.
 	//nolint:staticcheck
-	if c.resourceURL != "" && c.resourceURL == *request.Instance.Spec.CommonInstancetypes.URL {
-		request.Logger.Info(fmt.Sprintf("Skipping reconcile of common-instancetypes from URL %s, force with a restart of the service.", *request.Instance.Spec.CommonInstancetypes.URL))
-		return nil, nil
+	if c.resourceURL == "" || c.resourceURL != *request.Instance.Spec.CommonInstancetypes.URL {
+		// Cache the URL, so we don't have to load it on every reconciliation.
+		//nolint:staticcheck
+		c.resourceURL = *request.Instance.Spec.CommonInstancetypes.URL
+
+		request.Logger.Info(fmt.Sprintf("Reading common-instancetypes from URL %s", c.resourceURL))
+
+		var err error
+		c.virtualMachineClusterInstancetypes, c.virtualMachineClusterPreferences, err = c.FetchResourcesFromURL(c.resourceURL)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		request.Logger.Info(fmt.Sprintf("Skipping reading common-instancetypes from URL %s. Using cached resources. Force with a restart of the service.", *request.Instance.Spec.CommonInstancetypes.URL))
 	}
 
-	// Cache the URL so we can check if it changes with future reconcile attempts above
-	//nolint:staticcheck
-	c.resourceURL = *request.Instance.Spec.CommonInstancetypes.URL
 	request.Logger.Info(fmt.Sprintf("Reconciling common-instancetypes from URL %s", c.resourceURL))
-	var err error
-	c.virtualMachineClusterInstancetypes, c.virtualMachineClusterPreferences, err = c.FetchResourcesFromURL(c.resourceURL)
-	if err != nil {
-		return nil, err
-	}
-
 	// Remove any resources no longer provided by the URL, this should only happen when switching from the internal bundle to external URL for now.
-	if err = c.reconcileRemovedResources(request); err != nil {
+	if err := c.reconcileRemovedResources(request); err != nil {
 		return nil, err
 	}
 
