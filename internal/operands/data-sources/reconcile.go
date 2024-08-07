@@ -19,7 +19,7 @@ import (
 // Define RBAC rules needed by this operand:
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;delete
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;rolebindings,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;rolebindings,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datasources,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=dataimportcrons,verbs=get;list;watch;create;update;patch;delete
 
@@ -47,15 +47,29 @@ func init() {
 }
 
 func WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &rbac.ClusterRole{}},
-		{Object: &rbac.Role{}},
-		{Object: &rbac.RoleBinding{}},
-		{Object: &core.Namespace{}},
+	return []operands.WatchType{{
+		Object:             &rbac.ClusterRole{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &rbac.Role{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &rbac.RoleBinding{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &core.Namespace{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object: &cdiv1beta1.DataSource{},
+		Crd:    dataSourceCrd,
 		// Need to watch status of DataSource to notice if referenced PVC was deleted.
-		{Object: &cdiv1beta1.DataSource{}, Crd: dataSourceCrd, WatchFullObject: true},
-		{Object: &cdiv1beta1.DataImportCron{}, Crd: dataImportCronCrd},
-	}
+		WatchFullObject:    true,
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &cdiv1beta1.DataImportCron{},
+		Crd:                dataImportCronCrd,
+		WatchOnlyWithLabel: true,
+	}}
 }
 
 type dataSources struct {
@@ -384,6 +398,10 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 		ClusterResource(dsInfo.dataSource).
 		Options(common.ReconcileOptions{AlwaysCallUpdateFunc: true}).
 		UpdateFunc(func(newRes, foundRes client.Object) {
+			// TODO -- think about data sources and the watched label
+			//  - if DS is created by CDI, it should not have the watched label
+			//  - how does this method work with stale cache?
+
 			if dsInfo.autoUpdateEnabled {
 				if foundRes.GetLabels() == nil {
 					foundRes.SetLabels(make(map[string]string))

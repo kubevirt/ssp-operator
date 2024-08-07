@@ -16,11 +16,11 @@ import (
 	"kubevirt.io/ssp-operator/internal/operands"
 )
 
-// +kubebuilder:rbac:groups=tekton.dev,resources=pipelines,verbs=list;watch;create;update
-// +kubebuilder:rbac:groups=tekton.dev,resources=tasks,verbs=list;watch;update
-// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=list;watch;update
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;rolebindings,verbs=list;watch;update
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=list;watch;create;update
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelines,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups=tekton.dev,resources=tasks,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;rolebindings,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update
 
 // Below are RBAC for deployed ClusterRoles. We still need these permissions so we can update annotations on existing ClusterRoles
 
@@ -50,6 +50,8 @@ func init() {
 
 func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
+		// Watch resources without label, because this is for cleanup.
+		// TODO -- think about adding the label to old resources too.
 		{Object: &v1.ConfigMap{}},
 		{Object: &rbac.ClusterRole{}},
 		{Object: &rbac.RoleBinding{}},

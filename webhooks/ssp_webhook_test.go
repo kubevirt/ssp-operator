@@ -39,6 +39,10 @@ import (
 )
 
 var _ = Describe("SSP Validation", func() {
+	const (
+		testOperatorNamespace = "kubevirt"
+	)
+
 	var (
 		client  client.Client
 		objects = make([]runtime.Object, 0)
@@ -57,7 +61,7 @@ var _ = Describe("SSP Validation", func() {
 
 		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objects...).Build()
 
-		validator = newSspValidator(client)
+		validator = newSspValidator(client, testOperatorNamespace)
 		ctx = context.Background()
 	})
 
@@ -79,13 +83,31 @@ var _ = Describe("SSP Validation", func() {
 			objects = make([]runtime.Object, 0)
 		})
 
+		It("should reject if it is not in operator namespace", func() {
+			ssp := &sspv1beta2.SSP{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ssp2",
+					Namespace: "test-ns2",
+				},
+				Spec: sspv1beta2.SSPSpec{
+					CommonTemplates: sspv1beta2.CommonTemplates{
+						Namespace: templatesNamespace,
+					},
+				},
+			}
+
+			_, err := validator.ValidateCreate(ctx, toUnstructured(ssp))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("SSP object must be in namespace"))
+		})
+
 		Context("when one is already present", func() {
 			BeforeEach(func() {
 				// add an SSP CR to fake client
 				objects = append(objects, &sspv1beta2.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:            "test-ssp",
-						Namespace:       "test-ns",
+						Namespace:       testOperatorNamespace,
 						ResourceVersion: "1",
 					},
 					Spec: sspv1beta2.SSPSpec{
@@ -100,7 +122,7 @@ var _ = Describe("SSP Validation", func() {
 				ssp := &sspv1beta2.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-ssp2",
-						Namespace: "test-ns2",
+						Namespace: testOperatorNamespace,
 					},
 					Spec: sspv1beta2.SSPSpec{
 						CommonTemplates: sspv1beta2.CommonTemplates{
@@ -111,7 +133,7 @@ var _ = Describe("SSP Validation", func() {
 
 				_, err := validator.ValidateCreate(ctx, toUnstructured(ssp))
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp"))
+				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace"))
 			})
 		})
 
@@ -119,7 +141,7 @@ var _ = Describe("SSP Validation", func() {
 			ssp := &sspv1beta1.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
-					Namespace: "test-ns",
+					Namespace: testOperatorNamespace,
 				},
 				Spec: sspv1beta1.SSPSpec{
 					TemplateValidator: &sspv1beta1.TemplateValidator{
@@ -170,7 +192,7 @@ var _ = Describe("SSP Validation", func() {
 			oldSSP = &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
-					Namespace: "test-ns",
+					Namespace: testOperatorNamespace,
 				},
 				Spec: sspv1beta2.SSPSpec{
 					CommonTemplates: sspv1beta2.CommonTemplates{
@@ -231,7 +253,8 @@ var _ = Describe("SSP Validation", func() {
 			})
 			sspObj = &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "ssp",
+					Name:      "ssp",
+					Namespace: testOperatorNamespace,
 				},
 				Spec: sspv1beta2.SSPSpec{
 					CommonTemplates: sspv1beta2.CommonTemplates{

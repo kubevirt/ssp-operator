@@ -30,9 +30,11 @@ func init() {
 }
 
 func WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &templatev1.Template{}},
-	}
+	return []operands.WatchType{{
+		Object: &templatev1.Template{},
+		// TODO -- consider setting to "true" in the future
+		WatchOnlyWithLabel: false,
+	}}
 }
 
 type commonTemplates struct {
