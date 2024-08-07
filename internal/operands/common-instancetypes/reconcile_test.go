@@ -376,6 +376,56 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		assertResoucesDoNotExist(request, originalInstancetypes, originalPreferences)
 	})
 
+	It("should clear URL cache when switching between internal bundle and URL", func() {
+		By("creating resources from URL")
+
+		mockResMap, instancetypesFromURL, preferencesFromURL, err := newMockResources(2, 2)
+		Expect(err).ToNot(HaveOccurred())
+
+		operand.KustomizeRunFunc = func(_ filesys.FileSystem, _ string) (resmap.ResMap, error) {
+			return mockResMap, nil
+		}
+
+		const testURL = "https://example.org/foo?ref=1"
+
+		//nolint:staticcheck
+		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
+			URL: ptr.To(testURL),
+		}
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+		assertResoucesExist(request, instancetypesFromURL, preferencesFromURL)
+
+		By("Creating resources from internal bundle")
+
+		instancetypesFromBundle, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype](instancetypePath)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(instancetypesFromBundle).ToNot(BeEmpty())
+
+		preferencesFromBundle, err := FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference](preferencePath)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(preferencesFromBundle).ToNot(BeEmpty())
+
+		//nolint:staticcheck
+		request.Instance.Spec.CommonInstancetypes.URL = nil
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+		assertResoucesExist(request, instancetypesFromBundle, preferencesFromBundle)
+
+		By("creating resources from the same URL again")
+
+		//nolint:staticcheck
+		request.Instance.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
+			URL: ptr.To(testURL),
+		}
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+		assertResoucesExist(request, instancetypesFromURL, preferencesFromURL)
+	})
+
 	It("should not cleanup any user resources when reconciling from a URL", func() {
 		instancetype := newVirtualMachineClusterInstancetype("user-instancetype")
 		Expect(request.Client.Create(request.Context, instancetype, &client.CreateOptions{})).To(Succeed())
