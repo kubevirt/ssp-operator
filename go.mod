@@ -21,7 +21,7 @@ require (
 	github.com/prometheus/common v0.41.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	github.com/tektoncd/pipeline v0.41.2
+	github.com/tektoncd/pipeline v0.52.1
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.27.7
 	k8s.io/apiextensions-apiserver v0.26.10
