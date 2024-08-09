@@ -6,13 +6,13 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-logr/logr v1.4.2
-	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
+	github.com/kubevirt/monitoring/pkg/metrics/parser 7667760c3f72
 	github.com/machadovilaca/operator-observability v0.0.21
-	github.com/onsi/ginkgo/v2 v2.19.0
+	github.com/onsi/ginkgo/v2 v2.20.0
 	github.com/onsi/gomega v1.34.1
-	github.com/openshift/api v0.0.0-20240702171116-4b89b3a92a17 // release-4.16
+	github.com/openshift/api 7f2da4ccc272 // release-4.16
 	github.com/openshift/custom-resource-status v1.1.2
-	github.com/openshift/library-go v0.0.0-20240711192904-190fec8c3f09 // release-4.16
+	github.com/openshift/library-go 8211143dfde7 // release-4.16
 	github.com/operator-framework/api v0.26.0
 	github.com/operator-framework/operator-lib v0.14.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.75.2
@@ -21,19 +21,19 @@ require (
 	github.com/prometheus/common v0.55.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/tektoncd/pipeline v0.62.0
-	gomodules.xyz/jsonpatch/v2 v2.4.0
+	github.com/tektoncd/pipeline v0.62.1
+	gomodules.xyz/jsonpatch/v2/v3 v3.0.1
 	k8s.io/api v0.30.3
 	k8s.io/apiextensions-apiserver v0.30.3
 	k8s.io/apimachinery v0.30.3
 	k8s.io/client-go v0.30.3
 	k8s.io/kube-aggregator v0.30.3
-	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
+	k8s.io/utils 18e509b52bc8
 	kubevirt.io/api v1.3.0
 	kubevirt.io/containerized-data-importer-api v1.59.0
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/qe-tools v0.1.8
-	kubevirt.io/ssp-operator/api v0.0.0
+	kubevirt.io/ssp-operator/api v0.20.0
 	sigs.k8s.io/controller-runtime v0.18.4
 	sigs.k8s.io/kustomize/api v0.17.3
 	sigs.k8s.io/kustomize/kyaml v0.17.2
