@@ -10,6 +10,7 @@
   "lockFileMaintenance": {
     "enabled": false
   },
+  "postUpdateOptions": ["gomodTidy"],
   "labels": ["release-note-none"],
   "extends": [":gitSignOff"],
   "packageRules": [
