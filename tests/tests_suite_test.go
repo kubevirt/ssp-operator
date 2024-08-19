@@ -121,8 +121,8 @@ func (s *newSspStrategy) Init() {
 			CommonTemplates: sspv1beta2.CommonTemplates{
 				Namespace: s.GetTemplatesNamespace(),
 			},
-			TokenGenerationService: &sspv1beta2.TokenGenerationService{
-				Enabled: true,
+			FeatureGates: &sspv1beta2.FeatureGates{
+				DeployVmConsoleProxy: true,
 			},
 		},
 	}
