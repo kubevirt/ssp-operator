@@ -27,10 +27,8 @@ RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -ldflags="-X 'kubevirt.i
 -X 'kubevirt.io/ssp-operator/internal/template-validator/version.BRANCH=$BRANCH'\
 -X 'kubevirt.io/ssp-operator/internal/template-validator/version.REVISION=$REVISION'" -o kubevirt-template-validator internal/template-validator/main.go
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal
+FROM registry.access.redhat.com/ubi9/ubi-micro
 RUN mkdir -p /etc/webhook/certs
-
-RUN microdnf update -y  && microdnf clean all
 
 WORKDIR /
 COPY --from=builder /workspace/kubevirt-template-validator /usr/sbin/kubevirt-template-validator
