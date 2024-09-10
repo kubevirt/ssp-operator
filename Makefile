@@ -219,14 +219,7 @@ build-template-validator:
 
 .PHONY: build-template-validator-container
 build-template-validator-container:
-	${SSP_BUILD_RUNTIME} build -t ${VALIDATOR_IMG} \
-		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
-		--build-arg IMG_TAG=${IMG_TAG} \
-		--build-arg IMG=${IMG} \
-		--build-arg VALIDATOR_REPOSITORY=${VALIDATOR_REPOSITORY} \
-		--build-arg VALIDATOR_IMG_TAG=${VALIDATOR_IMG_TAG} \
-		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
-		. -f validator.Dockerfile
+	${SSP_BUILD_RUNTIME} build -t ${VALIDATOR_IMG} . -f validator.Dockerfile
 
 .PHONY: push-template-validator-container
 push-template-validator-container:
