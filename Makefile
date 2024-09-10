@@ -75,9 +75,6 @@ else
 OC = oc
 endif
 
-# Default to podman
-SSP_BUILD_RUNTIME ?= podman
-
 ifndef ignore-not-found
   ignore-not-found = false
 endif
@@ -199,7 +196,7 @@ container-build: unittest bundle
 	mkdir -p data/crd
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	${SSP_BUILD_RUNTIME} build -t ${IMG} \
+	podman build -t ${IMG} \
 		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
 		--build-arg IMG_TAG=${IMG_TAG} \
 		--build-arg IMG=${IMG} \
@@ -211,7 +208,7 @@ container-build: unittest bundle
 # Push the container image
 .PHONY: container-push
 container-push:
-	${SSP_BUILD_RUNTIME} push ${IMG}
+	podman push ${IMG}
 
 .PHONY: build-template-validator
 build-template-validator:
@@ -219,11 +216,11 @@ build-template-validator:
 
 .PHONY: build-template-validator-container
 build-template-validator-container:
-	${SSP_BUILD_RUNTIME} build -t ${VALIDATOR_IMG} . -f validator.Dockerfile
+	podman build -t ${VALIDATOR_IMG} . -f validator.Dockerfile
 
 .PHONY: push-template-validator-container
 push-template-validator-container:
-	${SSP_BUILD_RUNTIME} push ${VALIDATOR_IMG}
+	podman push ${VALIDATOR_IMG}
 
 
 ##@ Build Dependencies
@@ -282,7 +279,7 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build:
-	${SSP_BUILD_RUNTIME} build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	podman build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: release
 release: container-build container-push build-template-validator-container push-template-validator-container bundle build-functests
