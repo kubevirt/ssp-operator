@@ -216,11 +216,13 @@ build-template-validator:
 
 .PHONY: build-template-validator-container
 build-template-validator-container:
-	podman build -t ${VALIDATOR_IMG} . -f validator.Dockerfile
+	podman manifest rm ${VALIDATOR_IMG} || true && \
+	podman build --build-arg TARGET_ARCH=amd64 --manifest=${VALIDATOR_IMG} . -f validator.Dockerfile && \
+	podman build --build-arg TARGET_ARCH=s390x --manifest=${VALIDATOR_IMG} . -f validator.Dockerfile
 
 .PHONY: push-template-validator-container
 push-template-validator-container:
-	podman push ${VALIDATOR_IMG}
+	podman manifest push ${VALIDATOR_IMG}
 
 
 ##@ Build Dependencies
