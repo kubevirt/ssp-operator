@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kustomize/api/krusty"
@@ -173,7 +175,7 @@ func (c *CommonInstancetypes) FetchResourcesFromURL(URL string) ([]instancetypev
 }
 
 func (c *CommonInstancetypes) fetchExistingResources(request *common.Request) ([]instancetypev1beta1.VirtualMachineClusterInstancetype, []instancetypev1beta1.VirtualMachineClusterPreference, error) {
-	selector, err := common.GetAppNameSelector(c.Name())
+	selector, err := appNameSelector(c.Name())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -333,25 +335,49 @@ func (c *CommonInstancetypes) cleanupReconcile(request *common.Request) ([]commo
 }
 
 func (c *CommonInstancetypes) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	var objects []client.Object
+	selector, err := appNameSelector(c.Name())
+	if err != nil {
+		return nil, err
+	}
+	listOpts := &client.ListOptions{
+		LabelSelector: selector,
+	}
 
-	// Before collecting resources to clean up ensure the corresponding CRD is available
+	var allResults []common.CleanupResult
+
 	if request.CrdList.CrdExists(virtualMachineClusterInstancetypeCrd) {
-		for i := range c.virtualMachineClusterInstancetypes {
-			objects = append(objects, &c.virtualMachineClusterInstancetypes[i])
+		results, err := common.CleanupResources[
+			instancetypev1beta1.VirtualMachineClusterInstancetypeList,
+			instancetypev1beta1.VirtualMachineClusterInstancetype,
+		](request, listOpts)
+		if err != nil {
+			return nil, err
 		}
+
+		allResults = append(allResults, results...)
 	}
+
 	if request.CrdList.CrdExists(virtualMachineClusterPreferenceCrd) {
-		for i := range c.virtualMachineClusterPreferences {
-			objects = append(objects, &c.virtualMachineClusterPreferences[i])
+		results, err := common.CleanupResources[
+			instancetypev1beta1.VirtualMachineClusterPreferenceList,
+			instancetypev1beta1.VirtualMachineClusterPreference,
+		](request, listOpts)
+		if err != nil {
+			return nil, err
 		}
+
+		allResults = append(allResults, results...)
 	}
 
-	if len(objects) > 0 {
-		return common.DeleteAll(request, objects...)
-	}
+	return allResults, nil
+}
 
-	return nil, nil
+func appNameSelector(name string) (labels.Selector, error) {
+	appNameRequirement, err := labels.NewRequirement(common.AppKubernetesNameLabel, selection.Equals, []string{name})
+	if err != nil {
+		return nil, err
+	}
+	return labels.NewSelector().Add(*appNameRequirement), nil
 }
 
 func (c *CommonInstancetypes) reconcileFuncs(request *common.Request) ([]common.ReconcileFunc, error) {
