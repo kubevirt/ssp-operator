@@ -31,15 +31,8 @@ func (c *CommonInstancetypes) Name() string {
 	return operandName
 }
 
-func WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &instancetypev1beta1.VirtualMachineClusterInstancetype{}, Crd: virtualMachineClusterInstancetypeCrd, WatchFullObject: true},
-		{Object: &instancetypev1beta1.VirtualMachineClusterPreference{}, Crd: virtualMachineClusterPreferenceCrd, WatchFullObject: true},
-	}
-}
-
 func (c *CommonInstancetypes) WatchClusterTypes() []operands.WatchType {
-	return WatchClusterTypes()
+	return nil
 }
 
 func (c *CommonInstancetypes) WatchTypes() []operands.WatchType {

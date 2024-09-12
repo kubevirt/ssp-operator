@@ -63,6 +63,8 @@ var _ = Describe("Common Instance Types", func() {
 			Expect(apiClient.Delete(ctx, instanceType)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
 		})
 
+		triggerReconciliation()
+
 		// Eventually the instance type should be removed by SSP
 		Eventually(func() error {
 			return apiClient.Get(ctx, client.ObjectKeyFromObject(instanceType),
@@ -90,6 +92,8 @@ var _ = Describe("Common Instance Types", func() {
 		DeferCleanup(func() {
 			Expect(apiClient.Delete(ctx, preference)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
 		})
+
+		triggerReconciliation()
 
 		// Eventually the preference should be removed by SSP
 		Eventually(func() error {
