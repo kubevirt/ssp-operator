@@ -12,8 +12,8 @@ import (
 )
 
 // Define RBAC rules needed by this operand:
-// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterinstancetypes,verbs=list;watch;create;update;delete
-// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterpreferences,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterinstancetypes,verbs=list;watch;delete
+// +kubebuilder:rbac:groups=instancetype.kubevirt.io,resources=virtualmachineclusterpreferences,verbs=list;watch;delete
 
 const (
 	operandName                          = "common-instancetypes"

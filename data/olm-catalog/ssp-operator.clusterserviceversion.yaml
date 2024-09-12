@@ -288,20 +288,16 @@ spec:
           resources:
           - virtualmachineclusterinstancetypes
           verbs:
-          - create
           - delete
           - list
-          - update
           - watch
         - apiGroups:
           - instancetype.kubevirt.io
           resources:
           - virtualmachineclusterpreferences
           verbs:
-          - create
           - delete
           - list
-          - update
           - watch
         - apiGroups:
           - kubevirt.io
