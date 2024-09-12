@@ -136,9 +136,9 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("should cleanup any resources no longer provided by the bundle", func() {
+	It("should cleanup any resources previously created by SSP", func() {
 		// Create an instancetype and preference, marking both as owned by this operand
-		instancetype := newVirtualMachineClusterInstancetype("no-longer-provided-instancetype")
+		instancetype := newVirtualMachineClusterInstancetype("old-instancetype")
 		instancetype.ObjectMeta.Annotations = map[string]string{
 			libhandler.NamespacedNameAnnotation: types.NamespacedName{
 				Namespace: request.Instance.Namespace,
@@ -149,7 +149,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		instancetype.ObjectMeta.Labels = map[string]string{common.AppKubernetesNameLabel: operand.Name()}
 		Expect(request.Client.Create(request.Context, instancetype, &client.CreateOptions{})).To(Succeed())
 
-		preference := newVirtualMachineClusterPreference("no-longer-provided-preference")
+		preference := newVirtualMachineClusterPreference("old-preference")
 		preference.ObjectMeta.Labels = map[string]string{common.AppKubernetesNameLabel: operand.Name()}
 		preference.ObjectMeta.Annotations = map[string]string{
 			libhandler.NamespacedNameAnnotation: types.NamespacedName{
@@ -166,7 +166,7 @@ var _ = Describe("Common-Instancetypes operand", func() {
 		ExpectResourceNotExists(preference, request)
 	})
 
-	It("should not cleanup any user resources when reconciling the bundle", func() {
+	It("should not remove resources not created by SSP", func() {
 		instancetype := newVirtualMachineClusterInstancetype("user-instancetype")
 		Expect(request.Client.Create(request.Context, instancetype, &client.CreateOptions{})).To(Succeed())
 
