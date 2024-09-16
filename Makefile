@@ -256,7 +256,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 
 # Download operator-sdk locally if necessary
 $(OPERATOR_SDK): $(LOCALBIN)
-	curl --create-dirs -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_linux_amd64 -o $(OPERATOR_SDK)
+	curl --create-dirs -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_linux_$(ARCH) -o $(OPERATOR_SDK)
 	chmod 0755 $(OPERATOR_SDK)
 
 .PHONY: operator-sdk
