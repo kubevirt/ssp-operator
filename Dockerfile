@@ -3,7 +3,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal as builder
 
 RUN microdnf install -y make tar gzip which && microdnf clean all
 
-RUN curl -L https://go.dev/dl/go1.22.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+RUN export ARCH=$(uname -m | sed 's/x86_64/amd64/'); curl -L https://go.dev/dl/go1.22.4.linux-${ARCH}.tar.gz | tar -C /usr/local -xzf -
 ENV PATH=$PATH:/usr/local/go/bin
 
 # Consume required variables so we can work with make
@@ -35,8 +35,8 @@ COPY hack/csv-generator.go hack/csv-generator.go
 COPY .golangci.yaml .golangci.yaml
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make manager
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make csv-generator
+RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on make manager
+RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on make csv-generator
 
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
