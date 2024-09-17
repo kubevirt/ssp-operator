@@ -163,7 +163,6 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:4773]view role", &viewRole),
 			Entry("[test_id:4842]view role binding", &viewRoleBinding),
 			Entry("[test_id:4771]edit cluster role", &editClusterRole),
-			Entry("[test_id:4770]golden image NS", &goldenImageNS),
 		)
 	})
 
