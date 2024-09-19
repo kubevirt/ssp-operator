@@ -39,7 +39,7 @@ RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on make manager
 RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on make csv-generator
 
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal
+FROM registry.access.redhat.com/ubi9/ubi-micro
 LABEL org.kubevirt.hco.csv-generator.v1="/csv-generator"
 
 WORKDIR /
