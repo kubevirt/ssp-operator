@@ -197,11 +197,6 @@ container-build: unittest bundle
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
 	podman build -t ${IMG} \
-		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
-		--build-arg IMG_TAG=${IMG_TAG} \
-		--build-arg IMG=${IMG} \
-		--build-arg VALIDATOR_REPOSITORY=${VALIDATOR_REPOSITORY} \
-		--build-arg VALIDATOR_IMG_TAG=${VALIDATOR_IMG_TAG} \
 		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
 		.
 

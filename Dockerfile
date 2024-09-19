@@ -7,11 +7,6 @@ RUN export ARCH=$(uname -m | sed 's/x86_64/amd64/'); curl -L https://go.dev/dl/g
 ENV PATH=$PATH:/usr/local/go/bin
 
 # Consume required variables so we can work with make
-ARG IMG_REPOSITORY
-ARG IMG_TAG
-ARG IMG
-ARG VALIDATOR_REPOSITORY
-ARG VALIDATOR_IMG_TAG
 ARG VALIDATOR_IMG
 
 WORKDIR /workspace
