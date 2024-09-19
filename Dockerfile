@@ -1,5 +1,14 @@
-# Build the manager binary
+# Build this Dockerfile using the command: make container-build
+#
+# This multi-stage image approach prevents issues related to cached builder images,
+# which may be incompatible due to different architectures, potentially slowing down or breaking the build process.
+#
+# By utilizing Go cross-compilation, we can build the target Go binary from the host architecture
+# and then copy it to the target image with the desired architecture.
+
+ARG TARGET_ARCH=amd64
 FROM registry.access.redhat.com/ubi9/ubi-minimal as builder
+ARG TARGET_ARCH
 
 RUN microdnf install -y make tar gzip which && microdnf clean all
 
@@ -29,12 +38,12 @@ COPY hack/csv-generator.go hack/csv-generator.go
 # Copy .golangci.yaml so we can run lint as part of the build process
 COPY .golangci.yaml .golangci.yaml
 
-# Build
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on make manager
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on make csv-generator
+# Build the manager binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGET_ARCH} GO111MODULE=on make manager
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGET_ARCH} GO111MODULE=on make csv-generator
 
 
-FROM registry.access.redhat.com/ubi9/ubi-micro
+FROM --platform=linux/${TARGET_ARCH} registry.access.redhat.com/ubi9/ubi-micro
 LABEL org.kubevirt.hco.csv-generator.v1="/csv-generator"
 
 WORKDIR /
