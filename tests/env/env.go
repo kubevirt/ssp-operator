@@ -10,7 +10,6 @@ import (
 
 const (
 	envExistingCrName         = "TEST_EXISTING_CR_NAME"
-	envExistingCrNamespace    = "TEST_EXISTING_CR_NAMESPACE"
 	envSkipUpdateSspTests     = "SKIP_UPDATE_SSP_TESTS"
 	envSkipCleanupAfterTests  = "SKIP_CLEANUP_AFTER_TESTS"
 	envTimeout                = "TIMEOUT_MINUTES"
@@ -29,10 +28,6 @@ const (
 
 func ExistingCrName() string {
 	return os.Getenv(envExistingCrName)
-}
-
-func ExistingCrNamespace() string {
-	return os.Getenv(envExistingCrNamespace)
 }
 
 func IsUpgradeLane() bool {

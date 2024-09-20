@@ -28,6 +28,8 @@ const (
 	name      = "test-ssp"
 )
 
+// TODO -- add unit tests for the watch label
+
 var _ = Describe("Resource", func() {
 	var (
 		request Request
@@ -339,6 +341,11 @@ func expectEqualResourceExists(resource client.Object, request *Request) {
 	resource.SetGeneration(found.GetGeneration())
 	resource.SetResourceVersion(found.GetResourceVersion())
 	resource.SetOwnerReferences(found.GetOwnerReferences())
+
+	if resource.GetLabels() == nil {
+		resource.SetLabels(map[string]string{})
+	}
+	resource.GetLabels()[WatchedObjectLabel] = "true"
 
 	ExpectWithOffset(1, found).To(Equal(resource))
 }

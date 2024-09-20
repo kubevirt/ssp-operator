@@ -89,17 +89,6 @@ func (s *newSspStrategy) Init() {
 	validateDeploymentExists()
 
 	Eventually(func() error {
-		namespaceObj := &v1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: s.GetNamespace(),
-				Labels: map[string]string{
-					"openshift.io/cluster-monitoring": "true",
-				},
-			}}
-		return apiClient.Create(ctx, namespaceObj)
-	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
-
-	Eventually(func() error {
 		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}}
 		return apiClient.Create(ctx, namespaceObj)
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
@@ -149,12 +138,9 @@ func (s *newSspStrategy) Cleanup() {
 		}, &sspv1beta2.SSP{})
 	}
 
-	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}})
-	err2 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}})
-	expectSuccessOrNotFound(err1)
-	expectSuccessOrNotFound(err2)
+	err := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}})
+	expectSuccessOrNotFound(err)
 
-	waitForDeletion(client.ObjectKey{Name: s.GetNamespace()}, &v1.Namespace{})
 	waitForDeletion(client.ObjectKey{Name: s.GetTemplatesNamespace()}, &v1.Namespace{})
 }
 
@@ -163,8 +149,7 @@ func (s *newSspStrategy) GetName() string {
 }
 
 func (s *newSspStrategy) GetNamespace() string {
-	const testNamespace = "ssp-operator-functests"
-	return testNamespace
+	return sspDeploymentNamespace
 }
 
 func (s *newSspStrategy) GetTemplatesNamespace() string {
@@ -229,8 +214,7 @@ func skipIfUpgradeLane() {
 }
 
 type existingSspStrategy struct {
-	Name      string
-	Namespace string
+	Name string
 
 	ssp *sspv1beta2.SSP
 }
@@ -239,7 +223,7 @@ var _ TestSuiteStrategy = &existingSspStrategy{}
 
 func (s *existingSspStrategy) Init() {
 	existingSsp := &sspv1beta2.SSP{}
-	err := apiClient.Get(ctx, client.ObjectKey{Name: s.Name, Namespace: s.Namespace}, existingSsp)
+	err := apiClient.Get(ctx, client.ObjectKey{Name: s.Name, Namespace: sspDeploymentNamespace}, existingSsp)
 	Expect(err).ToNot(HaveOccurred())
 
 	templatesNamespace := existingSsp.Spec.CommonTemplates.Namespace
@@ -300,7 +284,7 @@ func (s *existingSspStrategy) GetName() string {
 }
 
 func (s *existingSspStrategy) GetNamespace() string {
-	return s.Namespace
+	return sspDeploymentNamespace
 }
 
 func (s *existingSspStrategy) GetTemplatesNamespace() string {
@@ -409,9 +393,7 @@ var _ = BeforeSuite(func() {
 	if existingCrName == "" {
 		strategy = &newSspStrategy{}
 	} else {
-		existingCrNamespace := env.ExistingCrNamespace()
-		Expect(existingCrNamespace).ToNot(BeEmpty(), "Existing CR Namespace needs to be defined")
-		strategy = &existingSspStrategy{Name: existingCrName, Namespace: existingCrNamespace}
+		strategy = &existingSspStrategy{Name: existingCrName}
 	}
 
 	fmt.Println(fmt.Sprintf("timeout set to %d minutes", env.Timeout()))

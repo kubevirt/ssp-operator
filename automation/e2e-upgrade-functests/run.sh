@@ -35,17 +35,8 @@ oc apply -n $NAMESPACE -f "https://github.com/kubevirt/ssp-operator/releases/dow
 oc wait --for=condition=Available --timeout=600s -n ${NAMESPACE} deployments/ssp-operator
 
 SSP_NAME="ssp-test"
-SSP_NAMESPACE="ssp-operator-functests"
+SSP_NAMESPACE="kubevirt"
 SSP_TEMPLATES_NAMESPACE="ssp-operator-functests-templates"
-
-oc apply -f - <<EOF
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ${SSP_NAMESPACE}
-  labels:
-    openshift.io/cluster-monitoring: "true"
-EOF
 
 oc apply -f - <<EOF
 apiVersion: v1
@@ -66,7 +57,6 @@ export VALIDATOR_IMG=${CI_VALIDATOR_IMG}
 export IMG=${CI_OPERATOR_IMG}
 export SKIP_CLEANUP_AFTER_TESTS="true"
 export TEST_EXISTING_CR_NAME="${SSP_NAME}"
-export TEST_EXISTING_CR_NAMESPACE="${SSP_NAMESPACE}"
 export IS_UPGRADE_LANE="true"
 
 make deploy functest

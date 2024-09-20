@@ -8,6 +8,8 @@ import (
 )
 
 const (
+	WatchedObjectLabel = "ssp.kubevirt.io/watched"
+
 	AppKubernetesNameLabel      = "app.kubernetes.io/name"
 	AppKubernetesPartOfLabel    = "app.kubernetes.io/part-of"
 	AppKubernetesVersionLabel   = "app.kubernetes.io/version"

@@ -27,13 +27,13 @@ const (
 
 // Define RBAC rules needed by this operand:
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;delete
-// +kubebuilder:rbac:groups=core,resources=configmaps;serviceaccounts,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps;serviceaccounts,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;delete
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings;rolebindings,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings;rolebindings,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=get;list;watch;create;update;delete
 
 // Deprecated:
-// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list;watch;delete
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;delete
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
@@ -52,11 +52,16 @@ func init() {
 }
 
 func WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &rbac.ClusterRole{}},
-		{Object: &rbac.ClusterRoleBinding{}},
-		{Object: &apiregv1.APIService{}},
-	}
+	return []operands.WatchType{{
+		Object:             &rbac.ClusterRole{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &rbac.ClusterRoleBinding{},
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &apiregv1.APIService{},
+		WatchOnlyWithLabel: true,
+	}}
 }
 
 func WatchTypes() []operands.WatchType {

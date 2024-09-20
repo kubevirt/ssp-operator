@@ -10,8 +10,8 @@ import (
 )
 
 // Define RBAC rules needed by this operand:
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules;servicemonitors,verbs=list;watch;create;update
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules;servicemonitors,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups="",resources=pods;endpoints,verbs=get;list;watch
 
 const prometheusRulesCrd = "prometheusrules.monitoring.coreos.com"
@@ -28,10 +28,15 @@ func WatchTypes() []operands.WatchType {
 }
 
 func WatchClusterTypes() []operands.WatchType {
-	return []operands.WatchType{
-		{Object: &rbac.ClusterRole{}, Crd: prometheusRulesCrd},
-		{Object: &rbac.ClusterRoleBinding{}, Crd: prometheusRulesCrd},
-	}
+	return []operands.WatchType{{
+		Object:             &rbac.ClusterRole{},
+		Crd:                prometheusRulesCrd,
+		WatchOnlyWithLabel: true,
+	}, {
+		Object:             &rbac.ClusterRoleBinding{},
+		Crd:                prometheusRulesCrd,
+		WatchOnlyWithLabel: true,
+	}}
 }
 
 type metrics struct{}
