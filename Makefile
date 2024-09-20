@@ -196,14 +196,14 @@ container-build: unittest bundle
 	mkdir -p data/crd
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	podman build -t ${IMG} \
-		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
-		.
+	podman manifest rm ${IMG} || true
+	podman build --build-arg TARGET_ARCH=amd64 --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} . && \
+    podman build --build-arg TARGET_ARCH=s390x --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} .
 
 # Push the container image
 .PHONY: container-push
 container-push:
-	podman push ${IMG}
+	podman manifest push ${IMG}
 
 .PHONY: build-template-validator
 build-template-validator:
@@ -244,10 +244,13 @@ kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
 	test -s $(LOCALBIN)/kustomize || curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
 
+# The final line allows for downloading and copying into the LOCALBIN folder when cross-compiling, as GOBIN is not compatible with setting a different GOARCH
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
 $(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	test -s $(LOCALBIN)/controller-gen || \
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION) || \
+	(go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION) && mv $(shell go env GOPATH)/bin/$(shell go env GOOS)_$(shell go env GOARCH)/controller-gen $(LOCALBIN)/controller-gen)
 
 # Download operator-sdk locally if necessary
 $(OPERATOR_SDK): $(LOCALBIN)
