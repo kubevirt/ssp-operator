@@ -566,3 +566,27 @@ func AppendDeepCopies[PT interface {
 	}
 	return destination
 }
+
+func CleanupResources[L any, T any, PtrL interface {
+	*L
+	client.ObjectList
+}, PtrT interface {
+	*T
+	client.Object
+}](request *Request, listOpts ...client.ListOption) ([]CleanupResult, error) {
+	resources, err := ListOwnedResources[L, T, PtrL, PtrT](request, listOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list owned resources: %w", err)
+	}
+
+	results := make([]CleanupResult, 0, len(resources))
+	for i := range resources {
+		resource := PtrT(&resources[i])
+		cleanupResult, err := Cleanup(request, resource)
+		if err != nil {
+			return nil, fmt.Errorf("failed to cleanup resource: %w", err)
+		}
+		results = append(results, cleanupResult)
+	}
+	return results, nil
+}

@@ -214,69 +214,6 @@ var _ = Describe("SSP Validation", func() {
 		})
 	})
 
-	Context("CommonInstancetypes", func() {
-
-		const (
-			templatesNamespace = "test-templates-ns"
-		)
-
-		var sspObj *sspv1beta2.SSP
-
-		BeforeEach(func() {
-			objects = append(objects, &v1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            templatesNamespace,
-					ResourceVersion: "1",
-				},
-			})
-			sspObj = &sspv1beta2.SSP{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "ssp",
-				},
-				Spec: sspv1beta2.SSPSpec{
-					CommonTemplates: sspv1beta2.CommonTemplates{
-						Namespace: templatesNamespace,
-					},
-					CommonInstancetypes: &sspv1beta2.CommonInstancetypes{},
-				},
-			}
-		})
-
-		AfterEach(func() {
-			objects = make([]runtime.Object, 0)
-		})
-
-		It("should reject URL without https:// or ssh://", func() {
-			//nolint:staticcheck
-			sspObj.Spec.CommonInstancetypes.URL = ptr.To("file://foo/bar")
-			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should reject URL without ?ref= or ?version=", func() {
-			//nolint:staticcheck
-			sspObj.Spec.CommonInstancetypes.URL = ptr.To("https://foo.com/bar")
-			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
-			Expect(err).To(HaveOccurred())
-		})
-
-		DescribeTable("should accept a valid remote kustomize target URL", func(url string) {
-			//nolint:staticcheck
-			sspObj.Spec.CommonInstancetypes.URL = ptr.To(url)
-			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
-			Expect(err).ToNot(HaveOccurred())
-		},
-			Entry("https:// with ?ref=", "https://foo.com/bar?ref=1234"),
-			Entry("https:// with ?target=", "https://foo.com/bar?version=1234"),
-			Entry("ssh:// with ?ref=", "ssh://foo.com/bar?ref=1234"),
-			Entry("ssh:// with ?target=", "ssh://foo.com/bar?version=1234"),
-		)
-
-		It("should accept when no URL is provided", func() {
-			_, err := validator.ValidateCreate(ctx, toUnstructured(sspObj))
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
 })
 
 func toUnstructured(obj runtime.Object) *unstructured.Unstructured {

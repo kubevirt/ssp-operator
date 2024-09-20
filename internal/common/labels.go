@@ -2,8 +2,6 @@ package common
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 )
 
@@ -69,12 +67,4 @@ func addInstanceLabels(requestInstance *ssp.SSP, to map[string]string) {
 
 func copyLabel(from, to map[string]string, key string) {
 	to[key] = from[key]
-}
-
-func GetAppNameSelector(name string) (labels.Selector, error) {
-	appNameRequirement, err := labels.NewRequirement(AppKubernetesNameLabel, selection.Equals, []string{name})
-	if err != nil {
-		return nil, err
-	}
-	return labels.NewSelector().Add(*appNameRequirement), nil
 }

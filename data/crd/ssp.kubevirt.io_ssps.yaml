@@ -3302,10 +3302,8 @@ spec:
             properties:
               commonInstancetypes:
                 description: |-
-                  CommonInstancetypes is the configuration of the common-instancetypes operand
-
-
-                  Deprecated: This functionality will be removed in a future release.
+                  CommonInstancetypes is ignored.
+                  Deprecated: This field is ignored.
                 properties:
                   url:
                     description: |-
@@ -4189,8 +4187,7 @@ spec:
                 description: FeatureGates for SSP
                 properties:
                   deployCommonInstancetypes:
-                    description: Enables deployment of the common-instancetypes bundles,
-                      defaults to true.
+                    description: 'Deprecated: This field is ignored.'
                     type: boolean
                   deployTektonTaskResources:
                     description: 'Deprecated: This field is ignored.'

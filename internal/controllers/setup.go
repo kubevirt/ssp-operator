@@ -64,10 +64,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 
 	sspOperands := []operands.Operand{
 		// The bundle paths are not hardcoded within New to allow tests to use a different path
-		common_instancetypes.New(
-			common_instancetypes.BundleDir+common_instancetypes.ClusterInstancetypesBundle,
-			common_instancetypes.BundleDir+common_instancetypes.ClusterPreferencesBundle,
-		),
+		common_instancetypes.New(),
 		data_sources.New(templatesBundle.DataSources),
 		tekton_cleanup.New(),
 	}

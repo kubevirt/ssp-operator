@@ -11,7 +11,6 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
-	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
@@ -33,7 +32,6 @@ var _ = Describe("Cleanup", func() {
 		var allWatchTypes []operands.WatchType
 		for _, f := range []func() []operands.WatchType{
 			common_templates.WatchClusterTypes,
-			common_instancetypes.WatchClusterTypes,
 			data_sources.WatchClusterTypes,
 			metrics.WatchTypes,
 			metrics.WatchClusterTypes,

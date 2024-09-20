@@ -1,146 +1,105 @@
 package tests
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
+	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 
+	"github.com/operator-framework/operator-lib/handler"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	virtv1 "kubevirt.io/api/core/v1"
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/kustomize/api/krusty"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
-	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
+	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 var _ = Describe("Common Instance Types", func() {
+	var (
+		commonAnnotations map[string]string
+		commonLabels      map[string]string
+	)
+
 	BeforeEach(func() {
-		strategy.SkipSspUpdateTestsIfNeeded()
+		commonAnnotations = map[string]string{
+			handler.TypeAnnotation: ssp.GroupVersion.WithKind("SSP").GroupKind().String(),
+			handler.NamespacedNameAnnotation: types.NamespacedName{
+				Namespace: strategy.GetNamespace(),
+				Name:      strategy.GetName(),
+			}.String(),
+		}
+		commonLabels = map[string]string{
+			common.AppKubernetesNameLabel:      "common-instancetypes",
+			common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+			common.AppKubernetesComponentLabel: string(common.AppComponentTemplating),
+		}
+
 		waitUntilDeployed()
 	})
 
-	AfterEach(func() {
-		strategy.RevertToOriginalSspCr()
+	It("should remove old instance types", func() {
+		instanceType := &instancetypev1beta1.VirtualMachineClusterInstancetype{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "test-instance-type-",
+				Annotations:  commonAnnotations,
+				Labels:       commonLabels,
+			},
+			Spec: instancetypev1beta1.VirtualMachineInstancetypeSpec{
+				Memory: instancetypev1beta1.MemoryInstancetype{
+					Guest: resource.MustParse("1G"),
+				},
+			},
+		}
+
+		Expect(apiClient.Create(ctx, instanceType)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(apiClient.Delete(ctx, instanceType)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+		})
+
+		triggerReconciliation()
+
+		// Eventually the instance type should be removed by SSP
+		Eventually(func() error {
+			return apiClient.Get(ctx, client.ObjectKeyFromObject(instanceType),
+				&instancetypev1beta1.VirtualMachineClusterInstancetype{})
+		}, env.ShortTimeout(), time.Second).
+			Should(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 	})
 
-	Context("operand", func() {
-		It("should reconcile resources from internal bundle by default", func() {
-			virtualMachineClusterInstancetypes, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundle)
-			Expect(err).ToNot(HaveOccurred())
+	It("should remove old preferences", func() {
+		preference := &instancetypev1beta1.VirtualMachineClusterPreference{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "test-preference-",
+				Annotations:  commonAnnotations,
+				Labels:       commonLabels,
+			},
+			Spec: instancetypev1beta1.VirtualMachinePreferenceSpec{
+				CPU: &instancetypev1beta1.CPUPreferences{
+					PreferredCPUTopology: ptr.To(instancetypev1beta1.PreferCores),
+				},
+			},
+		}
 
-			virtualMachineClusterPreferences, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundle)
-			Expect(err).ToNot(HaveOccurred())
-
-			for _, instancetype := range virtualMachineClusterInstancetypes {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).To(Succeed())
-			}
-
-			for _, preference := range virtualMachineClusterPreferences {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).To(Succeed())
-			}
+		Expect(apiClient.Create(ctx, preference)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(apiClient.Delete(ctx, preference)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
 		})
-		It("should reconcile from URL when provided", func() {
-			URL := "https://github.com/kubevirt/common-instancetypes//VirtualMachineClusterPreferences?ref=v0.3.3"
-			sspObj := getSsp()
-			//nolint:staticcheck
-			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-				URL: ptr.To(URL),
-			}
-			createOrUpdateSsp(sspObj)
-			waitUntilDeployed()
 
-			k := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
-			c := common_instancetypes.CommonInstancetypes{
-				KustomizeRunFunc: k.Run,
-			}
-			virtualMachineClusterInstancetypes, virtualMachineClusterPreferences, err := c.FetchResourcesFromURL(URL)
-			Expect(err).ToNot(HaveOccurred())
+		triggerReconciliation()
 
-			for _, instancetype := range virtualMachineClusterInstancetypes {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).To(Succeed())
-			}
-
-			for _, preference := range virtualMachineClusterPreferences {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).To(Succeed())
-			}
-		})
-		It("should ignore resources owned by virt-operator", func() {
-			virtualMachineClusterInstancetypes, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundle)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(virtualMachineClusterInstancetypes).ToNot(BeEmpty())
-
-			virtualMachineClusterPreferences, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundle)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(virtualMachineClusterPreferences).ToNot(BeEmpty())
-
-			// Mutate the preference while also adding the labels for virt-operator
-			instancetypeToUpdate := &virtualMachineClusterInstancetypes[0]
-			Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetypeToUpdate.Name}, instancetypeToUpdate)).To(Succeed())
-			updatedCPUGuestCount := instancetypeToUpdate.Spec.CPU.Guest + 1
-			instancetypeToUpdate.Spec.CPU.Guest = updatedCPUGuestCount
-			instancetypeToUpdate.Labels = map[string]string{
-				virtv1.ManagedByLabel: virtv1.ManagedByLabelOperatorValue,
-			}
-			Expect(apiClient.Update(ctx, instancetypeToUpdate)).To(Succeed())
-
-			// Mutate the preference while also adding the labels for virt-operator
-			preferenceToUpdate := &virtualMachineClusterPreferences[0]
-			Expect(apiClient.Get(ctx, client.ObjectKey{Name: preferenceToUpdate.Name}, preferenceToUpdate)).To(Succeed())
-			updatedPreferredCPUTopology := instancetypev1beta1.PreferCores
-			updatedPreferenceCPU := &instancetypev1beta1.CPUPreferences{
-				PreferredCPUTopology: &updatedPreferredCPUTopology,
-			}
-			preferenceToUpdate.Spec.CPU = updatedPreferenceCPU
-			preferenceToUpdate.Labels = map[string]string{
-				virtv1.ManagedByLabel: virtv1.ManagedByLabelOperatorValue,
-			}
-			Expect(apiClient.Update(ctx, preferenceToUpdate)).To(Succeed())
-
-			triggerReconciliation()
-
-			// Assert that the mutations made above persist as the reconcile is being ignored
-			Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetypeToUpdate.Name}, instancetypeToUpdate)).To(Succeed())
-			Expect(instancetypeToUpdate.Spec.CPU.Guest).To(Equal(updatedCPUGuestCount))
-			Expect(apiClient.Get(ctx, client.ObjectKey{Name: preferenceToUpdate.Name}, preferenceToUpdate)).To(Succeed())
-			Expect(preferenceToUpdate.Spec.CPU).To(Equal(updatedPreferenceCPU))
-		})
-		It("should cleanup resources when feature gate is disabled", func() {
-			sspObj := getSsp()
-			sspObj.Spec.FeatureGates = &ssp.FeatureGates{
-				DeployCommonInstancetypes: ptr.To(false),
-			}
-			createOrUpdateSsp(sspObj)
-			waitUntilDeployed()
-
-			virtualMachineClusterInstancetypes, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundle)
-			Expect(err).ToNot(HaveOccurred())
-
-			virtualMachineClusterPreferences, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundle)
-			Expect(err).ToNot(HaveOccurred())
-
-			for _, instancetype := range virtualMachineClusterInstancetypes {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).ToNot(Succeed())
-			}
-
-			for _, preference := range virtualMachineClusterPreferences {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).ToNot(Succeed())
-			}
-		})
-	})
-	Context("webhook", func() {
-		DescribeTable("should reject URL", func(URL string) {
-			sspObj := getSsp()
-			//nolint:staticcheck
-			sspObj.Spec.CommonInstancetypes = &ssp.CommonInstancetypes{
-				URL: ptr.To(URL),
-			}
-			err := apiClient.Update(ctx, sspObj)
-			Expect(err).To(HaveOccurred())
-		},
-			Entry("with file://", "file://foo/bar"),
-			Entry("with foo://", "foo://foo/bar"),
-			Entry("without ?ref=", "https://foo/bar"),
-		)
+		// Eventually the preference should be removed by SSP
+		Eventually(func() error {
+			return apiClient.Get(ctx, client.ObjectKeyFromObject(preference),
+				&instancetypev1beta1.VirtualMachineClusterPreference{})
+		}, env.ShortTimeout(), time.Second).
+			Should(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 	})
 })

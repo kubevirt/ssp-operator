@@ -155,21 +155,7 @@ func cleanupResource[L any, T any, PtrL interface {
 	*T
 	client.Object
 }](request *common.Request) ([]common.CleanupResult, error) {
-	resources, err := common.ListOwnedResources[L, T, PtrL, PtrT](request, matchingLabelsOption(request.Instance))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list owned resources: %w", err)
-	}
-
-	results := make([]common.CleanupResult, 0, len(resources))
-	for i := range resources {
-		resource := PtrT(&resources[i])
-		cleanupResult, err := common.Cleanup(request, resource)
-		if err != nil {
-			return nil, fmt.Errorf("failed to cleanup resource: %w", err)
-		}
-		results = append(results, cleanupResult)
-	}
-	return results, nil
+	return common.CleanupResources[L, T, PtrL, PtrT](request, matchingLabelsOption(request.Instance))
 }
 
 func matchingLabelsOption(ssp *ssp.SSP) client.MatchingLabelsSelector {
