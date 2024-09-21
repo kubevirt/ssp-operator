@@ -21,7 +21,7 @@ jobs:
 
       - name: Create pull request
         if: ${{ github.event.client_payload.release_version }} != ''
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
           commit-message: "chore: update vm-console-proxy manifests to ${{ github.event.client_payload.release_version }}"
