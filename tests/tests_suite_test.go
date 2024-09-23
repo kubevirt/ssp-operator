@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -44,7 +43,6 @@ import (
 
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
-	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -281,18 +279,9 @@ func (s *existingSspStrategy) Init() {
 }
 
 func (s *existingSspStrategy) Cleanup() {
-	if s.ssp == nil {
-		return
+	if s.ssp != nil {
+		s.RevertToOriginalSspCr()
 	}
-
-	s.RevertToOriginalSspCr()
-
-	// Waiting for DataImportCrons to import images.
-	//
-	// The tests in dataSources_test.go remove and recreate DataImportCrons, and
-	// they can cause the PVCs to be removed. To keep the cluster in healthy state after tests,
-	// we wait until PVCs are reimported.
-	s.waitForDataImportCrons()
 }
 
 func (s *existingSspStrategy) GetName() string {
@@ -366,31 +355,6 @@ func (s *existingSspStrategy) SkipUnlessHighlyAvailableTopologyMode() {
 
 func (s *existingSspStrategy) SkipIfUpgradeLane() {
 	skipIfUpgradeLane()
-}
-
-func (s *existingSspStrategy) waitForDataImportCrons() {
-	Eventually(func(g Gomega) {
-		for _, dataImportCronTemplate := range s.ssp.Spec.CommonTemplates.DataImportCronTemplates {
-			importCron := &cdiv1beta1.DataImportCron{}
-			importCronNamespacedName := types.NamespacedName{
-				Namespace: dataImportCronTemplate.Namespace,
-				Name:      dataImportCronTemplate.Name,
-			}
-			if importCronNamespacedName.Namespace == "" {
-				importCronNamespacedName.Namespace = internal.GoldenImagesNamespace
-			}
-
-			g.Expect(apiClient.Get(ctx, importCronNamespacedName, importCron)).To(Succeed(),
-				fmt.Sprintf("Could not get DataImportCron: %s", importCronNamespacedName.String()))
-
-			g.Expect(importCron.Status.Conditions).To(ContainElement(Satisfy(
-				func(condition cdiv1beta1.DataImportCronCondition) bool {
-					return condition.Type == cdiv1beta1.DataImportCronUpToDate &&
-						condition.Status == v1.ConditionTrue
-				},
-			)), fmt.Sprintf("DataImportCron %s is not up to date", importCronNamespacedName.String()))
-		}
-	}, env.Timeout(), time.Second).Should(Succeed())
 }
 
 var (
