@@ -42,8 +42,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make csv-generator
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 LABEL org.kubevirt.hco.csv-generator.v1="/csv-generator"
 
-RUN microdnf update -y && microdnf install git -y && microdnf clean all
-
 WORKDIR /
 COPY --from=builder /workspace/bin/manager .
 COPY data/ data/
