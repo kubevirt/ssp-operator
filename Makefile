@@ -75,9 +75,6 @@ else
 OC = oc
 endif
 
-# Default to podman
-SSP_BUILD_RUNTIME ?= podman
-
 ifndef ignore-not-found
   ignore-not-found = false
 endif
@@ -199,19 +196,14 @@ container-build: unittest bundle
 	mkdir -p data/crd
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	${SSP_BUILD_RUNTIME} build -t ${IMG} \
-		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
-		--build-arg IMG_TAG=${IMG_TAG} \
-		--build-arg IMG=${IMG} \
-		--build-arg VALIDATOR_REPOSITORY=${VALIDATOR_REPOSITORY} \
-		--build-arg VALIDATOR_IMG_TAG=${VALIDATOR_IMG_TAG} \
-		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
-		.
+	podman manifest rm ${IMG} || true
+	podman build --build-arg TARGET_ARCH=amd64 --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} . && \
+    podman build --build-arg TARGET_ARCH=s390x --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} .
 
 # Push the container image
 .PHONY: container-push
 container-push:
-	${SSP_BUILD_RUNTIME} push ${IMG}
+	podman manifest push ${IMG}
 
 .PHONY: build-template-validator
 build-template-validator:
@@ -219,18 +211,13 @@ build-template-validator:
 
 .PHONY: build-template-validator-container
 build-template-validator-container:
-	${SSP_BUILD_RUNTIME} build -t ${VALIDATOR_IMG} \
-		--build-arg IMG_REPOSITORY=${IMG_REPOSITORY} \
-		--build-arg IMG_TAG=${IMG_TAG} \
-		--build-arg IMG=${IMG} \
-		--build-arg VALIDATOR_REPOSITORY=${VALIDATOR_REPOSITORY} \
-		--build-arg VALIDATOR_IMG_TAG=${VALIDATOR_IMG_TAG} \
-		--build-arg VALIDATOR_IMG=${VALIDATOR_IMG} \
-		. -f validator.Dockerfile
+	podman manifest rm ${VALIDATOR_IMG} || true && \
+	podman build --build-arg TARGET_ARCH=amd64 --manifest=${VALIDATOR_IMG} . -f validator.Dockerfile && \
+	podman build --build-arg TARGET_ARCH=s390x --manifest=${VALIDATOR_IMG} . -f validator.Dockerfile
 
 .PHONY: push-template-validator-container
 push-template-validator-container:
-	${SSP_BUILD_RUNTIME} push ${VALIDATOR_IMG}
+	podman manifest push ${VALIDATOR_IMG}
 
 
 ##@ Build Dependencies
@@ -257,14 +244,16 @@ kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
 	test -s $(LOCALBIN)/kustomize || curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
 
+# The final line allows for downloading and copying into the LOCALBIN folder when cross-compiling, as GOBIN is not compatible with setting a different GOARCH
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
 $(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	test -s $(LOCALBIN)/controller-gen || \
+	GOBIN=$(LOCALBIN) GOARCH=$(ARCH) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 # Download operator-sdk locally if necessary
 $(OPERATOR_SDK): $(LOCALBIN)
-	curl --create-dirs -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_linux_amd64 -o $(OPERATOR_SDK)
+	curl --create-dirs -JL https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_linux_$(ARCH) -o $(OPERATOR_SDK)
 	chmod 0755 $(OPERATOR_SDK)
 
 .PHONY: operator-sdk
@@ -289,7 +278,7 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build:
-	${SSP_BUILD_RUNTIME} build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	podman build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: release
 release: container-build container-push build-template-validator-container push-template-validator-container bundle build-functests
