@@ -161,7 +161,7 @@ var _ = Describe("Prometheus Alerts", func() {
 		})
 	})
 
-	Context("VirtualMachineCRCErrors", func() {
+	Context("VMStorageClassWarning", func() {
 		var vm *kubevirtv1.VirtualMachine
 		var pvc *core.PersistentVolumeClaim
 		var pv *core.PersistentVolume
@@ -270,16 +270,16 @@ var _ = Describe("Prometheus Alerts", func() {
 			return vmName
 		}
 
-		It("[test_id:TODO] Should not fire VirtualMachineCRCErrors when rxbounce is enabled", func() {
+		It("[test_id:TODO] Should not fire VMStorageClassWarning when rxbounce is enabled", func() {
 			vmName := createResources(true, true)
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
-			alertShouldNotBeActive("VirtualMachineCRCErrors")
+			alertShouldNotBeActive("VMStorageClassWarning")
 		})
 
-		It("[test_id:TODO] Should fire VirtualMachineCRCErrors when rxbounce is disabled", func() {
+		It("[test_id:TODO] Should fire VMStorageClassWarning when rxbounce is disabled", func() {
 			vmName := createResources(true, false)
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 1", vmName))
-			waitForAlertToActivate("VirtualMachineCRCErrors")
+			waitForAlertToActivate("VMStorageClassWarning")
 
 			err := apiClient.Delete(ctx, vm)
 			Expect(err).ToNot(HaveOccurred())
@@ -289,7 +289,7 @@ var _ = Describe("Prometheus Alerts", func() {
 			}).Should(MatchError(ContainSubstring(fmt.Sprintf("virtualmachines.kubevirt.io \"%s\" not found", vmName))))
 
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
-			alertShouldNotBeActive("VirtualMachineCRCErrors")
+			alertShouldNotBeActive("VMStorageClassWarning")
 		})
 	})
 })
