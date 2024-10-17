@@ -33,10 +33,12 @@ COPY internal/ internal/
 COPY pkg/ pkg/
 
 # Compile for the TARGET_ARCH
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGET_ARCH} GO111MODULE=on go build -a -ldflags="-X 'kubevirt.io/ssp-operator/internal/template-validator/version.COMPONENT=$COMPONENT'\
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGET_ARCH} GO111MODULE=on go build \
+-a -ldflags="-X 'kubevirt.io/ssp-operator/internal/template-validator/version.COMPONENT=$COMPONENT'\
 -X 'kubevirt.io/ssp-operator/internal/template-validator/version.VERSION=$VERSION'\
 -X 'kubevirt.io/ssp-operator/internal/template-validator/version.BRANCH=$BRANCH'\
--X 'kubevirt.io/ssp-operator/internal/template-validator/version.REVISION=$REVISION'" -o kubevirt-template-validator internal/template-validator/main.go
+-X 'kubevirt.io/ssp-operator/internal/template-validator/version.REVISION=$REVISION'" \
+-o kubevirt-template-validator internal/template-validator/main.go
 
 # Hack: Create an empty directory in the builder image and copy it to the target image to avoid triggering any architecture-specific commands
 RUN mkdir emptydir
