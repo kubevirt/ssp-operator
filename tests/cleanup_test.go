@@ -1,9 +1,10 @@
 package tests
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -59,7 +60,23 @@ var _ = Describe("Cleanup", func() {
 			Expect(apiClient.List(ctx, list, client.MatchingLabels{
 				common.AppKubernetesManagedByLabel: "ssp-operator",
 			})).To(Succeed())
-			Expect(list.Items).To(BeEmpty(), "Some resources were not deleted.")
+
+			if len(list.Items) == 0 {
+				continue
+			}
+
+			// Collect resources to more readable names
+			objectTypesAndNames := make([]string, 0, len(list.Items))
+			for _, item := range list.Items {
+				objectTypesAndNames = append(objectTypesAndNames, fmt.Sprintf("%s: %s/%s",
+					item.GetObjectKind().GroupVersionKind().String(),
+					item.GetNamespace(),
+					item.GetName(),
+				))
+
+			}
+
+			Expect(objectTypesAndNames).To(BeEmpty(), "Some resources were not deleted.")
 		}
 	})
 })
