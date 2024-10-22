@@ -24,22 +24,22 @@ var _ = Describe("TlsInfo", func() {
 		certDir = GinkgoT().TempDir()
 	})
 
-	It("should return nil if no certificate exists", func() {
+	It("should fail if no certificate exists", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
-		Consistently(func() *tls.Certificate {
-			cert, _ := tlsConfig.GetCertificate(nil)
-			return cert
-		}, time.Second).Should(BeNil())
+		Consistently(func() error {
+			_, err := tlsConfig.GetCertificate(nil)
+			return err
+		}, time.Second).Should(MatchError(ContainSubstring("no such file or directory")))
 	})
 
 	It("should load certificate", func() {
 		writeCertificate(certDir)
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
@@ -50,14 +50,14 @@ var _ = Describe("TlsInfo", func() {
 
 	It("should reload new certificate", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
-		Consistently(func() *tls.Certificate {
-			cert, _ := tlsConfig.GetCertificate(nil)
-			return cert
-		}, time.Second).Should(BeNil())
+		Consistently(func() error {
+			_, err := tlsConfig.GetCertificate(nil)
+			return err
+		}, time.Second).Should(MatchError(ContainSubstring("no such file or directory")))
 
 		writeCertificate(certDir)
 
@@ -66,10 +66,10 @@ var _ = Describe("TlsInfo", func() {
 		}, time.Second).ShouldNot(BeNil())
 	})
 
-	It("should keep old certificate on failure", func() {
+	It("should fail if certificate file is invalid", func() {
 		writeCertificate(certDir)
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.Init()
+		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
@@ -79,9 +79,12 @@ var _ = Describe("TlsInfo", func() {
 
 		Expect(os.WriteFile(filepath.Join(certDir, CertFilename), []byte{}, 0777)).To(Succeed())
 
-		Consistently(func() (*tls.Certificate, error) {
-			return tlsConfig.GetCertificate(nil)
-		}, time.Second).ShouldNot(BeNil())
+		Eventually(func() error {
+			_, err := tlsConfig.GetCertificate(nil)
+			return err
+		}, time.Second).Should(MatchError(ContainSubstring(
+			"error getting certificate: failed to load certificate:",
+		)))
 	})
 })
 

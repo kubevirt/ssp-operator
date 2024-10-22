@@ -89,7 +89,10 @@ func (app *App) Run() {
 			CertsDirectory: app.certsDir,
 		}
 
-		tlsInfo.Init()
+		if err := tlsInfo.Init(); err != nil {
+			logger.Log.Error(err, "Failed initializing TLSInfo")
+			panic(err)
+		}
 		defer tlsInfo.Clean()
 
 		server := &http.Server{Addr: app.Address(), TLSConfig: tlsInfo.CreateTlsConfig()}
