@@ -39,17 +39,17 @@ func (ti *TLSInfo) IsEnabled() bool {
 }
 
 func (ti *TLSInfo) Init() {
-	ti.InitCerts()
-	ti.InitCryptoConfig()
+	ti.initCerts()
+	ti.initCryptoConfig()
 }
 
-func (ti *TLSInfo) InitCryptoConfig() {
+func (ti *TLSInfo) initCryptoConfig() {
 	nonSplitCiphers, _ := os.LookupEnv(CiphersEnvName)
 	ti.sspTLSOptions.OpenSSLCipherNames = strings.Split(nonSplitCiphers, ",")
 	ti.sspTLSOptions.MinTLSVersion, _ = os.LookupEnv(TLSMinVersionEnvName)
 }
 
-func (ti *TLSInfo) InitCerts() {
+func (ti *TLSInfo) initCerts() {
 	if !ti.IsEnabled() {
 		return
 	}
