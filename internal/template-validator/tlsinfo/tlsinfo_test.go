@@ -21,14 +21,12 @@ var _ = Describe("TlsInfo", func() {
 	var certDir string
 
 	BeforeEach(func() {
-		var err error
-		certDir, err = os.MkdirTemp("", "certs")
-		Expect(err).ToNot(HaveOccurred())
+		certDir = GinkgoT().TempDir()
 	})
 
 	It("should return nil if no certificate exists", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.InitCerts()
+		tlsInfo.Init()
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
@@ -41,7 +39,7 @@ var _ = Describe("TlsInfo", func() {
 	It("should load certificate", func() {
 		writeCertificate(certDir)
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.InitCerts()
+		tlsInfo.Init()
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
@@ -52,7 +50,7 @@ var _ = Describe("TlsInfo", func() {
 
 	It("should reload new certificate", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.InitCerts()
+		tlsInfo.Init()
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
@@ -71,7 +69,7 @@ var _ = Describe("TlsInfo", func() {
 	It("should keep old certificate on failure", func() {
 		writeCertificate(certDir)
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
-		tlsInfo.InitCerts()
+		tlsInfo.Init()
 		defer tlsInfo.Clean()
 		tlsConfig := tlsInfo.CreateTlsConfig()
 
@@ -84,10 +82,6 @@ var _ = Describe("TlsInfo", func() {
 		Consistently(func() (*tls.Certificate, error) {
 			return tlsConfig.GetCertificate(nil)
 		}, time.Second).ShouldNot(BeNil())
-	})
-
-	AfterEach(func() {
-		os.RemoveAll(certDir)
 	})
 })
 
