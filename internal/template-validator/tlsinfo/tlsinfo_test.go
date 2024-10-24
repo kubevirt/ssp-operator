@@ -3,7 +3,6 @@ package tlsinfo
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -17,7 +16,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const certSubject = "test.kubevirt.io"
+
 var _ = Describe("TlsInfo", func() {
+
 	var certDir string
 
 	BeforeEach(func() {
@@ -28,10 +30,9 @@ var _ = Describe("TlsInfo", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
 		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CreateTlsConfig()
 
 		Consistently(func() error {
-			_, err := tlsConfig.GetCertificate(nil)
+			_, err := tlsInfo.CreateTlsConfig()
 			return err
 		}, time.Second).Should(MatchError(ContainSubstring("no such file or directory")))
 	})
@@ -41,29 +42,33 @@ var _ = Describe("TlsInfo", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
 		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CreateTlsConfig()
 
-		Eventually(func() (*tls.Certificate, error) {
-			return tlsConfig.GetCertificate(nil)
-		}, time.Second).ShouldNot(BeNil())
+		Eventually(func(g Gomega) {
+			tlsConfig, err := tlsInfo.CreateTlsConfig()
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(tlsConfig.Certificates).To(HaveLen(1))
+			g.Expect(tlsConfig.Certificates[0].Leaf.Subject.CommonName).To(Equal(certSubject))
+		}, time.Second).Should(Succeed())
 	})
 
 	It("should reload new certificate", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
 		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CreateTlsConfig()
 
 		Consistently(func() error {
-			_, err := tlsConfig.GetCertificate(nil)
+			_, err := tlsInfo.CreateTlsConfig()
 			return err
 		}, time.Second).Should(MatchError(ContainSubstring("no such file or directory")))
 
 		writeCertificate(certDir)
 
-		Eventually(func() (*tls.Certificate, error) {
-			return tlsConfig.GetCertificate(nil)
-		}, time.Second).ShouldNot(BeNil())
+		Eventually(func(g Gomega) {
+			tlsConfig, err := tlsInfo.CreateTlsConfig()
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(tlsConfig.Certificates).To(HaveLen(1))
+			g.Expect(tlsConfig.Certificates[0].Leaf.Subject.CommonName).To(Equal(certSubject))
+		}, time.Second).Should(Succeed())
 	})
 
 	It("should fail if certificate file is invalid", func() {
@@ -71,16 +76,18 @@ var _ = Describe("TlsInfo", func() {
 		tlsInfo := TLSInfo{CertsDirectory: certDir}
 		Expect(tlsInfo.Init()).To(Succeed())
 		defer tlsInfo.Clean()
-		tlsConfig := tlsInfo.CreateTlsConfig()
 
-		Eventually(func() (*tls.Certificate, error) {
-			return tlsConfig.GetCertificate(nil)
-		}, time.Second).ShouldNot(BeNil())
+		Eventually(func(g Gomega) {
+			tlsConfig, err := tlsInfo.CreateTlsConfig()
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(tlsConfig.Certificates).To(HaveLen(1))
+			g.Expect(tlsConfig.Certificates[0].Leaf.Subject.CommonName).To(Equal(certSubject))
+		}, time.Second).Should(Succeed())
 
 		Expect(os.WriteFile(filepath.Join(certDir, CertFilename), []byte{}, 0777)).To(Succeed())
 
 		Eventually(func() error {
-			_, err := tlsConfig.GetCertificate(nil)
+			_, err := tlsInfo.CreateTlsConfig()
 			return err
 		}, time.Second).Should(MatchError(ContainSubstring(
 			"error getting certificate: failed to load certificate:",
@@ -97,7 +104,7 @@ func writeCertificate(dir string) {
 	now := time.Now()
 	template := x509.Certificate{
 		SerialNumber:          new(big.Int).SetInt64(0),
-		Subject:               pkix.Name{CommonName: "test.kubevirt.io"},
+		Subject:               pkix.Name{CommonName: certSubject},
 		NotBefore:             now.UTC(),
 		NotAfter:              now.Add(24 * time.Hour).UTC(),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,

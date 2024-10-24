@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -95,7 +96,21 @@ func (app *App) Run() {
 		}
 		defer tlsInfo.Clean()
 
-		server := &http.Server{Addr: app.Address(), TLSConfig: tlsInfo.CreateTlsConfig()}
+		server := &http.Server{
+			Addr: app.Address(),
+			TLSConfig: &tls.Config{
+				GetConfigForClient: func(_ *tls.ClientHelloInfo) (*tls.Config, error) {
+					return tlsInfo.CreateTlsConfig()
+				},
+				GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+					// This function is not called, but it needs to be non-nil, otherwise
+					// the server tries to load certificate from filenames passed to
+					// ListenAndServe().
+					panic("function should not be called")
+				},
+			},
+		}
+
 		logger.Log.Info("TLS configured, serving over HTTPS", "address", app.Address())
 		if err := server.ListenAndServeTLS("", ""); err != nil {
 			logger.Log.Error(err, "Error listening TLS")

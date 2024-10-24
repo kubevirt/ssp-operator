@@ -153,25 +153,24 @@ func (ti *TLSInfo) getCertificate() (*tls.Certificate, error) {
 	return ti.cert, nil
 }
 
-func (ti *TLSInfo) CreateTlsConfig() *tls.Config {
+func (ti *TLSInfo) CreateTlsConfig() (*tls.Config, error) {
+	cert, err := ti.getCertificate()
+	if err != nil {
+		return nil, fmt.Errorf("error getting certificate: %w", err)
+	}
+
 	tlsConfig := &tls.Config{
-		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			cert, err := ti.getCertificate()
-			if err != nil {
-				return nil, fmt.Errorf("error getting certificate: %w", err)
-			}
-			return cert, nil
-		},
+		Certificates: []tls.Certificate{*cert},
 	}
 
 	if !ti.sspTLSOptions.IsEmpty() {
 		tlsConfig.CipherSuites = common.CipherIDs(ti.sspTLSOptions.OpenSSLCipherNames, nil)
 		minVersion, err := ti.sspTLSOptions.MinTLSVersionId()
 		if err != nil {
-			panic(fmt.Sprintf("TLS Configuration broken, min version misconfigured %v", err))
+			return nil, fmt.Errorf("TLS Configuration broken, min version misconfigured %v", err)
 		}
 		tlsConfig.MinVersion = minVersion
 	}
 
-	return tlsConfig
+	return tlsConfig, nil
 }
