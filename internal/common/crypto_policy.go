@@ -10,8 +10,8 @@ import (
 )
 
 type SSPTLSOptions struct {
-	MinTLSVersion      string
-	OpenSSLCipherNames []string
+	MinTLSVersion      string   `json:"minTLSVersion,omitempty"`
+	OpenSSLCipherNames []string `json:"openSSLCipherNames,omitempty"`
 }
 
 func (s *SSPTLSOptions) IsEmpty() bool {
