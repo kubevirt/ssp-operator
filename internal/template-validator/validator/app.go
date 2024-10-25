@@ -26,6 +26,8 @@ import (
 const (
 	defaultPort = 8443
 	defaultHost = "0.0.0.0"
+
+	tlsOptionsDirectory = "/tls-options"
 )
 
 type App struct {
@@ -87,7 +89,8 @@ func (app *App) Run() {
 		logger.Log.Info("TLS certs directory", "directory", app.certsDir)
 
 		tlsInfo := tlsinfo.TLSInfo{
-			CertsDirectory: app.certsDir,
+			CertsDirectory:      app.certsDir,
+			TLSOptionsDirectory: tlsOptionsDirectory,
 		}
 
 		if err := tlsInfo.Init(); err != nil {

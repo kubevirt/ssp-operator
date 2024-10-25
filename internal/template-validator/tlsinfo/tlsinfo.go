@@ -3,10 +3,10 @@ package tlsinfo
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,52 +16,44 @@ import (
 )
 
 const (
-	CertFilename         = "tls.crt"
-	KeyFilename          = "tls.key"
+	CertFilename       = "tls.crt"
+	KeyFilename        = "tls.key"
+	TLSOptionsFilename = "tls-config.json"
+
 	CiphersEnvName       = "TLS_CIPHERS"
 	TLSMinVersionEnvName = "TLS_MIN_VERSION"
 )
 
 type TLSInfo struct {
-	CertsDirectory string
+	CertsDirectory      string
+	TLSOptionsDirectory string
+
+	lock sync.Mutex
 
 	watch     filewatch.Watch
 	stopWatch chan struct{}
 
-	cert          *tls.Certificate
-	certError     error
-	certLock      sync.Mutex
-	sspTLSOptions common.SSPTLSOptions
+	cert      *tls.Certificate
+	certError error
+
+	cipherSuites    []uint16
+	minTLSVersion   uint16
+	tlsOptionsError error
 }
 
 func (ti *TLSInfo) Init() error {
-	if err := ti.initCerts(); err != nil {
-		return err
-	}
-	ti.initCryptoConfig()
-	return nil
-}
-
-func (ti *TLSInfo) initCryptoConfig() {
-	nonSplitCiphers, _ := os.LookupEnv(CiphersEnvName)
-	ti.sspTLSOptions.OpenSSLCipherNames = strings.Split(nonSplitCiphers, ",")
-	ti.sspTLSOptions.MinTLSVersion, _ = os.LookupEnv(TLSMinVersionEnvName)
-}
-
-func (ti *TLSInfo) initCerts() error {
 	if ti.stopWatch != nil {
 		return fmt.Errorf("certificate watcher was already initialized")
 	}
 
-	directory := ti.CertsDirectory
-	ti.updateCertificates(directory)
-
 	ti.watch = filewatch.New()
-	err := ti.watch.Add(directory, func() {
-		ti.updateCertificates(directory)
-	})
-	if err != nil {
-		return fmt.Errorf("error adding directory to watch: %w", err)
+
+	if err := ti.initCerts(); err != nil {
+		return err
+	}
+
+	if err := ti.initCryptoConfig(); err != nil {
+		return err
 	}
 
 	ti.stopWatch = make(chan struct{})
@@ -91,6 +83,34 @@ func (ti *TLSInfo) initCerts() error {
 	return nil
 }
 
+const watchErrorFmt = "error adding directory to watch: %w"
+
+func (ti *TLSInfo) initCryptoConfig() error {
+	directory := ti.TLSOptionsDirectory
+	ti.updateTLSOptions(directory)
+
+	err := ti.watch.Add(directory, func() {
+		ti.updateTLSOptions(directory)
+	})
+	if err != nil {
+		return fmt.Errorf(watchErrorFmt, err)
+	}
+	return nil
+}
+
+func (ti *TLSInfo) initCerts() error {
+	directory := ti.CertsDirectory
+	ti.updateCertificates(directory)
+
+	err := ti.watch.Add(directory, func() {
+		ti.updateCertificates(directory)
+	})
+	if err != nil {
+		return fmt.Errorf(watchErrorFmt, err)
+	}
+	return nil
+}
+
 func (ti *TLSInfo) Clean() {
 	if ti.stopWatch != nil {
 		close(ti.stopWatch)
@@ -101,8 +121,8 @@ func (ti *TLSInfo) Clean() {
 func (ti *TLSInfo) updateCertificates(directory string) {
 	cert, err := loadCertificates(directory)
 
-	ti.certLock.Lock()
-	defer ti.certLock.Unlock()
+	ti.lock.Lock()
+	defer ti.lock.Unlock()
 	if err != nil {
 		ti.cert = nil
 		ti.certError = err
@@ -142,34 +162,81 @@ func loadCertificates(directory string) (serverCrt *tls.Certificate, err error) 
 	return &cert, nil
 }
 
-func (ti *TLSInfo) getCertificate() (*tls.Certificate, error) {
-	ti.certLock.Lock()
-	defer ti.certLock.Unlock()
+func (ti *TLSInfo) updateTLSOptions(directory string) {
+	tlsOptions, err := loadTLSOptions(directory)
 
-	if ti.certError != nil {
-		return nil, ti.certError
+	ti.lock.Lock()
+	defer ti.lock.Unlock()
+
+	if err != nil {
+		ti.minTLSVersion = 0
+		ti.cipherSuites = nil
+		ti.tlsOptionsError = err
+		logger.Log.Error(err, "failed to load TLS options",
+			"directory", directory)
+		return
 	}
 
-	return ti.cert, nil
+	if tlsOptions.IsEmpty() {
+		// Using default configuration
+		ti.minTLSVersion = 0
+		ti.cipherSuites = nil
+		ti.tlsOptionsError = nil
+		logger.Log.Info("TLS options are empty, using default configuration")
+		return
+	}
+
+	minVersion, err := tlsOptions.MinTLSVersionId()
+	if err != nil {
+		ti.minTLSVersion = 0
+		ti.cipherSuites = nil
+		ti.tlsOptionsError = fmt.Errorf("TLS Configuration broken, min version misconfigured: %w", err)
+		logger.Log.Error(ti.tlsOptionsError, "TLS options are not valid",
+			"directory", directory)
+		return
+	}
+
+	ti.minTLSVersion = minVersion
+	ti.cipherSuites = common.CipherIDs(tlsOptions.OpenSSLCipherNames, nil)
+	ti.tlsOptionsError = nil
+	logger.Log.Info("TLS options retrieved", "directory", directory)
+}
+
+func loadTLSOptions(directory string) (*common.SSPTLSOptions, error) {
+	optionsFilePath := filepath.Join(directory, TLSOptionsFilename)
+	optionsJson, err := os.ReadFile(optionsFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsOptions := &common.SSPTLSOptions{}
+	if err = json.Unmarshal(optionsJson, tlsOptions); err != nil {
+		return nil, err
+	}
+
+	return tlsOptions, nil
 }
 
 func (ti *TLSInfo) CreateTlsConfig() (*tls.Config, error) {
-	cert, err := ti.getCertificate()
-	if err != nil {
-		return nil, fmt.Errorf("error getting certificate: %w", err)
+	ti.lock.Lock()
+	defer ti.lock.Unlock()
+
+	if ti.certError != nil {
+		return nil, fmt.Errorf("error getting certificate: %w", ti.certError)
+	}
+
+	if ti.tlsOptionsError != nil {
+		return nil, fmt.Errorf("error getting TLS options: %w", ti.tlsOptionsError)
+	}
+
+	if ti.cert == nil {
+		return nil, fmt.Errorf("the TLS certificate is unexpectedly nil")
 	}
 
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	}
-
-	if !ti.sspTLSOptions.IsEmpty() {
-		tlsConfig.CipherSuites = common.CipherIDs(ti.sspTLSOptions.OpenSSLCipherNames, nil)
-		minVersion, err := ti.sspTLSOptions.MinTLSVersionId()
-		if err != nil {
-			return nil, fmt.Errorf("TLS Configuration broken, min version misconfigured %v", err)
-		}
-		tlsConfig.MinVersion = minVersion
+		Certificates: []tls.Certificate{*ti.cert},
+		MinVersion:   ti.minTLSVersion,
+		CipherSuites: ti.cipherSuites,
 	}
 
 	return tlsConfig, nil
