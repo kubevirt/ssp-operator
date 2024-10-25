@@ -34,10 +34,6 @@ type TLSInfo struct {
 	sspTLSOptions  common.SSPTLSOptions
 }
 
-func (ti *TLSInfo) IsEnabled() bool {
-	return ti.CertsDirectory != ""
-}
-
 func (ti *TLSInfo) Init() {
 	ti.initCerts()
 	ti.initCryptoConfig()
@@ -50,10 +46,6 @@ func (ti *TLSInfo) initCryptoConfig() {
 }
 
 func (ti *TLSInfo) initCerts() {
-	if !ti.IsEnabled() {
-		return
-	}
-
 	directory := ti.CertsDirectory
 	filesChanged, watcherCloser, err := watchDirectory(directory)
 	if err != nil {
