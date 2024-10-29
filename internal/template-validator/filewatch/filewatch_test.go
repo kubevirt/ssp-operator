@@ -13,6 +13,15 @@ import (
 )
 
 var _ = Describe("Filewatch", func() {
+	It("should call callback immediately when watch starts", func() {
+		tempDirName := GinkgoT().TempDir()
+
+		called := atomic.Bool{}
+		startWatch(tempDirName, func() { called.Store(true) })
+
+		Eventually(called.Load, time.Second, 50*time.Millisecond).Should(BeTrue())
+	})
+
 	Context("watching file", func() {
 		var (
 			callback     func()
@@ -24,10 +33,7 @@ var _ = Describe("Filewatch", func() {
 			tempFileName = filepath.Join(tmpDir, "test-file")
 			Expect(os.WriteFile(tempFileName, []byte("test content"), 0777)).To(Succeed())
 
-			callback = func() {
-				defer GinkgoRecover()
-				panic("callback was not set")
-			}
+			callback = func() {}
 
 			startWatch(tempFileName, func() { callback() })
 		})
@@ -60,10 +66,7 @@ var _ = Describe("Filewatch", func() {
 		BeforeEach(func() {
 			tempDirName = GinkgoT().TempDir()
 
-			callback = func() {
-				defer GinkgoRecover()
-				panic("callback was not set")
-			}
+			callback = func() {}
 
 			startWatch(tempDirName, func() { callback() })
 		})
