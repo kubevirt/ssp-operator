@@ -63,6 +63,10 @@ func (w *watch) Run(done <-chan struct{}) error {
 	if err != nil {
 		return fmt.Errorf("could not add callbacks: %w", err)
 	}
+	// Running all callbacks before processing watch events.
+	// So callbacks will notice the state of the files after
+	// watch starts, but before any events arrive.
+	w.runCallbacks()
 
 	return w.processEvents(watcher, done)
 }
@@ -79,6 +83,12 @@ func (w *watch) addCallbacks(watcher *fsnotify.Watcher) error {
 		}
 	}
 	return nil
+}
+
+func (w *watch) runCallbacks() {
+	for _, callback := range w.callbacks {
+		callback()
+	}
 }
 
 func (w *watch) processEvents(watcher *fsnotify.Watcher, done <-chan struct{}) error {
