@@ -110,8 +110,8 @@ var _ = Describe("Crypto Policy", func() {
 		DescribeTable("Adhere to defined TLSConfig", func(tlsConfigTestPermutation tlsConfigTestPermutation) {
 			pod := operatorPod()
 			applyTLSConfig(tlsConfigTestPermutation.openshiftTLSPolicy)
-			testMetricsEndpoint(pod, tlsConfigTestPermutation)
-			testWebhookEndpoint(pod, tlsConfigTestPermutation)
+			Expect(testMetricsEndpoint(pod, tlsConfigTestPermutation)).To(Succeed())
+			Expect(testWebhookEndpoint(pod, tlsConfigTestPermutation)).To(Succeed())
 		},
 			Entry("[test_id:9360] old", oldPermutation),
 			Entry("[test_id:9276] intermediate", intermediatePermutation),
@@ -175,7 +175,7 @@ func getCaCertificate() []byte {
 	return ca
 }
 
-func tryToAccessEndpoint(pod core.Pod, subpath string, port uint16, tlsConfig clientTLSOptions) (attemptedUrl string, err error) {
+func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions) (attemptedUrl string, err error) {
 	conn, err := portForwarder.Connect(&pod, port)
 	Expect(err).ToNot(HaveOccurred())
 	defer conn.Close()
@@ -196,41 +196,58 @@ func tryToAccessEndpoint(pod core.Pod, subpath string, port uint16, tlsConfig cl
 		subpath = "/" + subpath
 	}
 
-	// ${webhookServiceName}.${deploymentNamespace}.svc is used to access the endpoints we are testing.
-	// It is used here for the metrics as well for simplicity, as it is the CN in the ca_cert
-	// and the metrics just sit on a different port on the same pod.
-	attemptedUrl = fmt.Sprintf("https://%s.%s.svc:%d%s", strategy.GetSSPWebhookServiceName(), strategy.GetSSPDeploymentNameSpace(), port, subpath)
+	// ${serviceName}.${serviceNamespace}.svc is used to access the endpoints we are testing.
+	attemptedUrl = fmt.Sprintf("https://%s.%s.svc:%d%s", serviceName, pod.Namespace, port, subpath)
 	_, err = httpClient.Get(attemptedUrl)
 	return attemptedUrl, err
 }
 
-func (c tlsConfigTestPermutation) testTLSEndpointAccessible(pod core.Pod, subpath string, port uint16, tlsConfig clientTLSOptions) {
-	_, err := tryToAccessEndpoint(pod, subpath, port, tlsConfig)
-	Expect(err).ToNot(HaveOccurred(), "Can't access pod %s, at port %d, with tlsConfig %#v", pod.Name, port, tlsConfig)
+func (c tlsConfigTestPermutation) testTLSEndpointAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions) error {
+	_, err := tryToAccessEndpoint(pod, serviceName, subpath, port, tlsConfig)
+	if err != nil {
+		return fmt.Errorf("can't access pod %s, at port %d, with tlsConfig %#v: %w", pod.Name, port, tlsConfig, err)
+	}
+	return nil
 }
 
-func (c tlsConfigTestPermutation) testTLSEndpointNotAccessible(pod core.Pod, subpath string, port uint16, tlsConfig clientTLSOptions) {
-	attemptedUrl, err := tryToAccessEndpoint(pod, subpath, port, tlsConfig)
+func (c tlsConfigTestPermutation) testTLSEndpointNotAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions) error {
+	attemptedUrl, err := tryToAccessEndpoint(pod, serviceName, subpath, port, tlsConfig)
 	expectedErrString1 := fmt.Sprintf("Get \"%s\": remote error: tls: protocol version not supported", attemptedUrl)
 	expectedErrString2 := fmt.Sprintf("Get \"%s\": remote error: tls: handshake failure", attemptedUrl)
-	Expect(err).To(SatisfyAny(MatchError(expectedErrString1), MatchError(expectedErrString2)), "Should not have been able to access pod %s, at port %s, with tlsConfig %#v, %#v, %#v", pod.Name, port, tlsConfig, tlsConfig.MaxTLSVersion, tlsConfig.CipherIDs())
+
+	if err == nil {
+		return fmt.Errorf("should not have been able to access pod %s, at port %d, with tlsConfig %#v, %#v, %#v", pod.Name, port, tlsConfig, tlsConfig.MaxTLSVersion, tlsConfig.CipherIDs())
+	}
+	if err.Error() == expectedErrString1 || err.Error() == expectedErrString2 {
+		return nil
+	}
+	return fmt.Errorf("unexpected error when accessing endpoint: %w", err)
 }
 
-func (c tlsConfigTestPermutation) testEndpointAccessabilityWithTLS(pod core.Pod, subpath string, port uint16) {
+func (c tlsConfigTestPermutation) testEndpointAccessabilityWithTLS(pod core.Pod, serviceName string, subpath string, port uint16) error {
 	for _, config := range c.allowedConfigs {
-		c.testTLSEndpointAccessible(pod, subpath, port, config)
+		err := c.testTLSEndpointAccessible(pod, serviceName, subpath, port, config)
+		if err != nil {
+			return fmt.Errorf("failed accessing endpoint with allowed config: %w", err)
+		}
 	}
 	for _, config := range c.disallowedConfigs {
-		c.testTLSEndpointNotAccessible(pod, subpath, port, config)
+		err := c.testTLSEndpointNotAccessible(pod, serviceName, subpath, port, config)
+		if err != nil {
+			return fmt.Errorf("error when accessing endpoint with disallowed config: %w", err)
+		}
 	}
+	return nil
 }
 
-func testMetricsEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) {
-	tlsConfig.testEndpointAccessabilityWithTLS(pod, "metrics", 8443)
+func testMetricsEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
+	// webhook service name is used here for the metrics for simplicity, as it is the CN in the ca_cert
+	// and the metrics just sit on a different port on the same pod.
+	return tlsConfig.testEndpointAccessabilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "metrics", 8443)
 }
 
-func testWebhookEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) {
-	tlsConfig.testEndpointAccessabilityWithTLS(pod, "", 9443)
+func testWebhookEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
+	return tlsConfig.testEndpointAccessabilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "", 9443)
 }
 
 func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {
