@@ -26,23 +26,39 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
+	"kubevirt.io/ssp-operator/webhooks/convert"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
 )
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta2,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta2,name=validation.v1beta2.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta3-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta3,name=validation.v1beta3.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
 
 var ssplog = logf.Log.WithName("ssp-resource")
 
 func Setup(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
+	err := ctrl.NewWebhookManagedBy(mgr).
 		For(&sspv1beta2.SSP{}).
 		WithValidator(newSspValidator(mgr.GetClient())).
 		Complete()
+	if err != nil {
+		return fmt.Errorf("failed to create webhook for v1beta2.SSP")
+	}
+
+	err = ctrl.NewWebhookManagedBy(mgr).
+		For(&sspv1beta3.SSP{}).
+		WithValidator(newSspValidator(mgr.GetClient())).
+		Complete()
+	if err != nil {
+		return fmt.Errorf("failed to create webhook for v1beta3.SSP")
+	}
+
+	return nil
 }
 
 type sspValidator struct {
@@ -52,16 +68,16 @@ type sspValidator struct {
 var _ admission.CustomValidator = &sspValidator{}
 
 func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	sspObj, ok := obj.(*sspv1beta2.SSP)
-	if !ok {
-		return nil, fmt.Errorf("expected v1beta2.SSP object, got %T", obj)
+	sspObj, err := getSsp(obj)
+	if err != nil {
+		return nil, err
 	}
 
 	var ssps sspv1beta2.SSPList
 
 	// Check if no other SSP resources are present in the cluster
 	ssplog.Info("validate create", "name", sspObj.Name)
-	err := s.apiClient.List(ctx, &ssps, &client.ListOptions{})
+	err = s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
 	}
@@ -73,9 +89,9 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (
 }
 
 func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	newSsp, ok := newObj.(*sspv1beta2.SSP)
-	if !ok {
-		return nil, fmt.Errorf("expected v1beta2.SSP object, got %T", newObj)
+	newSsp, err := getSsp(newObj)
+	if err != nil {
+		return nil, err
 	}
 
 	ssplog.Info("validate update", "name", newSsp.Name)
@@ -169,4 +185,15 @@ func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
 
 func newSspValidator(clt client.Client) *sspValidator {
 	return &sspValidator{apiClient: clt}
+}
+
+func getSsp(obj runtime.Object) (*sspv1beta2.SSP, error) {
+	switch sspObj := obj.(type) {
+	case *sspv1beta2.SSP:
+		return sspObj, nil
+	case *sspv1beta3.SSP:
+		return convert.ConvertSSP(sspObj), nil
+	default:
+		return nil, fmt.Errorf("unexpected type: %T", obj)
+	}
 }

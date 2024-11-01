@@ -12,7 +12,9 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
+
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
 )
 
 var (
@@ -25,6 +27,7 @@ func init() {
 	utilruntime.Must(extv1.AddToScheme(Scheme))
 	utilruntime.Must(internalmeta.AddToScheme(Scheme))
 	utilruntime.Must(sspv1beta2.AddToScheme(Scheme))
+	utilruntime.Must(sspv1beta3.AddToScheme(Scheme))
 	utilruntime.Must(osconfv1.Install(Scheme))
 	utilruntime.Must(instancetypev1alpha2.AddToScheme(Scheme))
 	utilruntime.Must(instancetypev1beta1.AddToScheme(Scheme))

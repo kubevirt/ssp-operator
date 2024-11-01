@@ -10,6 +10,20 @@ resources:
   domain: kubevirt.io
   group: ssp
   kind: SSP
+  path: kubevirt.io/ssp-operator/api/v1beta3
+  version: v1beta3
+  webhooks:
+    # conversion: true
+    # defaulting: true
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: kubevirt.io
+  group: ssp
+  kind: SSP
   path: kubevirt.io/ssp-operator/api/v1beta2
   version: v1beta2
   webhooks:

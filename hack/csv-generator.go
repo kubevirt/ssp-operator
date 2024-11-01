@@ -222,7 +222,9 @@ func replaceVariables(flags generatorFlags, csv *csvv1.ClusterServiceVersion) er
 	}
 
 	if flags.webhookPort > 0 {
-		csv.Spec.WebhookDefinitions[0].ContainerPort = flags.webhookPort
+		for i := range csv.Spec.WebhookDefinitions {
+			csv.Spec.WebhookDefinitions[i].ContainerPort = flags.webhookPort
+		}
 	}
 
 	return nil

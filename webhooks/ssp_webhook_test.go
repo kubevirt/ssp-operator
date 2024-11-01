@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 )
@@ -77,7 +78,7 @@ var _ = Describe("SSP Validation", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should reject SSP when one is already present", func() {
+		It("should reject v1beta2.SSP when one is already present", func() {
 			ssp := &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp2",
@@ -89,144 +90,300 @@ var _ = Describe("SSP Validation", func() {
 			_, err := validator.ValidateCreate(ctx, ssp)
 			Expect(err).To(MatchError(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp")))
 		})
+
+		It("should reject v1beta3.SSP when v1beta2.SSP is already present", func() {
+			ssp := &sspv1beta3.SSP{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ssp2",
+					Namespace: "test-ns2",
+				},
+				Spec: sspv1beta3.SSPSpec{},
+			}
+
+			_, err := validator.ValidateCreate(ctx, ssp)
+			Expect(err).To(MatchError(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp")))
+		})
 	})
 
-	Context("DataImportCronTemplates", func() {
-		var (
-			oldSSP *sspv1beta2.SSP
-			newSSP *sspv1beta2.SSP
-		)
+	Context("v1beta2", func() {
+		Context("DataImportCronTemplates", func() {
+			var (
+				oldSSP *sspv1beta2.SSP
+				newSSP *sspv1beta2.SSP
+			)
 
-		BeforeEach(func() {
-			oldSSP = &sspv1beta2.SSP{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ssp",
-					Namespace: "test-ns",
-				},
-				Spec: sspv1beta2.SSPSpec{
-					CommonTemplates: sspv1beta2.CommonTemplates{
-						Namespace: "test-templates-ns",
-						DataImportCronTemplates: []sspv1beta2.DataImportCronTemplate{
-							{
-								ObjectMeta: metav1.ObjectMeta{
-									Namespace: internal.GoldenImagesNamespace,
+			BeforeEach(func() {
+				oldSSP = &sspv1beta2.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta2.SSPSpec{
+						CommonTemplates: sspv1beta2.CommonTemplates{
+							Namespace: "test-templates-ns",
+							DataImportCronTemplates: []sspv1beta2.DataImportCronTemplate{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: internal.GoldenImagesNamespace,
+									},
 								},
 							},
 						},
 					},
-				},
-			}
+				}
 
-			newSSP = oldSSP.DeepCopy()
+				newSSP = oldSSP.DeepCopy()
+			})
+
+			It("should validate dataImportCronTemplates on create", func() {
+				_, err := validator.ValidateCreate(ctx, newSSP)
+				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+
+				_, err = validator.ValidateCreate(ctx, newSSP)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should validate dataImportCronTemplates on update", func() {
+				_, err := validator.ValidateUpdate(ctx, oldSSP, newSSP)
+				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+
+				_, err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
+				Expect(err).ToNot(HaveOccurred())
+			})
 		})
 
-		It("should validate dataImportCronTemplates on create", func() {
-			_, err := validator.ValidateCreate(ctx, newSSP)
-			Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+		Context("validate placement", func() {
+			It("should not call create API, if placement is nil", func() {
+				createIntercept = func(_ context.Context, _ client.WithWatch, _ client.Object, _ ...client.CreateOption) error {
+					Fail("Called create API")
+					return nil
+				}
 
-			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+				ssp := &sspv1beta2.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta2.SSPSpec{
+						TemplateValidator: &sspv1beta2.TemplateValidator{
+							Replicas:  ptr.To(int32(2)),
+							Placement: nil,
+						},
+					},
+				}
 
-			_, err = validator.ValidateCreate(ctx, newSSP)
-			Expect(err).ToNot(HaveOccurred())
-		})
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).ToNot(HaveOccurred())
+			})
 
-		It("should validate dataImportCronTemplates on update", func() {
-			_, err := validator.ValidateUpdate(ctx, oldSSP, newSSP)
-			Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+			It("should call create API dry run", func() {
+				placement := &api.NodePlacement{
+					NodeSelector: map[string]string{
+						"test-label": "test-value",
+					},
+					Affinity: &v1.Affinity{
+						PodAffinity: &v1.PodAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"foo": "bar",
+									},
+								},
+							}},
+						},
+					},
+					Tolerations: []v1.Toleration{{
+						Key:   "key",
+						Value: "value",
+					}},
+				}
 
-			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+				var createWasCalled bool
+				createIntercept = func(ctx context.Context, cli client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					deployment, ok := obj.(*apps.Deployment)
+					if !ok {
+						Fail("Expected created object to be Deployment.")
+					}
 
-			_, err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
-			Expect(err).ToNot(HaveOccurred())
+					createOptions := &client.CreateOptions{}
+					for _, opt := range opts {
+						opt.ApplyToCreate(createOptions)
+					}
+
+					if len(createOptions.DryRun) != 1 || createOptions.DryRun[0] != metav1.DryRunAll {
+						Fail("Create call should be dry run.")
+					}
+
+					Expect(deployment.Spec.Template.Spec.NodeSelector).To(Equal(placement.NodeSelector))
+					Expect(deployment.Spec.Template.Spec.Affinity).To(Equal(placement.Affinity))
+					Expect(deployment.Spec.Template.Spec.Tolerations).To(Equal(placement.Tolerations))
+					createWasCalled = true
+					return nil
+				}
+
+				ssp := &sspv1beta2.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta2.SSPSpec{
+						TemplateValidator: &sspv1beta2.TemplateValidator{
+							Replicas:  ptr.To(int32(2)),
+							Placement: placement,
+						},
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(createWasCalled).To(BeTrue())
+			})
 		})
 	})
 
-	Context("validate placement", func() {
-		It("should not call create API, if placement is nil", func() {
-			createIntercept = func(_ context.Context, _ client.WithWatch, _ client.Object, _ ...client.CreateOption) error {
-				Fail("Called create API")
-				return nil
-			}
+	Context("v1beta3", func() {
+		Context("DataImportCronTemplates", func() {
+			var (
+				oldSSP *sspv1beta3.SSP
+				newSSP *sspv1beta3.SSP
+			)
 
-			ssp := &sspv1beta2.SSP{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ssp",
-					Namespace: "test-ns",
-				},
-				Spec: sspv1beta2.SSPSpec{
-					TemplateValidator: &sspv1beta2.TemplateValidator{
-						Replicas:  ptr.To(int32(2)),
-						Placement: nil,
+			BeforeEach(func() {
+				oldSSP = &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
 					},
-				},
-			}
-
-			_, err := validator.ValidateCreate(ctx, ssp)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should call create API dry run", func() {
-			placement := &api.NodePlacement{
-				NodeSelector: map[string]string{
-					"test-label": "test-value",
-				},
-				Affinity: &v1.Affinity{
-					PodAffinity: &v1.PodAffinity{
-						RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{{
-							LabelSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{
-									"foo": "bar",
+					Spec: sspv1beta3.SSPSpec{
+						CommonTemplates: sspv1beta3.CommonTemplates{
+							Namespace: "test-templates-ns",
+							DataImportCronTemplates: []sspv1beta3.DataImportCronTemplate{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Namespace: internal.GoldenImagesNamespace,
+									},
 								},
 							},
-						}},
+						},
 					},
-				},
-				Tolerations: []v1.Toleration{{
-					Key:   "key",
-					Value: "value",
-				}},
-			}
-
-			var createWasCalled bool
-			createIntercept = func(ctx context.Context, cli client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-				deployment, ok := obj.(*apps.Deployment)
-				if !ok {
-					Fail("Expected created object to be Deployment.")
 				}
 
-				createOptions := &client.CreateOptions{}
-				for _, opt := range opts {
-					opt.ApplyToCreate(createOptions)
+				newSSP = oldSSP.DeepCopy()
+			})
+
+			It("should validate dataImportCronTemplates on create", func() {
+				_, err := validator.ValidateCreate(ctx, newSSP)
+				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+
+				_, err = validator.ValidateCreate(ctx, newSSP)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should validate dataImportCronTemplates on update", func() {
+				_, err := validator.ValidateUpdate(ctx, oldSSP, newSSP)
+				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+
+				_, err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("validate placement", func() {
+			It("should not call create API, if placement is nil", func() {
+				createIntercept = func(_ context.Context, _ client.WithWatch, _ client.Object, _ ...client.CreateOption) error {
+					Fail("Called create API")
+					return nil
 				}
 
-				if len(createOptions.DryRun) != 1 || createOptions.DryRun[0] != metav1.DryRunAll {
-					Fail("Create call should be dry run.")
-				}
-
-				Expect(deployment.Spec.Template.Spec.NodeSelector).To(Equal(placement.NodeSelector))
-				Expect(deployment.Spec.Template.Spec.Affinity).To(Equal(placement.Affinity))
-				Expect(deployment.Spec.Template.Spec.Tolerations).To(Equal(placement.Tolerations))
-				createWasCalled = true
-				return nil
-			}
-
-			ssp := &sspv1beta2.SSP{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ssp",
-					Namespace: "test-ns",
-				},
-				Spec: sspv1beta2.SSPSpec{
-					TemplateValidator: &sspv1beta2.TemplateValidator{
-						Replicas:  ptr.To(int32(2)),
-						Placement: placement,
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
 					},
-				},
-			}
+					Spec: sspv1beta3.SSPSpec{
+						TemplateValidator: &sspv1beta3.TemplateValidator{
+							Replicas:  ptr.To(int32(2)),
+							Placement: nil,
+						},
+					},
+				}
 
-			_, err := validator.ValidateCreate(ctx, ssp)
-			Expect(err).ToNot(HaveOccurred())
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).ToNot(HaveOccurred())
+			})
 
-			Expect(createWasCalled).To(BeTrue())
+			It("should call create API dry run", func() {
+				placement := &api.NodePlacement{
+					NodeSelector: map[string]string{
+						"test-label": "test-value",
+					},
+					Affinity: &v1.Affinity{
+						PodAffinity: &v1.PodAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{{
+								LabelSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"foo": "bar",
+									},
+								},
+							}},
+						},
+					},
+					Tolerations: []v1.Toleration{{
+						Key:   "key",
+						Value: "value",
+					}},
+				}
+
+				var createWasCalled bool
+				createIntercept = func(ctx context.Context, cli client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					deployment, ok := obj.(*apps.Deployment)
+					if !ok {
+						Fail("Expected created object to be Deployment.")
+					}
+
+					createOptions := &client.CreateOptions{}
+					for _, opt := range opts {
+						opt.ApplyToCreate(createOptions)
+					}
+
+					if len(createOptions.DryRun) != 1 || createOptions.DryRun[0] != metav1.DryRunAll {
+						Fail("Create call should be dry run.")
+					}
+
+					Expect(deployment.Spec.Template.Spec.NodeSelector).To(Equal(placement.NodeSelector))
+					Expect(deployment.Spec.Template.Spec.Affinity).To(Equal(placement.Affinity))
+					Expect(deployment.Spec.Template.Spec.Tolerations).To(Equal(placement.Tolerations))
+					createWasCalled = true
+					return nil
+				}
+
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						TemplateValidator: &sspv1beta3.TemplateValidator{
+							Replicas:  ptr.To(int32(2)),
+							Placement: placement,
+						},
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(createWasCalled).To(BeTrue())
+			})
 		})
 	})
 })

@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -420,6 +421,7 @@ func expectSuccessOrNotFound(err error) {
 
 func setupApiClient() {
 	Expect(sspv1beta2.AddToScheme(testScheme)).ToNot(HaveOccurred())
+	Expect(sspv1beta3.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(promv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(templatev1.Install(testScheme)).ToNot(HaveOccurred())
 	Expect(secv1.Install(testScheme)).ToNot(HaveOccurred())
@@ -465,6 +467,13 @@ func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
 func getSsp() *sspv1beta2.SSP {
 	key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
 	foundSsp := &sspv1beta2.SSP{}
+	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
+	return foundSsp
+}
+
+func getSspV1Beta3() *sspv1beta3.SSP {
+	key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
+	foundSsp := &sspv1beta3.SSP{}
 	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
 	return foundSsp
 }
