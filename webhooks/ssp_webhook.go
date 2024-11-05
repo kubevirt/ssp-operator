@@ -23,7 +23,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
@@ -32,27 +31,19 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 )
+
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta2,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
 
 var ssplog = logf.Log.WithName("ssp-resource")
 
 func Setup(mgr ctrl.Manager) error {
-	// This is a hack. Using Unstructured allows the webhook to correctly decode different versions of objects.
-	// Controller-runtime currently does not support a single webhook for multiple versions.
-
-	obj := &unstructured.Unstructured{}
-	obj.SetAPIVersion(sspv1beta2.GroupVersion.String())
-	obj.SetKind("SSP")
-
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(obj).
+		For(&sspv1beta2.SSP{}).
 		WithValidator(newSspValidator(mgr.GetClient())).
 		Complete()
 }
-
-// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta1;v1beta2,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
 
 type sspValidator struct {
 	apiClient client.Client
@@ -61,16 +52,16 @@ type sspValidator struct {
 var _ admission.CustomValidator = &sspValidator{}
 
 func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	sspObj, err := getSspWithConversion(obj)
-	if err != nil {
-		return nil, err
+	sspObj, ok := obj.(*sspv1beta2.SSP)
+	if !ok {
+		return nil, fmt.Errorf("expected v1beta2.SSP object, got %T", obj)
 	}
 
 	var ssps sspv1beta2.SSPList
 
 	// Check if no other SSP resources are present in the cluster
 	ssplog.Info("validate create", "name", sspObj.Name)
-	err = s.apiClient.List(ctx, &ssps, &client.ListOptions{})
+	err := s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
 	}
@@ -82,9 +73,9 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (
 }
 
 func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	newSsp, err := getSspWithConversion(newObj)
-	if err != nil {
-		return nil, err
+	newSsp, ok := newObj.(*sspv1beta2.SSP)
+	if !ok {
+		return nil, fmt.Errorf("expected v1beta2.SSP object, got %T", newObj)
 	}
 
 	ssplog.Info("validate update", "name", newSsp.Name)
@@ -164,37 +155,6 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 	}
 
 	return s.apiClient.Create(ctx, deployment, &client.CreateOptions{DryRun: []string{metav1.DryRunAll}})
-}
-
-func getSspWithConversion(obj runtime.Object) (*sspv1beta2.SSP, error) {
-	unstructuredSsp, ok := obj.(*unstructured.Unstructured)
-	if !ok {
-		return nil, fmt.Errorf("expected unstructured object, got %T", obj)
-	}
-
-	if unstructuredSsp.GetKind() != "SSP" {
-		return nil, fmt.Errorf("expected SSP kind, got %s", unstructuredSsp.GetKind())
-	}
-
-	switch unstructuredSsp.GetAPIVersion() {
-	case sspv1beta1.GroupVersion.String():
-		// Currently the two versions differ only in one removed field.
-		// We can decode the v1beta1 object into v1beta2.
-		// TODO: Use proper conversion logic.
-		unstructuredSsp.SetAPIVersion(sspv1beta2.GroupVersion.String())
-
-	case sspv1beta2.GroupVersion.String():
-		break
-	default:
-		return nil, fmt.Errorf("unexpected group version %s", unstructuredSsp.GetAPIVersion())
-	}
-
-	ssp := &sspv1beta2.SSP{}
-	err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredSsp.UnstructuredContent(), ssp)
-	if err != nil {
-		return nil, fmt.Errorf("error converting unstructured object to SSP: %w", err)
-	}
-	return ssp, nil
 }
 
 // TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation

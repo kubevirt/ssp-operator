@@ -18,7 +18,6 @@ package webhooks
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -26,14 +25,11 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal"
 )
@@ -51,7 +47,6 @@ var _ = Describe("SSP Validation", func() {
 		scheme := runtime.NewScheme()
 		// add our own scheme
 		Expect(sspv1beta2.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
-		Expect(sspv1beta1.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
 		// add more schemes
 		Expect(v1.AddToScheme(scheme)).To(Succeed())
 
@@ -109,43 +104,10 @@ var _ = Describe("SSP Validation", func() {
 					},
 				}
 
-				_, err := validator.ValidateCreate(ctx, toUnstructured(ssp))
+				_, err := validator.ValidateCreate(ctx, ssp)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp"))
 			})
-		})
-
-		It("should accept old v1beta1 SSP CR", func() {
-			ssp := &sspv1beta1.SSP{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ssp",
-					Namespace: "test-ns",
-				},
-				Spec: sspv1beta1.SSPSpec{
-					TemplateValidator: &sspv1beta1.TemplateValidator{
-						Replicas: ptr.To[int32](2),
-					},
-					CommonTemplates: sspv1beta1.CommonTemplates{
-						Namespace: templatesNamespace,
-					},
-					NodeLabeller: &sspv1beta1.NodeLabeller{},
-					CommonInstancetypes: &sspv1beta1.CommonInstancetypes{
-						URL: ptr.To("https://foo.com/bar?ref=1234"),
-					},
-					TektonPipelines: &sspv1beta1.TektonPipelines{
-						Namespace: "test-pipelines-ns",
-					},
-					TektonTasks: &sspv1beta1.TektonTasks{
-						Namespace: "test-tasks-ns",
-					},
-					FeatureGates: &sspv1beta1.FeatureGates{
-						DeployTektonTaskResources: true,
-					},
-				},
-			}
-
-			_, err := validator.ValidateCreate(ctx, toUnstructured(ssp))
-			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -194,44 +156,27 @@ var _ = Describe("SSP Validation", func() {
 		})
 
 		It("should validate dataImportCronTemplates on create", func() {
-			_, err := validator.ValidateCreate(ctx, toUnstructured(newSSP))
+			_, err := validator.ValidateCreate(ctx, newSSP)
 			Expect(err).To(HaveOccurred())
 
 			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
 
-			_, err = validator.ValidateCreate(ctx, toUnstructured(newSSP))
+			_, err = validator.ValidateCreate(ctx, newSSP)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should validate dataImportCronTemplates on update", func() {
-			_, err := validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))
+			_, err := validator.ValidateUpdate(ctx, oldSSP, newSSP)
 			Expect(err).To(HaveOccurred())
 
 			newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
 
-			_, err = validator.ValidateUpdate(ctx, toUnstructured(oldSSP), toUnstructured(newSSP))
+			_, err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
 })
-
-func toUnstructured(obj runtime.Object) *unstructured.Unstructured {
-	switch t := obj.(type) {
-	case *sspv1beta1.SSP:
-		t.APIVersion = sspv1beta1.GroupVersion.String()
-		t.Kind = "SSP"
-	case *sspv1beta2.SSP:
-		t.APIVersion = sspv1beta2.GroupVersion.String()
-		t.Kind = "SSP"
-	}
-
-	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		panic(fmt.Sprintf("cannot convert object to unstructured: %s", err))
-	}
-	return &unstructured.Unstructured{Object: data}
-}
 
 func TestWebhook(t *testing.T) {
 	RegisterFailHandler(Fail)

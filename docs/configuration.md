@@ -37,7 +37,7 @@ spec:
 This annotation will pause operator reconciliation.
 
 ```
-apiVersion: ssp.kubevirt.io/v1beta1
+apiVersion: ssp.kubevirt.io/v1beta2
 kind: SSP
 metadata:
   annotations:
@@ -56,7 +56,7 @@ the operator will still cleanup all the dependent resources.
 A set of common templates to create KubeVirt Virtual Machines (VMs).
 
 ```
-apiVersion: ssp.kubevirt.io/v1beta1
+apiVersion: ssp.kubevirt.io/v1beta2
 kind: SSP
 metadata:
   name: ssp-sample
@@ -71,7 +71,7 @@ spec:
 Template Validator is designed to inspect virtual machines (VMs) and detect any violations of the rules defined in VM's annotations.
 
 ```
-apiVersion: ssp.kubevirt.io/v1beta1
+apiVersion: ssp.kubevirt.io/v1beta2
 kind: SSP
 metadata:
   name: ssp-sample

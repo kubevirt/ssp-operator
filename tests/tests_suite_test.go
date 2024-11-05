@@ -41,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/tests/env"
@@ -420,7 +419,6 @@ func expectSuccessOrNotFound(err error) {
 }
 
 func setupApiClient() {
-	Expect(sspv1beta1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(sspv1beta2.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(promv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(templatev1.Install(testScheme)).ToNot(HaveOccurred())
