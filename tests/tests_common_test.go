@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/utils/ptr"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -362,7 +363,6 @@ func NewMinimalVMIWithNS(namespace, name string) *kubevirtv1.VirtualMachineInsta
 }
 
 func NewVirtualMachine(vmi *kubevirtv1.VirtualMachineInstance) *kubevirtv1.VirtualMachine {
-	running := false
 	name := vmi.Name
 	namespace := vmi.Namespace
 	vm := &kubevirtv1.VirtualMachine{
@@ -371,7 +371,7 @@ func NewVirtualMachine(vmi *kubevirtv1.VirtualMachineInstance) *kubevirtv1.Virtu
 			Namespace: namespace,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			Running: &running,
+			RunStrategy: ptr.To(kubevirtv1.RunStrategyHalted),
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:    map[string]string{"kubevirt.io/vm": name},
