@@ -11,6 +11,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"gomodules.xyz/jsonpatch/v2"
+
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promApi "github.com/prometheus/client_golang/api"
@@ -247,6 +249,16 @@ var _ = Describe("Prometheus Alerts", func() {
 		var createResources = func(createDataVolume bool, rxbounceEnabled bool) string {
 			vmName := fmt.Sprintf("testvmi-%v", rand.String(10))
 
+			vmi := NewMinimalVMIWithNS(strategy.GetNamespace(), vmName)
+			vm = NewVirtualMachine(vmi)
+			vm.Spec.RunStrategy = ptr.To(kubevirtv1.RunStrategyAlways)
+			vm.Spec.Template.ObjectMeta.Annotations = map[string]string{
+				"vm.kubevirt.io/os": "windows-10",
+			}
+
+			eventuallyCreateVm(vm)
+			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_vmi_info{name='%s', os='windows-10'} == 1", vmi.Name))
+
 			var volumes []kubevirtv1.Volume
 
 			if createDataVolume {
@@ -261,13 +273,10 @@ var _ = Describe("Prometheus Alerts", func() {
 				})
 			}
 
-			vmi := NewMinimalVMIWithNS(strategy.GetNamespace(), vmName)
-			vmi.Spec = kubevirtv1.VirtualMachineInstanceSpec{
-				Volumes: volumes,
-			}
-			vm = NewVirtualMachine(vmi)
-			vm.Spec.Running = ptr.To(false)
-			eventuallyCreateVm(vm)
+			operation := jsonpatch.NewOperation("add", "/spec/template/spec/volumes", volumes)
+			patch := encodePatch([]jsonpatch.Operation{operation})
+			err := apiClient.Patch(ctx, vm, patch)
+			Expect(err).NotTo(HaveOccurred())
 
 			return vmName
 		}
@@ -278,10 +287,7 @@ var _ = Describe("Prometheus Alerts", func() {
 			alertShouldNotBeActive("VMStorageClassWarning")
 		})
 
-		// This test is flaky and fails too often.
-		//
-		// TODO: GitHub issue: https://github.com/kubevirt/ssp-operator/issues/889
-		PIt("[test_id:10549] Should fire VMStorageClassWarning when rxbounce is disabled", func() {
+		It("[test_id:10549] Should fire VMStorageClassWarning when rxbounce is disabled", func() {
 			vmName := createResources(true, false)
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 1", vmName))
 			waitForAlertToActivate("VMStorageClassWarning")
@@ -290,8 +296,8 @@ var _ = Describe("Prometheus Alerts", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) error {
-				return apiClient.Get(ctx, types.NamespacedName{Name: vmName, Namespace: strategy.GetNamespace()}, vm)
-			}, 10*time.Second, time.Second).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
+				return apiClient.Get(ctx, types.NamespacedName{Name: vm.Name, Namespace: vm.Namespace}, vm)
+			}, 1*time.Minute, 5*time.Second).Should(MatchError(k8serrors.IsNotFound, "IsNotFound"))
 
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
 			alertShouldNotBeActive("VMStorageClassWarning")
