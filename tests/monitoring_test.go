@@ -11,6 +11,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"gomodules.xyz/jsonpatch/v2"
+
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promApi "github.com/prometheus/client_golang/api"
@@ -19,11 +21,11 @@ import (
 	apps "k8s.io/api/apps/v1"
 	authnv1 "k8s.io/api/authentication/v1"
 	core "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/pointer"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -245,6 +247,17 @@ var _ = Describe("Prometheus Alerts", func() {
 		var createResources = func(createDataVolume bool, rxbounceEnabled bool) string {
 			vmName := fmt.Sprintf("testvmi-%v", rand.String(10))
 
+			vmi := NewMinimalVMIWithNS(strategy.GetNamespace(), vmName)
+			vm = NewVirtualMachine(vmi)
+			runStrategyAlways := kubevirtv1.RunStrategyAlways
+			vm.Spec.RunStrategy = &runStrategyAlways
+			vm.Spec.Template.ObjectMeta.Annotations = map[string]string{
+				"vm.kubevirt.io/os": "windows-10",
+			}
+
+			eventuallyCreateVm(vm)
+			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_vmi_info{name='%s', os='windows-10'} == 1", vmi.Name))
+
 			var volumes []kubevirtv1.Volume
 
 			if createDataVolume {
@@ -259,13 +272,10 @@ var _ = Describe("Prometheus Alerts", func() {
 				})
 			}
 
-			vmi := NewMinimalVMIWithNS(strategy.GetNamespace(), vmName)
-			vmi.Spec = kubevirtv1.VirtualMachineInstanceSpec{
-				Volumes: volumes,
-			}
-			vm = NewVirtualMachine(vmi)
-			vm.Spec.Running = pointer.Bool(false)
-			eventuallyCreateVm(vm)
+			operation := jsonpatch.NewOperation("add", "/spec/template/spec/volumes", volumes)
+			patch := encodePatch([]jsonpatch.Operation{operation})
+			err := apiClient.Patch(ctx, vm, patch)
+			Expect(err).NotTo(HaveOccurred())
 
 			return vmName
 		}
@@ -285,8 +295,8 @@ var _ = Describe("Prometheus Alerts", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) error {
-				return apiClient.Get(ctx, types.NamespacedName{Name: vmName, Namespace: strategy.GetNamespace()}, vm)
-			}).Should(MatchError(ContainSubstring(fmt.Sprintf("virtualmachines.kubevirt.io \"%s\" not found", vmName))))
+				return apiClient.Get(ctx, types.NamespacedName{Name: vm.Name, Namespace: vm.Namespace}, vm)
+			}, 1*time.Minute, 5*time.Second).Should(MatchError(k8serrors.IsNotFound))
 
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 0", vmName))
 			alertShouldNotBeActive("VMStorageClassWarning")
