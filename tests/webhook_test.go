@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -78,11 +77,7 @@ var _ = Describe("Validation webhook", func() {
 			}
 
 			err := apiClient.Create(ctx, ssp2, client.DryRunAll)
-			if err == nil {
-				Fail("Second SSP resource created.")
-				return
-			}
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf(
+			Expect(err).To(MatchError(ContainSubstring(
 				"creation failed, an SSP CR already exists in namespace %v: %v",
 				foundSsp.Namespace,
 				foundSsp.Name,
