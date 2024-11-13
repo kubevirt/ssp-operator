@@ -1,7 +1,7 @@
 # Configuration
 
 Operator configuration can be modified by editing the SSP Custom Resource (CR).
-See [SSP Specification](https://github.com/kubevirt/ssp-operator/blob/main/api/v1beta2/ssp_types.go#L74)
+See [SSP Specification](https://github.com/kubevirt/ssp-operator/blob/main/api/v1beta3/ssp_types.go#L51)
 that defines the desired state of SSP.
 
 ## Table Of Contents
@@ -10,13 +10,13 @@ that defines the desired state of SSP.
 - [Annotations](#annotations)
 - [Common Templates](#common-templates)
 - [Template Validator](#template-validator)
-- [Feature Gates](#feature-gates)
+- [VNC Token Generation Service](#vnc-token-generation-service)
 
 ## SSP Custom Resource (CR)
 
 To activate the operator, create the SSP Custom Resource (CR):
-```
-apiVersion: ssp.kubevirt.io/v1beta2
+```yaml
+apiVersion: ssp.kubevirt.io/v1beta3
 kind: SSP
 metadata:
   name: ssp-sample
@@ -26,8 +26,6 @@ spec:
     namespace: kubevirt
   templateValidator:
     replicas: 2
-  featureGates:
-    deployVmConsoleProxy: true
 ```
 
 ## Annotations
@@ -36,8 +34,8 @@ spec:
 
 This annotation will pause operator reconciliation.
 
-```
-apiVersion: ssp.kubevirt.io/v1beta2
+```yaml
+apiVersion: ssp.kubevirt.io/v1beta3
 kind: SSP
 metadata:
   annotations:
@@ -55,8 +53,8 @@ the operator will still cleanup all the dependent resources.
 
 A set of common templates to create KubeVirt Virtual Machines (VMs).
 
-```
-apiVersion: ssp.kubevirt.io/v1beta2
+```yaml
+apiVersion: ssp.kubevirt.io/v1beta3
 kind: SSP
 metadata:
   name: ssp-sample
@@ -70,8 +68,8 @@ spec:
 
 Template Validator is designed to inspect virtual machines (VMs) and detect any violations of the rules defined in VM's annotations.
 
-```
-apiVersion: ssp.kubevirt.io/v1beta2
+```yaml
+apiVersion: ssp.kubevirt.io/v1beta3
 kind: SSP
 metadata:
   name: ssp-sample
@@ -81,29 +79,19 @@ spec:
     replicas: 2 # Customize the number of replicas for the validator deployment
 ```
 
-## Feature Gates
+## VNC Token Generation Service
 
-The `featureGates` field is an optional set of optional boolean feature enabler.
-The features in the list are experimental features that are not enabled by default.
+The  [VM Console Proxy](https://github.com/kubevirt/vm-console-proxy)
+can be deployed by SSP operator when it is enabled in the `.spec`.
+It is a service that exposes an API for generating VNC access tokens for VMs.
 
-To enable a feature, add its name to the `featureGates` list and set it to true.
-Missing or false feature gates disables the feature.
-
-### `deployVmConsoleProxy`
-
-Set the `deployVmConsoleProxy` feature gate to true to allow the operator
-to deploy VM console proxy resources.
-
-Resources will be deployed that provide access to the VNC console of a KubeVirt VM,
-enabling users to access VMs without requiring access to the cluster's API.
-
-```
-apiVersion: ssp.kubevirt.io/v1beta2
+```yaml
+apiVersion: ssp.kubevirt.io/v1beta3
 kind: SSP
 metadata:
   name: ssp-sample
   namespace: kubevirt
 spec:
-  featureGates:
-    deployVmConsoleProxy: true
+  tokenGenerationService:
+    enabled: true
 ```
