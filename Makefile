@@ -99,7 +99,8 @@ unittest: generate lint fmt vet manifests metrics-rules-test lint-monitoring
 build-functests:
 	go test -c ./tests
 
-GINKGO_VERSION ?= v2.17.1
+GOMOD_PATH ?= ./go.mod
+GINKGO_VERSION ?= $(shell grep -E '^\s*github\.com/onsi/ginkgo/v[0-9]+' $(GOMOD_PATH) | awk '{print $$2}')
 GINKGO_TIMEOUT ?= 2h
 
 .PHONY: ginkgo
