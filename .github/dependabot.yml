@@ -6,9 +6,6 @@ updates:
       interval: "daily"
     allow:
       - dependency-type: "all"
-    ignore:
-      # Ginkgo update needs a change in Makefile.
-      - dependency-name: "github.com/onsi/ginkgo/v2"
     groups:
       production-dependencies:
         dependency-type: "production"
