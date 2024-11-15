@@ -1,4 +1,5 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - ssp_v1beta2_ssp.yaml
+- ssp_v1beta3_ssp.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

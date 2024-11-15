@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1beta3
 
 import (
 	ocpv1 "github.com/openshift/api/config/v1"
@@ -43,36 +43,8 @@ type CommonTemplates struct {
 	//+kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
 	Namespace string `json:"namespace"`
 
-	// DataImportCronTemplates defines a list of DataImportCrons managed by the SSP
-	// Operator. This is intended for images used by CommonTemplates.
+	// DataImportCronTemplates defines a list of DataImportCrons managed by the SSP Operator.
 	DataImportCronTemplates []DataImportCronTemplate `json:"dataImportCronTemplates,omitempty"`
-}
-
-type NodeLabeller struct {
-	// Placement describes the node scheduling configuration
-	Placement *lifecycleapi.NodePlacement `json:"placement,omitempty"`
-}
-
-type CommonInstancetypes struct {
-	// URL of a remote Kustomize target from which to generate and deploy resources.
-	//
-	// The following caveats apply to the provided URL:
-	//
-	// * Only 'https://' and 'git://' URLs are supported.
-	//
-	// * The URL must include '?ref=$ref' or '?version=$ref' pinning it to a specific
-	//   reference. It is recommended that the reference be a specific commit or tag
-	//   to ensure the generated contents does not change over time. As such it is
-	//   recommended not to use branches as the ref for the time being.
-	//
-	// * Only VirtualMachineClusterPreference and VirtualMachineClusterInstancetype
-	//   resources generated from the URL are deployed by the operand.
-	//
-	// See the following Kustomize documentation for more details:
-	//
-	// remote targets
-	// https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md
-	URL *string `json:"url,omitempty"`
 }
 
 // SSPSpec defines the desired state of SSP
@@ -83,38 +55,11 @@ type SSPSpec struct {
 	// CommonTemplates is the configuration of the common templates operand
 	CommonTemplates CommonTemplates `json:"commonTemplates"`
 
-	// NodeLabeller is configuration of the node-labeller operand
-	NodeLabeller *NodeLabeller `json:"nodeLabeller,omitempty"`
-
 	// TLSSecurityProfile is a configuration for the TLS.
 	TLSSecurityProfile *ocpv1.TLSSecurityProfile `json:"tlsSecurityProfile,omitempty"`
 
-	// CommonInstancetypes is the configuration of the common-instancetypes operand
-	CommonInstancetypes *CommonInstancetypes `json:"commonInstancetypes,omitempty"`
-
-	// TektonPipelines is the configuration of the tekton-pipelines operand
-	TektonPipelines *TektonPipelines `json:"tektonPipelines,omitempty"`
-
-	// TektonTasks is the configuration of the tekton-tasks operand
-	TektonTasks *TektonTasks `json:"tektonTasks,omitempty"`
-
-	// FeatureGates is the configuration of the tekton operands
-	FeatureGates *FeatureGates `json:"featureGates,omitempty"`
-}
-
-// TektonPipelines defines the desired state of pipelines
-type TektonPipelines struct {
-	Namespace string `json:"namespace,omitempty"`
-}
-
-// TektonTasks defines variables for configuration of tasks
-type TektonTasks struct {
-	Namespace string `json:"namespace,omitempty"`
-}
-
-// FeatureGates defines feature gate for tto operator
-type FeatureGates struct {
-	DeployTektonTaskResources bool `json:"deployTektonTaskResources,omitempty"`
+	// TokenGenerationService configures the service for generating tokens to access VNC for a VM.
+	TokenGenerationService *TokenGenerationService `json:"tokenGenerationService,omitempty"`
 }
 
 // DataImportCronTemplate defines the template type for DataImportCrons.
@@ -133,6 +78,11 @@ func (t *DataImportCronTemplate) AsDataImportCron() cdiv1beta1.DataImportCron {
 	}
 }
 
+// TokenGenerationService configures the service for generating tokens to access VNC for a VM.
+type TokenGenerationService struct {
+	Enabled bool `json:"enabled,omitempty"`
+}
+
 // SSPStatus defines the observed state of SSP
 type SSPStatus struct {
 	lifecycleapi.Status `json:",inline"`
@@ -146,9 +96,9 @@ type SSPStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:deprecatedversion:warning="ssp.kubevirt.io/v1beta1 ssp is deprecated"
-// SSP is the Schema for the ssps API
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+
+// SSP is the Schema for the ssps API
 type SSP struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -23,36 +23,43 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
+	"kubevirt.io/ssp-operator/webhooks/convert"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
 )
+
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta2,name=validation.v1beta2.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
+// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta3-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta3,name=validation.v1beta3.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
 
 var ssplog = logf.Log.WithName("ssp-resource")
 
 func Setup(mgr ctrl.Manager) error {
-	// This is a hack. Using Unstructured allows the webhook to correctly decode different versions of objects.
-	// Controller-runtime currently does not support a single webhook for multiple versions.
-
-	obj := &unstructured.Unstructured{}
-	obj.SetAPIVersion(sspv1beta2.GroupVersion.String())
-	obj.SetKind("SSP")
-
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(obj).
+	err := ctrl.NewWebhookManagedBy(mgr).
+		For(&sspv1beta2.SSP{}).
 		WithValidator(newSspValidator(mgr.GetClient())).
 		Complete()
-}
+	if err != nil {
+		return fmt.Errorf("failed to create webhook for v1beta2.SSP")
+	}
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta1;v1beta2,name=validation.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
+	err = ctrl.NewWebhookManagedBy(mgr).
+		For(&sspv1beta3.SSP{}).
+		WithValidator(newSspValidator(mgr.GetClient())).
+		Complete()
+	if err != nil {
+		return fmt.Errorf("failed to create webhook for v1beta3.SSP")
+	}
+
+	return nil
+}
 
 type sspValidator struct {
 	apiClient client.Client
@@ -61,7 +68,7 @@ type sspValidator struct {
 var _ admission.CustomValidator = &sspValidator{}
 
 func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	sspObj, err := getSspWithConversion(obj)
+	sspObj, err := getSsp(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +89,7 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (
 }
 
 func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	newSsp, err := getSspWithConversion(newObj)
+	newSsp, err := getSsp(newObj)
 	if err != nil {
 		return nil, err
 	}
@@ -166,37 +173,6 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 	return s.apiClient.Create(ctx, deployment, &client.CreateOptions{DryRun: []string{metav1.DryRunAll}})
 }
 
-func getSspWithConversion(obj runtime.Object) (*sspv1beta2.SSP, error) {
-	unstructuredSsp, ok := obj.(*unstructured.Unstructured)
-	if !ok {
-		return nil, fmt.Errorf("expected unstructured object, got %T", obj)
-	}
-
-	if unstructuredSsp.GetKind() != "SSP" {
-		return nil, fmt.Errorf("expected SSP kind, got %s", unstructuredSsp.GetKind())
-	}
-
-	switch unstructuredSsp.GetAPIVersion() {
-	case sspv1beta1.GroupVersion.String():
-		// Currently the two versions differ only in one removed field.
-		// We can decode the v1beta1 object into v1beta2.
-		// TODO: Use proper conversion logic.
-		unstructuredSsp.SetAPIVersion(sspv1beta2.GroupVersion.String())
-
-	case sspv1beta2.GroupVersion.String():
-		break
-	default:
-		return nil, fmt.Errorf("unexpected group version %s", unstructuredSsp.GetAPIVersion())
-	}
-
-	ssp := &sspv1beta2.SSP{}
-	err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredSsp.UnstructuredContent(), ssp)
-	if err != nil {
-		return nil, fmt.Errorf("error converting unstructured object to SSP: %w", err)
-	}
-	return ssp, nil
-}
-
 // TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation
 func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
 	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
@@ -209,4 +185,15 @@ func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
 
 func newSspValidator(clt client.Client) *sspValidator {
 	return &sspValidator{apiClient: clt}
+}
+
+func getSsp(obj runtime.Object) (*sspv1beta2.SSP, error) {
+	switch sspObj := obj.(type) {
+	case *sspv1beta2.SSP:
+		return sspObj, nil
+	case *sspv1beta3.SSP:
+		return convert.ConvertSSP(sspObj), nil
+	default:
+		return nil, fmt.Errorf("unexpected type: %T", obj)
+	}
 }

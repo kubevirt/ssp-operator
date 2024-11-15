@@ -23,6 +23,22 @@ metadata:
               "replicas": 2
             }
           }
+        },
+        {
+          "apiVersion": "ssp.kubevirt.io/v1beta3",
+          "kind": "SSP",
+          "metadata": {
+            "name": "ssp-sample",
+            "namespace": "kubevirt"
+          },
+          "spec": {
+            "commonTemplates": {
+              "namespace": "kubevirt"
+            },
+            "templateValidator": {
+              "replicas": 2
+            }
+          }
         }
       ]
     capabilities: Basic Install
@@ -39,14 +55,14 @@ spec:
     enabled: false
   customresourcedefinitions:
     owned:
-    - kind: SSP
-      name: ssps.ssp.kubevirt.io
-      version: v1beta1
     - description: SSP is the Schema for the ssps API
       displayName: SSP
       kind: SSP
       name: ssps.ssp.kubevirt.io
       version: v1beta2
+    - kind: SSP
+      name: ssps.ssp.kubevirt.io
+      version: v1beta3
   description: Operator that deploys and controls additional KubeVirt resources
   displayName: ssp-operator
   icon:
@@ -625,12 +641,11 @@ spec:
     containerPort: 9443
     deploymentName: ssp-operator
     failurePolicy: Fail
-    generateName: validation.ssp.kubevirt.io
+    generateName: validation.v1beta2.ssp.kubevirt.io
     rules:
     - apiGroups:
       - ssp.kubevirt.io
       apiVersions:
-      - v1beta1
       - v1beta2
       operations:
       - CREATE
@@ -641,3 +656,23 @@ spec:
     targetPort: 9443
     type: ValidatingAdmissionWebhook
     webhookPath: /validate-ssp-kubevirt-io-v1beta2-ssp
+  - admissionReviewVersions:
+    - v1
+    containerPort: 9443
+    deploymentName: ssp-operator
+    failurePolicy: Fail
+    generateName: validation.v1beta3.ssp.kubevirt.io
+    rules:
+    - apiGroups:
+      - ssp.kubevirt.io
+      apiVersions:
+      - v1beta3
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - ssps
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-ssp-kubevirt-io-v1beta3-ssp

@@ -1,0 +1,10 @@
+apiVersion: ssp.kubevirt.io/v1beta3
+kind: SSP
+metadata:
+  name: ssp-sample
+  namespace: kubevirt
+spec:
+  commonTemplates:
+    namespace: kubevirt
+  templateValidator:
+    replicas: 2
