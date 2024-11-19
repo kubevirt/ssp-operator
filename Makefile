@@ -102,6 +102,7 @@ build-functests:
 GOMOD_PATH ?= ./go.mod
 GINKGO_VERSION ?= $(shell grep -E '^\s*github\.com/onsi/ginkgo/v[0-9]+' $(GOMOD_PATH) | awk '{print $$2}')
 GINKGO_TIMEOUT ?= 2h
+GINKGO_FOCUS ?=
 
 .PHONY: ginkgo
 ginkgo: getginkgo vendor
@@ -112,7 +113,7 @@ getginkgo:
 
 .PHONY: functest
 functest: ginkgo generate fmt vet manifests
-	go run github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION) -v -coverprofile cover.out -timeout $(GINKGO_TIMEOUT) ./tests/...
+	go run github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION) -v -coverprofile cover.out -timeout $(GINKGO_TIMEOUT) --focus="$(GINKGO_FOCUS)" ./tests/...
 
 # Build manager binary
 .PHONY: manager
