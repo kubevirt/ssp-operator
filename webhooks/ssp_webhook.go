@@ -173,11 +173,10 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 	return s.apiClient.Create(ctx, deployment, &client.CreateOptions{DryRun: []string{metav1.DryRunAll}})
 }
 
-// TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation
 func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
 	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
-		if cron.Name == "" {
-			return fmt.Errorf("missing name in DataImportCronTemplate")
+		if err := validateDataImportCronTemplate(&cron); err != nil {
+			return fmt.Errorf("invalid DataImportCron template \"%s\": %w", cron.Name, err)
 		}
 	}
 	return nil
