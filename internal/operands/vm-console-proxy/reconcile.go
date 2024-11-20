@@ -4,13 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	ocpv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/library-go/pkg/crypto"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+	proxyv1 "kubevirt.io/vm-console-proxy/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
@@ -141,12 +146,21 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 		return nil, err
 	}
 
+	var cleanupResults []common.CleanupResult
+	oldApiServiceCleanup, err := deleteOldApiService(request)
+	if err != nil {
+		return nil, err
+	}
+	cleanupResults = append(cleanupResults, oldApiServiceCleanup)
+
 	// Route is no longer needed.
 	routeCleanupResults, err := v.deleteRoute(request)
 	if err != nil {
 		return nil, err
 	}
-	for _, cleanupResult := range routeCleanupResults {
+	cleanupResults = append(cleanupResults, routeCleanupResults...)
+
+	for _, cleanupResult := range cleanupResults {
 		if !cleanupResult.Deleted {
 			reconcileResults = append(reconcileResults, common.ResourceDeletedResult(cleanupResult.Resource, common.OperationResultDeleted))
 		}
@@ -159,10 +173,19 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 	// We need to use labels to find resources that were deployed by this operand,
 	// because namespace annotation may not be present.
 
+	var allResults []common.CleanupResult
+
 	routeCleanupResults, err := v.deleteRoute(request)
 	if err != nil {
 		return nil, err
 	}
+	allResults = append(allResults, routeCleanupResults...)
+
+	oldApiServiceCleanup, err := deleteOldApiService(request)
+	if err != nil {
+		return nil, err
+	}
+	allResults = append(allResults, oldApiServiceCleanup)
 
 	var objectsToDelete []client.Object
 
@@ -224,7 +247,9 @@ func (v *vmConsoleProxy) Cleanup(request *common.Request) ([]common.CleanupResul
 		return nil, err
 	}
 
-	return append(cleanupResults, routeCleanupResults...), nil
+	allResults = append(allResults, cleanupResults...)
+
+	return allResults, nil
 }
 
 func (v *vmConsoleProxy) deleteRoute(request *common.Request) ([]common.CleanupResult, error) {
@@ -239,6 +264,15 @@ func (v *vmConsoleProxy) deleteRoute(request *common.Request) ([]common.CleanupR
 	}
 
 	return common.DeleteAll(request, routes...)
+}
+
+func deleteOldApiService(request *common.Request) (common.CleanupResult, error) {
+	return common.Cleanup(request, &apiregv1.APIService{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "v1alpha1.token.kubevirt.io",
+		},
+	})
 }
 
 func reconcileServiceAccount(serviceAccount core.ServiceAccount) common.ReconcileFunc {
@@ -283,6 +317,15 @@ func reconcileRoleBinding(roleBinding *rbac.RoleBinding) common.ReconcileFunc {
 func reconcileConfigMap(configMap core.ConfigMap) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		configMap.Namespace = request.Instance.Namespace
+
+		tlsConfigYaml, err := createTlsConfigFile(request.Instance.Spec.TLSSecurityProfile)
+		if err != nil {
+			return common.ReconcileResult{}, err
+		}
+
+		const tlsConfigFilename = "tls-profile-v1.yaml"
+		configMap.Data[tlsConfigFilename] = tlsConfigYaml
+
 		return common.CreateOrUpdate(request).
 			NamespacedResource(&configMap).
 			WithAppLabels(operandName, operandComponent).
@@ -333,6 +376,51 @@ func reconcileApiService(apiService *apiregv1.APIService) common.ReconcileFunc {
 
 func getVmConsoleProxyImage() string {
 	return env.EnvOrDefault(env.VmConsoleProxyImageKey, defaultVmConsoleProxyImage)
+}
+
+func createTlsConfigFile(tlsProfile *ocpv1.TLSSecurityProfile) (string, error) {
+	if tlsProfile == nil {
+		// Returning empty config yaml. Default configuration will be used.
+		return "{}", nil
+	}
+
+	var profileSpec *ocpv1.TLSProfileSpec
+	if tlsProfile.Type == ocpv1.TLSProfileCustomType {
+		if tlsProfile.Custom == nil {
+			return "", fmt.Errorf("tlsProfile is invalid: custom filed is empty")
+		}
+		profileSpec = tlsProfile.Custom.TLSProfileSpec.DeepCopy()
+	} else {
+		predefinedProfile, found := ocpv1.TLSProfiles[tlsProfile.Type]
+		if !found {
+			return "", fmt.Errorf("tlsProfile type is invalid: %s", tlsProfile.Type)
+		}
+		profileSpec = predefinedProfile.DeepCopy()
+	}
+
+	result := proxyv1.TlsProfile{}
+
+	switch profileSpec.MinTLSVersion {
+	case ocpv1.VersionTLS10:
+		result.MinTLSVersion = proxyv1.VersionTLS10
+	case ocpv1.VersionTLS11:
+		result.MinTLSVersion = proxyv1.VersionTLS11
+	case ocpv1.VersionTLS12:
+		result.MinTLSVersion = proxyv1.VersionTLS12
+	case ocpv1.VersionTLS13:
+		result.MinTLSVersion = proxyv1.VersionTLS13
+	default:
+		return "", fmt.Errorf("unsupported TLS version: %s", profileSpec.MinTLSVersion)
+	}
+
+	result.Ciphers = crypto.OpenSSLToIANACipherSuites(profileSpec.Ciphers)
+
+	yamlBytes, err := yaml.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal TLS profile cofing to yaml: %w", err)
+	}
+
+	return string(yamlBytes), nil
 }
 
 func findResourcesUsingLabels[PtrL interface {

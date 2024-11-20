@@ -7,7 +7,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/api/errors"
 
+	ocpv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	apps "k8s.io/api/apps/v1"
@@ -21,10 +23,12 @@ import (
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/utils/ptr"
 	kubevirt "kubevirt.io/api/core"
+	proxyv1 "kubevirt.io/vm-console-proxy/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
@@ -116,6 +120,53 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(apiService.Spec.Service.Namespace).To(Equal(namespace))
 	})
 
+	It("should remove old APIService on reconcile", func() {
+		oldApiService := &apiregv1.APIService{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "v1alpha1.token.kubevirt.io",
+				Labels: map[string]string{
+					common.AppKubernetesNameLabel:      operandName,
+					common.AppKubernetesComponentLabel: operandComponent,
+					common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+				},
+			},
+		}
+		Expect(libhandler.SetOwnerAnnotations(request.Instance, oldApiService)).To(Succeed())
+
+		Expect(request.Client.Create(request.Context, oldApiService)).To(Succeed())
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		key := client.ObjectKeyFromObject(oldApiService)
+		Expect(request.Client.Get(request.Context, key, &apiregv1.APIService{})).
+			To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+	})
+
+	It("should write TLS configuration to ConfigMap", func() {
+		request.Instance.Spec.TLSSecurityProfile = &ocpv1.TLSSecurityProfile{
+			Type:         ocpv1.TLSProfileIntermediateType,
+			Intermediate: &ocpv1.IntermediateTLSProfile{},
+		}
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		configMapKey := client.ObjectKeyFromObject(bundle.ConfigMap)
+
+		configMap := &core.ConfigMap{}
+		Expect(request.Client.Get(request.Context, configMapKey, configMap)).To(Succeed())
+
+		const tlsConfigFilename = "tls-profile-v1.yaml"
+		tlsConfig, exists := configMap.Data[tlsConfigFilename]
+		Expect(exists).To(BeTrue(), "ConfigMap should have TLS configuration file: "+tlsConfigFilename)
+
+		proxyProfile := &proxyv1.TlsProfile{}
+		Expect(yaml.Unmarshal([]byte(tlsConfig), proxyProfile)).To(Succeed())
+
+		Expect(proxyProfile.MinTLSVersion).To(Equal(proxyv1.VersionTLS12))
+	})
+
 	It("should remove cluster resources on cleanup", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -144,6 +195,29 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceNotExists(bundle.Service, request)
 		ExpectResourceNotExists(bundle.Deployment, request)
 		ExpectResourceNotExists(bundle.ApiService, request)
+	})
+
+	It("should remove old APIService on cleanup", func() {
+		oldApiService := &apiregv1.APIService{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "v1alpha1.token.kubevirt.io",
+				Labels: map[string]string{
+					common.AppKubernetesNameLabel:      operandName,
+					common.AppKubernetesComponentLabel: operandComponent,
+					common.AppKubernetesManagedByLabel: common.AppKubernetesManagedByValue,
+				},
+			},
+		}
+		Expect(libhandler.SetOwnerAnnotations(request.Instance, oldApiService)).To(Succeed())
+
+		Expect(request.Client.Create(request.Context, oldApiService)).To(Succeed())
+
+		_, err := operand.Cleanup(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		key := client.ObjectKeyFromObject(oldApiService)
+		Expect(request.Client.Get(request.Context, key, &apiregv1.APIService{})).
+			To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 	})
 
 	DescribeTable("should delete Route leftover from previous version", func(op func() error) {
@@ -536,12 +610,12 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 		},
 		ApiService: &apiregv1.APIService{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "v1alpha1.token.kubevirt.io",
+				Name: "v1.token.kubevirt.io",
 			},
 			Spec: apiregv1.APIServiceSpec{
 				Group:                "token.kubevirt.io",
 				GroupPriorityMinimum: 2000,
-				Version:              "v1alpha1",
+				Version:              "v1",
 				VersionPriority:      10,
 				Service: &apiregv1.ServiceReference{
 					Name:      serviceName,

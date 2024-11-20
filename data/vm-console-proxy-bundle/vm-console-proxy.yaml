@@ -111,9 +111,7 @@ subjects:
 ---
 apiVersion: v1
 data:
-  tls-profile-v1alpha1.yaml: |
-    type: Intermediate
-    intermediate: {}
+  tls-profile-v1.yaml: '{}'
 kind: ConfigMap
 metadata:
   name: vm-console-proxy
@@ -156,7 +154,7 @@ spec:
       - args: []
         command:
         - /console
-        image: quay.io/kubevirt/vm-console-proxy:v0.6.1
+        image: quay.io/kubevirt/vm-console-proxy:v0.7.0
         imagePullPolicy: Always
         name: console
         ports:
@@ -194,7 +192,7 @@ kind: APIService
 metadata:
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
-  name: v1alpha1.token.kubevirt.io
+  name: v1.token.kubevirt.io
 spec:
   group: token.kubevirt.io
   groupPriorityMinimum: 2000
@@ -202,5 +200,5 @@ spec:
     name: vm-console-proxy
     namespace: kubevirt
     port: 443
-  version: v1alpha1
+  version: v1
   versionPriority: 10
