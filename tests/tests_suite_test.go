@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	ginkgo_reporters "github.com/onsi/ginkgo/v2/reporters"
 	osconfv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
@@ -37,7 +36,6 @@ import (
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
-	qe_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -602,18 +600,8 @@ func triggerReconciliation() {
 }
 
 func TestFunctional(t *testing.T) {
-	var reporters []Reporter
-
-	if qe_reporters.JunitOutput != "" {
-		reporters = append(reporters, ginkgo_reporters.NewJUnitReporter(qe_reporters.JunitOutput))
-	}
-
-	if qe_reporters.Polarion.Run {
-		reporters = append(reporters, &qe_reporters.Polarion)
-	}
-
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Functional test suite", reporters)
+	RunSpecs(t, "Functional test suite")
 }
 
 func retrieveNodeArchitecture() string {
