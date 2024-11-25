@@ -1,6 +1,8 @@
 package template_validator
 
 import (
+	"encoding/json"
+
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -28,6 +30,7 @@ func WatchTypes() []operands.WatchType {
 		{Object: &v1.ServiceAccount{}},
 		{Object: &v1.Service{}},
 		{Object: &apps.Deployment{}, WatchFullObject: true},
+		{Object: &v1.ConfigMap{}},
 	}
 }
 
@@ -60,6 +63,7 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Reconci
 		reconcileClusterRoleBinding,
 		reconcileService,
 		reconcilePrometheusService,
+		reconcileConfigMap,
 		reconcileDeployment,
 		reconcileValidatingWebhook,
 	)
@@ -133,16 +137,28 @@ func reconcileDeployment(request *common.Request) (common.ReconcileResult, error
 		}
 	}
 
+	deployment := newDeployment(request.Namespace, numberOfReplicas, image)
+	common.AddAppLabels(request.Instance, operandName, operandComponent, &deployment.Spec.Template.ObjectMeta)
+	injectPlacementMetadata(&deployment.Spec.Template.Spec, validatorSpec)
+	return common.CreateOrUpdate(request).
+		NamespacedResource(deployment).
+		WithAppLabels(operandName, operandComponent).
+		Reconcile()
+}
+
+func reconcileConfigMap(request *common.Request) (common.ReconcileResult, error) {
 	sspTLSOptions, err := common.NewSSPTLSOptions(request.Instance.Spec.TLSSecurityProfile, nil)
 	if err != nil {
 		return common.ReconcileResult{}, err
 	}
 
-	deployment := newDeployment(request.Namespace, numberOfReplicas, image, sspTLSOptions)
-	common.AddAppLabels(request.Instance, operandName, operandComponent, &deployment.Spec.Template.ObjectMeta)
-	injectPlacementMetadata(&deployment.Spec.Template.Spec, validatorSpec)
+	sspTLSOptionsJson, err := json.Marshal(sspTLSOptions)
+	if err != nil {
+		return common.ReconcileResult{}, err
+	}
+
 	return common.CreateOrUpdate(request).
-		NamespacedResource(deployment).
+		NamespacedResource(newConfigMap(request.Namespace, string(sspTLSOptionsJson))).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }

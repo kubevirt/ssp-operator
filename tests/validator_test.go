@@ -57,6 +57,7 @@ var _ = Describe("Template validator operand", func() {
 		webhookConfigRes      testResource
 		serviceAccountRes     testResource
 		serviceRes            testResource
+		configMapRes          testResource
 		serviceMetricsRes     testResource
 		deploymentRes         testResource
 
@@ -118,6 +119,20 @@ var _ = Describe("Template validator operand", func() {
 				return reflect.DeepEqual(old.Spec, new.Spec)
 			},
 		}
+		configMapRes = testResource{
+			Name:           validator.ConfigMapName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &core.ConfigMap{},
+			ExpectedLabels: expectedLabels,
+			UpdateFunc: func(configMap *core.ConfigMap) {
+				configMap.Data = nil
+			},
+			EqualsFunc: func(old *core.ConfigMap, new *core.ConfigMap) bool {
+				return reflect.DeepEqual(old.Immutable, new.Immutable) &&
+					reflect.DeepEqual(old.Data, new.Data) &&
+					reflect.DeepEqual(old.BinaryData, new.BinaryData)
+			},
+		}
 		serviceMetricsRes = testResource{
 			Name:           validator.MetricsServiceName,
 			Namespace:      strategy.GetNamespace(),
@@ -154,6 +169,7 @@ var _ = Describe("Template validator operand", func() {
 		},
 			Entry("[test_id:4910] service account", &serviceAccountRes),
 			Entry("[test_id:4911] service", &serviceRes),
+			Entry("[test_id:TODO] ConfigMap", &configMapRes),
 			Entry("[test_id:8366] metrics service", &serviceMetricsRes),
 			Entry("[test_id:4912] deployment", &deploymentRes),
 		)
@@ -164,6 +180,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:5826]validating webhook configuration", &webhookConfigRes),
 			Entry("[test_id:6201]service account", &serviceAccountRes),
 			Entry("[test_id:5827]service", &serviceRes),
+			Entry("[test_id:TODO]ConfigMap", &configMapRes),
 			Entry("[test_id:8367]metrics service", &serviceMetricsRes),
 			Entry("[test_id:5828]deployment", &deploymentRes),
 		)
@@ -176,6 +193,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4918] validating webhook configuration", &webhookConfigRes),
 			Entry("[test_id:4920] service account", &serviceAccountRes),
 			Entry("[test_id:4922] service", &serviceRes),
+			Entry("[test_id:TODO] ConfigMap", &configMapRes),
 			Entry("[test_id:8370] metrics service", &serviceMetricsRes),
 			Entry("[test_id:4924] deployment", &deploymentRes),
 		)
@@ -187,6 +205,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes),
 			Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes),
 			Entry("[test_id:4923] service", &serviceRes),
+			Entry("[test_id:TODO] ConfigMap", &configMapRes),
 			Entry("[test_id:8371] metrics service", &serviceMetricsRes),
 			Entry("[test_id:4925] deployment", &deploymentRes),
 		)
@@ -205,6 +224,7 @@ var _ = Describe("Template validator operand", func() {
 				Entry("[test_id:5535] cluster role binding", &clusterRoleBindingRes),
 				Entry("[test_id:5536] validating webhook configuration", &webhookConfigRes),
 				Entry("[test_id:5538] service", &serviceRes),
+				Entry("[test_id:TODO] ConfigMap", &configMapRes),
 				Entry("[test_id:8368] metrics service", &serviceMetricsRes),
 				Entry("[test_id:5539] deployment", &deploymentRes),
 			)
@@ -215,6 +235,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:6206] cluster role binding", &clusterRoleBindingRes),
 			Entry("[test_id:6207] validating webhook configuration", &webhookConfigRes),
 			Entry("[test_id:6208] service", &serviceRes),
+			Entry("[test_id:TODO] ConfigMap", &configMapRes),
 			Entry("[test_id:8369] metrics service", &serviceMetricsRes),
 			Entry("[test_id:6209] deployment", &deploymentRes),
 		)

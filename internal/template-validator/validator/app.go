@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -25,11 +26,13 @@ import (
 const (
 	defaultPort = 8443
 	defaultHost = "0.0.0.0"
+
+	tlsOptionsDirectory = "/tls-options"
 )
 
 type App struct {
 	service.ServiceListen
-	TLSInfo     tlsinfo.TLSInfo
+	certsDir    string
 	versionOnly bool
 }
 
@@ -41,7 +44,7 @@ func (app *App) AddFlags() {
 	app.Port = defaultPort
 	app.AddCommonFlags()
 
-	flag.StringVarP(&app.TLSInfo.CertsDirectory, "cert-dir", "c", "", "specify path to the directory containing TLS key and certificate - this enables TLS")
+	flag.StringVarP(&app.certsDir, "cert-dir", "c", "", "specify path to the directory containing TLS key and certificate - this enables TLS")
 	flag.BoolVarP(&app.versionOnly, "version", "V", false, "show version and exit")
 }
 
@@ -54,9 +57,6 @@ func (app *App) Run() {
 	if app.versionOnly {
 		return
 	}
-
-	app.TLSInfo.Init()
-	defer app.TLSInfo.Clean()
 
 	// We cannot use default scheme.Scheme, because it contains duplicate definitions
 	// for kubevirt resources and the client would fail with an error:
@@ -83,12 +83,37 @@ func (app *App) Run() {
 		panic(err)
 	}
 
-	logger.Log.Info("TLS certs directory", "directory", app.TLSInfo.CertsDirectory)
-
 	http.Handle("/metrics", promhttp.Handler())
 
-	if app.TLSInfo.IsEnabled() {
-		server := &http.Server{Addr: app.Address(), TLSConfig: app.TLSInfo.CreateTlsConfig()}
+	if app.certsDir != "" {
+		logger.Log.Info("TLS certs directory", "directory", app.certsDir)
+
+		tlsInfo := tlsinfo.TLSInfo{
+			CertsDirectory:      app.certsDir,
+			TLSOptionsDirectory: tlsOptionsDirectory,
+		}
+
+		if err := tlsInfo.Init(); err != nil {
+			logger.Log.Error(err, "Failed initializing TLSInfo")
+			panic(err)
+		}
+		defer tlsInfo.Clean()
+
+		server := &http.Server{
+			Addr: app.Address(),
+			TLSConfig: &tls.Config{
+				GetConfigForClient: func(_ *tls.ClientHelloInfo) (*tls.Config, error) {
+					return tlsInfo.CreateTlsConfig()
+				},
+				GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+					// This function is not called, but it needs to be non-nil, otherwise
+					// the server tries to load certificate from filenames passed to
+					// ListenAndServe().
+					panic("function should not be called")
+				},
+			},
+		}
+
 		logger.Log.Info("TLS configured, serving over HTTPS", "address", app.Address())
 		if err := server.ListenAndServeTLS("", ""); err != nil {
 			logger.Log.Error(err, "Error listening TLS")
