@@ -11,16 +11,17 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 
 	ocpv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/library-go/pkg/crypto"
 	core "k8s.io/api/core/v1"
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/tests/env"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Crypto Policy", func() {
@@ -196,7 +197,7 @@ func getCaCertificate() []byte {
 	return ca
 }
 
-func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions) (attemptedUrl string, err error) {
+func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) (attemptedUrl string, err error) {
 	conn, err := portForwarder.Connect(&pod, port)
 	Expect(err).ToNot(HaveOccurred())
 	defer conn.Close()
@@ -209,7 +210,12 @@ func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port 
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return conn, nil
 			},
-			TLSClientConfig: &tls.Config{CipherSuites: tlsConfig.CipherIDs(), MaxVersion: tlsConfig.MaxTLSVersion, RootCAs: certPool},
+			TLSClientConfig: &tls.Config{
+				CipherSuites:       tlsConfig.CipherIDs(),
+				MaxVersion:         tlsConfig.MaxTLSVersion,
+				RootCAs:            certPool,
+				InsecureSkipVerify: insecure,
+			},
 		},
 	}
 
@@ -223,16 +229,16 @@ func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port 
 	return attemptedUrl, err
 }
 
-func (c tlsConfigTestPermutation) testTLSEndpointAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions) error {
-	_, err := tryToAccessEndpoint(pod, serviceName, subpath, port, tlsConfig)
+func (c tlsConfigTestPermutation) testTLSEndpointAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) error {
+	_, err := tryToAccessEndpoint(pod, serviceName, subpath, port, tlsConfig, insecure)
 	if err != nil {
 		return fmt.Errorf("can't access pod %s, at port %d, with tlsConfig %#v: %w", pod.Name, port, tlsConfig, err)
 	}
 	return nil
 }
 
-func (c tlsConfigTestPermutation) testTLSEndpointNotAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions) error {
-	attemptedUrl, err := tryToAccessEndpoint(pod, serviceName, subpath, port, tlsConfig)
+func (c tlsConfigTestPermutation) testTLSEndpointNotAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) error {
+	attemptedUrl, err := tryToAccessEndpoint(pod, serviceName, subpath, port, tlsConfig, insecure)
 	expectedErrString1 := fmt.Sprintf("Get \"%s\": remote error: tls: protocol version not supported", attemptedUrl)
 	expectedErrString2 := fmt.Sprintf("Get \"%s\": remote error: tls: handshake failure", attemptedUrl)
 
@@ -245,15 +251,15 @@ func (c tlsConfigTestPermutation) testTLSEndpointNotAccessible(pod core.Pod, ser
 	return fmt.Errorf("unexpected error when accessing endpoint: %w", err)
 }
 
-func (c tlsConfigTestPermutation) testEndpointAccessabilityWithTLS(pod core.Pod, serviceName string, subpath string, port uint16) error {
+func (c tlsConfigTestPermutation) testEndpointAccessibilityWithTLS(pod core.Pod, serviceName string, subpath string, port uint16, insecure bool) error {
 	for _, config := range c.allowedConfigs {
-		err := c.testTLSEndpointAccessible(pod, serviceName, subpath, port, config)
+		err := c.testTLSEndpointAccessible(pod, serviceName, subpath, port, config, insecure)
 		if err != nil {
 			return fmt.Errorf("failed accessing endpoint with allowed config: %w", err)
 		}
 	}
 	for _, config := range c.disallowedConfigs {
-		err := c.testTLSEndpointNotAccessible(pod, serviceName, subpath, port, config)
+		err := c.testTLSEndpointNotAccessible(pod, serviceName, subpath, port, config, insecure)
 		if err != nil {
 			return fmt.Errorf("error when accessing endpoint with disallowed config: %w", err)
 		}
@@ -264,15 +270,15 @@ func (c tlsConfigTestPermutation) testEndpointAccessabilityWithTLS(pod core.Pod,
 func testMetricsEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
 	// webhook service name is used here for the metrics for simplicity, as it is the CN in the ca_cert
 	// and the metrics just sit on a different port on the same pod.
-	return tlsConfig.testEndpointAccessabilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "metrics", 8443)
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "metrics", 8443, false)
 }
 
 func testWebhookEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
-	return tlsConfig.testEndpointAccessabilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "", 9443)
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "", 9443, false)
 }
 
 func testValidatorEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
-	return tlsConfig.testEndpointAccessabilityWithTLS(pod, template_validator.ServiceName, "", 8443)
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, template_validator.ServiceName, "", 8443, true)
 }
 
 func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {
