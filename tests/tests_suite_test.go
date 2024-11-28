@@ -155,6 +155,10 @@ func (s *newSspStrategy) Cleanup() {
 
 	waitForDeletion(client.ObjectKey{Name: s.GetNamespace()}, &v1.Namespace{})
 	waitForDeletion(client.ObjectKey{Name: s.GetTemplatesNamespace()}, &v1.Namespace{})
+
+	err_ssp_deployment := apiClient.Delete(ctx, &apps.Deployment{ObjectMeta: metav1.ObjectMeta{Name: sspDeploymentName, Namespace: sspDeploymentNamespace}})
+	expectSuccessOrNotFound(err_ssp_deployment)
+	waitForDeletion(client.ObjectKey{Name: sspDeploymentName, Namespace: sspDeploymentNamespace}, &apps.Deployment{})
 }
 
 func (s *newSspStrategy) GetName() string {
