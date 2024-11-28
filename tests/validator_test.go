@@ -482,7 +482,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
@@ -513,7 +513,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRulesOptional()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 0, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "128M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -526,7 +526,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 0, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "128M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -539,7 +539,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithIncorrectRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 0, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "128M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -552,7 +552,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithIncorrectRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 0, "q35", "32M")
+			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "32M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -565,7 +565,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithIncorrectRulesJustWarning()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 0, "q35", "1G")
+			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "1G")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -588,7 +588,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}, env.ShortTimeout()).Should(BeTrue(), "Failed to find error msg in the logs")
 		})
 		It("[test_id:5591]test with partial annotations", func() {
-			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				"vm.kubevirt.io/template-namespace": strategy.GetNamespace(),
@@ -599,7 +599,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:              template.Name,
@@ -611,7 +611,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Labels = map[string]string{
 				TemplateNameAnnotation:              template.Name,
@@ -623,7 +623,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 0, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "128M")
 			vmi.Spec.Domain.CPU = &kubevirtv1.CPU{
 				Sockets: 1,
 			}
@@ -641,7 +641,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithoutRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 1, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 1, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
@@ -663,7 +663,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithoutRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
@@ -685,7 +685,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
@@ -707,7 +707,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
-			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
@@ -726,7 +726,7 @@ var _ = Describe("Template validator webhooks", func() {
 			eventuallyCreateVm(vm)
 		})
 		It("[test_id:5174]: VM with validations and deleted template", func() {
-			vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 3, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      "nonexisting-vm-template",
@@ -745,7 +745,7 @@ var _ = Describe("Template validator webhooks", func() {
 			eventuallyCreateVm(vm)
 		})
 		It("[test_id:5046]: should override template rules and fail to create a VM based on the VM validation rules", func() {
-			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      "nonexisting-vm-template",
@@ -764,7 +764,7 @@ var _ = Describe("Template validator webhooks", func() {
 			eventuallyFailToCreateVm(vm)
 		})
 		It("[test_id:5047]: should fail to create a VM based on the VM validation rules", func() {
-			vmi = addDomainResourcesToVMI(vmi, 5, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				"vm.kubevirt.io/validations": `[
@@ -781,7 +781,7 @@ var _ = Describe("Template validator webhooks", func() {
 			eventuallyFailToCreateVm(vm)
 		})
 		It("[test_id:5175]: VM with validations without template", func() {
-			vmi = addDomainResourcesToVMI(vmi, 3, "q35", "64M")
+			vmi = addDomainResourcesToVMI(vmi, 3, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				"vm.kubevirt.io/validations": `[
@@ -813,7 +813,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
 
-			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
@@ -849,7 +849,7 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
 
-			vmi = addDomainResourcesToVMI(vmi, 2, "q35", "128M")
+			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
@@ -1098,7 +1098,7 @@ func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 }
 
 func TemplateWithRules() *templatev1.Template {
-	validations := `[
+	validations := fmt.Sprintf(`[
 		{
           	"name": "EnoughMemory",
           	"path": "jsonpath::.spec.domain.resources.requests.memory",
@@ -1120,9 +1120,9 @@ func TemplateWithRules() *templatev1.Template {
           	"path": "jsonpath::.spec.domain.machine.type",
           	"message": "Machine type is a supported value",
           	"rule": "enum",
-          	"values": ["q35"]
+          	"values": ["%s"]
         }
-	]`
+	]`, clusterMachineType)
 	return addObjectsToTemplates("test-fedora-desktop-small-with-rules", validations)
 }
 
@@ -1152,7 +1152,7 @@ func TemplateWithRulesOptional() *templatev1.Template {
 
 func TemplateWithIncorrectRules() *templatev1.Template {
 	// Incorrect rule named 'value-set'
-	validations := `[
+	validations := fmt.Sprintf(`[
         {
           "name": "EnoughMemory",
           "path": "jsonpath::.spec.domain.resources.requests.memory",
@@ -1165,9 +1165,9 @@ func TemplateWithIncorrectRules() *templatev1.Template {
           "name": "SupportedChipset",
           "path": "jsonpath::.spec.domain.machine.type",
           "rule": "value-set",
-          "values": ["q35"]
+          "values": ["%s"]
         }
-      ]`
+      ]`, clusterMachineType)
 	return addObjectsToTemplates("test-fedora-desktop-small-with-rules-incorrect", validations)
 }
 

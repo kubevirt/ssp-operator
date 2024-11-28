@@ -19,6 +19,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -366,6 +367,7 @@ var (
 	sspListerWatcher   cache.ListerWatcher
 	portForwarder      PortForwarder
 	deploymentTimedOut bool
+	clusterMachineType string
 )
 
 var _ = BeforeSuite(func() {
@@ -404,6 +406,8 @@ var _ = BeforeSuite(func() {
 	testScheme = runtime.NewScheme()
 	setupApiClient()
 	strategy.Init()
+
+	clusterMachineType = retrieveQemuMachineType()
 
 	// Wait to finish deployment before running any tests
 	waitUntilDeployed()
@@ -600,4 +604,28 @@ func TestFunctional(t *testing.T) {
 
 	RegisterFailHandler(Fail)
 	RunSpecsWithDefaultAndCustomReporters(t, "Functional test suite", reporters)
+}
+
+func retrieveNodeArchitecture() string {
+	nodeList := &core.NodeList{}
+	err := apiClient.List(ctx, nodeList)
+	Expect(err).NotTo(HaveOccurred(), "Failed to list nodes")
+	nodes := nodeList.Items
+	Expect(nodes).NotTo(BeEmpty(), "No nodes found")
+	architecture := nodes[0].Status.NodeInfo.Architecture
+	Expect(architecture).To(BeElementOf([]string{"s390x", "amd64", "aarch64"}), "Unsupported architecture")
+	return architecture
+}
+
+func retrieveQemuMachineType() string {
+	switch retrieveNodeArchitecture() {
+	case "amd64":
+		return "q35"
+	case "s390x":
+		return "s390-ccw-virtio"
+	case "aarch64":
+		return "virt"
+	default:
+		return "virt"
+	}
 }
