@@ -172,7 +172,7 @@ var _ = Describe("Validation webhook", func() {
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
 				err := apiClient.Create(ctx, newSspV1Beta2, client.DryRunAll)
-				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+				Expect(err).To(MatchError(ContainSubstring("invalid name:")))
 			})
 
 			It("[test_id:TODO] [v1beta3] should fail when DataImportCronTemplate does not have a name", func() {
@@ -180,7 +180,7 @@ var _ = Describe("Validation webhook", func() {
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
 				err := apiClient.Create(ctx, newSspV1Beta3, client.DryRunAll)
-				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+				Expect(err).To(MatchError(ContainSubstring("invalid name:")))
 			})
 		})
 	})
@@ -245,7 +245,7 @@ var _ = Describe("Validation webhook", func() {
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
 				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
-			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("invalid name:")))
 		})
 
 		It("[test_id:TODO] [v1beta3] should fail when DataImportCronTemplate does not have a name", func() {
@@ -255,7 +255,7 @@ var _ = Describe("Validation webhook", func() {
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
 				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
-			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("invalid name:")))
 		})
 	})
 })

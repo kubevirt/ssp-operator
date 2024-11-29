@@ -175,7 +175,7 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 
 func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
 	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
-		if err := validateDataImportCronTemplate(&cron); err != nil {
+		if err := ValidateDataImportCronTemplate(&cron); err != nil {
 			return fmt.Errorf("invalid DataImportCron template \"%s\": %w", cron.Name, err)
 		}
 	}

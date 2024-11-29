@@ -18,7 +18,6 @@ package webhooks
 
 import (
 	"context"
-	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,7 +34,6 @@ import (
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
-	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 )
 
@@ -122,11 +120,7 @@ var _ = Describe("SSP Validation", func() {
 						CommonTemplates: sspv1beta2.CommonTemplates{
 							Namespace: "test-templates-ns",
 							DataImportCronTemplates: []sspv1beta2.DataImportCronTemplate{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Namespace: internal.GoldenImagesNamespace,
-									},
-								},
+								*validDataImportCronTemplate(),
 							},
 						},
 					},
@@ -137,22 +131,22 @@ var _ = Describe("SSP Validation", func() {
 
 			It("should validate dataImportCronTemplates on create", func() {
 				_, err := validator.ValidateCreate(ctx, newSSP)
-				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+				Expect(err).ToNot(HaveOccurred())
 
-				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = ""
 
 				_, err = validator.ValidateCreate(ctx, newSSP)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("invalid name:")))
 			})
 
 			It("should validate dataImportCronTemplates on update", func() {
 				_, err := validator.ValidateUpdate(ctx, oldSSP, newSSP)
-				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+				Expect(err).ToNot(HaveOccurred())
 
-				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = ""
 
 				_, err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("invalid name:")))
 			})
 		})
 
@@ -262,13 +256,12 @@ var _ = Describe("SSP Validation", func() {
 					Spec: sspv1beta3.SSPSpec{
 						CommonTemplates: sspv1beta3.CommonTemplates{
 							Namespace: "test-templates-ns",
-							DataImportCronTemplates: []sspv1beta3.DataImportCronTemplate{
-								{
-									ObjectMeta: metav1.ObjectMeta{
-										Namespace: internal.GoldenImagesNamespace,
-									},
+							DataImportCronTemplates: []sspv1beta3.DataImportCronTemplate{{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "test-data-import-cron-template",
 								},
-							},
+								Spec: validDataImportCronTemplate().Spec,
+							}},
 						},
 					},
 				}
@@ -278,22 +271,22 @@ var _ = Describe("SSP Validation", func() {
 
 			It("should validate dataImportCronTemplates on create", func() {
 				_, err := validator.ValidateCreate(ctx, newSSP)
-				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+				Expect(err).ToNot(HaveOccurred())
 
-				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = ""
 
 				_, err = validator.ValidateCreate(ctx, newSSP)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("invalid name:")))
 			})
 
 			It("should validate dataImportCronTemplates on update", func() {
 				_, err := validator.ValidateUpdate(ctx, oldSSP, newSSP)
-				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+				Expect(err).ToNot(HaveOccurred())
 
-				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = "test-name"
+				newSSP.Spec.CommonTemplates.DataImportCronTemplates[0].Name = ""
 
 				_, err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("invalid name:")))
 			})
 		})
 
@@ -387,8 +380,3 @@ var _ = Describe("SSP Validation", func() {
 		})
 	})
 })
-
-func TestWebhook(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Webhook Suite")
-}

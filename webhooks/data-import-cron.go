@@ -17,7 +17,7 @@ import (
 // errors in the webhook, before trying to create an invalid DataImportCron.
 // https://github.com/kubevirt/containerized-data-importer/blob/main/pkg/apiserver/webhooks/dataimportcron-validate.go
 
-func validateDataImportCronTemplate(cron *sspv1beta2.DataImportCronTemplate) error {
+func ValidateDataImportCronTemplate(cron *sspv1beta2.DataImportCronTemplate) error {
 	if nameErrors := validation.IsDNS1035Label(cron.Name); len(nameErrors) > 0 {
 		return fmt.Errorf("invalid name: %q", nameErrors)
 	}
