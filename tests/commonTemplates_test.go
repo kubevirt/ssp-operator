@@ -22,7 +22,7 @@ import (
 func createTestTemplate() testResource {
 	expectedLabels := expectedLabelsFor("common-templates", common.AppComponentTemplating)
 	return testResource{
-		Name:           "rhel8-desktop-tiny",
+		Name:           "rhel8-desktop-tiny" + templatesSuffix,
 		Namespace:      strategy.GetTemplatesNamespace(),
 		Resource:       &templatev1.Template{},
 		ExpectedLabels: expectedLabels,

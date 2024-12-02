@@ -56,6 +56,12 @@ var (
 	sspWebhookServiceName  = "ssp-webhook-service"
 )
 
+const (
+	amd64 = "amd64"
+	s390x = "s390x"
+	arm   = "aarch64"
+)
+
 type TestSuiteStrategy interface {
 	Init()
 	Cleanup()
@@ -367,7 +373,9 @@ var (
 	sspListerWatcher   cache.ListerWatcher
 	portForwarder      PortForwarder
 	deploymentTimedOut bool
+	nodeArchitecture   string
 	clusterMachineType string
+	templatesSuffix    string
 )
 
 var _ = BeforeSuite(func() {
@@ -407,7 +415,9 @@ var _ = BeforeSuite(func() {
 	setupApiClient()
 	strategy.Init()
 
-	clusterMachineType = retrieveQemuMachineType()
+	nodeArchitecture = retrieveNodeArchitecture()
+	clusterMachineType = retrieveQemuMachineType(nodeArchitecture)
+	templatesSuffix = retrieveTemplatesSuffix(nodeArchitecture)
 
 	// Wait to finish deployment before running any tests
 	waitUntilDeployed()
@@ -613,19 +623,26 @@ func retrieveNodeArchitecture() string {
 	nodes := nodeList.Items
 	Expect(nodes).NotTo(BeEmpty(), "No nodes found")
 	architecture := nodes[0].Status.NodeInfo.Architecture
-	Expect(architecture).To(BeElementOf([]string{"s390x", "amd64", "aarch64"}), "Unsupported architecture")
+	Expect(architecture).To(BeElementOf([]string{s390x, amd64, arm}), "Unsupported architecture")
 	return architecture
 }
 
-func retrieveQemuMachineType() string {
-	switch retrieveNodeArchitecture() {
-	case "amd64":
+func retrieveQemuMachineType(architecture string) string {
+	switch architecture {
+	case amd64:
 		return "q35"
-	case "s390x":
+	case s390x:
 		return "s390-ccw-virtio"
-	case "aarch64":
+	case arm:
 		return "virt"
 	default:
 		return "virt"
 	}
+}
+
+func retrieveTemplatesSuffix(architecture string) string {
+	if architecture == amd64 {
+		return ""
+	}
+	return "-" + architecture
 }
