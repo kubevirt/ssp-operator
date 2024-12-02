@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	templatev1 "github.com/openshift/api/template/v1"
@@ -13,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
 type Bundle struct {
@@ -45,6 +47,18 @@ func ReadBundle(filename string) (Bundle, error) {
 		Templates:   templates,
 		DataSources: sources,
 	}, nil
+}
+
+func RetrieveCommonTemplatesBundleFile(templateBundleDir string) (string, error) {
+	archDependentFileName := filepath.Join(templateBundleDir, fmt.Sprintf("common-templates-%s-%s.yaml", runtime.GOARCH, common_templates.Version))
+	if _, err := os.Stat(archDependentFileName); err == nil {
+		return archDependentFileName, nil
+	}
+	archIndependentFileName := filepath.Join(templateBundleDir, fmt.Sprintf("common-templates-%s.yaml", common_templates.Version))
+	if _, err := os.Stat(archIndependentFileName); err == nil {
+		return archIndependentFileName, nil
+	}
+	return "", fmt.Errorf("failed to find common-templates bundles, none of the files were found: %s, %s", archDependentFileName, archIndependentFileName)
 }
 
 func readTemplates(filename string) ([]templatev1.Template, error) {

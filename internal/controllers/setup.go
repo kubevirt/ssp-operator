@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/openshift/api/config/v1"
@@ -50,8 +49,11 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		return nil, fmt.Errorf("failed to check if running on openshift: %w", err)
 	}
 
-	templatesFile := filepath.Join(templateBundleDir, "common-templates-"+common_templates.Version+".yaml")
-	templatesBundle, err := template_bundle.ReadBundle(templatesFile)
+	templatesBundleFile, err := template_bundle.RetrieveCommonTemplatesBundleFile(templateBundleDir)
+	if err != nil {
+		return nil, err
+	}
+	templatesBundle, err := template_bundle.ReadBundle(templatesBundleFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template bundle: %w", err)
 	}
