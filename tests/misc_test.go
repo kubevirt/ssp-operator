@@ -323,7 +323,7 @@ var _ = Describe("RHEL VM creation", func() {
 							},
 						},
 						Storage: &cdiv1beta1.StorageSpec{
-							Resources: core.ResourceRequirements{
+							Resources: core.VolumeResourceRequirements{
 								Requests: core.ResourceList{
 									core.ResourceStorage: resource.MustParse("10Gi"),
 								},

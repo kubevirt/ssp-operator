@@ -83,7 +83,7 @@ var _ = Describe("Common Instance Types", func() {
 			},
 			Spec: instancetypev1beta1.VirtualMachinePreferenceSpec{
 				CPU: &instancetypev1beta1.CPUPreferences{
-					PreferredCPUTopology: ptr.To(instancetypev1beta1.PreferCores),
+					PreferredCPUTopology: ptr.To(instancetypev1beta1.DeprecatedPreferCores),
 				},
 			},
 		}
