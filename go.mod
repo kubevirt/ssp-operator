@@ -7,7 +7,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-logr/logr v1.4.2
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
-	github.com/machadovilaca/operator-observability v0.0.21
+	github.com/machadovilaca/operator-observability v0.0.24
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.34.2
 	github.com/openshift/api v0.0.0-20240702171116-4b89b3a92a17 // release-4.16

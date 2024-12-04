@@ -172,7 +172,7 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
 ## explicit; go 1.20
 github.com/kubevirt/monitoring/pkg/metrics/parser
-# github.com/machadovilaca/operator-observability v0.0.21
+# github.com/machadovilaca/operator-observability v0.0.24
 ## explicit; go 1.21
 github.com/machadovilaca/operator-observability/pkg/docs
 github.com/machadovilaca/operator-observability/pkg/operatormetrics
