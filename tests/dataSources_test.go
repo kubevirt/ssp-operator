@@ -769,7 +769,7 @@ var _ = Describe("DataSources", func() {
 								},
 							},
 							Storage: &cdiv1beta1.StorageSpec{
-								Resources: core.ResourceRequirements{
+								Resources: core.VolumeResourceRequirements{
 									Requests: core.ResourceList{
 										core.ResourceStorage: resource.MustParse("128Mi"),
 									},
@@ -987,7 +987,7 @@ var _ = Describe("DataSources", func() {
 							},
 						},
 						Storage: &cdiv1beta1.StorageSpec{
-							Resources: core.ResourceRequirements{
+							Resources: core.VolumeResourceRequirements{
 								Requests: core.ResourceList{
 									core.ResourceStorage: resource.MustParse("128Mi"),
 								},
@@ -1234,7 +1234,7 @@ var _ = Describe("DataSources", func() {
 									},
 								},
 								Storage: &cdiv1beta1.StorageSpec{
-									Resources: core.ResourceRequirements{
+									Resources: core.VolumeResourceRequirements{
 										Requests: core.ResourceList{
 											core.ResourceStorage: resource.MustParse("128Mi"),
 										},
