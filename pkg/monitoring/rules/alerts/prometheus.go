@@ -19,7 +19,7 @@ const (
 	runbookURLTemplateEnv          = "RUNBOOK_URL_TEMPLATE"
 )
 
-func Register() error {
+func Register(registry *operatorrules.Registry) error {
 	alerts := operatorAlerts()
 
 	runbookURLTemplate, err := getRunbookURLTemplate()
@@ -34,7 +34,7 @@ func Register() error {
 		alert.Annotations[prometheusRunbookAnnotationKey] = fmt.Sprintf(runbookURLTemplate, alert.Alert)
 	}
 
-	return operatorrules.RegisterAlerts(alerts)
+	return registry.RegisterAlerts(alerts)
 }
 
 func getRunbookURLTemplate() (string, error) {

@@ -20,12 +20,14 @@ const (
 	PrometheusLabelValue = "true"
 )
 
+var operatorRegistry = operatorrules.NewRegistry()
+
 func SetupRules() error {
-	if err := recordingrules.Register(); err != nil {
+	if err := recordingrules.Register(operatorRegistry); err != nil {
 		return err
 	}
 
-	if err := alerts.Register(); err != nil {
+	if err := alerts.Register(operatorRegistry); err != nil {
 		return err
 	}
 
@@ -33,7 +35,7 @@ func SetupRules() error {
 }
 
 func BuildPrometheusRule(namespace string) (*promv1.PrometheusRule, error) {
-	return operatorrules.BuildPrometheusRule(
+	return operatorRegistry.BuildPrometheusRule(
 		RuleName,
 		namespace,
 		map[string]string{
@@ -46,9 +48,9 @@ func BuildPrometheusRule(namespace string) (*promv1.PrometheusRule, error) {
 }
 
 func ListAlerts() []promv1.Rule {
-	return operatorrules.ListAlerts()
+	return operatorRegistry.ListAlerts()
 }
 
 func ListRecordingRules() []operatorrules.RecordingRule {
-	return operatorrules.ListRecordingRules()
+	return operatorRegistry.ListRecordingRules()
 }
