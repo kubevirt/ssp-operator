@@ -1,11 +1,15 @@
 package template_bundle
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
 func retrieveSuffix() string {
@@ -19,8 +23,11 @@ func retrieveSuffix() string {
 
 var _ = Describe("Template bundle", Ordered, func() {
 	var (
-		testBundle Bundle
-		nameSuffix string
+		testBundle          Bundle
+		nameSuffix          string
+		tmpDir              string
+		archIndependentFile string
+		archDependentFile   string
 	)
 
 	BeforeAll(func() {
@@ -28,6 +35,12 @@ var _ = Describe("Template bundle", Ordered, func() {
 		testBundle, err = ReadBundle("template-bundle-test.yaml")
 		Expect(err).ToNot(HaveOccurred())
 		nameSuffix = retrieveSuffix()
+	})
+
+	BeforeEach(func() {
+		tmpDir = GinkgoT().TempDir()
+		archIndependentFile = filepath.Join(tmpDir, fmt.Sprintf("common-templates-%s.yaml", common_templates.Version))
+		archDependentFile = filepath.Join(tmpDir, fmt.Sprintf("common-templates-%s-%s.yaml", runtime.GOARCH, common_templates.Version))
 	})
 
 	It("should correctly read templates", func() {
@@ -74,6 +87,37 @@ var _ = Describe("Template bundle", Ordered, func() {
 		Expect(ds2.Namespace).To(Equal("kubevirt-os-images"))
 		Expect(ds2.Spec.Source.PVC.Name).To(Equal("win10"))
 		Expect(ds2.Spec.Source.PVC.Namespace).To(Equal("kubevirt-os-images"))
+	})
+
+	It("should throw an error retrieving the bundle file", func() {
+		_, err := RetrieveCommonTemplatesBundleFile(tmpDir)
+		Expect(err).To(MatchError(ContainSubstring("failed to find common-templates bundles, none of the files were found")))
+	})
+
+	It("should retrieve the bundle arch independent file", func() {
+		err := os.WriteFile(archIndependentFile, []byte(""), 0644)
+		Expect(err).ToNot(HaveOccurred())
+		commonTemplatesBundleFile, err := RetrieveCommonTemplatesBundleFile(tmpDir)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(commonTemplatesBundleFile).To(Equal(archIndependentFile))
+	})
+
+	It("should retrieve the bundle arch dependent file", func() {
+		err := os.WriteFile(archDependentFile, []byte(""), 0644)
+		Expect(err).ToNot(HaveOccurred())
+		commonTemplatesBundleFile, err := RetrieveCommonTemplatesBundleFile(tmpDir)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(commonTemplatesBundleFile).To(Equal(archDependentFile))
+	})
+
+	It("should retrieve the bundle arch dependent file when the generic one also exists", func() {
+		err := os.WriteFile(archIndependentFile, []byte(""), 0644)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.WriteFile(archDependentFile, []byte(""), 0644)
+		Expect(err).ToNot(HaveOccurred())
+		commonTemplatesBundleFile, err := RetrieveCommonTemplatesBundleFile(tmpDir)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(commonTemplatesBundleFile).To(Equal(archDependentFile))
 	})
 })
 
