@@ -205,7 +205,7 @@ container-build: unittest bundle
 # Push the container image
 .PHONY: container-push
 container-push:
-	podman manifest push ${IMG}
+	podman manifest push ${IMG} ${IMG}
 
 .PHONY: build-template-validator
 build-template-validator:
@@ -219,7 +219,7 @@ build-template-validator-container:
 
 .PHONY: push-template-validator-container
 push-template-validator-container:
-	podman manifest push ${VALIDATOR_IMG}
+	podman manifest push ${VALIDATOR_IMG} ${VALIDATOR_IMG}
 
 
 ##@ Build Dependencies
