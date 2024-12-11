@@ -20,6 +20,7 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 func mergeMaps(maps ...map[string]string) map[string]string {
@@ -174,25 +175,35 @@ var _ = Describe("Metrics", func() {
 		It("[test_id:TODO]should increment kubevirt_ssp_common_templates_restored_total during normal reconcile", func() {
 			skipIfUpgradeLane()
 
-			restoredCount := totalRestoredTemplatesCount()
+			var restoredCount int
+			Eventually(func() error {
+				var err error
+				restoredCount, err = totalRestoredTemplatesCount()
+				return err
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 			template.Labels[common_templates.TemplateTypeLabel] = "test"
 			Expect(apiClient.Update(ctx, template)).To(Succeed())
 
-			Eventually(func() int {
+			Eventually(func() (int, error) {
 				return totalRestoredTemplatesCount()
 			}, 5*time.Minute, 10*time.Second).Should(Equal(restoredCount + 1))
 		})
 
 		It("[test_id:TODO]should not increment kubevirt_ssp_common_templates_restored_total during upgrades", func() {
-			restoredCount := totalRestoredTemplatesCount()
+			var restoredCount int
+			Eventually(func() error {
+				var err error
+				restoredCount, err = totalRestoredTemplatesCount()
+				return err
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 			template.Labels[common_templates.TemplateTypeLabel] = "test"
 			template.Labels[common_templates.TemplateVersionLabel] = "v" + rand.String(5)
 			Expect(apiClient.Update(ctx, template)).To(Succeed())
 
 			// TODO: replace 'Consistently' with a direct wait for the template update
-			Consistently(func() int {
+			Consistently(func() (int, error) {
 				return totalRestoredTemplatesCount()
 			}, 2*time.Minute, 20*time.Second).Should(Equal(restoredCount))
 		})
