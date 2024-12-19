@@ -362,7 +362,7 @@ func NewMinimalVMIWithNS(namespace, name string) *kubevirtv1.VirtualMachineInsta
 }
 
 func NewVirtualMachine(vmi *kubevirtv1.VirtualMachineInstance) *kubevirtv1.VirtualMachine {
-	running := false
+	runStrategyHalted := kubevirtv1.RunStrategyHalted
 	name := vmi.Name
 	namespace := vmi.Namespace
 	vm := &kubevirtv1.VirtualMachine{
@@ -371,7 +371,7 @@ func NewVirtualMachine(vmi *kubevirtv1.VirtualMachineInstance) *kubevirtv1.Virtu
 			Namespace: namespace,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			Running: &running,
+			RunStrategy: &runStrategyHalted,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:    map[string]string{"kubevirt.io/vm": name},
