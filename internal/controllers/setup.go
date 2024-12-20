@@ -19,6 +19,7 @@ import (
 	tekton_cleanup "kubevirt.io/ssp-operator/internal/operands/tekton-cleanup"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
+	vm_delete_protection "kubevirt.io/ssp-operator/internal/operands/vm-delete-protection"
 	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 )
@@ -69,6 +70,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		common_instancetypes.New(),
 		data_sources.New(templatesBundle.DataSources),
 		tekton_cleanup.New(),
+		vm_delete_protection.New(),
 	}
 
 	if runningOnOpenShift {
