@@ -2,7 +2,6 @@ package template_bundle
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -20,16 +19,6 @@ import (
 type Bundle struct {
 	Templates   []templatev1.Template
 	DataSources []cdiv1beta1.DataSource
-}
-
-type templateArchitecture struct {
-	Spec struct {
-		Template struct {
-			Spec struct {
-				Architecture string `json:"architecture"`
-			} `json:"spec"`
-		} `json:"template"`
-	} `json:"spec"`
 }
 
 func ReadBundle(filename string) (Bundle, error) {
@@ -80,14 +69,14 @@ func readTemplates(filename string) ([]templatev1.Template, error) {
 		if template.Name == "" {
 			continue
 		}
-		templateArchitecture := templateArchitecture{}
-		if err = json.Unmarshal(template.Objects[0].Raw, &templateArchitecture); err != nil {
+		templateArch, ok := template.Labels["template.kubevirt.io/architecture"]
+		if !ok {
 			return nil, err
 		}
 		// DISCLAIMER: This is a temporary solution for delivering templates related to the host architecture.
 		// Once the common templates are released based on architecture, this change will no longer be necessary.
 		// Instead, a modification will be required in setup.go to specify the bundle to read from.
-		if templateArchitecture.Spec.Template.Spec.Architecture == runtime.GOARCH {
+		if templateArch == runtime.GOARCH {
 			bundle = append(bundle, template)
 		}
 	}

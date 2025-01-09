@@ -33,6 +33,7 @@ metadata:
     flavor.template.kubevirt.io/medium: "true"
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.19.0"
+    template.kubevirt.io/architecture: "amd64"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
@@ -166,6 +167,7 @@ metadata:
     flavor.template.kubevirt.io/large: "true"
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.19.1"
+    template.kubevirt.io/architecture: "amd64"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
@@ -303,6 +305,7 @@ metadata:
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.17.0"
     template.kubevirt.io/default-os-variant: "true"
+    template.kubevirt.io/architecture: "amd64"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
@@ -466,6 +469,7 @@ metadata:
     flavor.template.kubevirt.io/tiny: "true"
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.18.1"
+    template.kubevirt.io/architecture: "amd64"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
@@ -681,6 +685,7 @@ metadata:
     flavor.template.kubevirt.io/medium: "true"
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.19.0"
+    template.kubevirt.io/architecture: "s390x"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
@@ -814,6 +819,7 @@ metadata:
     flavor.template.kubevirt.io/large: "true"
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.19.1"
+    template.kubevirt.io/architecture: "s390x"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
@@ -951,6 +957,7 @@ metadata:
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.17.0"
     template.kubevirt.io/default-os-variant: "true"
+    template.kubevirt.io/architecture: "s390x"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
@@ -1114,6 +1121,7 @@ metadata:
     flavor.template.kubevirt.io/tiny: "true"
     template.kubevirt.io/type: "base"
     template.kubevirt.io/version: "v0.18.1"
+    template.kubevirt.io/architecture: "s390x"
 objects:
   - apiVersion: kubevirt.io/v1
     kind: VirtualMachine
