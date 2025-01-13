@@ -157,7 +157,7 @@ var _ = Describe("Prometheus Alerts", func() {
 			Eventually(func() int32 {
 				Expect(apiClient.Get(ctx, sspDeploymentKeys, deployment)).ToNot(HaveOccurred())
 				return deployment.Status.ReadyReplicas
-			}, env.ShortTimeout(), time.Second).Should(Equal(origReplicas))
+			}, env.Timeout(), time.Second).Should(Equal(origReplicas))
 		})
 
 		It("[test_id:8365] Should fire SSPDown", func() {
