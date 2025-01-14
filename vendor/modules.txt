@@ -1032,7 +1032,7 @@ kubevirt.io/controller-lifecycle-operator-sdk/api
 kubevirt.io/qe-tools/pkg/ginkgo-reporters
 kubevirt.io/qe-tools/pkg/polarion-xml
 # kubevirt.io/ssp-operator/api v0.0.0 => ./api
-## explicit; go 1.22.9
+## explicit; go 1.23.2
 kubevirt.io/ssp-operator/api/v1beta2
 kubevirt.io/ssp-operator/api/v1beta3
 # kubevirt.io/vm-console-proxy/api v0.7.0
