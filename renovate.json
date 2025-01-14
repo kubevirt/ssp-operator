@@ -18,6 +18,7 @@
       "groupName": "all dependencies",
       "groupSlug": "all",
       "matchBaseBranches": ["main"],
+      "enabled": false,
       "matchPackagePatterns": [
         "*"
       ]
