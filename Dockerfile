@@ -13,7 +13,7 @@ ARG TARGET_ARCH
 RUN microdnf install -y make tar gzip which && microdnf clean all
 
 RUN ARCH=$(uname -m | sed 's/x86_64/amd64/') && \
-    curl -L https://go.dev/dl/go1.22.4.linux-${ARCH}.tar.gz -o go.tar.gz && \
+    curl -L https://go.dev/dl/go1.23.2.linux-${ARCH}.tar.gz -o go.tar.gz && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
 
