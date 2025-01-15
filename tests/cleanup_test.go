@@ -18,6 +18,7 @@ import (
 	tekton_cleanup "kubevirt.io/ssp-operator/internal/operands/tekton-cleanup"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	vm_console_proxy "kubevirt.io/ssp-operator/internal/operands/vm-console-proxy"
+	vm_delete_protection "kubevirt.io/ssp-operator/internal/operands/vm-delete-protection"
 )
 
 var _ = Describe("Cleanup", func() {
@@ -40,6 +41,7 @@ var _ = Describe("Cleanup", func() {
 			template_validator.WatchClusterTypes,
 			vm_console_proxy.WatchClusterTypes,
 			tekton_cleanup.WatchClusterTypes,
+			vm_delete_protection.WatchClusterTypes,
 		} {
 			allWatchTypes = append(allWatchTypes, f()...)
 		}
