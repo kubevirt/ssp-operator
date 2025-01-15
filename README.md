@@ -2,7 +2,6 @@
 
 Operator that deploying and controlling additional [KubeVirt](https://kubevirt.io) resources:
 
-- [Common Instancetypes and Preferences Bundle](https://github.com/kubevirt/common-instancetypes/)
 - [Common Templates Bundle](https://github.com/kubevirt/common-templates)
 - [VM Console Proxy](https://github.com/kubevirt/vm-console-proxy)
 - [Template Validator](https://github.com/kubevirt/ssp-operator/tree/main/internal/template-validator)
