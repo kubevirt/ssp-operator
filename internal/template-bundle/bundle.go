@@ -73,9 +73,9 @@ func readTemplates(filename string) ([]templatev1.Template, error) {
 		if !ok {
 			return nil, err
 		}
-		// DISCLAIMER: This is a temporary solution for delivering templates related to the host architecture.
-		// Once the common templates are released based on architecture, this change will no longer be necessary.
-		// Instead, a modification will be required in setup.go to specify the bundle to read from.
+		// The template bundles are delivered separately based on architecture.
+		// However, in cases where the generic template bundle includes architectures that are
+		// not released separately, this filter can still be useful.
 		if templateArch == runtime.GOARCH {
 			bundle = append(bundle, template)
 		}
