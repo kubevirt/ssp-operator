@@ -41,3 +41,25 @@ jobs:
         go-version-file: 'go.mod'
     - name: Check commited files
       run: hack/check-commited-changes.sh
+
+  publish_operator_image-test-only:
+    name: Publish images to a local repo (test only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Publish operator images to a test repo in quay.io
+        run: |
+          podman login -u="${{ secrets.QUAY_BOT }}" -p="${{ secrets.QUAY_PASSWORD }}" quay.io
+          export IMG_REPOSITORY="quay.io/nestor_acuna_blanco/ssp-operator"
+          export VALIDATOR_REPOSITORY="quay.io/nestor_acuna_blanco/kubevirt-template-validator"
+          make container-build
+          make container-push
+          make build-template-validator-container
+          make push-template-validator-container
