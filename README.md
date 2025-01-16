@@ -7,6 +7,7 @@ Operator that deploying and controlling additional [KubeVirt](https://kubevirt.i
 - [VM Console Proxy](https://github.com/kubevirt/vm-console-proxy)
 - [Template Validator](https://github.com/kubevirt/ssp-operator/tree/main/internal/template-validator)
 - Metrics Rules (Currently there is just a single Prometheus rule that counts the number of running Virtual Machines.)
+- Virtual Machine Delete Protection
 
 ## Installation
 
