@@ -23,6 +23,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
 
+      - name: Create API tag
+        # TODO -- use an action to create the tag
+        run: |
+          echo TODO
+
       - name: Publish operator image and generate release assets
         run: |
           podman login -u="${{ secrets.QUAY_BOT }}" -p="${{ secrets.QUAY_PASSWORD }}" quay.io
