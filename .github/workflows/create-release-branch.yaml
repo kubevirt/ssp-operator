@@ -1,0 +1,92 @@
+name: "Create new release branch"
+run-name: "Create new release branch: ${{ inputs.new_branch }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_branch:
+        description: 'Name of the new branch to create'
+        required: true
+      source_branch:
+        description: 'Name of the source branch to create from (default: main)'
+        required: false
+        default: 'main'
+
+# Disable all permissions by default
+permissions: {}
+
+jobs:
+  create-branch:
+    name: Create release branch
+    runs-on: ubuntu-latest
+    permissions:
+      # Need this permission to create a new branch
+      contents: write
+    env:
+      CI_FORK_USER: akrejcir
+      # Use a unique name for the branch
+      CI_FORK_BRANCH_NAME: "ssp-workflow/add-ci-${{ inputs.new_branch }}/id-${{ github.run_id }}-${{ github.run_number }}"
+      COMMIT_MESSAGE: "kubevirt: ssp: add CI for branch: ${{ inputs.new_branch }}"
+    steps:
+      - name: Create new branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newBranch = "${{ inputs.new_branch }}";
+            const sourceBranch = "${{ inputs.source_branch }}";
+
+            const sourceRef = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${sourceBranch}`
+            });
+
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/heads/${newBranch}`,
+              sha: sourceRef.data.object.sha
+            });
+
+      - name: Checkout openshift/release repo
+        run: |
+          git clone https://${CI_FORK_USER}:${{ secrets.CI_FORK_TOKEN }}@github.com/openshift/release
+          
+          cd release
+          git remote add fork https://${CI_FORK_USER}:${{ secrets.CI_FORK_TOKEN }}@github.com/${CI_FORK_USER}/release
+          git checkout -b add-ci origin/master
+
+      - name: Create CI config for new branch
+        working-directory: release
+        run: |
+          cp "ci-operator/config/kubevirt/ssp-operator/kubevirt-ssp-operator-${{ inputs.source_branch }}.yaml" "ci-operator/config/kubevirt/ssp-operator/kubevirt-ssp-operator-${{ inputs.new_branch }}.yaml"
+          sed -i "s/\b${{ inputs.source_branch }}\b/${{ inputs.new_branch }}/g" "ci-operator/config/kubevirt/ssp-operator/kubevirt-ssp-operator-${{ inputs.new_branch }}.yaml"
+
+      - name: Update CI job definitions
+        working-directory: release
+        run: make update
+
+      - name: Commit changes and push to a fork
+        working-directory: release
+        run: |
+          git add -A
+          git config --global user.email "noreply@github.com"
+          git config --global user.name "SSP Operator Automation"
+          git commit --signoff --message="${COMMIT_MESSAGE}"
+          git push fork HEAD:${CI_FORK_BRANCH_NAME}
+
+      - name: Post a PR to openshift/release repository from the fork
+        uses: actions/github-script@v7
+        with:
+          # Using CI_FORK_TOKEN, because to create a PR
+          # the caller needs permission to write to the forked repo.
+          github-token: ${{ secrets.CI_FORK_TOKEN }}
+          script: |          
+            await github.rest.pulls.create({
+              owner: "openshift",
+              repo: "release",
+              title: "${{ env.COMMIT_MESSAGE }}",
+              body: "Added CI for branch ${{ inputs.new_branch }}",
+              head: "${{ env.CI_FORK_USER }}:${{ env.CI_FORK_BRANCH_NAME }}",
+              base: "master"
+            });
