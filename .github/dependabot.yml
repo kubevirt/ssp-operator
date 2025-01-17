@@ -14,6 +14,20 @@ updates:
     open-pull-requests-limit: 3
     labels:
       - "release-note-none"
+  - package-ecosystem: "gomod"
+    directory: "/api"
+    schedule:
+      interval: "daily"
+    allow:
+      - dependency-type: "all"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+    open-pull-requests-limit: 3
+    labels:
+      - "release-note-none"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
