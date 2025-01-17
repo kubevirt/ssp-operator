@@ -142,6 +142,14 @@ Installs prometheus monitoring rules for `ssp-operator` metrics. The available
 metrics can be found in `docs/metrics.md`. The installed rules can be found in
 `internal/operands/metrics/resources.go`.
 
+#### `vm-delete-protection`
+
+Installs a [ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/)
+(VAP) and ValidatingAdmissionPolicyBinding which binds the VAP to all namespaces. The VAP prevents VirtualMachine (VM) objects
+from being deleted when protection is enabled. To enable the delete protection, the label
+`kubevirt.io/vm-delete-protection: "True"` has to be added to the VM object. The generated resources VAP can
+be found in `internal/operands/vm-delete-protection/resources.go`.
+
 #### `tekton-cleanup`
 
 Sets a deprecation annotation on old tekton resources created by a previous version of this operator.
