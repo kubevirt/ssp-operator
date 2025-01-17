@@ -1,9 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "baseBranches": ["main", "release-v0.20", "release-v0.19", "release-v0.18"],
-  "constraints": {
-    "go": "1.22"
-  },
   "prConcurrentLimit": 3,
   "groupName": "all dependencies",
   "groupSlug": "all",
@@ -18,10 +15,12 @@
       "groupName": "all dependencies",
       "groupSlug": "all",
       "matchBaseBranches": ["main"],
-      "enabled": false,
       "matchPackagePatterns": [
         "*"
       ]
+    },{
+      "enabled": false,
+      "matchPackageNames": ["gomodules.xyz/jsonpatch/v2"]
     }, {
       "enabled": false,
       "matchBaseBranches": ["release-v0.20", "release-v0.19", "release-v0.18"],
