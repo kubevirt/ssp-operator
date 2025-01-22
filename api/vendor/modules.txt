@@ -45,7 +45,7 @@ golang.org/x/text/unicode/norm
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# k8s.io/api v0.32.0
+# k8s.io/api v0.32.1
 ## explicit; go 1.23.0
 k8s.io/api/authentication/v1
 k8s.io/api/authorization/v1
@@ -104,7 +104,7 @@ sigs.k8s.io/controller-runtime/pkg/scheme
 ## explicit; go 1.21
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
-# sigs.k8s.io/structured-merge-diff/v4 v4.4.2
+# sigs.k8s.io/structured-merge-diff/v4 v4.5.0
 ## explicit; go 1.13
 sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.4.0
