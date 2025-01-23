@@ -159,7 +159,13 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 
 	err := setOwner(r.request, r.resource, r.isClusterResource)
 	if err != nil {
-		return ReconcileResult{}, err
+		return ReconcileResult{}, fmt.Errorf(
+			"failed to reconcile %T object %s/%s: failed to set owner: %w",
+			r.resource,
+			r.resource.GetNamespace(),
+			r.resource.GetName(),
+			err,
+		)
 	}
 
 	found := newEmptyResource(r.resource)
@@ -187,8 +193,15 @@ func (r *reconcileBuilder) Reconcile() (ReconcileResult, error) {
 
 	res, existing, err := r.createOrUpdateWithImmutableSpec(found, mutateFn)
 	if err != nil {
-		r.request.Logger.Info(fmt.Sprintf("Resource create/update failed: %v", err))
-		return ReconcileResult{}, err
+		wrappedError := fmt.Errorf(
+			"failed to reconcile %T object %s/%s: %w",
+			r.resource,
+			r.resource.GetNamespace(),
+			r.resource.GetName(),
+			err,
+		)
+		r.request.Logger.Info(wrappedError.Error())
+		return ReconcileResult{}, wrappedError
 	}
 	if res == OperationResultDeleted || !found.GetDeletionTimestamp().IsZero() {
 		r.request.VersionCache.RemoveObj(found)
@@ -282,20 +295,20 @@ func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f 
 	key := client.ObjectKeyFromObject(obj)
 	if err := r.request.Client.Get(r.request.Context, key, obj); err != nil {
 		if !errors.IsNotFound(err) {
-			return OperationResultNone, nil, err
+			return OperationResultNone, nil, fmt.Errorf("failed to get object: %w", err)
 		}
 		if err := mutate(f, key, obj); err != nil {
-			return OperationResultNone, nil, err
+			return OperationResultNone, nil, fmt.Errorf("failed mutating object: %w", err)
 		}
 		if err := r.request.Client.Create(r.request.Context, obj); err != nil {
-			return OperationResultNone, nil, err
+			return OperationResultNone, nil, fmt.Errorf("failed creating object: %w", err)
 		}
 		return OperationResultCreated, nil, nil
 	}
 
 	existing := obj.DeepCopyObject().(client.Object)
 	if err := mutate(f, key, obj); err != nil {
-		return OperationResultNone, existing, err
+		return OperationResultNone, existing, fmt.Errorf("failed mutating object: %w", err)
 	}
 
 	if equality.Semantic.DeepEqual(existing, obj) {
@@ -306,13 +319,13 @@ func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f 
 	// It will be recreated in the next iteration.
 	if r.immutableSpec && !equality.Semantic.DeepEqual(r.specGetter(existing), r.specGetter(obj)) {
 		if err := r.request.Client.Delete(r.request.Context, obj); err != nil {
-			return OperationResultNone, existing, err
+			return OperationResultNone, existing, fmt.Errorf("failed deleting object: %w", err)
 		}
 		return OperationResultDeleted, existing, nil
 	}
 
 	if err := r.request.Client.Update(r.request.Context, obj); err != nil {
-		return OperationResultNone, existing, err
+		return OperationResultNone, existing, fmt.Errorf("failed updating object: %w", err)
 	}
 	return OperationResultUpdated, existing, nil
 }
