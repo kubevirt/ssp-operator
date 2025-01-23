@@ -172,7 +172,7 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
 ## explicit; go 1.20
 github.com/kubevirt/monitoring/pkg/metrics/parser
-# github.com/machadovilaca/operator-observability v0.0.24
+# github.com/machadovilaca/operator-observability v0.0.25
 ## explicit; go 1.21
 github.com/machadovilaca/operator-observability/pkg/docs
 github.com/machadovilaca/operator-observability/pkg/operatormetrics
@@ -432,7 +432,7 @@ golang.org/x/tools/go/ast/inspector
 # gomodules.xyz/jsonpatch/v2 v2.4.0
 ## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
-# google.golang.org/api v0.217.0
+# google.golang.org/api v0.218.0
 ## explicit; go 1.22
 google.golang.org/api/support/bundler
 # google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f
