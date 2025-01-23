@@ -12,7 +12,6 @@ import (
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
-	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
@@ -66,8 +65,6 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 	}
 
 	sspOperands := []operands.Operand{
-		// The bundle paths are not hardcoded within New to allow tests to use a different path
-		common_instancetypes.New(),
 		data_sources.New(templatesBundle.DataSources),
 		tekton_cleanup.New(),
 		vm_delete_protection.New(),

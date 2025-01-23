@@ -35,8 +35,6 @@ if "${KUBECTL}" get crd/ssps.ssp.kubevirt.io; then
 fi
 # The remaining CRDs should be present already from the k8s and KubeVirt installs so just ignore object not found failures
 "${KUBECTL}" delete --ignore-not-found=true deployment/ssp-operator -n kubevirt
-"${KUBECTL}" delete --ignore-not-found=true virtualmachineclusterinstancetype --all
-"${KUBECTL}" delete --ignore-not-found=true virtualmachineclusterpreference --all
 
 nodes=()
 for i in $(seq 1 "${KUBEVIRT_NUM_NODES}"); do
