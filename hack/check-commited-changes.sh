@@ -16,5 +16,6 @@ check_make fmt
 status=$(git status --porcelain)
 if [[ -n $status ]]; then
     echo "There are uncommitted changes."
+    echo $status
     exit 1
 fi
