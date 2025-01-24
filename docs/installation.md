@@ -24,16 +24,12 @@ for successful deployment across different Kubernetes distributions.
 | `datasources.cdi.kubevirt.io/v1beta1`                                   | `data-sources` operand (Kind `DataSource`)                                |
 | `prometheusrules.monitoring.coreos.com`                                 | `metrics` operand (Kind `PrometheusRule`)                                 |
 | `template.openshift.io/v1`                                              | `common-templates` operand (Kind `Template`)                              |
-| `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1beta1`  | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
-| `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1beta1`    | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
 | `virtualMachine.kubevirt.io`                                            | `vm-controller` operand (Kind `VirtualMachine`)                           |
 
 ### Kubernetes
 
 | Resource Type / CRD                                                     | Needed By                                                                 |
 | ------------------------------------------------------------------------| --------------------------------------------------------------------------|
-| `virtualmachineclusterinstancetypes.instancetypes.kubevirt.io/v1beta1`  | `common-instancetypes` operand (Kind `VirtualMachineClusterInstancetype`) |
-| `virtualmachineclusterpreferences.instancetypes.kubevirt.io/v1beta1`    | `common-instancetypes` operand (Kind `VirtualMachineClusterPreference`)   |
 | `virtualMachine.kubevirt.io`                                            | `vm-controller` operand (Kind `VirtualMachine`)                           |
 
 ## Hyperconverged Cluster Operator (HCO) Installation

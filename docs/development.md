@@ -118,12 +118,6 @@ operands are called during the reconciliation of `SspReconciler`.
 
 ### SSP Operands
 
-#### `common-instancetypes`
-
-Installs the bundled common instance types found in `data/common-instancetypes-bundle`.
-A pull request (PR) for updating the bundle is automatically created when a new version
-of the [common-instancetypes](https://github.com/kubevirt/common-instancetypes) is released.
-
 #### `common-templates`
 
 Installs the bundled common templates found in `data/common-templates-bundle`.

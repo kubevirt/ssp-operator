@@ -32,8 +32,6 @@ import (
 	apiregv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"k8s.io/utils/ptr"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-	instancetypev1alpha2 "kubevirt.io/api/instancetype/v1alpha2"
-	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -442,8 +440,6 @@ func setupApiClient() {
 	Expect(clientgoscheme.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1")).ToNot(HaveOccurred())
 	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
-	Expect(instancetypev1alpha2.AddToScheme(testScheme)).ToNot(HaveOccurred())
-	Expect(instancetypev1beta1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(routev1.Install(testScheme)).ToNot(HaveOccurred())
 	Expect(pipeline.AddToScheme(testScheme)).ToNot(HaveOccurred())
 

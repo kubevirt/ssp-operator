@@ -155,15 +155,6 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - instancetype.kubevirt.io
-  resources:
-  - virtualmachineclusterinstancetypes
-  - virtualmachineclusterpreferences
-  verbs:
-  - delete
-  - list
-  - watch
-- apiGroups:
   - kubevirt.io
   resources:
   - virtualmachineinstances
