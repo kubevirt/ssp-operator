@@ -97,7 +97,7 @@ kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1
 # kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 ## explicit; go 1.17
 kubevirt.io/controller-lifecycle-operator-sdk/api
-# sigs.k8s.io/controller-runtime v0.20.0
+# sigs.k8s.io/controller-runtime v0.20.1
 ## explicit; go 1.23.0
 sigs.k8s.io/controller-runtime/pkg/scheme
 # sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3
