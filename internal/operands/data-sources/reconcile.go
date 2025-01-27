@@ -222,6 +222,22 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 		}] = cron
 	}
 
+	existingCrons := &cdiv1beta1.DataImportCronList{}
+	err := request.Client.List(request.Context, existingCrons, client.InNamespace(internal.GoldenImagesNamespace))
+	if err != nil {
+		return dataSourcesAndCrons{}, fmt.Errorf("failed to list external DataImportCrons: %w", err)
+	}
+	existingCronByDataSource := make(map[client.ObjectKey]*cdiv1beta1.DataImportCron, len(existingCrons.Items))
+	for i := range existingCrons.Items {
+		cron := &existingCrons.Items[i]
+		if cron.Spec.ManagedDataSource != "" {
+			existingCronByDataSource[client.ObjectKey{
+				Name:      cron.Spec.ManagedDataSource,
+				Namespace: cron.Namespace,
+			}] = cron
+		}
+	}
+
 	var dataSourceInfos []dataSourceInfo
 	for i := range d.sources {
 		dataSource := d.sources[i] // Make a copy
@@ -229,18 +245,25 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 
 		dsKey := client.ObjectKeyFromObject(&dataSource)
 		cronTemplate := cronTemplateByDataSource[dsKey]
+		existingCron := existingCronByDataSource[dsKey]
 
-		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(&dataSource, cronTemplate, request)
+		reconcileCronTemplate, err := shouldReconcileCronTemplate(
+			&dataSource,
+			cronTemplate,
+			existingCron,
+			request)
 		if err != nil {
 			return dataSourcesAndCrons{}, err
 		}
 
 		var dicName string
-		if cronTemplate != nil && autoUpdateEnabled {
+		if existingCron != nil {
+			dicName = existingCron.GetName()
+		} else if cronTemplate != nil && reconcileCronTemplate {
 			dicName = cronTemplate.GetName()
 		}
 
-		if !autoUpdateEnabled {
+		if !reconcileCronTemplate {
 			delete(cronTemplateByDataSource, dsKey)
 		}
 
@@ -263,9 +286,18 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 
 const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
 
-func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronTemplate *ssp.DataImportCronTemplate, request *common.Request) (bool, error) {
+func shouldReconcileCronTemplate(dataSource *cdiv1beta1.DataSource, cronTemplate *ssp.DataImportCronTemplate, existingCron *cdiv1beta1.DataImportCron, request *common.Request) (bool, error) {
 	if cronTemplate == nil {
-		// If DataImportCron does not exist for this DataSource, auto-update is disabled.
+		return false, nil
+	}
+
+	if existingCron != nil {
+		if common.CheckOwnerAnnotation(existingCron, request.Instance) {
+			// We don't need to check if the existing DataImportCron was created from the template,
+			// because if it was not, then later code will remove it.
+			// This can happen if a DataImportCron template is renamed.
+			return true, nil
+		}
 		return false, nil
 	}
 

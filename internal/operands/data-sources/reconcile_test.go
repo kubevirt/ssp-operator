@@ -157,6 +157,27 @@ var _ = Describe("Data-Sources operand", func() {
 				ExpectResourceNotExists(&cron, request)
 			})
 
+			It("should remove previous DataImportCron, if the template was renamed", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cron := cronTemplate.AsDataImportCron()
+				cron.Namespace = internal.GoldenImagesNamespace
+				ExpectResourceExists(&cron, request)
+
+				const newCronName = "new-name"
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates[0].Name = newCronName
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				// The old cron should not exist
+				ExpectResourceNotExists(&cron, request)
+
+				cron.Name = newCronName
+				ExpectResourceExists(&cron, request)
+			})
+
 			It("should create DataImportCron in other namespace", func() {
 				cronTemplate.Namespace = "other-namespace"
 				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
@@ -212,9 +233,20 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+
+				// Need to run reconcile twice:
+				//  1. DataImportCron is removed, but the DataSource is not changed.
+				//  2. DataSource is restored.
 				_, err = operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
 				ExpectResourceNotExists(&cron, request)
+
+				// Managed DataSource is removed by CDI.
+				// Here we do it in the test code.
+				Expect(request.Client.Delete(request.Context, ds)).To(Succeed())
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
 
 				// Test that DataSource was restored
 				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
@@ -306,8 +338,7 @@ var _ = Describe("Data-Sources operand", func() {
 				if foundDs.GetLabels() == nil {
 					foundDs.SetLabels(map[string]string{})
 				}
-				const label = "cdi.kubevirt.io/dataImportCron"
-				foundDs.GetLabels()[label] = ""
+				foundDs.GetLabels()[dataImportCronLabel] = cron.Name
 
 				Expect(request.Client.Update(request.Context, foundDs)).To(Succeed())
 
@@ -336,6 +367,95 @@ var _ = Describe("Data-Sources operand", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			ExpectResourceExists(cron, request)
+		})
+	})
+
+	Context("with external DataImportCron", func() {
+		var (
+			dataSource             *cdiv1beta1.DataSource
+			externalDataImportCron *cdiv1beta1.DataImportCron
+		)
+
+		BeforeEach(func() {
+			dataSource = testDataSources[0].DeepCopy()
+
+			externalDataImportCron = &cdiv1beta1.DataImportCron{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "external-" + dataSource.GetName(),
+					Namespace: internal.GoldenImagesNamespace,
+				},
+				Spec: cdiv1beta1.DataImportCronSpec{
+					ManagedDataSource: dataSource.GetName(),
+				},
+			}
+			Expect(request.Client.Create(request.Context, externalDataImportCron)).To(Succeed())
+		})
+
+		It("should label DataSource as managed by external DataImportCron", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			foundDataSource := &cdiv1beta1.DataSource{}
+			err = request.Client.Get(request.Context, client.ObjectKey{
+				Name:      dataSource.GetName(),
+				Namespace: internal.GoldenImagesNamespace,
+			}, foundDataSource)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(foundDataSource.Labels).To(HaveKeyWithValue(dataImportCronLabel, externalDataImportCron.GetName()))
+		})
+
+		It("should not revert changes on DataSource managed by external DataImportCron", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			foundDataSource := &cdiv1beta1.DataSource{}
+			err = request.Client.Get(request.Context, client.ObjectKey{
+				Name:      dataSource.GetName(),
+				Namespace: internal.GoldenImagesNamespace,
+			}, foundDataSource)
+			Expect(err).ToNot(HaveOccurred())
+
+			foundDataSource.Spec.Source.PVC = &cdiv1beta1.DataVolumeSourcePVC{
+				Name:      "external-pvc",
+				Namespace: internal.GoldenImagesNamespace,
+			}
+			Expect(request.Client.Update(request.Context, foundDataSource)).To(Succeed())
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			secondFoundDataSource := &cdiv1beta1.DataSource{}
+			err = request.Client.Get(request.Context, client.ObjectKey{
+				Name:      dataSource.GetName(),
+				Namespace: internal.GoldenImagesNamespace,
+			}, secondFoundDataSource)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(secondFoundDataSource.Spec).To(Equal(foundDataSource.Spec))
+		})
+
+		It("should ignore DataImportCron template", func() {
+			cronTemplate := ssp.DataImportCronTemplate{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: dataSource.Name,
+				},
+				Spec: cdiv1beta1.DataImportCronSpec{
+					ManagedDataSource: dataSource.Name,
+				},
+			}
+
+			request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			ExpectResourceNotExists(&cdiv1beta1.DataImportCron{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cronTemplate.Name,
+					Namespace: internal.GoldenImagesNamespace,
+				},
+			}, request)
 		})
 	})
 })
