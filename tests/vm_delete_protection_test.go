@@ -30,7 +30,7 @@ var _ = Describe("VM delete protection", func() {
 			err := apiClient.Get(ctx, client.ObjectKeyFromObject(vm), vm)
 			Expect(err).To(Or(Not(HaveOccurred()), MatchError(errors.IsNotFound, "errors.IsNotFound")))
 
-			if err == nil {
+			if err == nil && vm.DeletionTimestamp == nil {
 				Eventually(func() error {
 					if err := apiClient.Get(ctx, client.ObjectKeyFromObject(vm), vm); err != nil {
 						return err
@@ -61,6 +61,7 @@ var _ = Describe("VM delete protection", func() {
 		vm = createVMWithDeleteProtection(labelValue)
 
 		Expect(apiClient.Delete(ctx, vm)).To(Succeed())
+		waitForDeletion(client.ObjectKeyFromObject(vm), &kubevirtv1.VirtualMachine{})
 	},
 		Entry("using False as value", "False"),
 		Entry("using false as value", "false"),
@@ -71,6 +72,7 @@ var _ = Describe("VM delete protection", func() {
 		vm = createVMWithLabels(nil)
 
 		Expect(apiClient.Delete(ctx, vm)).To(Succeed())
+		waitForDeletion(client.ObjectKeyFromObject(vm), &kubevirtv1.VirtualMachine{})
 	})
 })
 
