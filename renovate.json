@@ -13,7 +13,7 @@
       "groupName": "all dependencies",
       "groupSlug": "all",
       "enabled": false,
-      "matchPackagePatterns": [
+      "matchPackageNames": [
         "*"
       ]
     }
@@ -23,5 +23,8 @@
   },
   "osvVulnerabilityAlerts": true,
   "assigneesFromCodeOwners": true,
-  "separateMajorMinor": true
+  "separateMajorMinor": true,
+  "ignorePaths": [
+    "**/vendor/**"
+  ]
 }
