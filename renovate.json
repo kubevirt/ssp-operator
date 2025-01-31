@@ -23,5 +23,8 @@
   },
   "osvVulnerabilityAlerts": true,
   "assigneesFromCodeOwners": true,
-  "separateMajorMinor": true
+  "separateMajorMinor": true,
+  "ignorePaths": [
+    "**/vendor/**"
+  ]
 }
