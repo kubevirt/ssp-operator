@@ -15,6 +15,10 @@ const (
 	AppKubernetesManagedByValue string = "ssp-operator"
 )
 
+const (
+	RequiredSCCAnnotationValue = "restricted-v2"
+)
+
 type AppComponent string
 
 func (a AppComponent) String() string {
