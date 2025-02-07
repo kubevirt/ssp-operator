@@ -6,6 +6,7 @@ import (
 
 	ocpv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	securityv1 "github.com/openshift/api/security/v1"
 	"github.com/openshift/library-go/pkg/crypto"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -347,6 +348,8 @@ func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		deployment.Namespace = request.Instance.Namespace
 		deployment.Spec.Template.Spec.Containers[0].Image = getVmConsoleProxyImage()
+		metav1.SetMetaDataAnnotation(&deployment.ObjectMeta, securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue)
+		metav1.SetMetaDataAnnotation(&deployment.Spec.Template.ObjectMeta, securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue)
 		common.AddAppLabels(request.Instance, operandName, operandComponent, &deployment.Spec.Template.ObjectMeta)
 		return common.CreateOrUpdate(request).
 			NamespacedResource(&deployment).

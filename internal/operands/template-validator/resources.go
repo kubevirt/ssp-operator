@@ -3,6 +3,7 @@ package template_validator
 import (
 	"fmt"
 
+	securityv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -15,6 +16,7 @@ import (
 	kubevirt "kubevirt.io/api/core"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 
+	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	metrics "kubevirt.io/ssp-operator/internal/operands/metrics"
@@ -160,6 +162,9 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DeploymentName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				securityv1.RequiredSCCAnnotation: common.RequiredSCCAnnotationValue,
+			},
 			Labels: map[string]string{
 				"name": DeploymentName,
 			},
@@ -171,7 +176,10 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   VirtTemplateValidator,
+					Name: VirtTemplateValidator,
+					Annotations: map[string]string{
+						securityv1.RequiredSCCAnnotation: common.RequiredSCCAnnotationValue,
+					},
 					Labels: podLabels,
 				},
 				Spec: core.PodSpec{

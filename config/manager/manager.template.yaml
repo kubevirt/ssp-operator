@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: operator
   namespace: kubevirt
+  annotations:
+    openshift.io/required-scc: restricted-v2
   labels:
     control-plane: ssp-operator
     name: ssp-operator
@@ -14,6 +16,7 @@ spec:
   template:
     metadata:
       annotations:
+        openshift.io/required-scc: restricted-v2
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: ssp-operator
