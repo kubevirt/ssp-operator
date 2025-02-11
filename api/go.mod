@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/openshift/api v0.0.0-20240702171116-4b89b3a92a17 // release-4.16
 	k8s.io/apimachinery v0.32.1
-	kubevirt.io/containerized-data-importer-api v1.61.0
+	kubevirt.io/containerized-data-importer-api v1.61.1
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	sigs.k8s.io/controller-runtime v0.20.1
 )
@@ -20,8 +20,8 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/openshift/custom-resource-status v1.1.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.32.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
