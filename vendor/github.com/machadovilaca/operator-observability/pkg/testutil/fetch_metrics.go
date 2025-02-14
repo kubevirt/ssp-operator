@@ -3,36 +3,73 @@ package testutil
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
-type metricQuery struct {
-	url           string
-	metricName    string
-	labelKeyValue map[string]string
-}
-
+// MetricResult represents a single metric.
 type MetricResult struct {
-	Name   string            `json:"name"`
-	Labels map[string]string `json:"labels"`
-	Value  float64           `json:"value"`
+	Name      string            `json:"name"`
+	Labels    map[string]string `json:"labels"`
+	Value     float64           `json:"value"`
+	Timestamp *time.Time        `json:"timestamp,omitempty"`
 }
 
-func FetchMetric(URL string, metricName string, labelsKeyValue ...string) ([]MetricResult, error) {
-	labelFilters, err := buildLabelsFilter(labelsKeyValue...)
-	if err != nil {
-		return nil, err
-	}
+// MetricsFetcher defines the interface for fetching and loading metrics.
+type MetricsFetcher interface {
+	AddNameFilter(name string)
+	AddLabelFilter(labelsKeyValue ...string)
+	AddTimestampAfterFilter(ts time.Time)
+	AddTimestampBeforeFilter(ts time.Time)
+	Run() (map[string][]MetricResult, error)
+	LoadMetrics(payload string) (map[string][]MetricResult, error)
+}
 
-	mq := metricQuery{
-		url:           URL,
-		metricName:    metricName,
-		labelKeyValue: labelFilters,
-	}
+// DefaultMetricsGetter is the default implementation of MetricsFetcher.
+type DefaultMetricsGetter struct {
+	URL              string
+	metricNameFilter string
+	labelFilters     map[string]string
+	afterTimestamp   *time.Time
+	beforeTimestamp  *time.Time
+	metrics          map[string][]MetricResult
+}
 
-	resp, err := http.Get(URL)
+// NewMetricsFetcher creates a new MetricsFetcher instance.
+func NewMetricsFetcher(URL string) MetricsFetcher {
+	return &DefaultMetricsGetter{
+		URL:          URL,
+		labelFilters: make(map[string]string),
+		metrics:      make(map[string][]MetricResult),
+	}
+}
+
+func (dmg *DefaultMetricsGetter) AddNameFilter(name string) {
+	dmg.metricNameFilter = name
+}
+
+func (dmg *DefaultMetricsGetter) AddLabelFilter(labelsKeyValue ...string) {
+	for i := 0; i < len(labelsKeyValue); i += 2 {
+		if i+1 < len(labelsKeyValue) {
+			dmg.labelFilters[labelsKeyValue[i]] = labelsKeyValue[i+1]
+		}
+	}
+}
+
+func (dmg *DefaultMetricsGetter) AddTimestampAfterFilter(ts time.Time) {
+	dmg.afterTimestamp = &ts
+}
+
+func (dmg *DefaultMetricsGetter) AddTimestampBeforeFilter(ts time.Time) {
+	dmg.beforeTimestamp = &ts
+}
+
+// Run fetches metrics via HTTP, parses them, and applies filters.
+func (dmg *DefaultMetricsGetter) Run() (map[string][]MetricResult, error) {
+	resp, err := http.Get(dmg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query service endpoint: %w", err)
 	}
@@ -42,77 +79,150 @@ func FetchMetric(URL string, metricName string, labelsKeyValue ...string) ([]Met
 		return nil, fmt.Errorf("unexpected response status: %s", resp.Status)
 	}
 
-	var results []MetricResult
-	scanner := bufio.NewScanner(resp.Body)
+	dmg.metrics = make(map[string][]MetricResult)
+
+	if err := dmg.processReader(resp.Body); err != nil {
+		return nil, err
+	}
+
+	return dmg.metrics, nil
+}
+
+// LoadMetrics parses a provided metrics payload string and applies filters.
+func (dmg *DefaultMetricsGetter) LoadMetrics(payload string) (map[string][]MetricResult, error) {
+	dmg.metrics = make(map[string][]MetricResult)
+
+	reader := strings.NewReader(payload)
+	if err := dmg.processReader(reader); err != nil {
+		return nil, err
+	}
+
+	return dmg.metrics, nil
+}
+
+// processReader reads from the provided io.Reader line by line,
+// parses the metric lines, applies the filters, and stores the results.
+func (dmg *DefaultMetricsGetter) processReader(r io.Reader) error {
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		mr, found, lineErr := mq.parseLine(line)
-		if lineErr != nil {
-			return nil, err
+		mr, found, err := dmg.parseLine(line)
+		if err != nil {
+			return err
 		}
-
-		if found {
-			results = append(results, *mr)
+		if !found {
+			continue
+		}
+		if dmg.applyFilters(mr) {
+			dmg.metrics[mr.Name] = append(dmg.metrics[mr.Name], *mr)
 		}
 	}
 
-	if scanErr := scanner.Err(); scanErr != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", scanErr)
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("failed to read input: %w", err)
 	}
-
-	return results, nil
+	return nil
 }
 
-func buildLabelsFilter(labelsKeyValue ...string) (map[string]string, error) {
-	labelFilters := make(map[string]string)
-	for i := 0; i < len(labelsKeyValue); i += 2 {
-		// Ensure that we have a key-value pair
-		if !(i+1 < len(labelsKeyValue)) {
-			return nil, fmt.Errorf("invalid label key-value pair: %s", labelsKeyValue[i])
-		}
-
-		labelFilters[labelsKeyValue[i]] = labelsKeyValue[i+1]
+// applyFilters checks whether the given MetricResult passes all filters.
+func (dmg *DefaultMetricsGetter) applyFilters(mr *MetricResult) bool {
+	if dmg.metricNameFilter != "" && !strings.HasPrefix(mr.Name, dmg.metricNameFilter) {
+		return false
 	}
-
-	return labelFilters, nil
+	for k, v := range dmg.labelFilters {
+		if mr.Labels[k] != v {
+			return false
+		}
+	}
+	if (dmg.afterTimestamp != nil || dmg.beforeTimestamp != nil) && mr.Timestamp == nil {
+		return false
+	}
+	if dmg.afterTimestamp != nil && mr.Timestamp.Before(*dmg.afterTimestamp) {
+		return false
+	}
+	if dmg.beforeTimestamp != nil && mr.Timestamp.After(*dmg.beforeTimestamp) {
+		return false
+	}
+	return true
 }
 
-func (mq *metricQuery) parseLine(line string) (*MetricResult, bool, error) {
-	// Ignore comments and empty lines
+// parseLine parses a single line of the metrics payload.
+func (dmg *DefaultMetricsGetter) parseLine(line string) (*MetricResult, bool, error) {
+	// Ignore comments and empty lines.
 	if strings.HasPrefix(line, "#") || strings.TrimSpace(line) == "" {
 		return nil, false, nil
 	}
 
-	parts := strings.Fields(line)
-	if len(parts) < 2 {
-		return nil, false, fmt.Errorf("invalid metric line: %s", line)
-	}
-	nameAndLabels := parts[0]
-	valueStr := parts[1]
-
-	name, labels := parseMetricNameAndLabels(nameAndLabels)
-	if name != mq.metricName {
-		return nil, false, nil
+	// Use a custom splitter that respects quotes and curly braces.
+	metaPart, valuePart, err := splitMetricLine(line)
+	if err != nil {
+		return nil, false, err
 	}
 
-	if !matchLabels(labels, mq.labelKeyValue) {
-		return nil, false, nil
+	// Parse the metric name and labels from metaPart.
+	name, labels := dmg.parseMetricNameAndLabels(metaPart)
+
+	// Now parse the value (and optional timestamp) from the valuePart.
+	parts := strings.Fields(valuePart)
+	if len(parts) < 1 {
+		err = fmt.Errorf("invalid metric line, no value: %s", line)
+		return nil, false, err
 	}
 
-	value, err := strconv.ParseFloat(valueStr, 64)
+	value, err := strconv.ParseFloat(parts[0], 64)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to parse metric value: %w", err)
 	}
 
-	return &MetricResult{
-		Name:   name,
-		Labels: labels,
-		Value:  value,
-	}, true, nil
+	var timestamp *time.Time
+	if len(parts) >= 2 {
+		ts, err := strconv.ParseInt(parts[1], 10, 64)
+		if err == nil {
+			t := time.Unix(ts, 0)
+			timestamp = &t
+		}
+	}
+
+	mr := &MetricResult{
+		Name:      name,
+		Labels:    labels,
+		Value:     value,
+		Timestamp: timestamp,
+	}
+	return mr, true, nil
 }
 
-func parseMetricNameAndLabels(input string) (string, map[string]string) {
+// splitMetricLine splits a metric line into its meta part (name and labels)
+// and its value part. It takes into account quoted strings and curly braces so that
+// spaces inside them are not treated as delimiters.
+func splitMetricLine(line string) (metaPart string, valuePart string, err error) {
+	inQuotes := false
+	inBraces := false
+	for i, r := range line {
+		switch r {
+		case '"':
+			inQuotes = !inQuotes
+		case '{':
+			if !inQuotes {
+				inBraces = true
+			}
+		case '}':
+			if !inQuotes {
+				inBraces = false
+			}
+		case ' ':
+			if !inQuotes && !inBraces {
+				metaPart = strings.TrimSpace(line[:i])
+				valuePart = strings.TrimSpace(line[i:])
+				return metaPart, valuePart, nil
+			}
+		}
+	}
+	return "", "", fmt.Errorf("invalid metric line, no value part found: %s", line)
+}
+
+// parseMetricNameAndLabels splits the metric name from its labels (if any).
+func (dmg *DefaultMetricsGetter) parseMetricNameAndLabels(input string) (string, map[string]string) {
 	labels := make(map[string]string)
 	nameEnd := strings.Index(input, "{")
 	if nameEnd == -1 {
@@ -120,7 +230,7 @@ func parseMetricNameAndLabels(input string) (string, map[string]string) {
 	}
 
 	name := input[:nameEnd]
-	labelStr := strings.TrimSuffix(strings.TrimPrefix(input[nameEnd:], "{"), "}")
+	labelStr := strings.Trim(input[nameEnd:], "{}")
 	labelPairs := strings.Split(labelStr, ",")
 	for _, pair := range labelPairs {
 		kv := strings.SplitN(pair, "=", 2)
@@ -128,15 +238,5 @@ func parseMetricNameAndLabels(input string) (string, map[string]string) {
 			labels[kv[0]] = strings.Trim(kv[1], "\"")
 		}
 	}
-
 	return name, labels
-}
-
-func matchLabels(metricLabels, filters map[string]string) bool {
-	for k, v := range filters {
-		if metricLabels[k] != v {
-			return false
-		}
-	}
-	return true
 }
