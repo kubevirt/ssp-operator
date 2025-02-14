@@ -31,10 +31,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -61,13 +59,6 @@ const (
 
 	templateBundleDir = "data/common-templates-bundle/"
 )
-
-// List of legacy CRDs and their corresponding kinds
-var kvsspCRDs = map[string]string{
-	"kubevirtmetricsaggregations.ssp.kubevirt.io":    "KubevirtMetricsAggregation",
-	"kubevirttemplatevalidators.ssp.kubevirt.io":     "KubevirtTemplateValidator",
-	"kubevirtcommontemplatesbundles.ssp.kubevirt.io": "KubevirtCommonTemplatesBundle",
-}
 
 // sspController reconciles a SSP object
 type sspController struct {
@@ -408,68 +399,7 @@ func (s *sspController) cleanup(request *common.Request) error {
 	return err
 }
 
-func pauseCRs(sspRequest *common.Request, kinds []string) error {
-	patch := []byte(`{
-  "metadata":{
-    "annotations":{"kubevirt.io/operator.paused": "true"}
-  }
-}`)
-	for _, kind := range kinds {
-		crs := &unstructured.UnstructuredList{}
-		crs.SetKind(kind)
-		crs.SetAPIVersion("ssp.kubevirt.io/v1")
-		err := sspRequest.Client.List(sspRequest.Context, crs)
-		if err != nil {
-			sspRequest.Logger.Error(err, fmt.Sprintf("Error listing %s CRs: %s", kind, err))
-			return err
-		}
-		for _, item := range crs.Items {
-			err = sspRequest.Client.Patch(sspRequest.Context, &item, client.RawPatch(types.MergePatchType, patch))
-			if err != nil {
-				// Patching failed, maybe the CR just got removed? Log an error but keep going.
-				sspRequest.Logger.Error(err, fmt.Sprintf("Error pausing %s from namespace %s: %s",
-					item.GetName(), item.GetNamespace(), err))
-			}
-		}
-	}
-
-	return nil
-}
-
-func listExistingCRDKinds(sspRequest *common.Request) []string {
-	// Get the list of all CRDs and build a list of the SSP ones
-	crds := &unstructured.UnstructuredList{}
-	crds.SetKind("CustomResourceDefinition")
-	crds.SetAPIVersion("apiextensions.k8s.io/v1")
-	err := sspRequest.Client.List(sspRequest.Context, crds)
-	foundKinds := make([]string, 0, len(kvsspCRDs))
-	if err != nil {
-		return nil
-	}
-
-	for _, item := range crds.Items {
-		name := item.GetName()
-		for crd, kind := range kvsspCRDs {
-			if crd == name {
-				foundKinds = append(foundKinds, kind)
-				break
-			}
-		}
-	}
-
-	return foundKinds
-}
-
 func (s *sspController) reconcileOperands(sspRequest *common.Request) ([]common.ReconcileResult, error) {
-	kinds := listExistingCRDKinds(sspRequest)
-
-	// Mark existing CRs as paused
-	err := pauseCRs(sspRequest, kinds)
-	if err != nil {
-		return nil, err
-	}
-
-	// Reconcile all operands
 	allReconcileResults := make([]common.ReconcileResult, 0, len(s.operands))
 	for _, operand := range s.operands {
 		sspRequest.Logger.V(1).Info(fmt.Sprintf("Reconciling operand: %s", operand.Name()))
