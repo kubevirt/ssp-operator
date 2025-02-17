@@ -17,7 +17,7 @@ import (
 
 	"kubevirt.io/ssp-operator/internal/env"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
-	metrics "kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
 	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
