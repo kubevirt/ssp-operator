@@ -21,7 +21,8 @@ func main() {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(pr.Spec); err != nil {
-		fmt.Fprintf(os.Stderr, "Error encoding prometheus spec: %v", err)
+		// Ignoring returned error: no reasonable way to handle it.
+		_, _ = fmt.Fprintf(os.Stderr, "Error encoding prometheus spec: %v", err)
 		os.Exit(1)
 	}
 }

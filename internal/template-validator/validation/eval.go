@@ -160,14 +160,16 @@ func (ev *Evaluator) Evaluate(rules []Rule, vm *k6tv1.VirtualMachine) *Result {
 		// Otherwise, if we simply skip the malformed rule, the error can go unnoticed.
 		// IOW, this is a policy decision
 		if _, ok := uniqueNames[r.Name]; ok {
-			fmt.Fprintf(ev.Sink, "%s failed: duplicate name\n", r.Name)
+			// Ignoring returned error: This print is used only for logging
+			_, _ = fmt.Fprintf(ev.Sink, "%s failed: duplicate name\n", r.Name)
 			result.Fail(r, ErrDuplicateRuleName)
 			continue
 		}
 		uniqueNames[r.Name] = struct{}{}
 
 		if err := validateRule(r); err != nil {
-			fmt.Fprintf(ev.Sink, "%s failed: %v\n", r.Name, err)
+			// Ignoring returned error: This print is used only for logging
+			_, _ = fmt.Fprintf(ev.Sink, "%s failed: %v\n", r.Name, err)
 			result.Fail(r, err)
 			continue
 		}
@@ -175,27 +177,32 @@ func (ev *Evaluator) Evaluate(rules []Rule, vm *k6tv1.VirtualMachine) *Result {
 		// Specialize() may be costly, so we do this before.
 		if !r.IsAppliableOn(vm) {
 			// Legit case. Nothing to do or to complain.
-			fmt.Fprintf(ev.Sink, "%s SKIPPED: not appliable\n", r.Name)
+
+			// Ignoring returned error: This print is used only for logging
+			_, _ = fmt.Fprintf(ev.Sink, "%s SKIPPED: not appliable\n", r.Name)
 			result.Skip(r)
 			continue
 		}
 
 		ra, err := r.Specialize(vm, refVm)
 		if err != nil {
-			fmt.Fprintf(ev.Sink, "%s failed: cannot specialize: %v\n", r.Name, err)
+			// Ignoring returned error: This print is used only for logging
+			_, _ = fmt.Fprintf(ev.Sink, "%s failed: cannot specialize: %v\n", r.Name, err)
 			result.Fail(r, err)
 			continue
 		}
 
 		satisfied, err := ra.Apply(vm, refVm)
 		if err != nil {
-			fmt.Fprintf(ev.Sink, "%s failed: cannot apply: %v\n", r.Name, err)
+			// Ignoring returned error: This print is used only for logging
+			_, _ = fmt.Fprintf(ev.Sink, "%s failed: cannot apply: %v\n", r.Name, err)
 			result.Fail(r, err)
 			continue
 		}
 
 		applicationText := ra.String()
-		fmt.Fprintf(ev.Sink, "%s applied: %v, %s\n", r.Name, boolAsStatus(satisfied), applicationText)
+		// Ignoring returned error: This print is used only for logging
+		_, _ = fmt.Fprintf(ev.Sink, "%s applied: %v, %s\n", r.Name, boolAsStatus(satisfied), applicationText)
 		result.Applied(r, satisfied, applicationText)
 	}
 

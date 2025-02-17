@@ -37,11 +37,21 @@ func (p *portForwardConn) Close() error {
 	return errors.Join(p.Conn.Close(), p.streamConnCloser.Close())
 }
 
-func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn, error) {
+func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (conn net.Conn, err error) {
 	streamConnection, err := p.createStreamConnection(pod)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stream connection: %w", err)
 	}
+
+	runCleanup := true
+	defer func() {
+		if !runCleanup {
+			return
+		}
+		if closeErr := streamConnection.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to close streamConnection: %w", closeErr))
+		}
+	}()
 
 	requestId := atomic.AddInt32(&p.requestId, 1)
 
@@ -52,21 +62,21 @@ func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn,
 	headers.Set(core.PortForwardRequestIDHeader, strconv.Itoa(int(requestId)))
 	errorStream, err := streamConnection.CreateStream(headers)
 	if err != nil {
-		streamConnection.Close()
 		return nil, fmt.Errorf("failed to create error stream: %w", err)
 	}
+
 	// We will not write to error stream
-	if err := errorStream.Close(); err != nil {
+	if err = errorStream.Close(); err != nil {
 		return nil, fmt.Errorf("failed to close error stream: %w", err)
 	}
 
 	headers.Set(core.StreamType, core.StreamTypeData)
 	dataStream, err := streamConnection.CreateStream(headers)
 	if err != nil {
-		streamConnection.Close()
 		return nil, fmt.Errorf("failed to create data stream: %w", err)
 	}
 
+	runCleanup = false
 	return &portForwardConn{
 		Conn:             dataStream.(net.Conn),
 		streamConnCloser: streamConnection,
