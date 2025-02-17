@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -8,7 +9,6 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	. "github.com/onsi/ginkgo/v2"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/rest"
@@ -27,6 +27,15 @@ type portForwarderImpl struct {
 }
 
 var _ PortForwarder = &portForwarderImpl{}
+
+type portForwardConn struct {
+	net.Conn
+	streamConnCloser io.Closer
+}
+
+func (p *portForwardConn) Close() error {
+	return errors.Join(p.Conn.Close(), p.streamConnCloser.Close())
+}
 
 func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn, error) {
 	streamConnection, err := p.createStreamConnection(pod)
@@ -56,29 +65,10 @@ func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn,
 		return nil, err
 	}
 
-	pipeIn, pipeOut := net.Pipe()
-	// Read data from pod
-	go func() {
-		defer pipeIn.Close()
-		_, err := io.Copy(pipeIn, dataStream)
-		if err != nil {
-			fmt.Fprintf(GinkgoWriter, "Error reading from port-forwarding: %v", err)
-			return
-		}
-	}()
-
-	// Send data to pod
-	go func() {
-		defer streamConnection.Close()
-		defer dataStream.Close()
-		_, err := io.Copy(dataStream, pipeIn)
-		if err != nil {
-			fmt.Fprintf(GinkgoWriter, "Error writing to port-forwarding: %v", err)
-			return
-		}
-	}()
-
-	return pipeOut, nil
+	return &portForwardConn{
+		Conn:             dataStream.(net.Conn),
+		streamConnCloser: streamConnection,
+	}, nil
 }
 
 func (p *portForwarderImpl) createStreamConnection(pod *core.Pod) (httpstream.Connection, error) {
