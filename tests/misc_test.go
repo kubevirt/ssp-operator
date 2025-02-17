@@ -372,19 +372,18 @@ var _ = Describe("RHEL VM creation", func() {
 
 func logObject(key client.ObjectKey, obj client.Object) {
 	gvk, err := apiutil.GVKForObject(obj, testScheme)
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	obj.GetObjectKind().SetGroupVersionKind(gvk)
 
 	err = apiClient.Get(ctx, key, obj)
 	if err != nil {
-		fmt.Fprintf(GinkgoWriter, "Failed to get %s: %s\n", gvk.Kind, err)
-	} else {
-		objJson, err := json.MarshalIndent(obj, "", "    ")
-		if err != nil {
-			panic(err)
-		}
-		fmt.Fprintf(GinkgoWriter, "Found %s:\n%s\n", gvk.Kind, objJson)
+		_, printErr := fmt.Fprintf(GinkgoWriter, "Failed to get %s: %s\n", gvk.Kind, err)
+		Expect(printErr).ToNot(HaveOccurred())
+		return
 	}
+
+	objJson, err := json.MarshalIndent(obj, "", "    ")
+	Expect(err).ToNot(HaveOccurred())
+	_, printErr := fmt.Fprintf(GinkgoWriter, "Found %s:\n%s\n", gvk.Kind, objJson)
+	Expect(printErr).ToNot(HaveOccurred())
 }

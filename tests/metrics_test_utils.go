@@ -34,7 +34,7 @@ func intMetricValue(metricName string, metricsPort uint16, pod *v1.Pod) int {
 	}
 	resp, err := client.Get(fmt.Sprintf("https://localhost:%d/metrics", metricsPort))
 	Expect(err).ToNot(HaveOccurred(), "Can't get metrics from %s", pod.Name)
-	defer resp.Body.Close()
+	defer func() { Expect(resp.Body.Close()).To(Succeed()) }()
 	body, _ := io.ReadAll(resp.Body)
 	regex, ok := regexpForMetrics[metricName]
 	if !ok {

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -43,17 +44,17 @@ func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (net.Conn,
 	headers.Set(core.PortForwardRequestIDHeader, strconv.Itoa(int(requestId)))
 	errorStream, err := streamConnection.CreateStream(headers)
 	if err != nil {
-		streamConnection.Close()
-		return nil, err
+		return nil, errors.Join(err, streamConnection.Close())
 	}
 	// We will not write to error stream
-	errorStream.Close()
+	if err := errorStream.Close(); err != nil {
+		return nil, errors.Join(err, streamConnection.Close())
+	}
 
 	headers.Set(core.StreamType, core.StreamTypeData)
 	dataStream, err := streamConnection.CreateStream(headers)
 	if err != nil {
-		streamConnection.Close()
-		return nil, err
+		return nil, errors.Join(err, streamConnection.Close())
 	}
 
 	pipeIn, pipeOut := net.Pipe()
