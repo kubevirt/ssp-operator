@@ -40,7 +40,7 @@ var _ = Describe("Crypto Policy", func() {
 		}
 
 		// Note that "crypto/tls" does not support setting max tls version to anything below 1.2
-		oldPermutation tlsConfigTestPermutation = tlsConfigTestPermutation{
+		oldPermutation = tlsConfigTestPermutation{
 			openshiftTLSPolicy: &old,
 			allowedConfigs: []clientTLSOptions{
 				{
@@ -51,7 +51,7 @@ var _ = Describe("Crypto Policy", func() {
 			disallowedConfigs: []clientTLSOptions{},
 		}
 
-		intermediatePermutation tlsConfigTestPermutation = tlsConfigTestPermutation{
+		intermediatePermutation = tlsConfigTestPermutation{
 			openshiftTLSPolicy: &intermediate,
 			allowedConfigs: []clientTLSOptions{
 				{
@@ -67,7 +67,7 @@ var _ = Describe("Crypto Policy", func() {
 			},
 		}
 
-		modernPermutation tlsConfigTestPermutation = tlsConfigTestPermutation{
+		modernPermutation = tlsConfigTestPermutation{
 			openshiftTLSPolicy: &modern,
 			allowedConfigs: []clientTLSOptions{
 				{
@@ -83,7 +83,7 @@ var _ = Describe("Crypto Policy", func() {
 			},
 		}
 
-		customPermutation tlsConfigTestPermutation = tlsConfigTestPermutation{
+		customPermutation = tlsConfigTestPermutation{
 			openshiftTLSPolicy: &custom,
 			allowedConfigs: []clientTLSOptions{
 				{
@@ -204,7 +204,7 @@ func getCaCertificate() []byte {
 func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) (attemptedUrl string, err error) {
 	conn, err := portForwarder.Connect(&pod, port)
 	Expect(err).ToNot(HaveOccurred())
-	defer conn.Close()
+	defer func() { Expect(conn.Close()).To(Succeed()) }()
 
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(getCaCertificate())

@@ -285,7 +285,8 @@ var _ = Describe("Eval", func() {
 			Expect(res.Succeeded()).To(BeTrue())
 
 			for ix := range res.Status {
-				fmt.Fprintf(GinkgoWriter, "%+#v", res.Status[ix])
+				_, err := fmt.Fprintf(GinkgoWriter, "%+#v", res.Status[ix])
+				Expect(err).ToNot(HaveOccurred())
 			}
 
 			Expect(res.Status).To(HaveLen(len(rules)))
@@ -342,7 +343,8 @@ var _ = Describe("Eval", func() {
 			res := ev.Evaluate(rules, vmCirros)
 
 			for ix := range res.Status {
-				fmt.Fprintf(GinkgoWriter, "%+#v", res.Status[ix])
+				_, err := fmt.Fprintf(GinkgoWriter, "%+#v", res.Status[ix])
+				Expect(err).ToNot(HaveOccurred())
 			}
 
 			Expect(res.Succeeded()).To(BeFalse(), "succeeded")
