@@ -115,7 +115,7 @@ func newService(namespace string) *core.Service {
 			Ports: []core.ServicePort{{
 				Name:       "webhook",
 				Port:       443,
-				TargetPort: intstr.FromInt(ContainerPort),
+				TargetPort: intstr.FromInt32(ContainerPort),
 			}},
 			Selector: CommonLabels(),
 		},
@@ -226,7 +226,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ProbeHandler: core.ProbeHandler{
 								HTTPGet: &core.HTTPGetAction{
 									Path:   "/readyz",
-									Port:   intstr.FromInt(ContainerPort),
+									Port:   intstr.FromInt32(ContainerPort),
 									Scheme: core.URISchemeHTTPS,
 								},
 							},
