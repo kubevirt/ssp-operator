@@ -204,7 +204,7 @@ func getCaCertificate() []byte {
 func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) (attemptedUrl string, err error) {
 	conn, err := portForwarder.Connect(&pod, port)
 	Expect(err).ToNot(HaveOccurred())
-	defer conn.Close()
+	defer func() { Expect(conn.Close()).To(Succeed()) }()
 
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(getCaCertificate())

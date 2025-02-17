@@ -85,7 +85,7 @@ func (s *sspWatch) startWatch() {
 
 		err = s.handleWatch(w)
 		if err != nil {
-			if err != errStopWatch {
+			if errors.Is(err, errStopWatch) {
 				s.atomicError.Store(err)
 			}
 			return

@@ -17,7 +17,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -446,7 +446,7 @@ var _ = Describe("Template validator webhooks", func() {
 	AfterEach(func() {
 		if vm != nil {
 			err := apiClient.Delete(ctx, vm)
-			if !errors.IsNotFound(err) {
+			if !k8serrors.IsNotFound(err) {
 				Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
 			}
 			// Need to wait until VM is removed, otherwise the webhook may
@@ -456,7 +456,7 @@ var _ = Describe("Template validator webhooks", func() {
 		if template != nil {
 			Eventually(func(g Gomega) {
 				if err := apiClient.Delete(ctx, template); err != nil {
-					g.Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
+					g.Expect(k8serrors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 				}
 			}, env.ShortTimeout(), time.Second).Should(Succeed(), "Template should be deleted")
 		}
@@ -823,7 +823,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			Eventually(func() metav1.StatusReason {
 				err := apiClient.Delete(ctx, template, client.DryRunAll)
-				return errors.ReasonForError(err)
+				return k8serrors.ReasonForError(err)
 			}, env.ShortTimeout(), 1*time.Second).Should(Equal(metav1.StatusReasonForbidden), "Should have given forbidden error")
 		})
 
@@ -936,7 +936,7 @@ func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 			}
 			return metav1.StatusReasonUnknown, fmt.Errorf("VM was created")
 		}
-		return errors.ReasonForError(err), nil
+		return k8serrors.ReasonForError(err), nil
 	}, env.ShortTimeout()).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
 }
 
@@ -968,7 +968,7 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 	Expect(rejectedCountAfter - rejectedCountBefore).To(Equal(1))
 
 	err := apiClient.Delete(ctx, vm)
-	if !errors.IsNotFound(err) {
+	if !k8serrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
 	}
 	waitForDeletion(client.ObjectKeyFromObject(vm), vm)
@@ -1219,7 +1219,13 @@ func getWebhookServerCertificates(validatorPod *core.Pod) ([]*x509.Certificate, 
 	}
 
 	tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true})
-	defer tlsConn.Close()
+	defer func() {
+		// This Close() always returns an error: i/o timeout.
+		// I was not able to find out why the connection cannot be closed cleanly.
+		// It is acceptable to ignore this error, because error during close
+		// has no effect on the test result.
+		_ = tlsConn.Close()
+	}()
 
 	err = tlsConn.Handshake()
 	if err != nil {
