@@ -113,7 +113,7 @@ var _ = Describe("Template validator operand", func() {
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 44331
-				service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
+				service.Spec.Ports[0].TargetPort = intstr.FromInt32(44331)
 			},
 			EqualsFunc: func(old *core.Service, new *core.Service) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)
@@ -140,7 +140,7 @@ var _ = Describe("Template validator operand", func() {
 			ExpectedLabels: validator.PrometheusServiceLabels(),
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 443
-				service.Spec.Ports[0].TargetPort = intstr.FromInt(8443)
+				service.Spec.Ports[0].TargetPort = intstr.FromInt32(8443)
 			},
 			EqualsFunc: func(old *core.Service, new *core.Service) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)
@@ -1002,7 +1002,6 @@ func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 	userData := `#cloud-config
 				password: fedora
 				chpasswd: { expire: False }`
-	running := false
 	liveMigrate := kubevirtv1.EvictionStrategyLiveMigrate
 	template := &templatev1.Template{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1062,7 +1061,7 @@ func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 					},
 				},
 				Spec: kubevirtv1.VirtualMachineSpec{
-					Running: &running,
+					RunStrategy: ptr.To(kubevirtv1.RunStrategyHalted),
 					Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
 						Spec: kubevirtv1.VirtualMachineInstanceSpec{
 							Domain: kubevirtv1.DomainSpec{

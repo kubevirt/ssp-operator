@@ -302,7 +302,7 @@ var _ = Describe("RHEL VM creation", func() {
 						ReadinessProbe: &kubevirtv1.Probe{
 							Handler: kubevirtv1.Handler{
 								TCPSocket: &core.TCPSocketAction{
-									Port: intstr.FromInt(sshPort),
+									Port: intstr.FromInt32(sshPort),
 								},
 							},
 							InitialDelaySeconds: 5,
