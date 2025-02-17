@@ -32,7 +32,7 @@ const (
 	MaxItems         int  = 64
 )
 
-// NewVirtualMachine returns a fully zero-value VirtualMachine with all optional fields
+// NewDefaultVirtualMachine returns a fully zero-value VirtualMachine with all optional fields
 func NewDefaultVirtualMachine() *k6tv1.VirtualMachine {
 	domSpec := k6tv1.DomainSpec{}
 	numItems := NumItems(map[string]int{

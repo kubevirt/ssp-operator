@@ -12,10 +12,11 @@ const (
 	AnnotationTemplateNamespaceOldKey string = "vm.kubevirt.io/template-namespace"
 	AnnotationValidationKey           string = "validations"
 
-	// This is the new annotation we will be using for VirtualMachines that carry their own validation rules
+	// VmValidationAnnotationKey is the new annotation we will be using
+	// for VirtualMachines that carry their own validation rules
 	VmValidationAnnotationKey string = "vm.kubevirt.io/validations"
 
-	// If this annotation exists on a VM, it means that validation should be skipped.
+	// VmSkipValidationAnnotationKey is used to skip validation of a VM.
 	// This annotation is used for troubleshooting, debugging and experimenting with templated VMs.
 	VmSkipValidationAnnotationKey string = "vm.kubevirt.io/skip-validations"
 )
