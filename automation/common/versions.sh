@@ -59,6 +59,3 @@ KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
 
 # Latest released CDI version
 CDI_VERSION=$(latest_version "kubevirt" "containerized-data-importer")
-
-# Using LTS tekton version v0.67
-TEKTON_VERSION=$(latest_patch_version "tektoncd" "operator" "v0.67")

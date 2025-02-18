@@ -12,9 +12,6 @@ metadata:
   name: ${NAMESPACE}
 EOF
 
-# Deploy Tekton
-oc apply -f "https://github.com/tektoncd/operator/releases/download/${TEKTON_VERSION}/openshift-release.yaml"
-
 # Deploying kubevirt
 oc apply -n $NAMESPACE -f "https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml"
 

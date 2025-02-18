@@ -146,10 +146,6 @@ from being deleted when protection is enabled. To enable the delete protection, 
 `kubevirt.io/vm-delete-protection: "True"` has to be added to the VM object. The generated VAP resources can
 be found in `internal/operands/vm-delete-protection/resources.go`.
 
-#### `tekton-cleanup`
-
-Sets a deprecation annotation on old tekton resources created by a previous version of this operator.
-
 #### `template-validator`
 
 The main `template-validator` runs in at least one separate container than the
