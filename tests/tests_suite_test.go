@@ -16,7 +16,6 @@ import (
 	secv1 "github.com/openshift/api/security/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -441,7 +440,6 @@ func setupApiClient() {
 	Expect(os.Setenv(kubevirtv1.KubeVirtClientGoSchemeRegistrationVersionEnvVar, "v1")).ToNot(HaveOccurred())
 	Expect(kubevirtv1.AddToScheme(testScheme)).ToNot(HaveOccurred())
 	Expect(routev1.Install(testScheme)).ToNot(HaveOccurred())
-	Expect(pipeline.AddToScheme(testScheme)).ToNot(HaveOccurred())
 
 	cfg, err := config.GetConfig()
 	Expect(err).ToNot(HaveOccurred())

@@ -20,6 +20,7 @@ rules:
   - endpoints
   - persistentvolumeclaims/status
   - persistentvolumes
+  - pods
   verbs:
   - get
   - list
@@ -49,24 +50,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - create
-  - get
-  - list
-  - patch
 - apiGroups:
   - ""
   resources:
@@ -160,18 +143,9 @@ rules:
   - virtualmachineinstances
   - virtualmachines
   verbs:
-  - create
-  - delete
   - get
   - list
-  - update
   - watch
-- apiGroups:
-  - kubevirt.io
-  resources:
-  - virtualmachines/finalizers
-  verbs:
-  - get
 - apiGroups:
   - monitoring.coreos.com
   resources:
@@ -235,37 +209,6 @@ rules:
   - virtualmachineinstances/vnc
   verbs:
   - get
-- apiGroups:
-  - subresources.kubevirt.io
-  resources:
-  - virtualmachines/restart
-  - virtualmachines/start
-  - virtualmachines/stop
-  verbs:
-  - update
-- apiGroups:
-  - tekton.dev
-  resources:
-  - pipelines
-  verbs:
-  - create
-  - list
-  - update
-  - watch
-- apiGroups:
-  - tekton.dev
-  resources:
-  - tasks
-  verbs:
-  - list
-  - update
-  - watch
-- apiGroups:
-  - template.openshift.io
-  resources:
-  - processedtemplates
-  verbs:
-  - create
 - apiGroups:
   - template.openshift.io
   resources:

@@ -25,8 +25,6 @@ const (
 	AppComponentMonitoring           AppComponent = "monitoring"
 	AppComponentSchedule             AppComponent = "schedule"
 	AppComponentTemplating           AppComponent = "templating"
-	AppComponentTektonPipelines      AppComponent = "tektonPipelines"
-	AppComponentTektonTasks          AppComponent = "tektonTasks"
 	AppComponentVMDeletionProtection AppComponent = "vmDeleteProtection"
 )
 
