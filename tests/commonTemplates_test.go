@@ -189,7 +189,7 @@ var _ = Describe("Common templates", func() {
 			Entry("[test_id:5087]test template", &testTemplate),
 		)
 
-		It("[test_id: 7340] should increase metrics when restoring tamplate", func() {
+		It("[test_id: 7340] should increase metrics when restoring template", func() {
 			expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate)
 		})
 
@@ -355,7 +355,12 @@ var _ = Describe("Common templates", func() {
 })
 
 func expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate testResource) {
-	restoredCountBefore := totalRestoredTemplatesCount()
+	restoredCountBefore, err := totalRestoredTemplatesCount()
+	Expect(err).ToNot(HaveOccurred())
+
 	expectRestoreAfterUpdate(&testTemplate)
-	Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
+
+	restoredCountAfter, err := totalRestoredTemplatesCount()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(restoredCountAfter - restoredCountBefore).To(Equal(1))
 }

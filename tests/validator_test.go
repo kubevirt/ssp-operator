@@ -941,7 +941,13 @@ func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 }
 
 func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
-	rejectedCountBefore := totalRejectedVmsMetricsValue()
+	var rejectedCountBefore int
+	Eventually(func() error {
+		var err error
+		rejectedCountBefore, err = totalRejectedVmsMetricsValue()
+		return err
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
+
 	vmi := NewRandomVMIWithBridgeInterface(strategy.GetNamespace())
 	// set values that will fail validation
 	vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
@@ -951,7 +957,16 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 		labels.AnnotationTemplateNamespaceKey: template.Namespace,
 	}
 	eventuallyFailToCreateVm(vm)
-	Expect(totalRejectedVmsMetricsValue() - rejectedCountBefore).To(Equal(1))
+
+	var rejectedCountAfter int
+	Eventually(func() error {
+		var err error
+		rejectedCountAfter, err = totalRejectedVmsMetricsValue()
+		return err
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
+
+	Expect(rejectedCountAfter - rejectedCountBefore).To(Equal(1))
+
 	err := apiClient.Delete(ctx, vm)
 	if !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
@@ -959,14 +974,21 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 	waitForDeletion(client.ObjectKeyFromObject(vm), vm)
 }
 
-func totalRejectedVmsMetricsValue() (sum int) {
+func totalRejectedVmsMetricsValue() (int, error) {
 	pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 	Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
 	Expect(pods.Items).ToNot(BeEmpty())
+
+	var sum int
 	for _, validatorPod := range pods.Items {
-		sum += intMetricValue("kubevirt_ssp_template_validator_rejected_total", validator.MetricsPort, &validatorPod)
+		const metricName = "kubevirt_ssp_template_validator_rejected_total"
+		value, err := intMetricValue(metricName, validator.MetricsPort, &validatorPod)
+		if err != nil {
+			return 0, fmt.Errorf("failed to read int metric %s from pod %s: %w", metricName, validatorPod.Name, err)
+		}
+		sum += value
 	}
-	return
+	return sum, nil
 }
 
 func addObjectsToTemplates(genName, validation string) *templatev1.Template {

@@ -114,20 +114,27 @@ func expectRecreateAfterDelete(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func sspOperatorReconcileSucceededCount() (sum int) {
-	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
-	for _, sspOperator := range operatorPods {
-		sum += intMetricValue("kubevirt_ssp_operator_reconcile_succeeded", operatorMetricsPort, &sspOperator)
-	}
-	return
+func sspOperatorReconcileSucceededCount() (int, error) {
+	return collectMetricFromOperator("kubevirt_ssp_operator_reconcile_succeeded")
 }
 
-func totalRestoredTemplatesCount() (sum int) {
+func totalRestoredTemplatesCount() (int, error) {
+	return collectMetricFromOperator("kubevirt_ssp_common_templates_restored_total")
+}
+
+func collectMetricFromOperator(metricName string) (int, error) {
 	operatorPods, operatorMetricsPort := operatorPodsWithMetricsPort()
+
+	var sum int
 	for _, sspOperator := range operatorPods {
-		sum += intMetricValue("kubevirt_ssp_common_templates_restored_total", operatorMetricsPort, &sspOperator)
+		value, err := intMetricValue(metricName, operatorMetricsPort, &sspOperator)
+		if err != nil {
+			return 0, fmt.Errorf("failed to read int metric %s from pod %s: %w", metricName, sspOperator.Name, err)
+		}
+		sum += value
 	}
-	return
+
+	return sum, nil
 }
 
 // Note we are not assuming only one operator pod here although that is how it should be,

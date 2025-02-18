@@ -167,9 +167,9 @@ func validateSspIsFailingToReconcileMetric() {
 		}
 	})
 	// the reconcile cycle should now be failing, so the kubevirt_ssp_operator_reconcile_succeeded metric should be 0
-	Eventually(func() int {
+	Eventually(func() (int, error) {
 		return sspOperatorReconcileSucceededCount()
-	}, env.ShortTimeout(), time.Second).Should(Equal(0))
+	}, env.ShortTimeout(), time.Second).Should(BeZero())
 }
 
 var _ = Describe("SCC annotation", func() {
