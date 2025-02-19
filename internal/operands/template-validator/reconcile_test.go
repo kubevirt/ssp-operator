@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	securityv1 "github.com/openshift/api/security/v1"
 
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
@@ -395,6 +396,18 @@ var _ = Describe("Template validator operand", func() {
 			Entry("with specific podAffinity and podAntiAffinity", []func(*common.Request){setPodAffinity, setPodAntiAffinity}, nil, podAffinity, mergedPodAntiAffinity),
 			Entry("with specific nodeAffinity, podAffinity and podAntiAffinity", []func(*common.Request){setNodeAffinity, setPodAffinity, setPodAntiAffinity}, nodeAffinity, podAffinity, mergedPodAntiAffinity),
 		)
+	})
+
+	It("should add openshift.io/required-scc annotation to deployment", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		key := client.ObjectKeyFromObject(newDeployment(namespace, replicas, "test-img"))
+		deployment := &apps.Deployment{}
+		Expect(request.Client.Get(request.Context, key, deployment)).To(Succeed())
+
+		Expect(deployment.Annotations).To(HaveKeyWithValue(securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue))
+		Expect(deployment.Spec.Template.Annotations).To(HaveKeyWithValue(securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue))
 	})
 })
 
