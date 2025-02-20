@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	securityv1 "github.com/openshift/api/security/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	ocpv1 "github.com/openshift/api/config/v1"
@@ -353,6 +354,18 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceNotExists(bundle.Service, request)
 		ExpectResourceNotExists(bundle.Deployment, request)
 		ExpectResourceNotExists(bundle.ApiService, request)
+	})
+
+	It("should add openshift.io/required-scc annotation to deployment", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		key := client.ObjectKeyFromObject(bundle.Deployment)
+		deployment := &apps.Deployment{}
+		Expect(request.Client.Get(request.Context, key, deployment)).To(Succeed())
+
+		Expect(deployment.Annotations).To(HaveKeyWithValue(securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue))
+		Expect(deployment.Spec.Template.Annotations).To(HaveKeyWithValue(securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue))
 	})
 })
 
