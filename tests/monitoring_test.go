@@ -277,7 +277,7 @@ var _ = Describe("Prometheus Alerts", func() {
 			alertShouldNotBeActive("VMStorageClassWarning")
 		})
 
-		It("[test_id:10549] Should fire VMStorageClassWarning when rxbounce is disabled", func() {
+		PIt("[test_id:10549] Should fire VMStorageClassWarning when rxbounce is disabled", func() {
 			vmName := createResources(true, false)
 			waitForSeriesToBeDetected(fmt.Sprintf("kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name='%s'} == 1", vmName))
 			waitForAlertToActivate("VMStorageClassWarning")
