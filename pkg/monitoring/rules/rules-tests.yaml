@@ -170,20 +170,28 @@ tests:
   # VMStorageClassWarning alert tests
   - interval: "1m"
     input_series:
-      - series: 'kubevirt_ssp_vm_rbd_block_volume_without_rxbounce'
-        values: '0 0 1 0'
+      - series: 'kubevirt_vmi_info{name="vm1", namespace="ns1", os="windows2k22", guest_os_name="Microsoft Windows"}'
+        values: '1 1 1 0 _'
+      - series: 'kubevirt_vmi_info{name="vm1", namespace="ns1", os="<none>", guest_os_name="Microsoft Windows"}'
+        values: '_ _ _ _ 1 0 _'
+      - series: 'kubevirt_vmi_info{name="vm1", namespace="ns1", os="windows2k22", guest_os_name="<none>"}'
+        values: '_ _ _ _ _ _ 1 0 _'
+      - series: 'kubevirt_vmi_info{name="vm1", namespace="ns1", os="<none>", guest_os_name="<none>"}'
+        values: '_ _ _ _ _ _ _ _ 1 0 _'
+      - series: 'kubevirt_ssp_vm_rbd_block_volume_without_rxbounce{name="vm1", namespace="ns1"}'
+        values: '0 0 1 1 1 1 1 1 1 1 1'
 
     alert_rule_test:
-      - eval_time: "1m"
+      - eval_time: "1m" # VM RDB Block Volume has rxbounce
         alertname: "VMStorageClassWarning"
         exp_alerts: []
 
-      - eval_time: "2m"
+      - eval_time: "2m" # Both OS and Guest OS are set to Windows
         alertname: "VMStorageClassWarning"
         exp_alerts:
           - exp_annotations:
-              summary: "1 Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns."
-              description: "When running VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', VMs may cause reports of bad crc/signature errors due to certain I/O patterns. Cluster performance can be severely degraded if the number of re-transmissions due to crc errors causes network saturation."
+              summary: "1 Windows Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns."
+              description: "When running Windows VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', VMs may cause reports of bad crc/signature errors due to certain I/O patterns. Cluster performance can be severely degraded if the number of re-transmissions due to crc errors causes network saturation."
               runbook_url: "https://kubevirt.io/monitoring/runbooks/VMStorageClassWarning"
             exp_labels:
               severity: "warning"
@@ -194,3 +202,41 @@ tests:
       - eval_time: "3m"
         alertname: "VMStorageClassWarning"
         exp_alerts: []
+
+      - eval_time: "4m" # Guest OS is set to Windows
+        alertname: "VMStorageClassWarning"
+        exp_alerts:
+          - exp_annotations:
+              summary: "1 Windows Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns."
+              description: "When running Windows VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', VMs may cause reports of bad crc/signature errors due to certain I/O patterns. Cluster performance can be severely degraded if the number of re-transmissions due to crc errors causes network saturation."
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/VMStorageClassWarning"
+            exp_labels:
+              severity: "warning"
+              operator_health_impact: "none"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      - eval_time: "5m"
+        alertname: "VMStorageClassWarning"
+        exp_alerts: []
+
+      - eval_time: "6m" # OS is set to Windows
+        alertname: "VMStorageClassWarning"
+        exp_alerts:
+          - exp_annotations:
+              summary: "1 Windows Virtual Machines may cause reports of bad crc/signature errors due to certain I/O patterns."
+              description: "When running Windows VMs using ODF storage with 'rbd' mounter or 'rbd.csi.ceph.com provisioner', VMs may cause reports of bad crc/signature errors due to certain I/O patterns. Cluster performance can be severely degraded if the number of re-transmissions due to crc errors causes network saturation."
+              runbook_url: "https://kubevirt.io/monitoring/runbooks/VMStorageClassWarning"
+            exp_labels:
+              severity: "warning"
+              operator_health_impact: "none"
+              kubernetes_operator_part_of: "kubevirt"
+              kubernetes_operator_component: "ssp-operator"
+
+      - eval_time: "7m"
+        alertname: "VMStorageClassWarning"
+        exp_alerts: []
+
+      - eval_time: "8m" # Neither OS nor Guest OS is set to Windows
+        alertname: "VMStorageClassWarning"
+        exp_alerts: [ ]
