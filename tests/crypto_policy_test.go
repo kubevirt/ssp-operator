@@ -201,18 +201,14 @@ func getCaCertificate() []byte {
 	return ca
 }
 
-func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) (attemptedUrl string, err error) {
-	conn, err := portForwarder.Connect(&pod, port)
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { Expect(conn.Close()).To(Succeed()) }()
-
+func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) (string, error) {
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(getCaCertificate())
 
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return conn, nil
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return portForwarder.Connect(&pod, port)
 			},
 			TLSClientConfig: &tls.Config{
 				CipherSuites:       tlsConfig.CipherIDs(),
@@ -220,6 +216,8 @@ func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port 
 				RootCAs:            certPool,
 				InsecureSkipVerify: insecure,
 			},
+			// We don't want to reuse port-forward connections for multiple requests.
+			DisableKeepAlives: true,
 		},
 	}
 
@@ -228,8 +226,8 @@ func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port 
 	}
 
 	// ${serviceName}.${serviceNamespace}.svc is used to access the endpoints we are testing.
-	attemptedUrl = fmt.Sprintf("https://%s.%s.svc:%d%s", serviceName, pod.Namespace, port, subpath)
-	_, err = httpClient.Get(attemptedUrl)
+	attemptedUrl := fmt.Sprintf("https://%s.%s.svc:%d%s", serviceName, pod.Namespace, port, subpath)
+	_, err := httpClient.Get(attemptedUrl)
 	return attemptedUrl, err
 }
 
