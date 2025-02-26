@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	sspv1beta1 "kubevirt.io/ssp-operator/api/v1beta1"
@@ -142,7 +143,7 @@ var _ = Describe("Validation webhook", func() {
 				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
 			})
 
-			It("[test_id:TODO] should accept v1beta1 SSP object", func() {
+			It("[test_id:TODO] should not accept v1beta1 SSP object", func() {
 				ssp := &sspv1beta1.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      newSsp.GetName(),
@@ -155,7 +156,8 @@ var _ = Describe("Validation webhook", func() {
 					},
 				}
 
-				Expect(apiClient.Create(ctx, ssp, client.DryRunAll)).To(Succeed())
+				Expect(apiClient.Create(ctx, ssp, client.DryRunAll)).
+					To(MatchError(meta.IsNoMatchError, "meta.IsNoMatchError"))
 			})
 		})
 	})

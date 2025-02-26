@@ -39,9 +39,6 @@ spec:
     enabled: false
   customresourcedefinitions:
     owned:
-    - kind: SSP
-      name: ssps.ssp.kubevirt.io
-      version: v1beta1
     - description: SSP is the Schema for the ssps API
       displayName: SSP
       kind: SSP
