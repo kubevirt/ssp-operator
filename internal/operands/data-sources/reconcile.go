@@ -37,7 +37,6 @@ const (
 )
 
 const (
-	dataVolumeCrd     = "datavolumes.cdi.kubevirt.io"
 	dataSourceCrd     = "datasources.cdi.kubevirt.io"
 	dataImportCronCrd = "dataimportcrons.cdi.kubevirt.io"
 )

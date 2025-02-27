@@ -58,7 +58,8 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			err := runGenerator()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
+				// Ignoring returned error: no reasonable way to handle it.
+				_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(1)
 			}
 		},
@@ -67,7 +68,8 @@ var (
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		// Ignoring returned error: no reasonable way to handle it.
+		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }

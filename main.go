@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -164,7 +165,7 @@ func (s *prometheusServer) Start(ctx context.Context) error {
 
 	server.TLSConfig = s.getPrometheusTLSConfig(ctx, certWatcher)
 
-	if err := server.ListenAndServeTLS(s.certPath, s.keyPath); err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServeTLS(s.certPath, s.keyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		setupLog.Error(err, "Failed to start Prometheus metrics endpoint server")
 		return err
 	}

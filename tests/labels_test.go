@@ -58,7 +58,8 @@ func encodePatch(operations []jsonpatch.Operation) client.Patch {
 	patchBytes, err := json.Marshal(operations)
 	Expect(err).NotTo(HaveOccurred())
 
-	fmt.Fprintf(GinkgoWriter, "sending patch: %s", string(patchBytes))
+	_, err = fmt.Fprintf(GinkgoWriter, "sending patch: %s", string(patchBytes))
+	Expect(err).NotTo(HaveOccurred())
 	return client.RawPatch(types.JSONPatchType, patchBytes)
 }
 
