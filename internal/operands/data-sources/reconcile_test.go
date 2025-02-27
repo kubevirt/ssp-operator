@@ -141,6 +141,8 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(createdDataImportCron.Spec).To(Equal(cronTemplate.Spec))
 			})
 
+			// TODO -- test renaming a template
+
 			It("should remove DataImportCron if template removed from SSP CR in golden images namespace", func() {
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
@@ -212,9 +214,24 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+
+				// Need to run reconcile twice:
+				//  1. DataImportCron is removed, but the DataSource is not changed.
+				//  2. DataSource is restored.
 				_, err = operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
 				ExpectResourceNotExists(&cron, request)
+
+				// This label is removed by CDI when DataImportCron is deleted.
+				// Here we do it in the test code.
+				// TODO -- CDI does not change the label - it only removes the DS, if DIC is removed
+				ds = &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				delete(ds.Labels, dataImportCronLabel)
+				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
 
 				// Test that DataSource was restored
 				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
@@ -306,8 +323,7 @@ var _ = Describe("Data-Sources operand", func() {
 				if foundDs.GetLabels() == nil {
 					foundDs.SetLabels(map[string]string{})
 				}
-				const label = "cdi.kubevirt.io/dataImportCron"
-				foundDs.GetLabels()[label] = ""
+				foundDs.GetLabels()[dataImportCronLabel] = cron.Name
 
 				Expect(request.Client.Update(request.Context, foundDs)).To(Succeed())
 
@@ -336,6 +352,67 @@ var _ = Describe("Data-Sources operand", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			ExpectResourceExists(cron, request)
+		})
+	})
+
+	Context("with external DataImportCron", func() {
+		var (
+			externalDataSource     *cdiv1beta1.DataSource
+			externalDataImportCron *cdiv1beta1.DataImportCron
+		)
+
+		BeforeEach(func() {
+			externalDataSource = testDataSources[0].DeepCopy()
+
+			externalDataImportCron = &cdiv1beta1.DataImportCron{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "external-" + externalDataSource.GetName(),
+					Namespace: internal.GoldenImagesNamespace,
+				},
+				Spec: cdiv1beta1.DataImportCronSpec{
+					ManagedDataSource: externalDataSource.GetName(),
+				},
+			}
+			Expect(request.Client.Create(request.Context, externalDataImportCron)).To(Succeed())
+
+			if externalDataSource.GetLabels() == nil {
+				externalDataSource.SetLabels(map[string]string{})
+			}
+			externalDataSource.GetLabels()[dataImportCronLabel] = externalDataImportCron.Name
+			externalDataSource.Spec.Source.PVC.Name = "external-pvc"
+			Expect(request.Client.Create(request.Context, externalDataSource)).To(Succeed())
+		})
+
+		It("should not reconcile DataSource", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			foundDataSource := &cdiv1beta1.DataSource{}
+			err = request.Client.Get(request.Context, client.ObjectKey{
+				Name:      externalDataSource.GetName(),
+				Namespace: internal.GoldenImagesNamespace,
+			}, foundDataSource)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(foundDataSource.Spec).To(Equal(externalDataSource.Spec))
+		})
+
+		It("should fail reconciliation, if DataImportCron template is defined", func() {
+			cronTemplate := ssp.DataImportCronTemplate{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: externalDataSource.Name,
+				},
+				Spec: cdiv1beta1.DataImportCronSpec{
+					ManagedDataSource: externalDataSource.Name,
+				},
+			}
+
+			request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+			_, err := operand.Reconcile(&request)
+			Expect(err).To(MatchError(ContainSubstring(
+				"DataImportCron template and an external DataImportCron manage the same DataSource",
+			)))
 		})
 	})
 })
