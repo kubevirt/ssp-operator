@@ -1,4 +1,4 @@
-# cel.dev/expr v0.21.2
+# cel.dev/expr v0.22.0
 ## explicit; go 1.21.1
 cel.dev/expr
 # github.com/antlr4-go/antlr/v4 v4.13.1
@@ -172,8 +172,8 @@ github.com/mwitkow/go-conntrack
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/onsi/ginkgo/v2 v2.22.2
-## explicit; go 1.22.0
+# github.com/onsi/ginkgo/v2 v2.23.0
+## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
 github.com/onsi/ginkgo/v2/formatter
@@ -309,7 +309,7 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
 golang.org/x/net/websocket
-# golang.org/x/oauth2 v0.27.0
+# golang.org/x/oauth2 v0.28.0
 ## explicit; go 1.23.0
 golang.org/x/oauth2
 golang.org/x/oauth2/clientcredentials
@@ -347,11 +347,11 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.10.0
-## explicit; go 1.18
+# golang.org/x/time v0.11.0
+## explicit; go 1.23.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.30.0
-## explicit; go 1.22.0
+# golang.org/x/tools v0.31.0
+## explicit; go 1.23.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/inspector
 golang.org/x/tools/internal/astutil/edge
