@@ -29,7 +29,7 @@ func toInt64(obj interface{}) (int64, bool) {
 	case int32:
 		return int64(val), true
 	case int64:
-		return int64(val), true
+		return val, true
 	case uint:
 		return int64(val), true
 	case uint32:

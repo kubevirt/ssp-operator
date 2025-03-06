@@ -19,7 +19,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
-	metrics "kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
 	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
@@ -117,7 +117,7 @@ func newService(namespace string) *core.Service {
 			Ports: []core.ServicePort{{
 				Name:       "webhook",
 				Port:       443,
-				TargetPort: intstr.FromInt(ContainerPort),
+				TargetPort: intstr.FromInt32(ContainerPort),
 			}},
 			Selector: CommonLabels(),
 		},
@@ -234,7 +234,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ProbeHandler: core.ProbeHandler{
 								HTTPGet: &core.HTTPGetAction{
 									Path:   "/readyz",
-									Port:   intstr.FromInt(ContainerPort),
+									Port:   intstr.FromInt32(ContainerPort),
 									Scheme: core.URISchemeHTTPS,
 								},
 							},

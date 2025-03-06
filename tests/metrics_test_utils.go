@@ -21,18 +21,14 @@ var regexpForMetrics = map[string]*regexp.Regexp{
 }
 
 func intMetricValue(metricName string, metricsPort uint16, pod *v1.Pod) (value int, err error) {
-	conn, err := portForwarder.Connect(pod, metricsPort)
-	if err != nil {
-		return 0, fmt.Errorf("failed to connect port-forwarding: %w", err)
-	}
-	defer func() { err = errors.Join(err, conn.Close()) }()
-
 	client := &http.Client{
 		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return conn, nil
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return portForwarder.Connect(pod, metricsPort)
 			},
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			// We don't want to reuse port-forward connections for multiple requests.
+			DisableKeepAlives: true,
 		},
 	}
 	resp, err := client.Get(fmt.Sprintf("https://localhost:%d/metrics", metricsPort))

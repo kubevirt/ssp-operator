@@ -12,7 +12,6 @@ import (
 	kubevirt "kubevirt.io/api/core/v1"
 )
 
-// GetAdmissionReview
 func GetAdmissionReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 	var body []byte
 	if r.Body != nil {
@@ -38,7 +37,6 @@ func ToAdmissionResponseOK() *admissionv1.AdmissionResponse {
 	return &reviewResponse
 }
 
-// ToAdmissionResponseError
 func ToAdmissionResponseError(err error) *admissionv1.AdmissionResponse {
 	return &admissionv1.AdmissionResponse{
 		Result: &metav1.Status{
