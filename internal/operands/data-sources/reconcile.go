@@ -84,7 +84,7 @@ func (d *dataSources) WatchClusterTypes() []operands.WatchType {
 
 type dataSourceInfo struct {
 	dataSource         *cdiv1beta1.DataSource
-	autoUpdateEnabled  bool
+	autoUpdateEnabled  autoUpdateEnabledResult_RENAME
 	dataImportCronName string
 }
 
@@ -233,6 +233,7 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 			return dataSourcesAndCrons{}, err
 		}
 
+		// TODO -- only if DIC is reconciled?
 		var dicName string
 		if dic, ok := cronByDataSource[client.ObjectKeyFromObject(&dataSource)]; ok {
 			dicName = dic.GetName()
@@ -246,7 +247,7 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 	}
 
 	for i := range dataSourceInfos {
-		if !dataSourceInfos[i].autoUpdateEnabled {
+		if !dataSourceInfos[i].autoUpdateEnabled.reconcileDataImportCron {
 			delete(cronByDataSource, client.ObjectKeyFromObject(dataSourceInfos[i].dataSource))
 		}
 	}
@@ -262,53 +263,104 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 	}, nil
 }
 
+type autoUpdateEnabledResult_RENAME struct {
+	reconcileDataSource     bool
+	reconcileDataImportCron bool
+}
+
 const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
 
-func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSource map[client.ObjectKey]*ssp.DataImportCronTemplate, request *common.Request) (bool, error) {
+func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSource map[client.ObjectKey]*ssp.DataImportCronTemplate, request *common.Request) (autoUpdateEnabledResult_RENAME, error) {
 	objectKey := client.ObjectKeyFromObject(dataSource)
-	_, cronExists := cronByDataSource[objectKey]
-	if !cronExists {
-		// If DataImportCron does not exist for this DataSource, auto-update is disabled.
-		return false, nil
-	}
+	cronTemplate, cronTemplateExists := cronByDataSource[objectKey]
 
 	// Check existing data source. The Get call uses cache.
 	foundDataSource := &cdiv1beta1.DataSource{}
 	err := request.Client.Get(request.Context, objectKey, foundDataSource)
-	if errors.IsNotFound(err) {
-		pvcExists, err := checkIfPvcExists(dataSource, request)
-		if err != nil {
-			return false, err
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return autoUpdateEnabledResult_RENAME{}, err
+		}
+		foundDataSource = nil
+	}
+
+	externalCronExists := false
+	if foundDataSource != nil {
+		dicNameLabel, labelExists := foundDataSource.GetLabels()[dataImportCronLabel]
+		// TODO -- need to check if DIC actually exists
+		//  - only if in the golden image namespace
+		externalCronExists = labelExists && (!cronTemplateExists || cronTemplate.Name != dicNameLabel)
+	}
+
+	if !cronTemplateExists {
+		if externalCronExists {
+			// This case also happens if a DIC template is removed from SSP object.
+			// Then the DIC is considered external, even if it was previously created by ssp-operator.
+			// It will be removed in later code.
+			return autoUpdateEnabledResult_RENAME{
+				reconcileDataSource:     false,
+				reconcileDataImportCron: false,
+			}, nil
+		}
+		return autoUpdateEnabledResult_RENAME{
+			reconcileDataSource:     true,
+			reconcileDataImportCron: false,
+		}, nil
+	}
+
+	if externalCronExists {
+		// TODO -- this could happen, if we rename a DICT. Then the previous DIC will look like external.
+		//  - maybe I need to check if DIC is owned by SSP.
+
+		// TODO -- maybe add more info - what DICT and DS
+		return autoUpdateEnabledResult_RENAME{}, fmt.Errorf(
+			"DataImportCron template and an external DataImportCron manage the same DataSource",
+		)
+	}
+
+	usesGoldenImagePVC, err := dataSourceUsesGoldenImagePVC(foundDataSource, dataSource, request)
+	if err != nil {
+		return autoUpdateEnabledResult_RENAME{}, err
+	}
+
+	// TODO -- rewrite comment
+	// If PVC exists, DataSource does not use auto-update.
+	// Otherwise, DataSource uses auto-update.
+	if usesGoldenImagePVC {
+		return autoUpdateEnabledResult_RENAME{
+			reconcileDataSource:     true,
+			reconcileDataImportCron: false,
+		}, nil
+	}
+
+	return autoUpdateEnabledResult_RENAME{
+		reconcileDataSource:     false,
+		reconcileDataImportCron: true,
+	}, nil
+}
+
+func dataSourceUsesGoldenImagePVC(foundDataSource, goldenImageDataSource *cdiv1beta1.DataSource, request *common.Request) (bool, error) {
+	if foundDataSource != nil {
+		// The DataSource is managed by a DataImportCron
+		_, labelExists := foundDataSource.GetLabels()[dataImportCronLabel]
+		if labelExists {
+			return false, nil
 		}
 
-		// If PVC exists, DataSource does not use auto-update.
-		// Otherwise, DataSource uses auto-update.
-		return !pvcExists, nil
+		dsReadyCondition := getDataSourceReadyCondition(foundDataSource)
+		// It makes sense to check the ready condition only if the found DataSource spec
+		// points to the golden image PVC, not to auto-update PVC.
+		if dsReadyCondition != nil && foundDataSource.Spec.Source.PVC == goldenImageDataSource.Spec.Source.PVC {
+			// Auto-update will ony be enabled if the DataSource does not refer to an existing PVC.
+			return dsReadyCondition.Status != core.ConditionTrue, nil
+		}
 	}
+
+	pvcExists, err := checkIfPvcExists(goldenImageDataSource, request)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check if PVC exists: %w", err)
 	}
-
-	if _, foundDsUsesAutoUpdate := foundDataSource.GetLabels()[dataImportCronLabel]; foundDsUsesAutoUpdate {
-		// Found DS is labeled to use auto-update.
-		return true, nil
-	}
-
-	dsReadyCondition := getDataSourceReadyCondition(foundDataSource)
-	// It makes sense to check the ready condition only if the found DataSource spec
-	// points to the golden image PVC, not to auto-update PVC.
-	if dsReadyCondition != nil && foundDataSource.Spec.Source.PVC == dataSource.Spec.Source.PVC {
-		// Auto-update will ony be enabled if the DataSource does not refer to an existing PVC.
-		return dsReadyCondition.Status != core.ConditionTrue, nil
-	}
-
-	// In case found DataSource spec is different from expected spec, we need to check if PVC exists.
-	pvcExists, err := checkIfPvcExists(dataSource, request)
-	if err != nil {
-		return false, err
-	}
-	// If PVC exists, DataSource does not use auto-update. Otherwise, DataSource uses auto-update.
-	return !pvcExists, nil
+	return pvcExists, nil
 }
 
 func checkIfPvcExists(dataSource *cdiv1beta1.DataSource, request *common.Request) (bool, error) {
@@ -384,7 +436,7 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 		ClusterResource(dsInfo.dataSource).
 		Options(common.ReconcileOptions{AlwaysCallUpdateFunc: true}).
 		UpdateFunc(func(newRes, foundRes client.Object) {
-			if dsInfo.autoUpdateEnabled {
+			if dsInfo.autoUpdateEnabled.reconcileDataImportCron {
 				if foundRes.GetLabels() == nil {
 					foundRes.SetLabels(make(map[string]string))
 				}
@@ -394,11 +446,12 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 				return
 			}
 
-			// Only set app labels if DIC does not exist
-			common.AddAppLabels(request.Instance, operandName, operandComponent, foundRes)
-			delete(foundRes.GetLabels(), dataImportCronLabel)
-
-			foundRes.(*cdiv1beta1.DataSource).Spec = newRes.(*cdiv1beta1.DataSource).Spec
+			if dsInfo.autoUpdateEnabled.reconcileDataSource {
+				// Only set app labels if DIC does not exist
+				common.AddAppLabels(request.Instance, operandName, operandComponent, foundRes)
+				delete(foundRes.GetLabels(), dataImportCronLabel)
+				foundRes.(*cdiv1beta1.DataSource).Spec = newRes.(*cdiv1beta1.DataSource).Spec
+			}
 		}).
 		Reconcile()
 }
