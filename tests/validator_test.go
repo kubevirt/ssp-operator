@@ -3,6 +3,7 @@ package tests
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -17,7 +18,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -113,7 +114,7 @@ var _ = Describe("Template validator operand", func() {
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 44331
-				service.Spec.Ports[0].TargetPort = intstr.FromInt(44331)
+				service.Spec.Ports[0].TargetPort = intstr.FromInt32(44331)
 			},
 			EqualsFunc: func(old *core.Service, new *core.Service) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)
@@ -140,7 +141,7 @@ var _ = Describe("Template validator operand", func() {
 			ExpectedLabels: validator.PrometheusServiceLabels(),
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 443
-				service.Spec.Ports[0].TargetPort = intstr.FromInt(8443)
+				service.Spec.Ports[0].TargetPort = intstr.FromInt32(8443)
 			},
 			EqualsFunc: func(old *core.Service, new *core.Service) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)
@@ -446,7 +447,7 @@ var _ = Describe("Template validator webhooks", func() {
 	AfterEach(func() {
 		if vm != nil {
 			err := apiClient.Delete(ctx, vm)
-			if !errors.IsNotFound(err) {
+			if !k8serrors.IsNotFound(err) {
 				Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
 			}
 			// Need to wait until VM is removed, otherwise the webhook may
@@ -456,7 +457,7 @@ var _ = Describe("Template validator webhooks", func() {
 		if template != nil {
 			Eventually(func(g Gomega) {
 				if err := apiClient.Delete(ctx, template); err != nil {
-					g.Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
+					g.Expect(k8serrors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 				}
 			}, env.ShortTimeout(), time.Second).Should(Succeed(), "Template should be deleted")
 		}
@@ -823,7 +824,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			Eventually(func() metav1.StatusReason {
 				err := apiClient.Delete(ctx, template, client.DryRunAll)
-				return errors.ReasonForError(err)
+				return k8serrors.ReasonForError(err)
 			}, env.ShortTimeout(), 1*time.Second).Should(Equal(metav1.StatusReasonForbidden), "Should have given forbidden error")
 		})
 
@@ -936,7 +937,7 @@ func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 			}
 			return metav1.StatusReasonUnknown, fmt.Errorf("VM was created")
 		}
-		return errors.ReasonForError(err), nil
+		return k8serrors.ReasonForError(err), nil
 	}, env.ShortTimeout()).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
 }
 
@@ -968,7 +969,7 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 	Expect(rejectedCountAfter - rejectedCountBefore).To(Equal(1))
 
 	err := apiClient.Delete(ctx, vm)
-	if !errors.IsNotFound(err) {
+	if !k8serrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred(), "Failed to Delete VM")
 	}
 	waitForDeletion(client.ObjectKeyFromObject(vm), vm)
@@ -1002,7 +1003,6 @@ func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 	userData := `#cloud-config
 				password: fedora
 				chpasswd: { expire: False }`
-	running := false
 	liveMigrate := kubevirtv1.EvictionStrategyLiveMigrate
 	template := &templatev1.Template{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1062,7 +1062,7 @@ func addObjectsToTemplates(genName, validation string) *templatev1.Template {
 					},
 				},
 				Spec: kubevirtv1.VirtualMachineSpec{
-					Running: &running,
+					RunStrategy: ptr.To(kubevirtv1.RunStrategyHalted),
 					Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
 						Spec: kubevirtv1.VirtualMachineInstanceSpec{
 							Domain: kubevirtv1.DomainSpec{
@@ -1213,14 +1213,14 @@ func TemplateWithoutRules() *templatev1.Template {
 	return addObjectsToTemplates("test-fedora-desktop-small-without-rules", validations)
 }
 
-func getWebhookServerCertificates(validatorPod *core.Pod) ([]*x509.Certificate, error) {
+func getWebhookServerCertificates(validatorPod *core.Pod) (certs []*x509.Certificate, err error) {
 	conn, err := portForwarder.Connect(validatorPod, validator.ContainerPort)
 	if err != nil {
 		return nil, err
 	}
 
 	tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true})
-	defer tlsConn.Close()
+	defer func() { err = errors.Join(err, tlsConn.Close()) }()
 
 	err = tlsConn.Handshake()
 	if err != nil {

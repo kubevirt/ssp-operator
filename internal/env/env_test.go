@@ -12,10 +12,11 @@ import (
 
 var _ = Describe("environments", func() {
 	It("should return correct value for OPERATOR_VERSION when variable is set", func() {
-		os.Setenv(OperatorVersionKey, "v0.0.1")
+		Expect(os.Setenv(OperatorVersionKey, "v0.0.1")).To(Succeed())
+		defer func() { Expect(os.Unsetenv(OperatorVersionKey)).To(Succeed()) }()
+
 		res := GetOperatorVersion()
 		Expect(res).To(Equal("v0.0.1"), "OPERATOR_VERSION should equal")
-		os.Unsetenv(OperatorVersionKey)
 	})
 
 	It("should return correct value for OPERATOR_VERSION when variable is not set", func() {

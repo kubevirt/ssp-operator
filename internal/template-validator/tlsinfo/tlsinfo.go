@@ -19,9 +19,6 @@ const (
 	CertFilename       = "tls.crt"
 	KeyFilename        = "tls.key"
 	TLSOptionsFilename = "tls-config.json"
-
-	CiphersEnvName       = "TLS_CIPHERS"
-	TLSMinVersionEnvName = "TLS_MIN_VERSION"
 )
 
 type TLSInfo struct {
