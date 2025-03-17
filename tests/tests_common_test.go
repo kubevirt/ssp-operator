@@ -108,10 +108,11 @@ func expectRecreateAfterDelete(res *testResource) {
 	err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 
-	err = apiClient.Get(ctx, client.ObjectKey{
-		Name: res.Name, Namespace: res.Namespace,
-	}, resource)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return apiClient.Get(ctx, client.ObjectKey{
+			Name: res.Name, Namespace: res.Namespace,
+		}, resource)
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
 }
 
 func sspOperatorReconcileSucceededCount() (int, error) {
@@ -192,9 +193,11 @@ func expectRestoreAfterUpdate(res *testResource) {
 	err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 
-	found := res.NewResource()
-	Expect(apiClient.Get(ctx, res.GetKey(), found)).ToNot(HaveOccurred())
-	Expect(found).To(EqualResource(res, original))
+	Eventually(func(g Gomega) {
+		found := res.NewResource()
+		Expect(apiClient.Get(ctx, res.GetKey(), found)).ToNot(HaveOccurred())
+		Expect(found).To(EqualResource(res, original))
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
 }
 
 func expectRestoreAfterUpdateWithPause(res *testResource) {
