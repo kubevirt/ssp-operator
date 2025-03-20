@@ -50,8 +50,8 @@ var _ = Describe("VM delete protection", func() {
 	DescribeTable("should not allow to delete a VM if the protection is enabled", func(labelValue string) {
 		vm = createVMWithDeleteProtection(labelValue)
 
-		Expect(apiClient.Delete(ctx, vm)).To(
-			MatchError(ContainSubstring("VirtualMachine %v cannot be deleted, remove delete protection", vm.Name)))
+		Expect(apiClient.Delete(ctx, vm)).To(MatchError(ContainSubstring("VirtualMachine %v cannot be deleted, disable/remove label "+
+			"'kubevirt.io/vm-delete-protection' from VirtualMachine before deleting it", vm.Name)))
 	},
 		Entry("using True as value", "True"),
 		Entry("using true as value", "true"),

@@ -47,7 +47,7 @@ func newValidatingAdmissionPolicy() *admissionregistrationv1.ValidatingAdmission
 			Validations: []admissionregistrationv1.Validation{
 				{
 					Expression:        vmDeleteProtectionCELExpression,
-					MessageExpression: `'VirtualMachine ' + string(oldObject.metadata.name) + ' cannot be deleted, remove delete protection'`,
+					MessageExpression: `'VirtualMachine ' + string(oldObject.metadata.name) + ' cannot be deleted, disable/remove label \'kubevirt.io/vm-delete-protection\' from VirtualMachine before deleting it'`,
 				},
 			},
 		},
