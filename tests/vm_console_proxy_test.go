@@ -96,7 +96,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			ExpectedLabels: expectedLabels,
 			UpdateFunc: func(service *core.Service) {
 				service.Spec.Ports[0].Port = 1443
-				service.Spec.Ports[0].TargetPort = intstr.FromInt(18768)
+				service.Spec.Ports[0].TargetPort = intstr.FromInt32(18768)
 			},
 			EqualsFunc: func(old *core.Service, new *core.Service) bool {
 				return reflect.DeepEqual(old.Spec, new.Spec)

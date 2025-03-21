@@ -322,7 +322,7 @@ func newTestResource(namespace string) *v1.Service {
 			Ports: []v1.ServicePort{{
 				Name:       "webhook",
 				Port:       443,
-				TargetPort: intstr.FromInt(8443),
+				TargetPort: intstr.FromInt32(8443),
 			}},
 			Selector: map[string]string{
 				"kubevirtIo": "virtTemplateValidator",

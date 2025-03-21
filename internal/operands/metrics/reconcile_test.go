@@ -63,7 +63,7 @@ var _ = Describe("Metrics operand", func() {
 	})
 
 	AfterEach(func() {
-		os.Unsetenv(runbookURLTemplateEnv)
+		Expect(os.Unsetenv(runbookURLTemplateEnv)).To(Succeed())
 	})
 
 	It("should create metrics resources", func() {
@@ -82,7 +82,7 @@ var _ = Describe("Metrics operand", func() {
 	DescribeTable("runbook URL template",
 		func(template string) {
 			if template != defaultRunbookURLTemplate {
-				os.Setenv(runbookURLTemplateEnv, template)
+				Expect(os.Setenv(runbookURLTemplateEnv, template)).To(Succeed())
 			}
 
 			err := rules.SetupRules()

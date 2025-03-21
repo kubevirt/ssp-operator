@@ -514,7 +514,7 @@ func getMockedTestBundle() *vm_console_proxy_bundle.Bundle {
 			Spec: core.ServiceSpec{
 				Ports: []core.ServicePort{{
 					Port:       443,
-					TargetPort: intstr.FromInt(8768),
+					TargetPort: intstr.FromInt32(8768),
 				}},
 				Selector: map[string]string{
 					"vm-console-proxy.kubevirt.io": vmConsoleProxyName,

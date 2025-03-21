@@ -30,7 +30,7 @@ func init() {
 	utilruntime.Must(kubevirtv1.AddToScheme(Scheme))
 }
 
-// This function is useful in operand unit tests only
+// AddConversionFunctions is useful in operand unit tests only
 func AddConversionFunctions(s *runtime.Scheme) error {
 	err := s.AddConversionFunc((*extv1.CustomResourceDefinition)(nil), (*metav1.PartialObjectMetadata)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		crd := a.(*extv1.CustomResourceDefinition)

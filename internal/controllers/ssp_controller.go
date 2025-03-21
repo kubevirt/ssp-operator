@@ -122,9 +122,9 @@ func (s *sspController) AddToManager(mgr ctrl.Manager, crdList crd_watch.CrdList
 	return builder.Complete(s)
 }
 
-func (r *sspController) RequiredCrds() []string {
+func (s *sspController) RequiredCrds() []string {
 	var result []string
-	for _, operand := range r.operands {
+	for _, operand := range s.operands {
 		result = append(result, getRequiredCrds(operand)...)
 	}
 	return result

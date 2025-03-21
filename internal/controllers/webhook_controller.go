@@ -23,7 +23,7 @@ const (
 
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=get;update
 
-// CreateWebhookConfigurationController creates a controller
+// NewWebhookConfigurationController creates a controller
 // that watches ValidatingWebhookConfiguration created by OLM,
 // and removes any namespaceSelector defined in it.
 //

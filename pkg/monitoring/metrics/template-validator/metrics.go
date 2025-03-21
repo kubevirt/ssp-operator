@@ -9,8 +9,3 @@ func SetupMetrics() error {
 		templateMetrics,
 	)
 }
-
-// ListMetrics registered prometheus metrics
-func ListMetrics() []operatormetrics.Metric {
-	return operatormetrics.ListMetrics()
-}
