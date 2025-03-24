@@ -9,8 +9,8 @@ require (
 	github.com/google/cel-go v0.24.1
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20230706095033-373a95665d5a
 	github.com/machadovilaca/operator-observability v0.0.26
-	github.com/onsi/ginkgo/v2 v2.23.1
-	github.com/onsi/gomega v1.36.2
+	github.com/onsi/ginkgo/v2 v2.23.3
+	github.com/onsi/gomega v1.36.3
 	github.com/openshift/api v0.0.0-20240702171116-4b89b3a92a17 // release-4.16
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/openshift/library-go v0.0.0-20240711192904-190fec8c3f09 // release-4.16
