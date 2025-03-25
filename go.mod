@@ -34,7 +34,7 @@ require (
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/ssp-operator/api v0.0.0
 	kubevirt.io/vm-console-proxy/api v0.7.0
-	sigs.k8s.io/controller-runtime v0.20.3
+	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/yaml v1.4.0
 )
 
