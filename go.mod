@@ -2,6 +2,8 @@ module kubevirt.io/ssp-operator
 
 go 1.23.2
 
+toolchain go1.24.1
+
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fsnotify/fsnotify v1.8.0
@@ -30,7 +32,7 @@ require (
 	k8s.io/kube-aggregator v0.32.3
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	kubevirt.io/api v1.5.0
-	kubevirt.io/containerized-data-importer-api v1.61.2
+	kubevirt.io/containerized-data-importer-api v1.61.4
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/ssp-operator/api v0.0.0
 	kubevirt.io/vm-console-proxy/api v0.7.0
@@ -83,7 +85,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
