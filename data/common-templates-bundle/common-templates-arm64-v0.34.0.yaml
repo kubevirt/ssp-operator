@@ -1,0 +1,5239 @@
+# Version v0.34.0
+---
+# Source: dist/templates/centos-stream9-desktop-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-desktop-large-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-desktop-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos-stream9-desktop-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-desktop-medium-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-desktop-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos-stream9-desktop-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-desktop-small-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-desktop-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos-stream9-desktop-tiny-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-desktop-tiny-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-desktop-tiny-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "tiny"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 1.5Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos-stream9-server-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-server-large-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-server-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos-stream9-server-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-server-medium-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-server-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos-stream9-server-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-server-small-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/default-os-variant: "true"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-server-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/centos-stream9-server-tiny-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: centos-stream9-server-tiny-arm64
+  annotations:
+    openshift.io/display-name: "CentOS Stream 9 VM"
+    description: >-
+      Template for CentOS Stream 9 VM or newer.
+      A PVC with the CentOS Stream disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,centosstream"
+    iconClass: "icon-centos"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/centos-stream:9
+    template.kubevirt.io/images: |
+      https://cloud.centos.org/centos/9-stream/aarch64/images/CentOS-Stream-GenericCloud-9-latest.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/centos-stream9: CentOS Stream 9 or higher
+  labels:
+    os.template.kubevirt.io/centos-stream9: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: centos-stream9-server-tiny-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "centos-stream9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "tiny"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 1.5Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: centos
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'centos-stream9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'centos-stream9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user centos
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-desktop-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-desktop-large-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-desktop-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-desktop-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-desktop-medium-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-desktop-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-desktop-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-desktop-small-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-desktop-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-highperformance-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-highperformance-large-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/highperformance: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-highperformance-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "highperformance"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          ioThreadsPolicy: shared
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+            dedicatedCpuPlacement: True
+            isolateEmulatorThread: True
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+              dedicatedIOThread: true
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-highperformance-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-highperformance-medium-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/highperformance: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-highperformance-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "highperformance"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          ioThreadsPolicy: shared
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+            dedicatedCpuPlacement: True
+            isolateEmulatorThread: True
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+              dedicatedIOThread: true
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-highperformance-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-highperformance-small-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/highperformance: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-highperformance-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "highperformance"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          ioThreadsPolicy: shared
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+            dedicatedCpuPlacement: True
+            isolateEmulatorThread: True
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+              dedicatedIOThread: true
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-server-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-server-large-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-server-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-server-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-server-medium-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-server-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/fedora-server-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-server-small-arm64
+  annotations:
+    openshift.io/display-name: "Fedora VM"
+    description: >-
+      Template for Fedora Linux 40 VM or newer.
+      A PVC with the Fedora disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,fedora"
+    iconClass: "icon-fedora"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:latest
+      quay.io/containerdisks/fedora:40
+      quay.io/containerdisks/fedora:41
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/aarch64/images/Fedora-Cloud-Base-Generic.aarch64-40-1.14.qcow2
+      https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/aarch64/images/Fedora-Cloud-Base-Generic-41-1.4.aarch64.qcow2
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/fedora40: Fedora Linux 40 or higher
+    name.os.template.kubevirt.io/fedora41: Fedora Linux 40 or higher
+  labels:
+    os.template.kubevirt.io/fedora40: "true"
+    os.template.kubevirt.io/fedora41: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/default-os-variant: "true"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: fedora-server-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "fedora"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'fedora-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'fedora'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-desktop-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-desktop-large-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-desktop-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-desktop-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-desktop-medium-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-desktop-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-desktop-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-desktop-small-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-desktop-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-desktop-tiny-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-desktop-tiny-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-desktop-tiny-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "tiny"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 1.5Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-highperformance-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-highperformance-large-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/highperformance: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-highperformance-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "highperformance"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          ioThreadsPolicy: shared
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+            dedicatedCpuPlacement: True
+            isolateEmulatorThread: True
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+              dedicatedIOThread: true
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-highperformance-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-highperformance-medium-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/highperformance: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-highperformance-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "highperformance"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          ioThreadsPolicy: shared
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+            dedicatedCpuPlacement: True
+            isolateEmulatorThread: True
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+              dedicatedIOThread: true
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-highperformance-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-highperformance-small-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/highperformance: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-highperformance-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "highperformance"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          ioThreadsPolicy: shared
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+            dedicatedCpuPlacement: True
+            isolateEmulatorThread: True
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+              dedicatedIOThread: true
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-highperformance-tiny-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-highperformance-tiny-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/highperformance: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-highperformance-tiny-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "highperformance"
+          vm.kubevirt.io/flavor: "tiny"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        architecture: "arm64"
+        domain:
+          ioThreadsPolicy: shared
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+            dedicatedCpuPlacement: True
+            isolateEmulatorThread: True
+          memory:
+            guest: 1.5Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+              dedicatedIOThread: true
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-server-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-server-large-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-server-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-server-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-server-medium-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-server-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-server-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-server-small-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/default-os-variant: "true"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-server-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 2Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/rhel9-server-tiny-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-server-tiny-arm64
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: >-
+      Template for Red Hat Enterprise Linux 9 VM or newer.
+      A PVC with the RHEL disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      registry.redhat.io/rhel9/rhel-guest-image
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/rhel9.0: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.1: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.2: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.3: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.4: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.5: Red Hat Enterprise Linux 9.0 or higher
+    name.os.template.kubevirt.io/rhel9.6: Red Hat Enterprise Linux 9.0 or higher
+  labels:
+    os.template.kubevirt.io/rhel9.0: "true"
+    os.template.kubevirt.io/rhel9.1: "true"
+    os.template.kubevirt.io/rhel9.2: "true"
+    os.template.kubevirt.io/rhel9.3: "true"
+    os.template.kubevirt.io/rhel9.4: "true"
+    os.template.kubevirt.io/rhel9.5: "true"
+    os.template.kubevirt.io/rhel9.6: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/tiny: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: rhel9-server-tiny-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1610612736
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "rhel9"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "tiny"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: tiny
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 1.5Gi
+          devices:
+            rng: {}
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+          firmware:
+            bootloader:
+              efi:
+                secureBoot: false
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: cloud-user
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'rhel9-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'rhel9'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user cloud-user
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/ubuntu-desktop-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ubuntu-desktop-large-arm64
+  annotations:
+    openshift.io/display-name: "Ubuntu 16.04+ VM"
+    description: >-
+      Template for Ubuntu 16.04 VM or newer.
+      A PVC with the Ubuntu disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,ubuntu"
+    iconClass: "icon-ubuntu"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/ubuntu:20.04
+      quay.io/containerdisks/ubuntu:22.04
+      quay.io/containerdisks/ubuntu:24.04
+    template.kubevirt.io/images: |
+      https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img
+      https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/ubuntu16.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu18.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu20.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu22.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu24.04: Ubuntu 16.04 or higher
+  labels:
+    os.template.kubevirt.io/ubuntu16.04: "true"
+    os.template.kubevirt.io/ubuntu18.04: "true"
+    os.template.kubevirt.io/ubuntu20.04: "true"
+    os.template.kubevirt.io/ubuntu22.04: "true"
+    os.template.kubevirt.io/ubuntu24.04: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: ubuntu-desktop-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "ubuntu"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: ubuntu
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'ubuntu-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'ubuntu'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user ubuntu
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/ubuntu-desktop-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ubuntu-desktop-medium-arm64
+  annotations:
+    openshift.io/display-name: "Ubuntu 16.04+ VM"
+    description: >-
+      Template for Ubuntu 16.04 VM or newer.
+      A PVC with the Ubuntu disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,ubuntu"
+    iconClass: "icon-ubuntu"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/ubuntu:20.04
+      quay.io/containerdisks/ubuntu:22.04
+      quay.io/containerdisks/ubuntu:24.04
+    template.kubevirt.io/images: |
+      https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img
+      https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/ubuntu16.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu18.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu20.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu22.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu24.04: Ubuntu 16.04 or higher
+  labels:
+    os.template.kubevirt.io/ubuntu16.04: "true"
+    os.template.kubevirt.io/ubuntu18.04: "true"
+    os.template.kubevirt.io/ubuntu20.04: "true"
+    os.template.kubevirt.io/ubuntu22.04: "true"
+    os.template.kubevirt.io/ubuntu24.04: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: ubuntu-desktop-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "ubuntu"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: ubuntu
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'ubuntu-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'ubuntu'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user ubuntu
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/ubuntu-desktop-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ubuntu-desktop-small-arm64
+  annotations:
+    openshift.io/display-name: "Ubuntu 16.04+ VM"
+    description: >-
+      Template for Ubuntu 16.04 VM or newer.
+      A PVC with the Ubuntu disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,ubuntu"
+    iconClass: "icon-ubuntu"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/ubuntu:20.04
+      quay.io/containerdisks/ubuntu:22.04
+      quay.io/containerdisks/ubuntu:24.04
+    template.kubevirt.io/images: |
+      https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img
+      https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/ubuntu16.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu18.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu20.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu22.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu24.04: Ubuntu 16.04 or higher
+  labels:
+    os.template.kubevirt.io/ubuntu16.04: "true"
+    os.template.kubevirt.io/ubuntu18.04: "true"
+    os.template.kubevirt.io/ubuntu20.04: "true"
+    os.template.kubevirt.io/ubuntu22.04: "true"
+    os.template.kubevirt.io/ubuntu24.04: "true"
+    workload.template.kubevirt.io/desktop: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: ubuntu-desktop-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "ubuntu"
+          vm.kubevirt.io/workload: "desktop"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 3Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: ubuntu
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'ubuntu-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'ubuntu'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user ubuntu
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/ubuntu-server-large-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ubuntu-server-large-arm64
+  annotations:
+    openshift.io/display-name: "Ubuntu 16.04+ VM"
+    description: >-
+      Template for Ubuntu 16.04 VM or newer.
+      A PVC with the Ubuntu disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,ubuntu"
+    iconClass: "icon-ubuntu"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/ubuntu:20.04
+      quay.io/containerdisks/ubuntu:22.04
+      quay.io/containerdisks/ubuntu:24.04
+    template.kubevirt.io/images: |
+      https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img
+      https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/ubuntu16.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu18.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu20.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu22.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu24.04: Ubuntu 16.04 or higher
+  labels:
+    os.template.kubevirt.io/ubuntu16.04: "true"
+    os.template.kubevirt.io/ubuntu18.04: "true"
+    os.template.kubevirt.io/ubuntu20.04: "true"
+    os.template.kubevirt.io/ubuntu22.04: "true"
+    os.template.kubevirt.io/ubuntu24.04: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/large: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: ubuntu-server-large-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "ubuntu"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "large"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: large
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 2
+            cores: 1
+            threads: 1
+          memory:
+            guest: 8Gi
+          devices:
+            rng: {}
+            networkInterfaceMultiqueue: true
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: ubuntu
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'ubuntu-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'ubuntu'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user ubuntu
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/ubuntu-server-medium-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ubuntu-server-medium-arm64
+  annotations:
+    openshift.io/display-name: "Ubuntu 16.04+ VM"
+    description: >-
+      Template for Ubuntu 16.04 VM or newer.
+      A PVC with the Ubuntu disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,ubuntu"
+    iconClass: "icon-ubuntu"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/ubuntu:20.04
+      quay.io/containerdisks/ubuntu:22.04
+      quay.io/containerdisks/ubuntu:24.04
+    template.kubevirt.io/images: |
+      https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img
+      https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/ubuntu16.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu18.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu20.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu22.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu24.04: Ubuntu 16.04 or higher
+  labels:
+    os.template.kubevirt.io/ubuntu16.04: "true"
+    os.template.kubevirt.io/ubuntu18.04: "true"
+    os.template.kubevirt.io/ubuntu20.04: "true"
+    os.template.kubevirt.io/ubuntu22.04: "true"
+    os.template.kubevirt.io/ubuntu24.04: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/medium: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: ubuntu-server-medium-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "ubuntu"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "medium"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: medium
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 4Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: ubuntu
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'ubuntu-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'ubuntu'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user ubuntu
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
+---
+# Source: dist/templates/ubuntu-server-small-arm64.yaml
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ubuntu-server-small-arm64
+  annotations:
+    openshift.io/display-name: "Ubuntu 16.04+ VM"
+    description: >-
+      Template for Ubuntu 16.04 VM or newer.
+      A PVC with the Ubuntu disk image must be available.
+    tags: "hidden,kubevirt,virtualmachine,ubuntu"
+    iconClass: "icon-ubuntu"
+    openshift.io/provider-display-name: "KubeVirt"
+    openshift.io/documentation-url: "https://github.com/kubevirt/common-templates"
+    openshift.io/support-url: "https://github.com/kubevirt/common-templates/issues"
+    template.openshift.io/bindable: "false"
+    template.kubevirt.io/version: v1alpha1
+    defaults.template.kubevirt.io/disk: rootdisk
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/ubuntu:20.04
+      quay.io/containerdisks/ubuntu:22.04
+      quay.io/containerdisks/ubuntu:24.04
+    template.kubevirt.io/images: |
+      https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img
+      https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img
+      https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.memory.guest
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    name.os.template.kubevirt.io/ubuntu16.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu18.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu20.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu22.04: Ubuntu 16.04 or higher
+    name.os.template.kubevirt.io/ubuntu24.04: Ubuntu 16.04 or higher
+  labels:
+    os.template.kubevirt.io/ubuntu16.04: "true"
+    os.template.kubevirt.io/ubuntu18.04: "true"
+    os.template.kubevirt.io/ubuntu20.04: "true"
+    os.template.kubevirt.io/ubuntu22.04: "true"
+    os.template.kubevirt.io/ubuntu24.04: "true"
+    workload.template.kubevirt.io/server: "true"
+    flavor.template.kubevirt.io/small: "true"
+    template.kubevirt.io/type: "base"
+    template.kubevirt.io/version: "v0.34.0"
+    template.kubevirt.io/default-os-variant: "true"
+    template.kubevirt.io/architecture: "arm64"
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    name: ${NAME}
+    labels:
+      vm.kubevirt.io/template: ubuntu-server-small-arm64
+      vm.kubevirt.io/template.version: "v0.34.0"
+      vm.kubevirt.io/template.revision: "1"
+      app: ${NAME}
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.memory.guest",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 2147483648
+          }
+        ]
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+    runStrategy: Halted
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/os: "ubuntu"
+          vm.kubevirt.io/workload: "server"
+          vm.kubevirt.io/flavor: "small"
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        architecture: "arm64"
+        domain:
+          cpu:
+            sockets: 1
+            cores: 1
+            threads: 1
+          memory:
+            guest: 3Gi
+          devices:
+            rng: {}
+            inputs:
+              - type: tablet
+                bus: virtio
+                name: tablet
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              model: virtio
+        terminationGracePeriodSeconds: 180
+        networks:
+        - name: default
+          pod: {}
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: ubuntu
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: 'ubuntu-[a-z0-9]{16}'
+  generate: expression
+  name: NAME
+- name: DATA_SOURCE_NAME
+  description: Name of the DataSource to clone
+  value: 'ubuntu'
+- name: DATA_SOURCE_NAMESPACE
+  description: Namespace of the DataSource
+  value: kubevirt-os-images
+- description: Randomized password for the cloud-init user ubuntu
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD
