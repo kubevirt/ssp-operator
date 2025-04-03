@@ -2,7 +2,6 @@ package template_validator
 
 import (
 	"fmt"
-	"strings"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	admission "k8s.io/api/admissionregistration/v1"
@@ -16,7 +15,6 @@ import (
 	kubevirt "kubevirt.io/api/core"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 
-	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	metrics "kubevirt.io/ssp-operator/internal/operands/metrics"
@@ -37,6 +35,7 @@ const (
 	ServiceName                   = VirtTemplateValidator
 	MetricsServiceName            = "template-validator-metrics"
 	DeploymentName                = VirtTemplateValidator
+	ConfigMapName                 = VirtTemplateValidator
 	PrometheusLabel               = "prometheus.ssp.kubevirt.io"
 	kubernetesHostnameTopologyKey = "kubernetes.io/hostname"
 )
@@ -145,9 +144,11 @@ func newPodAntiAffinity(key, topologyKey string, operator metav1.LabelSelectorOp
 	}
 }
 
-func newDeployment(namespace string, replicas int32, image string, sspTLSOptions *common.SSPTLSOptions) *apps.Deployment {
-	const volumeName = "tls"
+func newDeployment(namespace string, replicas int32, image string) *apps.Deployment {
+	const secretVolumeName = "tls"
+	const configMapVolumeName = "config-map"
 	const certMountPath = "/etc/webhook/certs"
+	const configMapMountPath = "/tls-options"
 	trueVal := true
 	falseVal := false
 
@@ -196,19 +197,13 @@ func newDeployment(namespace string, replicas int32, image string, sspTLSOptions
 							fmt.Sprintf("--port=%d", ContainerPort),
 							fmt.Sprintf("--cert-dir=%s", certMountPath),
 						},
-						Env: []core.EnvVar{
-							{
-								Name:  tlsinfo.CiphersEnvName,
-								Value: strings.Join(sspTLSOptions.OpenSSLCipherNames, ","),
-							},
-							{
-								Name:  tlsinfo.TLSMinVersionEnvName,
-								Value: sspTLSOptions.MinTLSVersion,
-							},
-						},
 						VolumeMounts: []core.VolumeMount{{
-							Name:      volumeName,
+							Name:      secretVolumeName,
 							MountPath: certMountPath,
+							ReadOnly:  true,
+						}, {
+							Name:      configMapVolumeName,
+							MountPath: configMapMountPath,
 							ReadOnly:  true,
 						}},
 						SecurityContext: &core.SecurityContext{
@@ -240,10 +235,19 @@ func newDeployment(namespace string, replicas int32, image string, sspTLSOptions
 						},
 					}},
 					Volumes: []core.Volume{{
-						Name: volumeName,
+						Name: secretVolumeName,
 						VolumeSource: core.VolumeSource{
 							Secret: &core.SecretVolumeSource{
 								SecretName: SecretName,
+							},
+						},
+					}, {
+						Name: configMapVolumeName,
+						VolumeSource: core.VolumeSource{
+							ConfigMap: &core.ConfigMapVolumeSource{
+								LocalObjectReference: core.LocalObjectReference{
+									Name: ConfigMapName,
+								},
 							},
 						},
 					}},
@@ -252,6 +256,19 @@ func newDeployment(namespace string, replicas int32, image string, sspTLSOptions
 					},
 				},
 			},
+		},
+	}
+}
+
+func newConfigMap(namespace string, tlsOptionsJson string) *core.ConfigMap {
+	return &core.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ConfigMapName,
+			Namespace: namespace,
+			Labels:    CommonLabels(),
+		},
+		Data: map[string]string{
+			tlsinfo.TLSOptionsFilename: tlsOptionsJson,
 		},
 	}
 }
