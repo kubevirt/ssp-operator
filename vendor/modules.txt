@@ -881,7 +881,7 @@ kubevirt.io/controller-lifecycle-operator-sdk/api
 ## explicit; go 1.23.2
 kubevirt.io/ssp-operator/api/v1beta2
 kubevirt.io/ssp-operator/api/v1beta3
-# kubevirt.io/vm-console-proxy/api v0.7.0
+# kubevirt.io/vm-console-proxy/api v0.8.0
 ## explicit; go 1.22.4
 kubevirt.io/vm-console-proxy/api/v1
 # sigs.k8s.io/controller-runtime v0.20.4
