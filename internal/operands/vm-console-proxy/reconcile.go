@@ -348,6 +348,7 @@ func reconcileDeployment(deployment apps.Deployment) common.ReconcileFunc {
 	return func(request *common.Request) (common.ReconcileResult, error) {
 		deployment.Namespace = request.Instance.Namespace
 		deployment.Spec.Template.Spec.Containers[0].Image = getVmConsoleProxyImage()
+		deployment.Spec.Template.Spec.Containers[0].TerminationMessagePolicy = core.TerminationMessageFallbackToLogsOnError
 		metav1.SetMetaDataAnnotation(&deployment.ObjectMeta, securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue)
 		metav1.SetMetaDataAnnotation(&deployment.Spec.Template.ObjectMeta, securityv1.RequiredSCCAnnotation, common.RequiredSCCAnnotationValue)
 		common.AddAppLabels(request.Instance, operandName, operandComponent, &deployment.Spec.Template.ObjectMeta)

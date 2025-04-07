@@ -44,6 +44,7 @@ spec:
                 fieldPath: metadata.namespace
         image: controller:latest
         name: manager
+        terminationMessagePolicy: FallbackToLogsOnError
         resources:
           requests:
             memory: "150Mi"
