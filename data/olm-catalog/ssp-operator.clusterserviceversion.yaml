@@ -362,6 +362,7 @@ spec:
                   capabilities:
                     drop:
                     - ALL
+                terminationMessagePolicy: FallbackToLogsOnError
               priorityClassName: system-cluster-critical
               securityContext:
                 runAsNonRoot: true

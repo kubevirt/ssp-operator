@@ -192,9 +192,10 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 					ServiceAccountName: ServiceAccountName,
 					PriorityClassName:  "system-cluster-critical",
 					Containers: []core.Container{{
-						Name:            "webhook",
-						Image:           image,
-						ImagePullPolicy: core.PullIfNotPresent,
+						Name:                     "webhook",
+						Image:                    image,
+						ImagePullPolicy:          core.PullIfNotPresent,
+						TerminationMessagePolicy: core.TerminationMessageFallbackToLogsOnError,
 						Resources: core.ResourceRequirements{
 							Requests: core.ResourceList{
 								core.ResourceCPU:    resource.MustParse("50m"),
