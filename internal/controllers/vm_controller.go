@@ -106,6 +106,7 @@ func getVmCrd() string {
 }
 
 func (v *vmController) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.VirtualMachine) error {
+	var metricWasSet bool
 	for _, volume := range vm.Spec.Template.Spec.Volumes {
 		volumeName := ""
 		if volume.DataVolume != nil {
@@ -123,6 +124,9 @@ func (v *vmController) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.V
 				Name:      volumeName,
 			}, pvc)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
 			return err
 		}
 
@@ -133,10 +137,19 @@ func (v *vmController) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.V
 				Name:      pvc.Spec.VolumeName,
 			}, pv)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
 			return err
 		}
 
 		metrics.SetVmWithVolume(vm, pvc, pv)
+		metricWasSet = true
 	}
+
+	if !metricWasSet {
+		metrics.SetVmWithVolume(vm, nil, nil)
+	}
+
 	return nil
 }
