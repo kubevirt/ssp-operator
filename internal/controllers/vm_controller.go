@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -77,7 +78,7 @@ func (v *vmController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		return ctrl.Result{
 			Requeue:      true,
 			RequeueAfter: 5 * time.Second,
-		}, err
+		}, fmt.Errorf("could not find VM %s/%s: %w", req.Namespace, req.Name, err)
 	}
 
 	if vm.Status.PrintableStatus == kubevirtv1.VirtualMachineStatusProvisioning {
@@ -89,9 +90,11 @@ func (v *vmController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	if err := v.setVmVolumesMetrics(ctx, &vm); err != nil {
 		v.log.Error(err, "Could not set vm volumes metrics", "vm", req.NamespacedName)
 		return ctrl.Result{
-			Requeue:      true,
-			RequeueAfter: 5 * time.Second,
-		}, err
+				Requeue:      true,
+				RequeueAfter: 5 * time.Second,
+			}, fmt.Errorf("could not set vm volumes metrics for %s/%s: %w",
+				req.Namespace, req.Name, err,
+			)
 	}
 
 	return ctrl.Result{}, nil
@@ -103,8 +106,7 @@ func getVmCrd() string {
 }
 
 func (v *vmController) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.VirtualMachine) error {
-	var result error
-
+	var metricWasSet bool
 	for _, volume := range vm.Spec.Template.Spec.Volumes {
 		volumeName := ""
 		if volume.DataVolume != nil {
@@ -115,43 +117,39 @@ func (v *vmController) setVmVolumesMetrics(ctx context.Context, vm *kubevirtv1.V
 			continue
 		}
 
-		pvc, err := v.getPVC(ctx, vm, volumeName)
+		pvc := &corev1.PersistentVolumeClaim{}
+		err := v.client.Get(ctx,
+			client.ObjectKey{
+				Namespace: vm.Namespace,
+				Name:      volumeName,
+			}, pvc)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
 			return err
 		}
-		pv, err := v.getPV(ctx, vm, pvc)
+
+		pv := &corev1.PersistentVolume{}
+		err = v.client.Get(ctx,
+			client.ObjectKey{
+				Namespace: vm.Namespace,
+				Name:      pvc.Spec.VolumeName,
+			}, pv)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
 			return err
 		}
 
 		metrics.SetVmWithVolume(vm, pvc, pv)
+		metricWasSet = true
 	}
 
-	return result
-}
+	if !metricWasSet {
+		metrics.SetVmWithVolume(vm, nil, nil)
+	}
 
-func (v *vmController) getPVC(ctx context.Context, vm *kubevirtv1.VirtualMachine, name string) (*corev1.PersistentVolumeClaim, error) {
-	pvc := &corev1.PersistentVolumeClaim{}
-	err := v.client.Get(
-		ctx,
-		client.ObjectKey{
-			Namespace: vm.Namespace,
-			Name:      name,
-		},
-		pvc,
-	)
-	return pvc, err
-}
-
-func (v *vmController) getPV(ctx context.Context, vm *kubevirtv1.VirtualMachine, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolume, error) {
-	pv := &corev1.PersistentVolume{}
-	err := v.client.Get(
-		ctx,
-		client.ObjectKey{
-			Namespace: vm.Namespace,
-			Name:      pvc.Spec.VolumeName,
-		},
-		pv,
-	)
-	return pv, err
+	return nil
 }
