@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -760,6 +761,7 @@ var _ = Describe("DataSources", func() {
 				Spec: cdiv1beta1.DataImportCronSpec{
 					Schedule:          cronSchedule,
 					ManagedDataSource: dataSourceName,
+					RetentionPolicy:   ptr.To(cdiv1beta1.DataImportCronRetainNone),
 					Template: cdiv1beta1.DataVolume{
 						Spec: cdiv1beta1.DataVolumeSpec{
 							Source: &cdiv1beta1.DataVolumeSource{
@@ -1225,6 +1227,7 @@ var _ = Describe("DataSources", func() {
 					Spec: cdiv1beta1.DataImportCronSpec{
 						Schedule:          cronSchedule,
 						ManagedDataSource: "test-not-in-ssp",
+						RetentionPolicy:   ptr.To(cdiv1beta1.DataImportCronRetainNone),
 						Template: cdiv1beta1.DataVolume{
 							Spec: cdiv1beta1.DataVolumeSpec{
 								Source: &cdiv1beta1.DataVolumeSource{
