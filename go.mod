@@ -2,6 +2,8 @@ module kubevirt.io/ssp-operator
 
 go 1.23.6
 
+toolchain go1.23.8
+
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fsnotify/fsnotify v1.9.0
