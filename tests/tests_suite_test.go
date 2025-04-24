@@ -52,9 +52,11 @@ var (
 )
 
 const (
-	amd64 = "amd64"
-	s390x = "s390x"
-	arm   = "aarch64"
+	amd64   = "amd64"
+	s390x   = "s390x"
+	arm     = "arm"
+	arm64   = "arm64"
+	aarch64 = "aarch64"
 )
 
 type TestSuiteStrategy interface {
@@ -605,7 +607,7 @@ func retrieveNodeArchitecture() string {
 	nodes := nodeList.Items
 	Expect(nodes).NotTo(BeEmpty(), "No nodes found")
 	architecture := nodes[0].Status.NodeInfo.Architecture
-	Expect(architecture).To(BeElementOf([]string{s390x, amd64, arm}), "Unsupported architecture")
+	Expect(architecture).To(BeElementOf([]string{s390x, amd64, arm, arm64, aarch64}), "Unsupported architecture")
 	return architecture
 }
 
@@ -615,8 +617,6 @@ func retrieveQemuMachineType(architecture string) string {
 		return "q35"
 	case s390x:
 		return "s390-ccw-virtio"
-	case arm:
-		return "virt"
 	default:
 		return "virt"
 	}
