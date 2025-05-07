@@ -53,8 +53,8 @@ var _ = Describe("VM delete protection", func() {
 		Expect(apiClient.Delete(ctx, vm)).To(MatchError(ContainSubstring("VirtualMachine %v cannot be deleted, disable/remove label "+
 			"'kubevirt.io/vm-delete-protection' from VirtualMachine before deleting it", vm.Name)))
 	},
-		Entry("using True as value", "True"),
-		Entry("using true as value", "true"),
+		Entry("[test_id:11926] using True as value", "True"),
+		Entry("[test_id:11927] using true as value", "true"),
 	)
 
 	DescribeTable("should be able to delete a VM if the protection is disabled", func(labelValue string) {
@@ -63,12 +63,14 @@ var _ = Describe("VM delete protection", func() {
 		Expect(apiClient.Delete(ctx, vm)).To(Succeed())
 		waitForDeletion(client.ObjectKeyFromObject(vm), &kubevirtv1.VirtualMachine{})
 	},
-		Entry("using False as value", "False"),
-		Entry("using false as value", "false"),
-		Entry("using value different from false or False", "niceValue"),
+		Entry("[test_id:11928] using False as value", "False"),
+		Entry("[test_id:11929] using false as value", "false"),
+		Entry("[test_id:11930] using value different from false or False", "niceValue"),
+		Entry("[test_id:11931] using true in upper case", "TRUE"),
+		Entry("[test_id:11932] using empty string as value", ""),
 	)
 
-	It("should be able to delete a VM if the VM does not have any label", func() {
+	It("[test_id:11934] should be able to delete a VM if the VM does not have any label", func() {
 		vm = createVMWithLabels(nil)
 
 		Expect(apiClient.Delete(ctx, vm)).To(Succeed())
