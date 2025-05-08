@@ -8,12 +8,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	authv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -683,48 +685,130 @@ var _ = Describe("DataSources", func() {
 			expectRecreateAfterDelete(&dataSource)
 		})
 
-		Context("with added CDI label", func() {
+		Context("with external DataImportCron", func() {
+			var (
+				originalSspSpec *ssp.SSPSpec
+				cron            *cdiv1beta1.DataImportCron
+			)
+
 			BeforeEach(func() {
-				Eventually(func() error {
-					ds := &cdiv1beta1.DataSource{}
-					err := apiClient.Get(ctx, dataSource.GetKey(), ds)
-					if err != nil {
-						return err
-					}
+				originalSspSpec = getSsp().Spec.DeepCopy()
 
-					if ds.GetLabels() == nil {
-						ds.SetLabels(make(map[string]string))
-					}
-					ds.GetLabels()[cdiLabel] = "test-value"
+				cron = &cdiv1beta1.DataImportCron{
+					ObjectMeta: metav1.ObjectMeta{
+						GenerateName: "external-fedora",
+						Namespace:    internal.GoldenImagesNamespace,
+						Annotations: map[string]string{
+							"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+						},
+					},
+					Spec: cdiv1beta1.DataImportCronSpec{
+						Schedule:          "* * * * *",
+						ManagedDataSource: dataSource.Name,
+						Template: cdiv1beta1.DataVolume{
+							Spec: cdiv1beta1.DataVolumeSpec{
+								Source: &cdiv1beta1.DataVolumeSource{
+									Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+										URL:        ptr.To("docker://quay.io/kubevirt/cirros-container-disk-demo"),
+										PullMethod: ptr.To(cdiv1beta1.RegistryPullNode),
+									},
+								},
+								Storage: &cdiv1beta1.StorageSpec{
+									Resources: core.VolumeResourceRequirements{
+										Requests: core.ResourceList{
+											core.ResourceStorage: resource.MustParse("128Mi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				}
 
-					return apiClient.Update(ctx, ds)
+				Expect(apiClient.Create(ctx, cron)).To(Succeed())
+
+				Eventually(func(g Gomega) {
+					foundCron := &cdiv1beta1.DataImportCron{}
+					g.Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(cron), foundCron)).To(Succeed())
+
+					for _, condition := range foundCron.Status.Conditions {
+						if condition.Type == cdiv1beta1.DataImportCronProgressing {
+							g.Expect(condition.Status).To(Equal(core.ConditionFalse),
+								"DataImportCron is still progressing: reason: %s, message: %s",
+								condition.Reason,
+								condition.Message,
+							)
+						}
+					}
+					g.Expect(foundCron.Status.LastImportedPVC).ToNot(BeNil())
+				}, env.Timeout(), time.Second).Should(Succeed())
+
+				Eventually(func(g Gomega) {
+					foundDataSource := &cdiv1beta1.DataSource{}
+					g.Expect(apiClient.Get(ctx, dataSource.GetKey(), foundDataSource)).To(Succeed())
+					for _, condition := range foundDataSource.Status.Conditions {
+						if condition.Type == cdiv1beta1.DataSourceReady {
+							g.Expect(condition.Status).To(Equal(core.ConditionTrue))
+						}
+					}
 				}, env.ShortTimeout(), time.Second).Should(Succeed())
+
+				waitUntilDeployed()
 			})
 
 			AfterEach(func() {
-				Eventually(func(g Gomega) error {
-					ds := &cdiv1beta1.DataSource{}
-					g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
-					delete(ds.GetLabels(), cdiLabel)
-					return apiClient.Update(ctx, ds)
+				if cron != nil {
+					Expect(apiClient.Delete(ctx, cron)).
+						To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+					cron = nil
+				}
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec = *originalSspSpec
+				})
+
+				waitUntilDeployed()
+			})
+
+			It("should not reconcile DataSource", func() {
+				dataSourceBefore := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, dataSource.GetKey(), dataSourceBefore)).To(Succeed())
+
+				triggerReconciliation()
+
+				dataSourceAfter := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, dataSource.GetKey(), dataSourceAfter)).To(Succeed())
+
+				Expect(dataSourceAfter.Spec).To(Equal(dataSourceBefore.Spec))
+				Expect(dataSourceAfter.Generation).To(Equal(dataSourceBefore.Generation))
+			})
+
+			It("should fail reconciliation, if DataImportCron template is defined", func() {
+				cronTemplate := ssp.DataImportCronTemplate{
+					ObjectMeta: *cron.ObjectMeta.DeepCopy(),
+					Spec:       *cron.Spec.DeepCopy(),
+				}
+				cronTemplate.Name = "test-cron-template"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+						cronTemplate,
+					)
+				})
+
+				Eventually(func(g Gomega) {
+					foundSsp := getSsp()
+					for _, condition := range foundSsp.Status.Conditions {
+						if condition.Type == conditionsv1.ConditionAvailable {
+							g.Expect(condition.Status).To(Equal(core.ConditionFalse))
+							g.Expect(condition.Message).To(ContainSubstring(
+								"DataImportCron template and an external DataImportCron manage the same DataSource",
+							))
+						}
+					}
 				}, env.ShortTimeout(), time.Second).Should(Succeed())
 			})
-
-			It("[test_id:8294] should remove CDI label from DataSource", func() {
-				// Wait until it is removed
-				Eventually(func() (bool, error) {
-					ds := &cdiv1beta1.DataSource{}
-					err := apiClient.Get(ctx, dataSource.GetKey(), ds)
-					if err != nil {
-						return false, err
-					}
-
-					_, labelExists := ds.GetLabels()[cdiLabel]
-					return labelExists, nil
-				}, env.ShortTimeout(), time.Second).Should(BeFalse(), "Label '"+cdiLabel+"' should not be on DataSource")
-			})
 		})
-
 	})
 
 	Context("with DataImportCron template", func() {
