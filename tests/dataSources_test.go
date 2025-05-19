@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -28,7 +30,9 @@ var _ = Describe("DataSources", func() {
 	// The name must be one of the DataSources needed by common templates
 	const dataSourceName = "fedora"
 
-	const cdiLabel = "cdi.kubevirt.io/dataImportCron"
+	const cdiLabelPrefix = "cdi.kubevirt.io"
+	const cdiLabel = cdiLabelPrefix + "/dataImportCron"
+	const cdiCleanupLabel = cdiLabel + ".cleanup"
 
 	var (
 		expectedLabels map[string]string
@@ -760,6 +764,7 @@ var _ = Describe("DataSources", func() {
 				Spec: cdiv1beta1.DataImportCronSpec{
 					Schedule:          cronSchedule,
 					ManagedDataSource: dataSourceName,
+					RetentionPolicy:   ptr.To(cdiv1beta1.DataImportCronRetainNone),
 					Template: cdiv1beta1.DataVolume{
 						Spec: cdiv1beta1.DataVolumeSpec{
 							Source: &cdiv1beta1.DataVolumeSource{
@@ -1092,6 +1097,11 @@ var _ = Describe("DataSources", func() {
 						if ds.GetLabels() == nil {
 							ds.SetLabels(map[string]string{})
 						}
+						// Removing cleanup label, otherwise the DS would be removed by CDI and the following tests would fail.
+						// This is to remove side effects between tests. When the DIC is removed in one of the AfterEach() blocks,
+						// CDI adds this label to the DS.
+						delete(ds.GetLabels(), cdiCleanupLabel)
+
 						ds.GetLabels()[cdiLabel] = "test-value"
 
 						return apiClient.Update(ctx, ds)
@@ -1102,7 +1112,11 @@ var _ = Describe("DataSources", func() {
 					Eventually(func(g Gomega) error {
 						ds := &cdiv1beta1.DataSource{}
 						g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
-						delete(ds.GetLabels(), cdiLabel)
+						for key := range ds.GetLabels() {
+							if strings.HasPrefix(key, cdiLabelPrefix) {
+								delete(ds.GetLabels(), key)
+							}
+						}
 						return apiClient.Update(ctx, ds)
 					}, env.ShortTimeout(), time.Second).Should(Succeed())
 				})
@@ -1225,6 +1239,7 @@ var _ = Describe("DataSources", func() {
 					Spec: cdiv1beta1.DataImportCronSpec{
 						Schedule:          cronSchedule,
 						ManagedDataSource: "test-not-in-ssp",
+						RetentionPolicy:   ptr.To(cdiv1beta1.DataImportCronRetainNone),
 						Template: cdiv1beta1.DataVolume{
 							Spec: cdiv1beta1.DataVolumeSpec{
 								Source: &cdiv1beta1.DataVolumeSource{
