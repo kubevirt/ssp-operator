@@ -195,8 +195,8 @@ func expectRestoreAfterUpdate(res *testResource) {
 
 	Eventually(func(g Gomega) {
 		found := res.NewResource()
-		Expect(apiClient.Get(ctx, res.GetKey(), found)).ToNot(HaveOccurred())
-		Expect(found).To(EqualResource(res, original))
+		g.Expect(apiClient.Get(ctx, res.GetKey(), found)).ToNot(HaveOccurred())
+		g.Expect(found).To(EqualResource(res, original))
 	}, env.ShortTimeout(), time.Second).Should(Succeed())
 }
 
