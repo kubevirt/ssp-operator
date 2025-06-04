@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -183,6 +184,23 @@ var _ = Describe("Validation webhook", func() {
 				err := apiClient.Create(ctx, newSspV1Beta3, client.DryRunAll)
 				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
 			})
+
+			It("[test_id:TODO] should fail if .spec.cluster is nil and multi-arch is enabled", decorators.Conformance, func() {
+				newSspV1Beta3.Spec.EnableMultipleArchitectures = ptr.To(true)
+				newSspV1Beta3.Spec.Cluster = nil
+				err := apiClient.Create(ctx, newSspV1Beta3, client.DryRunAll)
+				Expect(err).To(MatchError(ContainSubstring(".spec.cluster needs to be non-nil, if multi-architecture is enabled")))
+			})
+
+			It("[test_id:TODO] should fail if architectures are empty", decorators.Conformance, func() {
+				newSspV1Beta3.Spec.EnableMultipleArchitectures = ptr.To(true)
+				newSspV1Beta3.Spec.Cluster = &sspv1beta3.Cluster{
+					WorkloadArchitectures:     nil,
+					ControlPlaneArchitectures: nil,
+				}
+				err := apiClient.Create(ctx, newSspV1Beta3, client.DryRunAll)
+				Expect(err).To(MatchError(ContainSubstring("at least one architecture needs to be defined, if multi-architecture is enabled")))
+			})
 		})
 	})
 
@@ -257,6 +275,29 @@ var _ = Describe("Validation webhook", func() {
 				}}
 				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
 			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
+		})
+
+		It("[test_id:TODO] should fail if .spec.cluster is nil and multi-arch is enabled", decorators.Conformance, func() {
+			Eventually(func() error {
+				foundSsp := getSsp()
+				foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+				foundSsp.Spec.Cluster = nil
+
+				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring(".spec.cluster needs to be non-nil, if multi-architecture is enabled")))
+		})
+
+		It("[test_id:TODO] should fail if architectures are empty", decorators.Conformance, func() {
+			Eventually(func() error {
+				foundSsp := getSsp()
+				foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+				foundSsp.Spec.Cluster = &sspv1beta3.Cluster{
+					WorkloadArchitectures:     nil,
+					ControlPlaneArchitectures: nil,
+				}
+
+				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("at least one architecture needs to be defined, if multi-architecture is enabled")))
 		})
 	})
 })
