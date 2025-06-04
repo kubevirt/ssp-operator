@@ -11,7 +11,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/controllers"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -39,8 +39,8 @@ var _ = Describe("Webhook controller", func() {
 					// Using "Delete" so it does not conflict with existing SSP webhook
 					Operations: []admissionv1.OperationType{admissionv1.Delete},
 					Rule: admissionv1.Rule{
-						APIGroups:   []string{sspv1beta2.GroupVersion.Group},
-						APIVersions: []string{sspv1beta2.GroupVersion.Version},
+						APIGroups:   []string{ssp.GroupVersion.Group},
+						APIVersions: []string{ssp.GroupVersion.Version},
 						Resources:   []string{"ssps"},
 					},
 				}},

@@ -96,6 +96,7 @@ type SSPStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 
 // SSP is the Schema for the ssps API

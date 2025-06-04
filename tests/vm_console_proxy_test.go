@@ -21,7 +21,7 @@ import (
 	"k8s.io/utils/ptr"
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 

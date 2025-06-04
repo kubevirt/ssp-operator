@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/common"
 )
 
@@ -46,8 +46,8 @@ var _ = Describe("Webhook controller", func() {
 				},
 				Rules: []admissionv1.RuleWithOperations{{
 					Rule: admissionv1.Rule{
-						APIGroups:   []string{sspv1beta2.GroupVersion.Group},
-						APIVersions: []string{sspv1beta2.GroupVersion.Version},
+						APIGroups:   []string{ssp.GroupVersion.Group},
+						APIVersions: []string{ssp.GroupVersion.Version},
 						Resources:   []string{"ssps"},
 					},
 					Operations: []admissionv1.OperationType{

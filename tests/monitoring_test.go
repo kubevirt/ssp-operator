@@ -30,7 +30,7 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/pkg/monitoring/rules/recordingrules"
 	"kubevirt.io/ssp-operator/tests/env"
