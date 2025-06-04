@@ -297,6 +297,41 @@ var _ = Describe("SSP Validation", func() {
 			})
 		})
 
+		Context("cluster", func() {
+			It("should fail if cluster is nil and multi-arch is enabled", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						EnableMultipleArchitectures: ptr.To(true),
+						Cluster:                     nil,
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring(".spec.cluster needs to be non-nil, if multi-architecture is enabled")))
+			})
+
+			It("should fail if control plane architectures are empty", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						Cluster: &sspv1beta3.Cluster{
+							ControlPlaneArchitectures: nil,
+						},
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring(".spec.cluster.controlPlaneArchitectures cannot be empty")))
+			})
+		})
+
 		Context("validate placement", func() {
 			It("should not call create API, if placement is nil", func() {
 				createIntercept = func(_ context.Context, _ client.WithWatch, _ client.Object, _ ...client.CreateOption) error {
