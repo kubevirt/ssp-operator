@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
@@ -52,11 +53,14 @@ func RetrieveCommonTemplatesBundleFile(templateBundleDir string) (string, error)
 
 func readTemplates(filename string) ([]templatev1.Template, error) {
 	var bundle []templatev1.Template
-	file, err := os.ReadFile(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(file), 1024)
+	// Ignoring error from close, because we have already read the data.
+	defer func() { _ = file.Close() }()
+
+	decoder := yaml.NewYAMLToJSONDecoder(file)
 	for {
 		template := templatev1.Template{}
 		err = decoder.Decode(&template)
