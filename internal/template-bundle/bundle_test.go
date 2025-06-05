@@ -1,7 +1,6 @@
 package template_bundle
 
 import (
-	"runtime"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -15,44 +14,63 @@ import (
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 )
 
-func retrieveSuffix() string {
-	switch runtime.GOARCH {
-	case "s390x":
-		return "-s390x"
-	default:
-		return ""
-	}
-}
-
 var _ = Describe("Template bundle", Ordered, func() {
 	It("ReadTemplates() should correctly read templates", func() {
-		testTemplates, err := ReadTemplates("template-bundle-test.yaml")
+		templatesByArch, err := ReadTemplates("template-bundle-test.yaml")
 		Expect(err).ToNot(HaveOccurred())
 
-		nameSuffix := retrieveSuffix()
-
+		const archAmd64 = "amd64"
+		testTemplates := templatesByArch[archAmd64]
 		Expect(testTemplates).To(HaveLen(4))
 		{
 			templ := testTemplates[0]
-			Expect(templ.Name).To(Equal("centos-stream8-server-medium" + nameSuffix))
+			Expect(templ.Name).To(Equal("centos-stream8-server-medium"))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}
 		{
 			templ := testTemplates[1]
-			Expect(templ.Name).To(Equal("centos-stream8-desktop-large" + nameSuffix))
+			Expect(templ.Name).To(Equal("centos-stream8-desktop-large"))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}
 		{
 			templ := testTemplates[2]
-			Expect(templ.Name).To(Equal("windows10-desktop-medium" + nameSuffix))
+			Expect(templ.Name).To(Equal("windows10-desktop-medium"))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}
 		{
 			templ := testTemplates[3]
-			Expect(templ.Name).To(Equal("rhel8-saphana-tiny" + nameSuffix))
+			Expect(templ.Name).To(Equal("rhel8-saphana-tiny"))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/rhel8.4"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+
+		const archS390x = "s390x"
+		testTemplates = templatesByArch[archS390x]
+		Expect(testTemplates).To(HaveLen(4))
+		{
+			templ := testTemplates[0]
+			Expect(templ.Name).To(Equal("centos-stream8-server-medium-" + archS390x))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := testTemplates[1]
+			Expect(templ.Name).To(Equal("centos-stream8-desktop-large-" + archS390x))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := testTemplates[2]
+			Expect(templ.Name).To(Equal("windows10-desktop-medium-" + archS390x))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := testTemplates[3]
+			Expect(templ.Name).To(Equal("rhel8-saphana-tiny-" + archS390x))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/rhel8.4"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}

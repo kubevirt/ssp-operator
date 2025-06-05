@@ -2,6 +2,7 @@ package common_templates
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -41,9 +42,11 @@ func TestTemplates(t *testing.T) {
 }
 
 var _ = Describe("Common-Templates operand", func() {
+	// TODO -- using this could fail on other archs than amd64?
+	const defaultArch = runtime.GOARCH
 
 	var (
-		testTemplates []templatev1.Template
+		testTemplates map[string][]templatev1.Template
 		operand       operands.Operand
 		request       common.Request
 	)
@@ -92,10 +95,12 @@ var _ = Describe("Common-Templates operand", func() {
 		}
 	})
 
+	// TODO -- add tests for multi-arch
+
 	It("should create common-template resources", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		for _, template := range testTemplates {
+		for _, template := range testTemplates[defaultArch] {
 			template.Namespace = namespace
 			ExpectResourceExists(&template, request)
 		}
@@ -111,7 +116,7 @@ var _ = Describe("Common-Templates operand", func() {
 			testLabel      = "some.test.label"
 		)
 
-		for _, template := range getTestTemplates() {
+		for _, template := range getTestTemplates()[defaultArch] {
 			template.Namespace = namespace
 			template.Labels[defaultOsLabel] = "true"
 			template.Labels[testLabel] = "test"
@@ -121,9 +126,9 @@ var _ = Describe("Common-Templates operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		for i := range testTemplates {
+		for i := range testTemplates[defaultArch] {
 			key := client.ObjectKey{
-				Name:      testTemplates[i].Name,
+				Name:      testTemplates[defaultArch][i].Name,
 				Namespace: namespace,
 			}
 			template := &templatev1.Template{}
@@ -145,7 +150,7 @@ var _ = Describe("Common-Templates operand", func() {
 		)
 
 		BeforeEach(func() {
-			oldTpl = createTestTemplate("test-tpl", "some-os", "test", "server")
+			oldTpl = createTestTemplate("test-tpl", "some-os", "test", "server", defaultArch)
 			oldTpl.Namespace = namespace
 			oldTpl.Labels[TemplateVersionLabel] = "not-latest"
 
@@ -154,7 +159,7 @@ var _ = Describe("Common-Templates operand", func() {
 			err := request.Client.Create(request.Context, &oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
 
-			newerTemplate = createTestTemplate("test-tpl-newer", "some-os", "test", "server")
+			newerTemplate = createTestTemplate("test-tpl-newer", "some-os", "test", "server", defaultArch)
 			newerTemplate.Namespace = namespace
 			newerTemplate.Labels[TemplateVersionLabel] = futureVersion
 
@@ -230,7 +235,7 @@ var _ = Describe("Common-Templates operand", func() {
 		)
 
 		BeforeEach(func() {
-			originalTemplate = &testTemplates[0]
+			originalTemplate = &testTemplates[defaultArch][0]
 			originalTemplate.Namespace = namespace
 
 			_, err := operand.Reconcile(&request)
@@ -313,14 +318,23 @@ var _ = Describe("Common-Templates operand", func() {
 	})
 })
 
-func getTestTemplates() []templatev1.Template {
-	return []templatev1.Template{
-		createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server"),
-		createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop"),
+func getTestTemplates() map[string][]templatev1.Template {
+	const amdArch = "amd64"
+	const armArch = "arm64"
+
+	return map[string][]templatev1.Template{
+		amdArch: {
+			createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server", amdArch),
+			createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop", amdArch),
+		},
+		armArch: {
+			createTestTemplate("centos-stream8-server-medium-"+armArch, "centos8", "medium", "server", armArch),
+			createTestTemplate("windows10-desktop-medium-"+armArch, "win10", "medium", "desktop", armArch),
+		},
 	}
 }
 
-func createTestTemplate(name, os, flavor, workload string) templatev1.Template {
+func createTestTemplate(name, os, flavor, workload, architecture string) templatev1.Template {
 	return templatev1.Template{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -330,6 +344,7 @@ func createTestTemplate(name, os, flavor, workload string) templatev1.Template {
 				TemplateOsLabelPrefix + os:             "true",
 				TemplateFlavorLabelPrefix + flavor:     "true",
 				TemplateWorkloadLabelPrefix + workload: "true",
+				TemplateArchitectureLabel:              architecture,
 			},
 		},
 	}

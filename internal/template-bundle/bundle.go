@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
 	"kubevirt.io/ssp-operator/internal"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
-func ReadTemplates(filename string) ([]templatev1.Template, error) {
-	var bundle []templatev1.Template
+// TODO -- check if there is validation that there are no duplicate templates
+
+func ReadTemplates(filename string) (map[string][]templatev1.Template, error) {
+	templatesByArch := map[string][]templatev1.Template{}
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -27,7 +30,7 @@ func ReadTemplates(filename string) ([]templatev1.Template, error) {
 		template := templatev1.Template{}
 		err = decoder.Decode(&template)
 		if err == io.EOF {
-			return bundle, nil
+			return templatesByArch, nil
 		}
 		if err != nil {
 			return nil, err
@@ -35,53 +38,59 @@ func ReadTemplates(filename string) ([]templatev1.Template, error) {
 		if template.Name == "" {
 			continue
 		}
-		templateArch, ok := template.Labels["template.kubevirt.io/architecture"]
-		if !ok {
-			return nil, err
+
+		// TODO -- possibility of duplicate templates?
+		templateArch := template.Labels[common_templates.TemplateArchitectureLabel]
+		if templateArch == "" {
+			templateArch = common_templates.TemplateDefaultArchitecture
 		}
-		// The template bundles are delivered separately based on architecture.
-		// However, in cases where the generic template bundle includes architectures that are
-		// not released separately, this filter can still be useful.
-		if templateArch == runtime.GOARCH {
-			bundle = append(bundle, template)
-		}
+		templatesByArch[templateArch] = append(templatesByArch[templateArch], template)
 	}
 }
 
-func CollectDataSourceNames(templates []templatev1.Template) ([]string, error) {
-	uniqueNames := map[string]struct{}{}
-	for i := range templates {
-		template := &templates[i]
+func CollectDataSourceNames(templatesByArch map[string][]templatev1.Template) (map[string][]string, error) {
+	// TODO -- simplify logic
+	dataSourceArchs := map[string]map[string]struct{}{}
+	for arch, templates := range templatesByArch {
+		for i := range templates {
+			template := &templates[i]
 
-		usesDataSources, err := vmTemplateUsesSourceRef(template)
-		if err != nil {
-			return nil, err
-		}
-		if !usesDataSources {
-			continue
-		}
+			usesDataSources, err := vmTemplateUsesSourceRef(template)
+			if err != nil {
+				return nil, err
+			}
+			if !usesDataSources {
+				continue
+			}
 
-		name, exists := findDataSourceName(template)
-		if !exists {
-			continue
-		}
+			name, exists := findDataSourceName(template)
+			if !exists {
+				continue
+			}
 
-		namespace, exists := findDataSourceNamespace(template)
-		// This check is needed, so later code can assume that all DataSources
-		// should be created in the internal.GoldenImagesNamespace
-		if exists && namespace != internal.GoldenImagesNamespace {
-			// If this happens, it is a programmer's error.
-			return nil, fmt.Errorf(
-				"common template %s has invalid default DATA_SOURCE_NAMESPACE value: %s, expected: %s",
-				template.Name, namespace, internal.GoldenImagesNamespace)
-		}
+			namespace, exists := findDataSourceNamespace(template)
+			// This check is needed, so later code can assume that all DataSources
+			// should be created in the internal.GoldenImagesNamespace
+			if exists && namespace != internal.GoldenImagesNamespace {
+				// If this happens, it is a programmer's error.
+				return nil, fmt.Errorf(
+					"common template %s has invalid default DATA_SOURCE_NAMESPACE value: %s, expected: %s",
+					template.Name, namespace, internal.GoldenImagesNamespace)
+			}
 
-		uniqueNames[name] = struct{}{}
+			if dataSourceArchs[name] == nil {
+				dataSourceArchs[name] = map[string]struct{}{}
+			}
+			dataSourceArchs[name][arch] = struct{}{}
+		}
 	}
 
-	result := make([]string, 0, len(uniqueNames))
-	for k := range uniqueNames {
-		result = append(result, k)
+	result := make(map[string][]string, len(dataSourceArchs))
+	for name, archs := range dataSourceArchs {
+		result[name] = make([]string, 0, len(archs))
+		for arch := range archs {
+			result[name] = append(result[name], arch)
+		}
 	}
 
 	return result, nil

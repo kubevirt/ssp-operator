@@ -35,6 +35,8 @@ func createTestTemplate() testResource {
 	}
 }
 
+// TODO -- add multi-arch functional tests
+
 var _ = Describe("Common templates", func() {
 	var (
 		testTemplate testResource

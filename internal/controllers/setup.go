@@ -55,7 +55,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		return nil, fmt.Errorf("failed to read template bundle: %w", err)
 	}
 
-	dataSourceNames, err := template_bundle.CollectDataSourceNames(templates)
+	dataSourceNamesAndArchs, err := template_bundle.CollectDataSourceNames(templates)
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect DataSource names from templates: %w", err)
 	}
@@ -64,6 +64,15 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 	vmConsoleProxyBundle, err := vm_console_proxy_bundle.ReadBundle(vmConsoleProxyBundlePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
+	}
+
+	// Temporarily, only create DataSources for one architecture.
+	// TODO: Create all DataSources, when multi-arch DataSource logic is implemented
+	dataSourceNames := make([]string, 0, len(dataSourceNamesAndArchs))
+	for name, archs := range dataSourceNamesAndArchs {
+		if len(archs) != 0 {
+			dataSourceNames = append(dataSourceNames, name)
+		}
 	}
 
 	sspOperands := []operands.Operand{
