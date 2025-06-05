@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/common"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 )

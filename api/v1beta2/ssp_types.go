@@ -164,8 +164,8 @@ type SSPStatus struct {
 //
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:deprecatedversion:warning="SSP v1beta2 is deprecated and will not be updated with new functionality. It will stop being served in the next version."
 type SSP struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
