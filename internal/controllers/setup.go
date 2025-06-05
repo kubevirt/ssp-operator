@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/openshift/api/config/v1"
@@ -55,7 +56,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		return nil, fmt.Errorf("failed to read template bundle: %w", err)
 	}
 
-	dataSourceNames, err := template_bundle.CollectDataSourceNames(templates)
+	dataSourceCollection, err := template_bundle.CollectDataSources(templates)
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect DataSource names from templates: %w", err)
 	}
@@ -65,6 +66,10 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 	if err != nil {
 		return nil, fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
 	}
+
+	// Temporarily, only create DataSources for one architecture.
+	// TODO: Create all DataSources, when multi-arch DataSource logic is implemented
+	dataSourceNames := slices.Collect(dataSourceCollection.Names())
 
 	sspOperands := []operands.Operand{
 		data_sources.New(dataSourceNames),

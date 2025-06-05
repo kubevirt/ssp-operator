@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"iter"
+	"maps"
 	"os"
-	"runtime"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
 	"kubevirt.io/ssp-operator/internal"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
 func ReadTemplates(filename string) ([]templatev1.Template, error) {
@@ -35,21 +38,12 @@ func ReadTemplates(filename string) ([]templatev1.Template, error) {
 		if template.Name == "" {
 			continue
 		}
-		templateArch, ok := template.Labels["template.kubevirt.io/architecture"]
-		if !ok {
-			return nil, err
-		}
-		// The template bundles are delivered separately based on architecture.
-		// However, in cases where the generic template bundle includes architectures that are
-		// not released separately, this filter can still be useful.
-		if templateArch == runtime.GOARCH {
-			bundle = append(bundle, template)
-		}
+		bundle = append(bundle, template)
 	}
 }
 
-func CollectDataSourceNames(templates []templatev1.Template) ([]string, error) {
-	uniqueNames := map[string]struct{}{}
+func CollectDataSources(templates []templatev1.Template) (DataSourceCollection, error) {
+	result := DataSourceCollection{}
 	for i := range templates {
 		template := &templates[i]
 
@@ -76,15 +70,23 @@ func CollectDataSourceNames(templates []templatev1.Template) ([]string, error) {
 				template.Name, namespace, internal.GoldenImagesNamespace)
 		}
 
-		uniqueNames[name] = struct{}{}
-	}
-
-	result := make([]string, 0, len(uniqueNames))
-	for k := range uniqueNames {
-		result = append(result, k)
+		result.AddNameAndArch(name, common_templates.GetTemplateArch(template))
 	}
 
 	return result, nil
+}
+
+type DataSourceCollection map[string](map[string]struct{})
+
+func (d DataSourceCollection) AddNameAndArch(name string, arch string) {
+	if d[name] == nil {
+		d[name] = map[string]struct{}{}
+	}
+	d[name][arch] = struct{}{}
+}
+
+func (d DataSourceCollection) Names() iter.Seq[string] {
+	return maps.Keys(d)
 }
 
 func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
