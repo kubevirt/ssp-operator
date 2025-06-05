@@ -3,6 +3,7 @@ package common_templates
 import (
 	"fmt"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/blang/semver/v4"
@@ -43,11 +44,18 @@ type commonTemplates struct {
 var _ operands.Operand = &commonTemplates{}
 
 func New(templates []templatev1.Template) operands.Operand {
+	var filteredTemplates []templatev1.Template
+	for _, template := range templates {
+		if GetTemplateArch(&template) == runtime.GOARCH {
+			filteredTemplates = append(filteredTemplates, template)
+		}
+	}
+
 	deployedTemplates := make(map[string]bool)
-	for _, t := range templates {
+	for _, t := range filteredTemplates {
 		deployedTemplates[t.Name] = true
 	}
-	return &commonTemplates{templatesBundle: templates, deployedTemplates: deployedTemplates}
+	return &commonTemplates{templatesBundle: filteredTemplates, deployedTemplates: deployedTemplates}
 }
 
 func (c *commonTemplates) Name() string {
