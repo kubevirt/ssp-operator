@@ -3,7 +3,6 @@ package common_templates
 import (
 	"context"
 	"strings"
-	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,20 +34,20 @@ const (
 	futureVersion = "v999.999.999"
 )
 
-func TestTemplates(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Common Templates Suite")
-}
-
 var _ = Describe("Common-Templates operand", func() {
+	const amd64 = "amd64"
 
 	var (
-		testTemplates []templatev1.Template
-		operand       operands.Operand
-		request       common.Request
+		testTemplates     []templatev1.Template
+		filteredTemplates []templatev1.Template
+
+		operand operands.Operand
+		request common.Request
 	)
 
 	BeforeEach(func() {
+		defaultArchitecture = amd64
+
 		testTemplates = getTestTemplates()
 		operand = New(testTemplates)
 
@@ -90,12 +89,21 @@ var _ = Describe("Common-Templates operand", func() {
 			Logger:          log,
 			VersionCache:    common.VersionCache{},
 		}
+
+		filteredTemplates = make([]templatev1.Template, 0, len(testTemplates))
+		for i := range testTemplates {
+			template := &testTemplates[i]
+			if GetTemplateArch(template) == amd64 {
+				filteredTemplates = append(filteredTemplates, *template.DeepCopy())
+			}
+		}
+
 	})
 
 	It("should create common-template resources", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		for _, template := range testTemplates {
+		for _, template := range filteredTemplates {
 			template.Namespace = namespace
 			ExpectResourceExists(&template, request)
 		}
@@ -111,7 +119,7 @@ var _ = Describe("Common-Templates operand", func() {
 			testLabel      = "some.test.label"
 		)
 
-		for _, template := range getTestTemplates() {
+		for _, template := range filteredTemplates {
 			template.Namespace = namespace
 			template.Labels[defaultOsLabel] = "true"
 			template.Labels[testLabel] = "test"
@@ -121,9 +129,9 @@ var _ = Describe("Common-Templates operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		for i := range testTemplates {
+		for i := range filteredTemplates {
 			key := client.ObjectKey{
-				Name:      testTemplates[i].Name,
+				Name:      filteredTemplates[i].Name,
 				Namespace: namespace,
 			}
 			template := &templatev1.Template{}
@@ -135,7 +143,7 @@ var _ = Describe("Common-Templates operand", func() {
 
 		value, err := metrics.GetCommonTemplatesRestored()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(value).To(Equal(float64(len(testTemplates))))
+		Expect(value).To(Equal(float64(len(filteredTemplates))))
 	})
 
 	Context("old templates", func() {
@@ -145,7 +153,7 @@ var _ = Describe("Common-Templates operand", func() {
 		)
 
 		BeforeEach(func() {
-			oldTpl = createTestTemplate("test-tpl", "some-os", "test", "server")
+			oldTpl = createTestTemplate("test-tpl", "some-os", "test", "server", amd64)
 			oldTpl.Namespace = namespace
 			oldTpl.Labels[TemplateVersionLabel] = "not-latest"
 
@@ -154,7 +162,7 @@ var _ = Describe("Common-Templates operand", func() {
 			err := request.Client.Create(request.Context, &oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
 
-			newerTemplate = createTestTemplate("test-tpl-newer", "some-os", "test", "server")
+			newerTemplate = createTestTemplate("test-tpl-newer", "some-os", "test", "server", amd64)
 			newerTemplate.Namespace = namespace
 			newerTemplate.Labels[TemplateVersionLabel] = futureVersion
 
@@ -230,7 +238,7 @@ var _ = Describe("Common-Templates operand", func() {
 		)
 
 		BeforeEach(func() {
-			originalTemplate = &testTemplates[0]
+			originalTemplate = &filteredTemplates[0]
 			originalTemplate.Namespace = namespace
 
 			_, err := operand.Reconcile(&request)
@@ -314,13 +322,18 @@ var _ = Describe("Common-Templates operand", func() {
 })
 
 func getTestTemplates() []templatev1.Template {
+	const amdArch = "amd64"
+	const armArch = "arm64"
+
 	return []templatev1.Template{
-		createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server"),
-		createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop"),
+		createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server", amdArch),
+		createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop", amdArch),
+		createTestTemplate("centos-stream8-server-medium-"+armArch, "centos8", "medium", "server", armArch),
+		createTestTemplate("windows10-desktop-medium-"+armArch, "win10", "medium", "desktop", armArch),
 	}
 }
 
-func createTestTemplate(name, os, flavor, workload string) templatev1.Template {
+func createTestTemplate(name, os, flavor, workload, architecture string) templatev1.Template {
 	return templatev1.Template{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -330,6 +343,7 @@ func createTestTemplate(name, os, flavor, workload string) templatev1.Template {
 				TemplateOsLabelPrefix + os:             "true",
 				TemplateFlavorLabelPrefix + flavor:     "true",
 				TemplateWorkloadLabelPrefix + workload: "true",
+				TemplateArchitectureLabel:              architecture,
 			},
 		},
 	}

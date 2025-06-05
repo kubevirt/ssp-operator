@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
 	"kubevirt.io/ssp-operator/internal"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
 func ReadTemplates(filename string) ([]templatev1.Template, error) {
@@ -35,21 +36,14 @@ func ReadTemplates(filename string) ([]templatev1.Template, error) {
 		if template.Name == "" {
 			continue
 		}
-		templateArch, ok := template.Labels["template.kubevirt.io/architecture"]
-		if !ok {
-			return nil, err
-		}
-		// The template bundles are delivered separately based on architecture.
-		// However, in cases where the generic template bundle includes architectures that are
-		// not released separately, this filter can still be useful.
-		if templateArch == runtime.GOARCH {
-			bundle = append(bundle, template)
-		}
+		bundle = append(bundle, template)
 	}
 }
 
-func CollectDataSourceNames(templates []templatev1.Template) ([]string, error) {
-	uniqueNames := map[string]struct{}{}
+func CollectDataSourceNamesWithArchs(templates []templatev1.Template) (map[string][]string, error) {
+	type archSet = map[string]struct{}
+
+	dataSourceArchs := map[string]archSet{}
 	for i := range templates {
 		template := &templates[i]
 
@@ -76,12 +70,20 @@ func CollectDataSourceNames(templates []templatev1.Template) ([]string, error) {
 				template.Name, namespace, internal.GoldenImagesNamespace)
 		}
 
-		uniqueNames[name] = struct{}{}
+		if dataSourceArchs[name] == nil {
+			dataSourceArchs[name] = map[string]struct{}{}
+		}
+
+		templateArch := common_templates.GetTemplateArch(template)
+		dataSourceArchs[name][templateArch] = struct{}{}
 	}
 
-	result := make([]string, 0, len(uniqueNames))
-	for k := range uniqueNames {
-		result = append(result, k)
+	result := make(map[string][]string, len(dataSourceArchs))
+	for name, archs := range dataSourceArchs {
+		result[name] = make([]string, 0, len(archs))
+		for arch := range archs {
+			result[name] = append(result[name], arch)
+		}
 	}
 
 	return result, nil
