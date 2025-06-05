@@ -11,6 +11,7 @@ import (
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -317,6 +318,106 @@ var _ = Describe("Common-Templates operand", func() {
 			value, err := metrics.GetCommonTemplatesRestored()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(value).To(Equal(initialMetricValue))
+		})
+	})
+
+	Context("multiple architectures", func() {
+		const arm64 = "arm64"
+
+		var armTemplates []templatev1.Template
+
+		BeforeEach(func() {
+			request.Instance.Spec.EnableMultipleArchitectures = ptr.To(true)
+			request.Instance.Spec.Cluster = &ssp.Cluster{
+				WorkloadArchitectures:     []string{amd64, arm64},
+				ControlPlaneArchitectures: []string{amd64},
+			}
+
+			armTemplates = []templatev1.Template{}
+			for _, template := range testTemplates {
+				if GetTemplateArch(&template) == arm64 {
+					armTemplates = append(armTemplates, template)
+				}
+			}
+		})
+
+		It("should create common-template resources", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+			for _, template := range testTemplates {
+				template.Namespace = namespace
+				ExpectResourceExists(&template, request)
+			}
+		})
+
+		It("should reconcile predefined labels", func() {
+			const (
+				defaultOsLabel = "template.kubevirt.io/default-os-variant"
+				testLabel      = "some.test.label"
+			)
+
+			for i := range testTemplates {
+				template := testTemplates[i].DeepCopy()
+				template.Namespace = namespace
+				template.Labels[defaultOsLabel] = "true"
+				template.Labels[testLabel] = "test"
+				Expect(request.Client.Create(request.Context, template)).To(Succeed())
+			}
+
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for i := range testTemplates {
+				key := client.ObjectKey{
+					Name:      testTemplates[i].Name,
+					Namespace: namespace,
+				}
+				template := &templatev1.Template{}
+				Expect(request.Client.Get(request.Context, key, template)).To(Succeed())
+
+				Expect(template.Labels).ToNot(HaveKey(defaultOsLabel))
+				Expect(template.Labels).To(HaveKey(testLabel))
+			}
+		})
+
+		It("should remove templates if architecture is no longer available", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, template := range armTemplates {
+				template.Namespace = namespace
+				ExpectResourceExists(&template, request)
+			}
+
+			request.Instance.Spec.Cluster.WorkloadArchitectures = []string{amd64}
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, template := range armTemplates {
+				template.Namespace = namespace
+				ExpectResourceNotExists(&template, request)
+			}
+		})
+
+		It("should remove templates multi-architecture is disabled", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, template := range armTemplates {
+				template.Namespace = namespace
+				ExpectResourceExists(&template, request)
+			}
+
+			request.Instance.Spec.EnableMultipleArchitectures = nil
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for _, template := range armTemplates {
+				template.Namespace = namespace
+				ExpectResourceNotExists(&template, request)
+			}
 		})
 	})
 })
