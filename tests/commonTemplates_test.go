@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -11,10 +12,13 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/tests/decorators"
@@ -322,6 +326,130 @@ var _ = Describe("Common templates", func() {
 						template.GetNamespace(), template.GetName()),
 				)
 			}
+		})
+	})
+})
+
+var _ = Describe("Common templates with multiple architectures enabled", Ordered, func() {
+	var (
+		testTemplateAmd64 testResource
+		testTemplateArm64 testResource
+		testTemplateS390x testResource
+	)
+
+	// Using ordered container and BeforeAll for performance reasons.
+	// These tests don't need to disable and enable multi-arch before every test.
+	BeforeAll(func() {
+		strategy.SkipSspUpdateTestsIfNeeded()
+
+		const templateName = "rhel9-server-small"
+		expectedLabels := expectedLabelsFor("common-templates", common.AppComponentTemplating)
+
+		testTemplateAmd64 = testResource{
+			Name:           templateName,
+			Namespace:      strategy.GetTemplatesNamespace(),
+			Resource:       &templatev1.Template{},
+			ExpectedLabels: expectedLabels,
+			UpdateFunc: func(t *templatev1.Template) {
+				t.Parameters = nil
+			},
+			EqualsFunc: func(old *templatev1.Template, new *templatev1.Template) bool {
+				return reflect.DeepEqual(old.Parameters, new.Parameters)
+			},
+		}
+
+		testTemplateArm64 = testResource{
+			Name:           templateName + "-" + string(architecture.ARM64),
+			Namespace:      strategy.GetTemplatesNamespace(),
+			Resource:       &templatev1.Template{},
+			ExpectedLabels: expectedLabels,
+			UpdateFunc: func(t *templatev1.Template) {
+				t.Parameters = nil
+			},
+			EqualsFunc: func(old *templatev1.Template, new *templatev1.Template) bool {
+				return reflect.DeepEqual(old.Parameters, new.Parameters)
+			},
+		}
+
+		testTemplateS390x = testResource{
+			Name:           templateName + "-" + string(architecture.S390X),
+			Namespace:      strategy.GetTemplatesNamespace(),
+			Resource:       &templatev1.Template{},
+			ExpectedLabels: expectedLabels,
+			UpdateFunc: func(t *templatev1.Template) {
+				t.Parameters = nil
+			},
+			EqualsFunc: func(old *templatev1.Template, new *templatev1.Template) bool {
+				return reflect.DeepEqual(old.Parameters, new.Parameters)
+			},
+		}
+
+		updateSsp(func(foundSsp *ssp.SSP) {
+			foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+			foundSsp.Spec.Cluster = &ssp.Cluster{
+				WorkloadArchitectures: []string{
+					string(architecture.AMD64),
+					string(architecture.ARM64),
+					string(architecture.S390X),
+				},
+				ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+			}
+		})
+		waitUntilDeployed()
+	})
+
+	AfterAll(func() {
+		strategy.RevertToOriginalSspCr()
+	})
+
+	DescribeTable("created resource", func(res *testResource, arch architecture.Arch) {
+		found := res.NewResource()
+		Expect(apiClient.Get(ctx, res.GetKey(), found)).To(Succeed())
+		Expect(found.GetLabels()).To(HaveKeyWithValue(commonTemplates.TemplateArchitectureLabel, string(arch)))
+	},
+		Entry("[test_id:TODO] template for amd64", decorators.Conformance, &testTemplateAmd64, architecture.AMD64),
+		Entry("[test_id:TODO] template for arm64", decorators.Conformance, &testTemplateArm64, architecture.ARM64),
+		Entry("[test_id:TODO] template for s390x", decorators.Conformance, &testTemplateS390x, architecture.S390X),
+	)
+
+	DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+		Entry("[test_id:TODO] template for amd64", decorators.Conformance, &testTemplateAmd64),
+		Entry("[test_id:TODO] template for arm64", decorators.Conformance, &testTemplateArm64),
+		Entry("[test_id:TODO] template for s390x", decorators.Conformance, &testTemplateS390x),
+	)
+
+	DescribeTable("recreate after delete", expectRecreateAfterDelete,
+		Entry("[test_id:TODO] template for amd64", decorators.Conformance, &testTemplateAmd64),
+		Entry("[test_id:TODO] template for arm64", decorators.Conformance, &testTemplateArm64),
+		Entry("[test_id:TODO] template for s390x", decorators.Conformance, &testTemplateS390x),
+	)
+
+	Context("when disabled multi-arch", Ordered, func() {
+		BeforeAll(func() {
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.EnableMultipleArchitectures = ptr.To(false)
+			})
+			waitUntilDeployed()
+		})
+
+		AfterAll(func() {
+			updateSsp(func(foundSsp *ssp.SSP) {
+				foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+			})
+			waitUntilDeployed()
+		})
+
+		DescribeTable("should delete template for non-default arch", func(res *testResource, arch architecture.Arch) {
+			Eventually(func() error {
+				return apiClient.Get(ctx, res.GetKey(), res.NewResource())
+			}, env.ShortTimeout(), time.Second).Should(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+		},
+			Entry("[test_id:TODO] template for arm64", decorators.Conformance, &testTemplateArm64, architecture.ARM64),
+			Entry("[test_id:TODO] template for s390x", decorators.Conformance, &testTemplateS390x, architecture.S390X),
+		)
+
+		It("[test_id:TODO] should keep template for default arch", decorators.Conformance, func() {
+			Expect(apiClient.Get(ctx, testTemplateAmd64.GetKey(), testTemplateAmd64.NewResource())).To(Succeed())
 		})
 	})
 })
