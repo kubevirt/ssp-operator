@@ -5,12 +5,31 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+
+	"kubevirt.io/ssp-operator/internal"
 )
 
 const (
 	ViewRoleName        = "os-images.kubevirt.io:view"
 	EditClusterRoleName = "os-images.kubevirt.io:edit"
 )
+
+func newDataSource(name string) cdiv1beta1.DataSource {
+	return cdiv1beta1.DataSource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: internal.GoldenImagesNamespace,
+		},
+		Spec: cdiv1beta1.DataSourceSpec{
+			Source: cdiv1beta1.DataSourceSource{
+				PVC: &cdiv1beta1.DataVolumeSourcePVC{
+					Name:      name,
+					Namespace: internal.GoldenImagesNamespace,
+				},
+			},
+		},
+	}
+}
 
 func newGoldenImagesNS(namespace string) *core.Namespace {
 	return &core.Namespace{
