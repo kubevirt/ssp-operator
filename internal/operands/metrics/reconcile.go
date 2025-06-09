@@ -10,7 +10,7 @@ import (
 )
 
 // Define RBAC rules needed by this operand:
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules;servicemonitors,verbs=list;watch;create;update
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules;servicemonitors,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups="",resources=pods;endpoints,verbs=get;list;watch
 
