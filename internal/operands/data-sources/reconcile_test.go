@@ -41,8 +41,12 @@ var _ = Describe("Data-Sources operand", func() {
 
 	BeforeEach(func() {
 		testDataSources = getDataSources()
+		dsNames := make([]string, len(testDataSources))
+		for i := range testDataSources {
+			dsNames[i] = testDataSources[i].Name
+		}
 
-		operand = New(testDataSources)
+		operand = New(dsNames)
 
 		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
