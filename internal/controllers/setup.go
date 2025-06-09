@@ -50,9 +50,14 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 	}
 
 	templatesBundleFile := filepath.Join(templateBundleDir, fmt.Sprintf("common-templates-%s.yaml", common_templates.Version))
-	templatesBundle, err := template_bundle.ReadBundle(templatesBundleFile)
+	templates, err := template_bundle.ReadTemplates(templatesBundleFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template bundle: %w", err)
+	}
+
+	dataSourceNames, err := template_bundle.CollectDataSourceNames(templates)
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect DataSource names from templates: %w", err)
 	}
 
 	vmConsoleProxyBundlePath := vm_console_proxy_bundle.GetBundlePath()
@@ -62,7 +67,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 	}
 
 	sspOperands := []operands.Operand{
-		data_sources.New(templatesBundle.DataSources),
+		data_sources.New(dataSourceNames),
 		vm_delete_protection.New(),
 	}
 
@@ -70,7 +75,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		sspOperands = append(sspOperands,
 			metrics.New(),
 			template_validator.New(),
-			common_templates.New(templatesBundle.Templates),
+			common_templates.New(templates),
 			vm_console_proxy.New(vmConsoleProxyBundle),
 		)
 	}

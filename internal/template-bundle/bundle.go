@@ -8,35 +8,12 @@ import (
 	"runtime"
 
 	templatev1 "github.com/openshift/api/template/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+	"kubevirt.io/ssp-operator/internal"
 )
 
-type Bundle struct {
-	Templates   []templatev1.Template
-	DataSources []cdiv1beta1.DataSource
-}
-
-func ReadBundle(filename string) (Bundle, error) {
-	templates, err := readTemplates(filename)
-	if err != nil {
-		return Bundle{}, err
-	}
-
-	sources, err := extractDataSources(templates)
-	if err != nil {
-		return Bundle{}, err
-	}
-
-	return Bundle{
-		Templates:   templates,
-		DataSources: sources,
-	}, nil
-}
-
-func readTemplates(filename string) ([]templatev1.Template, error) {
+func ReadTemplates(filename string) ([]templatev1.Template, error) {
 	var bundle []templatev1.Template
 	file, err := os.Open(filename)
 	if err != nil {
@@ -69,10 +46,8 @@ func readTemplates(filename string) ([]templatev1.Template, error) {
 	}
 }
 
-func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSource, error) {
+func CollectDataSourceNames(templates []templatev1.Template) ([]string, error) {
 	uniqueNames := map[string]struct{}{}
-
-	var dataSources []cdiv1beta1.DataSource
 	for i := range templates {
 		template := &templates[i]
 
@@ -90,18 +65,24 @@ func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSourc
 		}
 
 		namespace, exists := findDataSourceNamespace(template)
-		if !exists {
-			continue
+		// This check is needed, so later code can assume that all DataSources
+		// should be created in the internal.GoldenImagesNamespace
+		if exists && namespace != internal.GoldenImagesNamespace {
+			// If this happens, it is a programmer's error.
+			return nil, fmt.Errorf(
+				"common template %s has invalid default DATA_SOURCE_NAMESPACE value: %s, expected: %s",
+				template.Name, namespace, internal.GoldenImagesNamespace)
 		}
 
-		namespacedName := namespace + "/" + name
-		if _, duplicateName := uniqueNames[namespacedName]; !duplicateName {
-			dataSources = append(dataSources, createDataSource(name, namespace))
-			uniqueNames[namespacedName] = struct{}{}
-		}
+		uniqueNames[name] = struct{}{}
 	}
 
-	return dataSources, nil
+	result := make([]string, 0, len(uniqueNames))
+	for k := range uniqueNames {
+		result = append(result, k)
+	}
+
+	return result, nil
 }
 
 func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
@@ -170,21 +151,4 @@ func findParameterValue(name string, template *templatev1.Template) (string, boo
 		}
 	}
 	return "", false
-}
-
-func createDataSource(name, namespace string) cdiv1beta1.DataSource {
-	return cdiv1beta1.DataSource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: cdiv1beta1.DataSourceSpec{
-			Source: cdiv1beta1.DataSourceSource{
-				PVC: &cdiv1beta1.DataVolumeSourcePVC{
-					Name:      name,
-					Namespace: namespace,
-				},
-			},
-		},
-	}
 }
