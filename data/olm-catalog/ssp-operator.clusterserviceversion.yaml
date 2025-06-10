@@ -221,6 +221,7 @@ spec:
           - servicemonitors
           verbs:
           - create
+          - delete
           - list
           - update
           - watch
