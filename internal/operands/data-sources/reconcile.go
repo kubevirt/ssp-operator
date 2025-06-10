@@ -82,7 +82,6 @@ func (d *dataSources) WatchClusterTypes() []operands.WatchType {
 
 type dataSourceInfo struct {
 	dataSource         *cdiv1beta1.DataSource
-	autoUpdateEnabled  bool
 	dataImportCronName string
 }
 
@@ -210,47 +209,71 @@ type dataSourcesAndCrons struct {
 
 func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
 	cronTemplates := request.Instance.Spec.CommonTemplates.DataImportCronTemplates
-	cronByDataSource := make(map[client.ObjectKey]*ssp.DataImportCronTemplate, len(cronTemplates))
+	cronTemplateByDataSource := make(map[client.ObjectKey]*ssp.DataImportCronTemplate, len(cronTemplates))
 	for i := range cronTemplates {
 		cron := &cronTemplates[i]
 		if cron.Namespace == "" {
 			cron.Namespace = internal.GoldenImagesNamespace
 		}
-		cronByDataSource[client.ObjectKey{
+		cronTemplateByDataSource[client.ObjectKey{
 			Name:      cron.Spec.ManagedDataSource,
 			Namespace: cron.Namespace,
 		}] = cron
+	}
+
+	existingCrons := &cdiv1beta1.DataImportCronList{}
+	err := request.Client.List(request.Context, existingCrons, client.InNamespace(internal.GoldenImagesNamespace))
+	if err != nil {
+		return dataSourcesAndCrons{}, fmt.Errorf("failed to list external DataImportCrons: %w", err)
+	}
+	existingCronByDataSource := make(map[client.ObjectKey]*cdiv1beta1.DataImportCron, len(existingCrons.Items))
+	for i := range existingCrons.Items {
+		cron := &existingCrons.Items[i]
+		if cron.Spec.ManagedDataSource != "" {
+			existingCronByDataSource[client.ObjectKey{
+				Name:      cron.Spec.ManagedDataSource,
+				Namespace: cron.Namespace,
+			}] = cron
+		}
 	}
 
 	var dataSourceInfos []dataSourceInfo
 	for i := range d.sources {
 		dataSource := d.sources[i] // Make a copy
 		dataSource.Namespace = internal.GoldenImagesNamespace
-		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(&dataSource, cronByDataSource, request)
+
+		dsKey := client.ObjectKeyFromObject(&dataSource)
+		cronTemplate := cronTemplateByDataSource[dsKey]
+		existingCron := existingCronByDataSource[dsKey]
+
+		reconcileCronTemplate, err := shouldReconcileCronTemplate(
+			&dataSource,
+			cronTemplate,
+			existingCron,
+			request)
 		if err != nil {
 			return dataSourcesAndCrons{}, err
 		}
 
 		var dicName string
-		if dic, ok := cronByDataSource[client.ObjectKeyFromObject(&dataSource)]; ok {
-			dicName = dic.GetName()
+		if existingCron != nil {
+			dicName = existingCron.GetName()
+		} else if cronTemplate != nil && reconcileCronTemplate {
+			dicName = cronTemplate.GetName()
+		}
+
+		if !reconcileCronTemplate {
+			delete(cronTemplateByDataSource, dsKey)
 		}
 
 		dataSourceInfos = append(dataSourceInfos, dataSourceInfo{
 			dataSource:         &dataSource,
-			autoUpdateEnabled:  autoUpdateEnabled,
 			dataImportCronName: dicName,
 		})
 	}
 
-	for i := range dataSourceInfos {
-		if !dataSourceInfos[i].autoUpdateEnabled {
-			delete(cronByDataSource, client.ObjectKeyFromObject(dataSourceInfos[i].dataSource))
-		}
-	}
-
-	dataImportCrons := make([]cdiv1beta1.DataImportCron, 0, len(cronByDataSource))
-	for _, cronTemplate := range cronByDataSource {
+	dataImportCrons := make([]cdiv1beta1.DataImportCron, 0, len(cronTemplateByDataSource))
+	for _, cronTemplate := range cronTemplateByDataSource {
 		dataImportCrons = append(dataImportCrons, cronTemplate.AsDataImportCron())
 	}
 
@@ -262,51 +285,64 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 
 const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
 
-func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSource map[client.ObjectKey]*ssp.DataImportCronTemplate, request *common.Request) (bool, error) {
-	objectKey := client.ObjectKeyFromObject(dataSource)
-	_, cronExists := cronByDataSource[objectKey]
-	if !cronExists {
-		// If DataImportCron does not exist for this DataSource, auto-update is disabled.
+func shouldReconcileCronTemplate(dataSource *cdiv1beta1.DataSource, cronTemplate *ssp.DataImportCronTemplate, existingCron *cdiv1beta1.DataImportCron, request *common.Request) (bool, error) {
+	if cronTemplate == nil {
 		return false, nil
 	}
 
+	if existingCron != nil {
+		if common.CheckOwnerAnnotation(existingCron, request.Instance) {
+			// We don't need to check if the existing DataImportCron was created from the template,
+			// because if it was not, then later code will remove it.
+			// This can happen if a DataImportCron template is renamed.
+			return true, nil
+		}
+		return false, nil
+	}
+
+	usesGoldenImagePVC, err := dataSourceUsesGoldenImagePVC(dataSource, request)
+	if err != nil {
+		return false, err
+	}
+
+	// If PVC exists, DataSource should point to the PVC.
+	// We don't want to create DataImportCron from template.
+	return !usesGoldenImagePVC, nil
+}
+
+func dataSourceUsesGoldenImagePVC(goldenImageDataSource *cdiv1beta1.DataSource, request *common.Request) (bool, error) {
+	objectKey := client.ObjectKeyFromObject(goldenImageDataSource)
 	// Check existing data source. The Get call uses cache.
 	foundDataSource := &cdiv1beta1.DataSource{}
 	err := request.Client.Get(request.Context, objectKey, foundDataSource)
-	if errors.IsNotFound(err) {
-		pvcExists, err := checkIfPvcExists(dataSource, request)
-		if err != nil {
+	if err != nil {
+		if !errors.IsNotFound(err) {
 			return false, err
 		}
-
-		// If PVC exists, DataSource does not use auto-update.
-		// Otherwise, DataSource uses auto-update.
-		return !pvcExists, nil
+		foundDataSource = nil
 	}
+
+	if foundDataSource != nil {
+		// The DataSource is managed by a DataImportCron
+		_, labelExists := foundDataSource.GetLabels()[dataImportCronLabel]
+		if labelExists {
+			return false, nil
+		}
+
+		dsReadyCondition := getDataSourceReadyCondition(foundDataSource)
+		// It makes sense to check the ready condition only if the found DataSource spec
+		// points to the golden image PVC.
+		if dsReadyCondition != nil && foundDataSource.Spec.Source.PVC == goldenImageDataSource.Spec.Source.PVC {
+			// Auto-update will ony be enabled if the DataSource does not refer to an existing PVC.
+			return dsReadyCondition.Status != core.ConditionTrue, nil
+		}
+	}
+
+	pvcExists, err := checkIfPvcExists(goldenImageDataSource, request)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check if PVC exists: %w", err)
 	}
-
-	if _, foundDsUsesAutoUpdate := foundDataSource.GetLabels()[dataImportCronLabel]; foundDsUsesAutoUpdate {
-		// Found DS is labeled to use auto-update.
-		return true, nil
-	}
-
-	dsReadyCondition := getDataSourceReadyCondition(foundDataSource)
-	// It makes sense to check the ready condition only if the found DataSource spec
-	// points to the golden image PVC, not to auto-update PVC.
-	if dsReadyCondition != nil && foundDataSource.Spec.Source.PVC == dataSource.Spec.Source.PVC {
-		// Auto-update will ony be enabled if the DataSource does not refer to an existing PVC.
-		return dsReadyCondition.Status != core.ConditionTrue, nil
-	}
-
-	// In case found DataSource spec is different from expected spec, we need to check if PVC exists.
-	pvcExists, err := checkIfPvcExists(dataSource, request)
-	if err != nil {
-		return false, err
-	}
-	// If PVC exists, DataSource does not use auto-update. Otherwise, DataSource uses auto-update.
-	return !pvcExists, nil
+	return pvcExists, nil
 }
 
 func checkIfPvcExists(dataSource *cdiv1beta1.DataSource, request *common.Request) (bool, error) {
@@ -382,7 +418,7 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 		ClusterResource(dsInfo.dataSource).
 		Options(common.ReconcileOptions{AlwaysCallUpdateFunc: true}).
 		UpdateFunc(func(newRes, foundRes client.Object) {
-			if dsInfo.autoUpdateEnabled {
+			if dsInfo.dataImportCronName != "" {
 				if foundRes.GetLabels() == nil {
 					foundRes.SetLabels(make(map[string]string))
 				}
