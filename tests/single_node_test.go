@@ -3,10 +3,11 @@ package tests
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"kubevirt.io/ssp-operator/tests/env"
 
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
+
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 var _ = Describe("Single Node Topology", func() {

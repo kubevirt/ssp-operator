@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 )
 
 const (
@@ -99,7 +99,7 @@ func updateWebhookConfiguration(webhookConfig *admissionv1.ValidatingWebhookConf
 		// Check if the webhook reacts to SSP resource.
 		var hasSspRule bool
 		for _, rule := range webhook.Rules {
-			if slices.Contains(rule.APIGroups, sspv1beta2.GroupVersion.Group) {
+			if slices.Contains(rule.APIGroups, ssp.GroupVersion.Group) {
 				hasSspRule = true
 				break
 			}
