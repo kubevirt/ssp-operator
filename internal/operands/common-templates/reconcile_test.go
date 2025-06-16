@@ -143,24 +143,10 @@ var _ = Describe("Common-Templates operand", func() {
 
 	Context("old templates", func() {
 		var (
-			parentTpl, oldTpl, newerTemplate *templatev1.Template
+			oldTpl, newerTemplate *templatev1.Template
 		)
 
 		BeforeEach(func() {
-			// Create a dummy template to act as an owner for the test template
-			// we can't use the SSP CR as an owner for these tests because the templates
-			// might be deployed in a different namespace than the CR, and will be immediately
-			// removed by the GC, the choice to use a template as an owner object was arbitrary
-			parentTpl = &templatev1.Template{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "parent-test-template",
-					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
-				},
-			}
-			Expect(request.Client.Create(request.Context, parentTpl)).ToNot(HaveOccurred(), "creation of parent template failed")
-			key := client.ObjectKeyFromObject(parentTpl)
-			Expect(request.Client.Get(request.Context, key, parentTpl)).ToNot(HaveOccurred())
-
 			oldTpl = &templatev1.Template{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-tpl",
@@ -172,15 +158,9 @@ var _ = Describe("Common-Templates operand", func() {
 						testFlavorLabel:      "true",
 						testWorkflowLabel:    "true",
 					},
-					Annotations: map[string]string{},
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion: parentTpl.APIVersion,
-						Kind:       parentTpl.Kind,
-						UID:        parentTpl.UID,
-						Name:       parentTpl.Name,
-					}},
 				},
 			}
+			Expect(libhandler.SetOwnerAnnotations(request.Instance, oldTpl)).To(Succeed())
 
 			err := request.Client.Create(request.Context, oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
@@ -196,35 +176,12 @@ var _ = Describe("Common-Templates operand", func() {
 						testFlavorLabel:      "true",
 						testWorkflowLabel:    "true",
 					},
-					Annotations: map[string]string{},
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion: parentTpl.APIVersion,
-						Kind:       parentTpl.Kind,
-						UID:        parentTpl.UID,
-						Name:       parentTpl.Name,
-					}},
 				},
 			}
+			Expect(libhandler.SetOwnerAnnotations(request.Instance, newerTemplate)).To(Succeed())
 
 			err = request.Client.Create(request.Context, newerTemplate)
 			Expect(err).ToNot(HaveOccurred(), "creation of newer template failed")
-		})
-
-		It("should replace ownerReferences with owner annotations for older templates", func() {
-
-			Expect(oldTpl.GetOwnerReferences()).ToNot(BeNil(), "template should have owner reference before reconciliation")
-
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
-
-			key := client.ObjectKeyFromObject(oldTpl)
-			updatedTpl := &templatev1.Template{}
-			err = request.Client.Get(request.Context, key, updatedTpl)
-			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
-
-			Expect(updatedTpl.GetOwnerReferences()).To(BeEmpty(), "ownerReferences exist for an older template")
-			Expect(updatedTpl.GetAnnotations()[libhandler.NamespacedNameAnnotation]).ToNot(Equal(""), "owner name annotation is empty for an older template")
-			Expect(updatedTpl.GetAnnotations()[libhandler.TypeAnnotation]).ToNot(Equal(""), "owner type annotation is empty for an older template")
 		})
 
 		It("should remove labels from old templates but keep future template untouched", func() {

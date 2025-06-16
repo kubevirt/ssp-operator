@@ -9,8 +9,6 @@ import (
 	"github.com/go-logr/logr"
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -109,71 +107,25 @@ func incrementTemplatesRestoredMetric(reconcileResults []common.ReconcileResult,
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	var objects []client.Object
-	namespace := request.Instance.Spec.CommonTemplates.Namespace
-
-	deprecatedTemplates, err := getDeprecatedTemplates(request)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, obj := range deprecatedTemplates.Items {
-		obj.ObjectMeta.Namespace = namespace
-		objects = append(objects, &obj)
-	}
-
-	for index := range c.templatesBundle {
-		c.templatesBundle[index].ObjectMeta.Namespace = namespace
-		objects = append(objects, &c.templatesBundle[index])
-	}
-
-	return common.DeleteAll(request, objects...)
-}
-
-func getDeprecatedTemplates(request *common.Request) (*templatev1.TemplateList, error) {
-	deprecatedTemplates := &templatev1.TemplateList{}
-	err := request.Client.List(request.Context, deprecatedTemplates, &client.ListOptions{
-		LabelSelector: getDeprecatedTemplatesLabelSelector(),
-		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,
-	})
-
-	// There might not be any templates (in case of a fresh deployment), so a NotFound error is accepted
+	ownedTemplates, err := listAllOwnedTemplates(request)
 	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
-	}
-	return deprecatedTemplates, nil
-}
-
-func getDeprecatedTemplatesLabelSelector() labels.Selector {
-	deprecatedRequirement, err := labels.NewRequirement(TemplateDeprecatedAnnotation, selection.Equals, []string{"true"})
-	if err != nil {
-		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateDeprecatedAnnotation, "true"))
-	}
-	return labels.NewSelector().Add(*deprecatedRequirement)
-}
-
-func getOldTemplatesLabelSelector() labels.Selector {
-	baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{TemplateTypeLabelBaseValue})
-	if err != nil {
-		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateTypeLabel, TemplateTypeLabelBaseValue))
+		return nil, fmt.Errorf("error listing owned templates: %w", err)
 	}
 
-	// Only fetching older templates  to prevent duplication of API calls
-	versionRequirement, err := labels.NewRequirement(TemplateVersionLabel, selection.NotEquals, []string{Version})
-	if err != nil {
-		panic(fmt.Sprintf("Failed creating label selector for '%s!=%s'", TemplateVersionLabel, Version))
+	var results []common.CleanupResult
+	for _, obj := range ownedTemplates {
+		result, err := common.Cleanup(request, &obj)
+		if err != nil {
+			return nil, fmt.Errorf("error cleaning up template %s/%s: %w", obj.Namespace, obj.Name, err)
+		}
+		results = append(results, result)
 	}
 
-	return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
+	return results, nil
 }
 
 func (c *commonTemplates) reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
-	existingTemplates := &templatev1.TemplateList{}
-	err := request.Client.List(request.Context, existingTemplates, &client.ListOptions{
-		LabelSelector: getOldTemplatesLabelSelector(),
-		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,
-	})
-
+	existingTemplates, err := listAllOwnedTemplates(request)
 	// There might not be any templates (in case of a fresh deployment), so a NotFound error is accepted
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
@@ -184,9 +136,9 @@ func (c *commonTemplates) reconcileOlderTemplates(request *common.Request) ([]co
 		return nil, err
 	}
 
-	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates.Items))
-	for i := range existingTemplates.Items {
-		template := &existingTemplates.Items[i]
+	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates))
+	for i := range existingTemplates {
+		template := &existingTemplates[i]
 
 		if _, ok := c.deployedTemplates[template.Name]; ok {
 			continue
@@ -275,4 +227,8 @@ func isPredefinedKey(key string) bool {
 		key == "iconClass" ||
 		strings.HasPrefix(key, "openshift.io/") ||
 		templateKubevirtIoPattern.MatchString(key)
+}
+
+func listAllOwnedTemplates(request *common.Request) ([]templatev1.Template, error) {
+	return common.ListOwnedResources[templatev1.TemplateList, templatev1.Template](request)
 }
