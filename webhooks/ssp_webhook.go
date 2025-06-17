@@ -104,12 +104,12 @@ func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admi
 }
 
 func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta2.SSP) (admission.Warnings, error) {
-	if err := s.validatePlacement(ctx, ssp); err != nil {
-		return nil, fmt.Errorf("placement api validation error: %w", err)
-	}
-
 	if err := validateDataImportCronTemplates(ssp); err != nil {
 		return nil, fmt.Errorf("dataImportCronTemplates validation error: %w", err)
+	}
+
+	if err := s.validatePlacement(ctx, ssp); err != nil {
+		return nil, fmt.Errorf("placement api validation error: %w", err)
 	}
 
 	return nil, nil
