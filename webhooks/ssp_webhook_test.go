@@ -68,17 +68,17 @@ var _ = Describe("SSP Validation", func() {
 
 	Context("creating SSP CR", func() {
 		BeforeEach(func() {
-			err := apiClient.Create(ctx, &sspv1beta2.SSP{
+			err := apiClient.Create(ctx, &sspv1beta3.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
 					Namespace: "test-ns",
 				},
-				Spec: sspv1beta2.SSPSpec{},
+				Spec: sspv1beta3.SSPSpec{},
 			})
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should reject v1beta2.SSP when one is already present", func() {
+		It("should reject v1beta2.SSP when v1beta3.SSP is already present", func() {
 			ssp := &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp2",
@@ -91,7 +91,7 @@ var _ = Describe("SSP Validation", func() {
 			Expect(err).To(MatchError(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp")))
 		})
 
-		It("should reject v1beta3.SSP when v1beta2.SSP is already present", func() {
+		It("should reject v1beta3.SSP when one is already present", func() {
 			ssp := &sspv1beta3.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp2",
