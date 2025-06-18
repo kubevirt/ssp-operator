@@ -179,7 +179,7 @@ func (c *commonTemplates) reconcileOlderTemplates(request *common.Request) ([]co
 		return nil, err
 	}
 
-	templatesVersion, err := semver.ParseTolerant(Version)
+	latestTemplateVersion, err := semver.ParseTolerant(Version)
 	if err != nil {
 		return nil, err
 	}
@@ -192,11 +192,11 @@ func (c *commonTemplates) reconcileOlderTemplates(request *common.Request) ([]co
 			continue
 		}
 
-		// if template has higher version than is defined in ssp operator, keep it as it is. If parsing
-		// of template version fails, continue with adding deprecated label
+		// If template has lower version, than what is defined in ssp operator, deprecate it.
+		// Deprecate also, if version label cannot be parsed.
 		if template.Labels[TemplateVersionLabel] != "" {
-			v, err := semver.ParseTolerant(template.Labels[TemplateVersionLabel])
-			if err == nil && templatesVersion.Compare(v) == -1 {
+			version, err := semver.ParseTolerant(template.Labels[TemplateVersionLabel])
+			if err == nil && latestTemplateVersion.Compare(version) != 1 {
 				continue
 			}
 		}
