@@ -1,6 +1,6 @@
 module kubevirt.io/ssp-operator
 
-go 1.23.6
+go 1.23.8
 
 require (
 	github.com/blang/semver/v4 v4.0.0
