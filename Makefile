@@ -238,7 +238,7 @@ MONITORING_LINTER ?= $(LOCALBIN)/monitoringlinter
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v4.5.7
 CONTROLLER_TOOLS_VERSION ?= v0.17.1
-MONITORING_LINTER_REVISION ?= v0.0.8
+MONITORING_LINTER_REVISION ?= v0.0.10
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
