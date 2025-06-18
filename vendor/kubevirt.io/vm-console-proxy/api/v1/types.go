@@ -5,6 +5,8 @@ import (
 )
 
 // TokenResponse is the response object from /token endpoint.
+//
+// +k8s:openapi-gen=true
 type TokenResponse struct {
 	Token               string      `json:"token"`
 	ExpirationTimestamp metav1.Time `json:"expirationTimestamp"`
