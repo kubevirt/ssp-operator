@@ -1,6 +1,7 @@
 package virtinformers
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
@@ -94,7 +95,7 @@ func createTemplateInformer(restConfig *rest.Config, scheme *runtime.Scheme) (ca
 
 	lw := cache.NewListWatchFromClient(restClient, "templates", k8sv1.NamespaceAll, fields.Everything())
 
-	_, err = lw.List(metav1.ListOptions{Limit: 1})
+	_, err = lw.ListWithContext(context.Background(), metav1.ListOptions{Limit: 1})
 	if err != nil {
 		logger.Log.Error(err, "error probing the template resource")
 		return nil, err
@@ -113,7 +114,7 @@ func createVmCacheReflector(restConfig *rest.Config, scheme *runtime.Scheme, sto
 
 	lw := cache.NewListWatchFromClient(restClient, "virtualmachines", k8sv1.NamespaceAll, fields.Everything())
 
-	_, err = lw.List(metav1.ListOptions{Limit: 1})
+	_, err = lw.ListWithContext(context.Background(), metav1.ListOptions{Limit: 1})
 	if err != nil {
 		logger.Log.Error(err, "error probing the virtual machine resource")
 		return nil, err
