@@ -68,17 +68,17 @@ var _ = Describe("SSP Validation", func() {
 
 	Context("creating SSP CR", func() {
 		BeforeEach(func() {
-			err := apiClient.Create(ctx, &sspv1beta2.SSP{
+			err := apiClient.Create(ctx, &sspv1beta3.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp",
 					Namespace: "test-ns",
 				},
-				Spec: sspv1beta2.SSPSpec{},
+				Spec: sspv1beta3.SSPSpec{},
 			})
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should reject v1beta2.SSP when one is already present", func() {
+		It("should reject v1beta2.SSP when v1beta3.SSP is already present", func() {
 			ssp := &sspv1beta2.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp2",
@@ -91,7 +91,7 @@ var _ = Describe("SSP Validation", func() {
 			Expect(err).To(MatchError(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp")))
 		})
 
-		It("should reject v1beta3.SSP when v1beta2.SSP is already present", func() {
+		It("should reject v1beta3.SSP when one is already present", func() {
 			ssp := &sspv1beta3.SSP{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ssp2",
@@ -294,6 +294,41 @@ var _ = Describe("SSP Validation", func() {
 
 				_, err = validator.ValidateUpdate(ctx, oldSSP, newSSP)
 				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("cluster", func() {
+			It("should fail if cluster is nil and multi-arch is enabled", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						EnableMultipleArchitectures: ptr.To(true),
+						Cluster:                     nil,
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring(".spec.cluster needs to be non-nil, if multi-architecture is enabled")))
+			})
+
+			It("should fail if control plane architectures are empty", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						Cluster: &sspv1beta3.Cluster{
+							ControlPlaneArchitectures: nil,
+						},
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring(".spec.cluster.controlPlaneArchitectures cannot be empty")))
 			})
 		})
 

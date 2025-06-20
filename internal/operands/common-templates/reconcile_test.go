@@ -2,6 +2,7 @@ package common_templates
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -32,10 +33,7 @@ const (
 	namespace = "kubevirt"
 	name      = "test-ssp"
 
-	testOsLabel       = TemplateOsLabelPrefix + "some-os"
-	testFlavorLabel   = TemplateFlavorLabelPrefix + "test"
-	testWorkflowLabel = TemplateWorkloadLabelPrefix + "server"
-	futureVersion     = "v999.999.999"
+	futureVersion = "v999.999.999"
 )
 
 func TestTemplates(t *testing.T) {
@@ -44,9 +42,11 @@ func TestTemplates(t *testing.T) {
 }
 
 var _ = Describe("Common-Templates operand", func() {
+	// TODO -- using this could fail on other archs than amd64?
+	const defaultArch = runtime.GOARCH
 
 	var (
-		testTemplates []templatev1.Template
+		testTemplates map[string][]templatev1.Template
 		operand       operands.Operand
 		request       common.Request
 	)
@@ -95,10 +95,12 @@ var _ = Describe("Common-Templates operand", func() {
 		}
 	})
 
+	// TODO -- add tests for multi-arch
+
 	It("should create common-template resources", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		for _, template := range testTemplates {
+		for _, template := range testTemplates[defaultArch] {
 			template.Namespace = namespace
 			ExpectResourceExists(&template, request)
 		}
@@ -114,7 +116,7 @@ var _ = Describe("Common-Templates operand", func() {
 			testLabel      = "some.test.label"
 		)
 
-		for _, template := range getTestTemplates() {
+		for _, template := range getTestTemplates()[defaultArch] {
 			template.Namespace = namespace
 			template.Labels[defaultOsLabel] = "true"
 			template.Labels[testLabel] = "test"
@@ -124,9 +126,9 @@ var _ = Describe("Common-Templates operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		for i := range testTemplates {
+		for i := range testTemplates[defaultArch] {
 			key := client.ObjectKey{
-				Name:      testTemplates[i].Name,
+				Name:      testTemplates[defaultArch][i].Name,
 				Namespace: namespace,
 			}
 			template := &templatev1.Template{}
@@ -143,114 +145,56 @@ var _ = Describe("Common-Templates operand", func() {
 
 	Context("old templates", func() {
 		var (
-			parentTpl, oldTpl, newerTemplate *templatev1.Template
+			oldTpl        templatev1.Template
+			newerTemplate templatev1.Template
 		)
 
 		BeforeEach(func() {
-			// Create a dummy template to act as an owner for the test template
-			// we can't use the SSP CR as an owner for these tests because the templates
-			// might be deployed in a different namespace than the CR, and will be immediately
-			// removed by the GC, the choice to use a template as an owner object was arbitrary
-			parentTpl = &templatev1.Template{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "parent-test-template",
-					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
-				},
-			}
-			Expect(request.Client.Create(request.Context, parentTpl)).ToNot(HaveOccurred(), "creation of parent template failed")
-			key := client.ObjectKeyFromObject(parentTpl)
-			Expect(request.Client.Get(request.Context, key, parentTpl)).ToNot(HaveOccurred())
+			oldTpl = createTestTemplate("test-tpl", "some-os", "test", "server", defaultArch)
+			oldTpl.Namespace = namespace
+			oldTpl.Labels[TemplateVersionLabel] = "not-latest"
 
-			oldTpl = &templatev1.Template{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-tpl",
-					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
-					Labels: map[string]string{
-						TemplateVersionLabel: "not-latest",
-						TemplateTypeLabel:    TemplateTypeLabelBaseValue,
-						testOsLabel:          "true",
-						testFlavorLabel:      "true",
-						testWorkflowLabel:    "true",
-					},
-					Annotations: map[string]string{},
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion: parentTpl.APIVersion,
-						Kind:       parentTpl.Kind,
-						UID:        parentTpl.UID,
-						Name:       parentTpl.Name,
-					}},
-				},
-			}
+			Expect(libhandler.SetOwnerAnnotations(request.Instance, &oldTpl)).To(Succeed())
 
-			err := request.Client.Create(request.Context, oldTpl)
+			err := request.Client.Create(request.Context, &oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
 
-			newerTemplate = &templatev1.Template{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-tpl-newer",
-					Namespace: request.Instance.Spec.CommonTemplates.Namespace,
-					Labels: map[string]string{
-						TemplateVersionLabel: futureVersion,
-						TemplateTypeLabel:    TemplateTypeLabelBaseValue,
-						testOsLabel:          "true",
-						testFlavorLabel:      "true",
-						testWorkflowLabel:    "true",
-					},
-					Annotations: map[string]string{},
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion: parentTpl.APIVersion,
-						Kind:       parentTpl.Kind,
-						UID:        parentTpl.UID,
-						Name:       parentTpl.Name,
-					}},
-				},
-			}
+			newerTemplate = createTestTemplate("test-tpl-newer", "some-os", "test", "server", defaultArch)
+			newerTemplate.Namespace = namespace
+			newerTemplate.Labels[TemplateVersionLabel] = futureVersion
 
-			err = request.Client.Create(request.Context, newerTemplate)
+			Expect(libhandler.SetOwnerAnnotations(request.Instance, &newerTemplate)).To(Succeed())
+
+			err = request.Client.Create(request.Context, &newerTemplate)
 			Expect(err).ToNot(HaveOccurred(), "creation of newer template failed")
-		})
-
-		It("should replace ownerReferences with owner annotations for older templates", func() {
-
-			Expect(oldTpl.GetOwnerReferences()).ToNot(BeNil(), "template should have owner reference before reconciliation")
-
-			_, err := operand.Reconcile(&request)
-			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
-
-			key := client.ObjectKeyFromObject(oldTpl)
-			updatedTpl := &templatev1.Template{}
-			err = request.Client.Get(request.Context, key, updatedTpl)
-			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
-
-			Expect(updatedTpl.GetOwnerReferences()).To(BeEmpty(), "ownerReferences exist for an older template")
-			Expect(updatedTpl.GetAnnotations()[libhandler.NamespacedNameAnnotation]).ToNot(Equal(""), "owner name annotation is empty for an older template")
-			Expect(updatedTpl.GetAnnotations()[libhandler.TypeAnnotation]).ToNot(Equal(""), "owner type annotation is empty for an older template")
 		})
 
 		It("should remove labels from old templates but keep future template untouched", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred(), "reconciliation in order to update old template failed")
 
-			key := client.ObjectKeyFromObject(oldTpl)
+			key := client.ObjectKeyFromObject(&oldTpl)
 			updatedTpl := &templatev1.Template{}
 			err = request.Client.Get(request.Context, key, updatedTpl)
 			Expect(err).ToNot(HaveOccurred(), "failed fetching updated template")
 
-			Expect(updatedTpl.Labels[testOsLabel]).To(Equal(""), TemplateOsLabelPrefix+" should be empty")
-			Expect(updatedTpl.Labels[testFlavorLabel]).To(Equal(""), TemplateFlavorLabelPrefix+" should be empty")
-			Expect(updatedTpl.Labels[testWorkflowLabel]).To(Equal(""), TemplateWorkloadLabelPrefix+" should be empty")
+			Expect(updatedTpl.Labels).ToNot(HaveKey(HavePrefix(TemplateOsLabelPrefix)), TemplateOsLabelPrefix+" should be empty")
+			Expect(updatedTpl.Labels).ToNot(HaveKey(HavePrefix(TemplateFlavorLabelPrefix)), TemplateFlavorLabelPrefix+" should be empty")
+			Expect(updatedTpl.Labels).ToNot(HaveKey(HavePrefix(TemplateWorkloadLabelPrefix)), TemplateWorkloadLabelPrefix+" should be empty")
+
 			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(TemplateTypeLabelBaseValue), TemplateTypeLabel+" should equal base")
 			Expect(updatedTpl.Labels[TemplateVersionLabel]).To(Equal("not-latest"), TemplateVersionLabel+" should equal not-latest")
 			Expect(updatedTpl.Annotations[TemplateDeprecatedAnnotation]).To(Equal("true"), TemplateDeprecatedAnnotation+" should not be empty")
 
-			key = client.ObjectKeyFromObject(newerTemplate)
+			key = client.ObjectKeyFromObject(&newerTemplate)
 			newerTpl := &templatev1.Template{}
 			err = request.Client.Get(request.Context, key, newerTpl)
 			Expect(err).ToNot(HaveOccurred(), "failed fetching newer template")
 
-			Expect(newerTpl.Labels[testOsLabel]).To(Equal("true"), TemplateOsLabelPrefix+" should not be empty")
-			Expect(newerTpl.Labels[testFlavorLabel]).To(Equal("true"), TemplateFlavorLabelPrefix+" should not be empty")
-			Expect(newerTpl.Labels[testWorkflowLabel]).To(Equal("true"), TemplateWorkloadLabelPrefix+" should not be empty")
+			Expect(newerTpl.Labels).To(HaveKeyWithValue(HavePrefix(TemplateOsLabelPrefix), "true"), TemplateOsLabelPrefix+" should not be empty")
+			Expect(newerTpl.Labels).To(HaveKeyWithValue(HavePrefix(TemplateFlavorLabelPrefix), "true"), TemplateFlavorLabelPrefix+" should not be empty")
+			Expect(newerTpl.Labels).To(HaveKeyWithValue(HavePrefix(TemplateWorkloadLabelPrefix), "true"), TemplateWorkloadLabelPrefix+" should not be empty")
+
 			Expect(newerTpl.Labels[TemplateTypeLabel]).To(Equal("base"), TemplateTypeLabel+" should equal base")
 			Expect(newerTpl.Labels[TemplateVersionLabel]).To(Equal(futureVersion), TemplateVersionLabel+" should equal "+futureVersion)
 			Expect(newerTpl.Annotations[TemplateDeprecatedAnnotation]).To(Equal(""), TemplateDeprecatedAnnotation+" should be empty")
@@ -284,15 +228,23 @@ var _ = Describe("Common-Templates operand", func() {
 	})
 
 	Context("kubevirt_ssp_common_templates_restored_total metric", func() {
-		var template *templatev1.Template
-		var initialMetricValue float64
+		var (
+			originalTemplate   *templatev1.Template
+			template           *templatev1.Template
+			initialMetricValue float64
+		)
 
 		BeforeEach(func() {
+			originalTemplate = &testTemplates[defaultArch][0]
+			originalTemplate.Namespace = namespace
+
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
-			template = getTemplate(request, &testTemplates[0])
-			template.Namespace = namespace
+			template = &templatev1.Template{}
+			Expect(request.Client.Get(
+				request.Context, client.ObjectKeyFromObject(originalTemplate), template,
+			)).To(Succeed())
 
 			value, err := metrics.GetCommonTemplatesRestored()
 			Expect(err).ToNot(HaveOccurred())
@@ -307,8 +259,12 @@ var _ = Describe("Common-Templates operand", func() {
 			_, err = operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
-			updatedTpl := getTemplate(request, template)
-			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
+			updatedTpl := &templatev1.Template{}
+			Expect(request.Client.Get(
+				request.Context, client.ObjectKeyFromObject(template), updatedTpl,
+			)).To(Succeed())
+
+			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(originalTemplate.Labels[TemplateTypeLabel]))
 
 			value, err := metrics.GetCommonTemplatesRestored()
 			Expect(err).ToNot(HaveOccurred())
@@ -324,8 +280,12 @@ var _ = Describe("Common-Templates operand", func() {
 			_, err = operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
-			updatedTpl := getTemplate(request, template)
-			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(testTemplates[0].Labels[TemplateTypeLabel]))
+			updatedTpl := &templatev1.Template{}
+			Expect(request.Client.Get(
+				request.Context, client.ObjectKeyFromObject(template), updatedTpl,
+			)).To(Succeed())
+
+			Expect(updatedTpl.Labels[TemplateTypeLabel]).To(Equal(originalTemplate.Labels[TemplateTypeLabel]))
 
 			value, err := metrics.GetCommonTemplatesRestored()
 			Expect(err).ToNot(HaveOccurred())
@@ -343,7 +303,11 @@ var _ = Describe("Common-Templates operand", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
-			updatedTemplate := getTemplate(request, template)
+			updatedTemplate := &templatev1.Template{}
+			Expect(request.Client.Get(
+				request.Context, client.ObjectKeyFromObject(template), updatedTemplate,
+			)).To(Succeed())
+
 			Expect(updatedTemplate.Labels).To(HaveKeyWithValue(common.AppKubernetesPartOfLabel, updatedPartOf))
 			Expect(updatedTemplate.Labels).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, updatedVersion))
 
@@ -354,37 +318,34 @@ var _ = Describe("Common-Templates operand", func() {
 	})
 })
 
-func getTestTemplates() []templatev1.Template {
-	return []templatev1.Template{{
+func getTestTemplates() map[string][]templatev1.Template {
+	const amdArch = "amd64"
+	const armArch = "arm64"
+
+	return map[string][]templatev1.Template{
+		amdArch: {
+			createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server", amdArch),
+			createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop", amdArch),
+		},
+		armArch: {
+			createTestTemplate("centos-stream8-server-medium-"+armArch, "centos8", "medium", "server", armArch),
+			createTestTemplate("windows10-desktop-medium-"+armArch, "win10", "medium", "desktop", armArch),
+		},
+	}
+}
+
+func createTestTemplate(name, os, flavor, workload, architecture string) templatev1.Template {
+	return templatev1.Template{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "centos-stream8-server-medium",
+			Name: name,
 			Labels: map[string]string{
 				TemplateTypeLabel:                      TemplateTypeLabelBaseValue,
 				TemplateVersionLabel:                   Version,
-				TemplateOsLabelPrefix + "centos8":      "true",
-				TemplateFlavorLabelPrefix + "medium":   "true",
-				TemplateWorkloadLabelPrefix + "server": "true",
+				TemplateOsLabelPrefix + os:             "true",
+				TemplateFlavorLabelPrefix + flavor:     "true",
+				TemplateWorkloadLabelPrefix + workload: "true",
+				TemplateArchitectureLabel:              architecture,
 			},
 		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "windows10-desktop-medium",
-			Labels: map[string]string{
-				TemplateTypeLabel:                       TemplateTypeLabelBaseValue,
-				TemplateVersionLabel:                    Version,
-				TemplateOsLabelPrefix + "win10":         "true",
-				TemplateFlavorLabelPrefix + "medium":    "true",
-				TemplateWorkloadLabelPrefix + "desktop": "true",
-			},
-		},
-	}}
-}
-
-func getTemplate(req common.Request, template *templatev1.Template) *templatev1.Template {
-	key := client.ObjectKeyFromObject(template)
-	updatedTpl := &templatev1.Template{}
-	err := req.Client.Get(req.Context, key, updatedTpl)
-	Expect(err).ToNot(HaveOccurred())
-
-	return updatedTpl
+	}
 }

@@ -3,14 +3,14 @@ package common_templates
 import (
 	"fmt"
 	"regexp"
+	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/blang/semver/v4"
 	"github.com/go-logr/logr"
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -36,18 +36,14 @@ func WatchClusterTypes() []operands.WatchType {
 }
 
 type commonTemplates struct {
-	templatesBundle   []templatev1.Template
-	deployedTemplates map[string]bool
+	templatesByArch map[string][]templatev1.Template
 }
 
 var _ operands.Operand = &commonTemplates{}
 
-func New(templates []templatev1.Template) operands.Operand {
-	deployedTemplates := make(map[string]bool)
-	for _, t := range templates {
-		deployedTemplates[t.Name] = true
-	}
-	return &commonTemplates{templatesBundle: templates, deployedTemplates: deployedTemplates}
+func New(templatesByArch map[string][]templatev1.Template) operands.Operand {
+	// TODO -- maybe split here based on arch
+	return &commonTemplates{templatesByArch: templatesByArch}
 }
 
 func (c *commonTemplates) Name() string {
@@ -68,16 +64,44 @@ func (c *commonTemplates) WatchTypes() []operands.WatchType {
 }
 
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(c.templatesBundle)...)
+	var clusterArchs []string
+	if request.Instance.Spec.EnableMultipleArchitectures != nil && *request.Instance.Spec.EnableMultipleArchitectures {
+		if request.Instance.Spec.Cluster == nil {
+			return nil, fmt.Errorf("SSP .spec.cluster needs to be non-nil, if multi-architecture is enabled")
+		}
+		clusterArchs = request.Instance.Spec.Cluster.WorkloadArchitectures
+	} else {
+		if request.Instance.Spec.Cluster != nil && len(request.Instance.Spec.Cluster.ControlPlaneArchitectures) > 0 {
+			// Take the first architecture of the control plane
+			clusterArchs = []string{request.Instance.Spec.Cluster.ControlPlaneArchitectures[0]}
+		} else {
+			// TODO -- is this correct? Yes, at least for backward compat.
+			clusterArchs = []string{runtime.GOARCH}
+		}
+	}
+
+	// TODO -- this is memory inefficient, improve
+	var templates []templatev1.Template
+	templatesSet := map[string]struct{}{}
+	for _, arch := range clusterArchs {
+		for i := range c.templatesByArch[arch] {
+			template := &c.templatesByArch[arch][i]
+			templates = append(templates, *template)
+			templatesSet[template.Name] = struct{}{}
+		}
+	}
+
+	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(templates)...)
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO -- how will this metric handle cluster change?
 	if !operatorIsUpgrading(request) && !request.InstanceChanged {
 		incrementTemplatesRestoredMetric(reconcileTemplatesResults, request.Logger)
 	}
 
-	oldTemplateFuncs, err := c.reconcileOlderTemplates(request)
+	oldTemplateFuncs, err := c.deprecateOrDeleteOldTemplates(request, templatesSet, clusterArchs)
 	if err != nil {
 		return nil, err
 	}
@@ -109,116 +133,71 @@ func incrementTemplatesRestoredMetric(reconcileResults []common.ReconcileResult,
 }
 
 func (c *commonTemplates) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
-	var objects []client.Object
-	namespace := request.Instance.Spec.CommonTemplates.Namespace
-
-	deprecatedTemplates, err := getDeprecatedTemplates(request)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, obj := range deprecatedTemplates.Items {
-		obj.ObjectMeta.Namespace = namespace
-		objects = append(objects, &obj)
-	}
-
-	for index := range c.templatesBundle {
-		c.templatesBundle[index].ObjectMeta.Namespace = namespace
-		objects = append(objects, &c.templatesBundle[index])
-	}
-
-	return common.DeleteAll(request, objects...)
-}
-
-func getDeprecatedTemplates(request *common.Request) (*templatev1.TemplateList, error) {
-	deprecatedTemplates := &templatev1.TemplateList{}
-	err := request.Client.List(request.Context, deprecatedTemplates, &client.ListOptions{
-		LabelSelector: getDeprecatedTemplatesLabelSelector(),
-		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,
-	})
-
-	// There might not be any templates (in case of a fresh deployment), so a NotFound error is accepted
+	ownedTemplates, err := listAllOwnedTemplates(request)
 	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
+		return nil, fmt.Errorf("error listing owned templates: %w", err)
 	}
-	return deprecatedTemplates, nil
+
+	var results []common.CleanupResult
+	for _, obj := range ownedTemplates {
+		result, err := common.Cleanup(request, &obj)
+		if err != nil {
+			return nil, fmt.Errorf("error cleaning up template %s/%s: %w", obj.Namespace, obj.Name, err)
+		}
+		results = append(results, result)
+	}
+
+	return results, nil
 }
 
-func getDeprecatedTemplatesLabelSelector() labels.Selector {
-	deprecatedRequirement, err := labels.NewRequirement(TemplateDeprecatedAnnotation, selection.Equals, []string{"true"})
-	if err != nil {
-		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateDeprecatedAnnotation, "true"))
-	}
-	return labels.NewSelector().Add(*deprecatedRequirement)
-}
-
-func getOldTemplatesLabelSelector() labels.Selector {
-	baseRequirement, err := labels.NewRequirement(TemplateTypeLabel, selection.Equals, []string{TemplateTypeLabelBaseValue})
-	if err != nil {
-		panic(fmt.Sprintf("Failed creating label selector for '%s=%s'", TemplateTypeLabel, TemplateTypeLabelBaseValue))
-	}
-
-	// Only fetching older templates  to prevent duplication of API calls
-	versionRequirement, err := labels.NewRequirement(TemplateVersionLabel, selection.NotEquals, []string{Version})
-	if err != nil {
-		panic(fmt.Sprintf("Failed creating label selector for '%s!=%s'", TemplateVersionLabel, Version))
-	}
-
-	return labels.NewSelector().Add(*baseRequirement, *versionRequirement)
-}
-
-func (c *commonTemplates) reconcileOlderTemplates(request *common.Request) ([]common.ReconcileFunc, error) {
-	existingTemplates := &templatev1.TemplateList{}
-	err := request.Client.List(request.Context, existingTemplates, &client.ListOptions{
-		LabelSelector: getOldTemplatesLabelSelector(),
-		Namespace:     request.Instance.Spec.CommonTemplates.Namespace,
-	})
-
+func (c *commonTemplates) deprecateOrDeleteOldTemplates(request *common.Request, deployedTemplateNames map[string]struct{}, archs []string) ([]common.ReconcileFunc, error) {
+	existingTemplates, err := listAllOwnedTemplates(request)
 	// There might not be any templates (in case of a fresh deployment), so a NotFound error is accepted
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
 	}
 
-	templatesVersion, err := semver.ParseTolerant(Version)
+	latestTemplateVersion, err := semver.ParseTolerant(Version)
 	if err != nil {
 		return nil, err
 	}
 
-	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates.Items))
-	for i := range existingTemplates.Items {
-		template := &existingTemplates.Items[i]
+	// TODO -- do not preallocate (move to earlier commit) - a lot of existing templates
+	funcs := make([]common.ReconcileFunc, 0, len(existingTemplates))
+	for i := range existingTemplates {
+		template := &existingTemplates[i]
 
-		if _, ok := c.deployedTemplates[template.Name]; ok {
+		if _, ok := deployedTemplateNames[template.Name]; ok {
 			continue
 		}
 
-		// if template has higher version than is defined in ssp operator, keep it as it is. If parsing
-		// of template version fails, continue with adding deprecated label
+		if !template.DeletionTimestamp.IsZero() {
+			continue
+		}
+
+		templateArch := template.Labels[TemplateArchitectureLabel]
+		if templateArch == "" {
+			templateArch = TemplateDefaultArchitecture
+		}
+
+		// Delete the template, if it is not one of the cluster architectures
+		if !slices.Contains(archs, templateArch) {
+			// TODO -- investigate object lifetimes (may not be gc collected)
+			funcs = append(funcs, reconcileDeleteTemplate(template))
+			continue
+		}
+
+		// If template has lower version, than what is defined in ssp operator, deprecate it.
+		// Deprecate also, if version label cannot be parsed.
 		if template.Labels[TemplateVersionLabel] != "" {
-			v, err := semver.ParseTolerant(template.Labels[TemplateVersionLabel])
-			if err == nil && templatesVersion.Compare(v) == -1 {
+			version, err := semver.ParseTolerant(template.Labels[TemplateVersionLabel])
+			if err == nil && latestTemplateVersion.Compare(version) != 1 {
 				continue
 			}
 		}
 
-		funcs = append(funcs, func(*common.Request) (common.ReconcileResult, error) {
-			return common.CreateOrUpdate(request).
-				ClusterResource(template).
-				WithAppLabels(operandName, operandComponent).
-				UpdateFunc(func(_, foundRes client.Object) {
-					foundTemplate := foundRes.(*templatev1.Template)
-					foundTemplate.Annotations[TemplateDeprecatedAnnotation] = "true"
-					for key := range foundTemplate.Labels {
-						if strings.HasPrefix(key, TemplateOsLabelPrefix) ||
-							strings.HasPrefix(key, TemplateFlavorLabelPrefix) ||
-							strings.HasPrefix(key, TemplateWorkloadLabelPrefix) {
-							delete(foundTemplate.Labels, key)
-						}
-					}
-					foundTemplate.Labels[TemplateDeprecatedAnnotation] = "true"
-				}).
-				Reconcile()
-		})
+		// TODO -- investigate object lifetimes (may not be gc collected)
+		funcs = append(funcs, reconcileDeprecateTemplate(template))
 	}
 
 	return funcs, nil
@@ -251,6 +230,44 @@ func reconcileTemplatesFuncs(templatesBundle []templatev1.Template) []common.Rec
 	return funcs
 }
 
+func reconcileDeprecateTemplate(template *templatev1.Template) common.ReconcileFunc {
+	return func(request *common.Request) (common.ReconcileResult, error) {
+		return common.CreateOrUpdate(request).
+			ClusterResource(template).
+			WithAppLabels(operandName, operandComponent).
+			UpdateFunc(func(_, foundRes client.Object) {
+				foundTemplate := foundRes.(*templatev1.Template)
+				foundTemplate.Annotations[TemplateDeprecatedAnnotation] = "true"
+				for key := range foundTemplate.Labels {
+					if strings.HasPrefix(key, TemplateOsLabelPrefix) ||
+						strings.HasPrefix(key, TemplateFlavorLabelPrefix) ||
+						strings.HasPrefix(key, TemplateWorkloadLabelPrefix) {
+						delete(foundTemplate.Labels, key)
+					}
+				}
+				foundTemplate.Labels[TemplateDeprecatedAnnotation] = "true"
+			}).
+			Reconcile()
+	}
+}
+
+func reconcileDeleteTemplate(template *templatev1.Template) common.ReconcileFunc {
+	return func(request *common.Request) (common.ReconcileResult, error) {
+		err := request.Client.Delete(request.Context, template)
+		if errors.IsNotFound(err) {
+			return common.ReconcileResult{
+				Resource: template,
+			}, nil
+		}
+		if err != nil {
+			return common.ReconcileResult{}, fmt.Errorf(
+				"error deleting template with non-cluster architecture %s/%s: %w",
+				template.Namespace, template.Name, err)
+		}
+		return common.ResourceDeletedResult(template, common.OperationResultDeleted), nil
+	}
+}
+
 func syncPredefinedAnnotationsAndLabels(foundTemplate, newTemplate *templatev1.Template) {
 	for annotation := range foundTemplate.Annotations {
 		if isPredefinedKey(annotation) {
@@ -275,4 +292,8 @@ func isPredefinedKey(key string) bool {
 		key == "iconClass" ||
 		strings.HasPrefix(key, "openshift.io/") ||
 		templateKubevirtIoPattern.MatchString(key)
+}
+
+func listAllOwnedTemplates(request *common.Request) ([]templatev1.Template, error) {
+	return common.ListOwnedResources[templatev1.TemplateList, templatev1.Template](request)
 }

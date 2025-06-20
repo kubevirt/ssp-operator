@@ -73,7 +73,7 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (
 		return nil, err
 	}
 
-	var ssps sspv1beta2.SSPList
+	var ssps sspv1beta3.SSPList
 
 	// Check if no other SSP resources are present in the cluster
 	ssplog.Info("validate create", "name", sspObj.Name)
@@ -103,7 +103,11 @@ func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admi
 	return nil, nil
 }
 
-func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta2.SSP) (admission.Warnings, error) {
+func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta3.SSP) (admission.Warnings, error) {
+	if err := validateCluster(ssp); err != nil {
+		return nil, fmt.Errorf("cluster validation error: %w", err)
+	}
+
 	if err := validateDataImportCronTemplates(ssp); err != nil {
 		return nil, fmt.Errorf("dataImportCronTemplates validation error: %w", err)
 	}
@@ -115,7 +119,22 @@ func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta2.SS
 	return nil, nil
 }
 
-func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta2.SSP) error {
+func validateCluster(ssp *sspv1beta3.SSP) error {
+	if ssp.Spec.Cluster == nil {
+		if ssp.Spec.EnableMultipleArchitectures != nil && *ssp.Spec.EnableMultipleArchitectures {
+			return fmt.Errorf(".spec.cluster needs to be non-nil, if multi-architecture is enabled")
+		}
+		return nil
+	}
+
+	if len(ssp.Spec.Cluster.ControlPlaneArchitectures) == 0 {
+		return fmt.Errorf(".spec.cluster.controlPlaneArchitectures cannot be empty")
+	}
+
+	return nil
+}
+
+func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta3.SSP) error {
 	if ssp.Spec.TemplateValidator == nil {
 		return nil
 	}
@@ -174,7 +193,7 @@ func (s *sspValidator) validateOperandPlacement(ctx context.Context, namespace s
 }
 
 // TODO: also validate DataImportCronTemplates in general once CDI exposes its own validation
-func validateDataImportCronTemplates(ssp *sspv1beta2.SSP) error {
+func validateDataImportCronTemplates(ssp *sspv1beta3.SSP) error {
 	for _, cron := range ssp.Spec.CommonTemplates.DataImportCronTemplates {
 		if cron.Name == "" {
 			return fmt.Errorf("missing name in DataImportCronTemplate")
@@ -187,11 +206,11 @@ func newSspValidator(clt client.Client) *sspValidator {
 	return &sspValidator{apiClient: clt}
 }
 
-func getSsp(obj runtime.Object) (*sspv1beta2.SSP, error) {
+func getSsp(obj runtime.Object) (*sspv1beta3.SSP, error) {
 	switch sspObj := obj.(type) {
-	case *sspv1beta2.SSP:
-		return sspObj, nil
 	case *sspv1beta3.SSP:
+		return sspObj, nil
+	case *sspv1beta2.SSP:
 		return convert.ConvertSSP(sspObj), nil
 	default:
 		return nil, fmt.Errorf("unexpected type: %T", obj)
