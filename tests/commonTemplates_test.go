@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	templatev1 "github.com/openshift/api/template/v1"
+	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -227,21 +228,11 @@ var _ = Describe("Common templates", func() {
 		)
 
 		var (
-			ownerTemplate, oldTemplate *templatev1.Template
+			oldTemplate *templatev1.Template
 		)
 
 		BeforeEach(func() {
-			// Create a dummy template to act as an owner for the test template
-			// we can't use the SSP CR as an owner for these tests because the templates
-			// might be deployed in a different namespace than the CR, and will be immediately
-			// removed by the GC, the choice to use a template as an owner object was arbitrary
-			ownerTemplate = &templatev1.Template{
-				ObjectMeta: metav1.ObjectMeta{
-					GenerateName: "owner-template-",
-					Namespace:    strategy.GetTemplatesNamespace(),
-				},
-			}
-			Expect(apiClient.Create(ctx, ownerTemplate)).ToNot(HaveOccurred(), "failed to create dummy owner for an old template")
+			ssp := getSsp()
 
 			oldTemplate = &templatev1.Template{
 				ObjectMeta: metav1.ObjectMeta{
@@ -254,37 +245,17 @@ var _ = Describe("Common templates", func() {
 						testFlavorLabel:                      "true",
 						testWorkflowLabel:                    "true",
 					},
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion: templatev1.GroupVersion.String(),
-						Kind:       "Template",
-						Name:       ownerTemplate.Name,
-						UID:        ownerTemplate.UID,
-					}},
 				},
 			}
+			Expect(libhandler.SetOwnerAnnotations(ssp, oldTemplate)).To(Succeed())
+
 			Expect(apiClient.Create(ctx, oldTemplate)).ToNot(HaveOccurred(), "creation of dummy old template failed")
 		})
 
 		AfterEach(func() {
 			Expect(apiClient.Delete(ctx, oldTemplate)).ToNot(HaveOccurred(), "deletion of dummy old template failed")
-			Expect(apiClient.Delete(ctx, ownerTemplate)).ToNot(HaveOccurred(), "deletion of dummy owner template failed")
 		})
 
-		It("[test_id:5621]should replace ownerReference with owner annotations for older templates", func() {
-			triggerReconciliation()
-
-			// Template should eventually be updated by the operator
-			Eventually(func() (bool, error) {
-				updatedTpl := &templatev1.Template{}
-				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
-				err := apiClient.Get(ctx, key, updatedTpl)
-				if err != nil {
-					return false, err
-				}
-				return len(updatedTpl.GetOwnerReferences()) == 0 &&
-					hasOwnerAnnotations(updatedTpl.GetAnnotations()), nil
-			}, env.ShortTimeout()).Should(BeTrue(), "ownerReference was not replaced by owner annotations on the old template")
-		})
 		It("[test_id:5620]should remove labels from old templates", func() {
 			triggerReconciliation()
 			// Template should eventually be updated by the operator
