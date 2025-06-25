@@ -15,6 +15,7 @@ import (
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/tests/decorators"
 )
 
 // Placement API tests variables
@@ -64,7 +65,7 @@ var (
 	}
 )
 
-var _ = Describe("Validation webhook", func() {
+var _ = Describe("Validation webhook", decorators.Conformance, func() {
 	BeforeEach(func() {
 		waitUntilDeployed()
 	})

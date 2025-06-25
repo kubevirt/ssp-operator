@@ -25,6 +25,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -39,12 +40,12 @@ var _ = Describe("Observed generation", func() {
 		waitUntilDeployed()
 	})
 
-	It("[test_id:6058] after deployment observedGeneration equals generation", func() {
+	It("[test_id:6058] after deployment observedGeneration equals generation", decorators.Conformance, func() {
 		ssp := getSsp()
 		Expect(ssp.Status.ObservedGeneration).To(Equal(ssp.Generation))
 	})
 
-	It("[test_id:6059] should update observed generation after CR update", func() {
+	It("[test_id:6059] should update observed generation after CR update", decorators.Conformance, func() {
 		watch, err := StartWatch(sspListerWatcher)
 		Expect(err).ToNot(HaveOccurred())
 		defer watch.Stop()
@@ -73,7 +74,7 @@ var _ = Describe("Observed generation", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("[test_id:6060] should update observed generation when removing CR", func() {
+	It("[test_id:6060] should update observed generation when removing CR", decorators.Conformance, func() {
 		watch, err := StartWatch(sspListerWatcher)
 		Expect(err).ToNot(HaveOccurred())
 		defer watch.Stop()

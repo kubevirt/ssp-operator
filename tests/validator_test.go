@@ -32,6 +32,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -152,7 +153,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	Context("resource creation", func() {
-		DescribeTable("created cluster resource", func(res *testResource) {
+		DescribeTable("created cluster resource", decorators.Conformance, func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
@@ -163,7 +164,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4909] validating webhook configuration", &webhookConfigRes),
 		)
 
-		DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", decorators.Conformance, func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
@@ -186,7 +187,7 @@ var _ = Describe("Template validator operand", func() {
 		)
 	})
 
-	Context("resource deletion", func() {
+	Context("resource deletion", decorators.Conformance, func() {
 		DescribeTable("recreate after delete", expectRecreateAfterDelete,
 			Entry("[test_id:4914] cluster role", &clusterRoleRes),
 			Entry("[test_id:4916] cluster role binding", &clusterRoleBindingRes),
@@ -200,7 +201,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	Context("resource change", func() {
-		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+		DescribeTable("should restore modified resource", decorators.Conformance, expectRestoreAfterUpdate,
 			Entry("[test_id:4915] cluster role", &clusterRoleRes),
 			Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes),
 			Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes),
@@ -219,7 +220,7 @@ var _ = Describe("Template validator operand", func() {
 				unpauseSsp()
 			})
 
-			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+			DescribeTable("should restore modified resource with pause", decorators.Conformance, expectRestoreAfterUpdateWithPause,
 				Entry("[test_id:5534] cluster role", &clusterRoleRes),
 				Entry("[test_id:5535] cluster role binding", &clusterRoleBindingRes),
 				Entry("[test_id:5536] validating webhook configuration", &webhookConfigRes),
@@ -241,7 +242,7 @@ var _ = Describe("Template validator operand", func() {
 		)
 	})
 
-	It("[test_id:4913] should successfully start template-validator pod", func() {
+	It("[test_id:4913] should successfully start template-validator pod", decorators.Conformance, func() {
 		strategy.SkipUnlessHighlyAvailableTopologyMode()
 		labels := map[string]string{"kubevirt.io": "virt-template-validator"}
 		Eventually(func() int {
@@ -261,7 +262,7 @@ var _ = Describe("Template validator operand", func() {
 		}, env.Timeout(), time.Second).Should(BeNumerically("==", strategy.GetValidatorReplicas()))
 	})
 
-	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", func() {
+	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", decorators.Conformance, func() {
 		foundSsp := getSsp()
 
 		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed), "SSP should be in phase Deployed")
@@ -283,7 +284,7 @@ var _ = Describe("Template validator operand", func() {
 		Expect(deployment.Status.AvailableReplicas).To(Equal(int32(strategy.GetValidatorReplicas())), "deployment available replicas")
 	})
 
-	Context("with SSP resource modification", func() {
+	Context("with SSP resource modification", decorators.Conformance, func() {
 		BeforeEach(func() {
 			strategy.SkipSspUpdateTestsIfNeeded()
 		})
@@ -462,7 +463,7 @@ var _ = Describe("Template validator webhooks", func() {
 		}
 	})
 
-	Context("Validation defined on template", func() {
+	Context("Validation defined on template", decorators.Conformance, func() {
 		It("[test_id:5584]should create VM without template", func() {
 			vm = NewVirtualMachine(vmi)
 			Expect(apiClient.Create(ctx, vm)).ToNot(HaveOccurred(), "Failed to create VM")
@@ -636,7 +637,7 @@ var _ = Describe("Template validator webhooks", func() {
 		})
 	})
 
-	Context("Validation inside VM object", func() {
+	Context("Validation inside VM object", decorators.Conformance, func() {
 		It("[test_id:5173]: should create a VM that passes validation", func() {
 			template = TemplateWithoutRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
@@ -799,7 +800,7 @@ var _ = Describe("Template validator webhooks", func() {
 		})
 	})
 
-	Context("Deleting template", func() {
+	Context("Deleting template", decorators.Conformance, func() {
 		It("[test_id:7026] Can delete template if no VM uses it", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
