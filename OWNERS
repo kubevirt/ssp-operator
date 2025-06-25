@@ -2,6 +2,7 @@ approvers:
   - 0xFelix
   - akrejcir
   - ksimon1
+emeritus_approvers:
   - lyarwood
 reviewers:
   - 0xFelix
@@ -9,4 +10,3 @@ reviewers:
   - codingben
   - jcanocan
   - ksimon1
-  - lyarwood
