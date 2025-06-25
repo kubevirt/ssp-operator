@@ -15,6 +15,7 @@ import (
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/tests/decorators"
 )
 
 // Placement API tests variables
@@ -70,7 +71,7 @@ var _ = Describe("Validation webhook", func() {
 	})
 
 	Context("creation", func() {
-		It("[test_id:5242] [v1beta2] should fail to create a second SSP CR", func() {
+		It("[test_id:5242] [v1beta2] should fail to create a second SSP CR", decorators.Conformance, func() {
 			foundSsp := getSspV1Beta2()
 			ssp2 := foundSsp.DeepCopy()
 			ssp2.ObjectMeta = v1.ObjectMeta{
@@ -86,7 +87,7 @@ var _ = Describe("Validation webhook", func() {
 			)))
 		})
 
-		It("[test_id:TODO] [v1beta3] should fail to create a second SSP CR", func() {
+		It("[test_id:TODO] [v1beta3] should fail to create a second SSP CR", decorators.Conformance, func() {
 			foundSsp := getSsp()
 			ssp2 := foundSsp.DeepCopy()
 			ssp2.ObjectMeta = v1.ObjectMeta{
@@ -139,7 +140,7 @@ var _ = Describe("Validation webhook", func() {
 						"failed to create SSP CR with valid template-validator placement fields")
 				})
 
-				It("[test_id:TODO] [v1beta3] should succeed with valid template-validator placement fields", func() {
+				It("[test_id:TODO] [v1beta3] should succeed with valid template-validator placement fields", decorators.Conformance, func() {
 					newSspV1Beta3.Spec.TemplateValidator = &sspv1beta3.TemplateValidator{
 						Placement: &placementAPIValidationValidPlacement,
 					}
@@ -157,7 +158,7 @@ var _ = Describe("Validation webhook", func() {
 						"created SSP CR with invalid template-validator placement fields")
 				})
 
-				It("[test_id:5987] [v1beat3] should fail with invalid template-validator placement fields", func() {
+				It("[test_id:5987] [v1beat3] should fail with invalid template-validator placement fields", decorators.Conformance, func() {
 					newSspV1Beta3.Spec.TemplateValidator = &sspv1beta3.TemplateValidator{
 						Placement: &placementAPIValidationInvalidPlacement,
 					}
@@ -175,7 +176,7 @@ var _ = Describe("Validation webhook", func() {
 				Expect(err).To(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
 			})
 
-			It("[test_id:TODO] [v1beta3] should fail when DataImportCronTemplate does not have a name", func() {
+			It("[test_id:TODO] [v1beta3] should fail when DataImportCronTemplate does not have a name", decorators.Conformance, func() {
 				newSspV1Beta3.Spec.CommonTemplates.DataImportCronTemplates = []sspv1beta3.DataImportCronTemplate{{
 					ObjectMeta: metav1.ObjectMeta{Name: ""},
 				}}
@@ -205,7 +206,7 @@ var _ = Describe("Validation webhook", func() {
 				}, 20*time.Second, time.Second).ShouldNot(HaveOccurred(), "failed to update SSP CR with valid template-validator placement fields")
 			})
 
-			It("[test_id:5990] [v1beta3] should succeed with valid template-validator placement fields", func() {
+			It("[test_id:5990] [v1beta3] should succeed with valid template-validator placement fields", decorators.Conformance, func() {
 				Eventually(func() error {
 					foundSsp := getSsp()
 					foundSsp.Spec.TemplateValidator = &sspv1beta3.TemplateValidator{
@@ -226,7 +227,7 @@ var _ = Describe("Validation webhook", func() {
 				}, 20*time.Second, time.Second).Should(Equal(metav1.StatusReasonInvalid), "SSP CR updated with invalid template-validator placement fields")
 			})
 
-			It("[test_id:5989] [v1beta3] should fail with invalid template-validator placement fields", func() {
+			It("[test_id:5989] [v1beta3] should fail with invalid template-validator placement fields", decorators.Conformance, func() {
 				Eventually(func() v1.StatusReason {
 					foundSsp := getSsp()
 					foundSsp.Spec.TemplateValidator = &sspv1beta3.TemplateValidator{
@@ -248,7 +249,7 @@ var _ = Describe("Validation webhook", func() {
 			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("missing name in DataImportCronTemplate")))
 		})
 
-		It("[test_id:TODO] [v1beta3] should fail when DataImportCronTemplate does not have a name", func() {
+		It("[test_id:TODO] [v1beta3] should fail when DataImportCronTemplate does not have a name", decorators.Conformance, func() {
 			Eventually(func() error {
 				foundSsp := getSsp()
 				foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []sspv1beta3.DataImportCronTemplate{{

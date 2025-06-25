@@ -17,6 +17,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/controllers"
 	sspenv "kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -35,7 +36,7 @@ var _ = Describe("Service Controller", func() {
 		waitUntilDeployed()
 	})
 
-	It("[test_id: 8807] Should create ssp-operator-metrics service", func() {
+	It("[test_id:8807] Should create ssp-operator-metrics service", decorators.Conformance, func() {
 		_, serviceErr := getSspMetricsService()
 		Expect(serviceErr).ToNot(HaveOccurred(), "Failed to get ssp-operator-metrics service")
 	})
@@ -50,7 +51,7 @@ var _ = Describe("Service Controller", func() {
 		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(BeEmpty())
 	})
 
-	It("[test_id: 8808] Should re-create ssp-operator-metrics service if deleted", func() {
+	It("[test_id:8808] Should re-create ssp-operator-metrics service if deleted", decorators.Conformance, func() {
 		service, serviceErr := getSspMetricsService()
 		Expect(serviceErr).ToNot(HaveOccurred(), "Failed to get ssp-operator-metrics service")
 		oldUID := service.UID
@@ -65,7 +66,7 @@ var _ = Describe("Service Controller", func() {
 		}, env.ShortTimeout(), time.Second).ShouldNot(Equal(oldUID), fmt.Sprintf("Did not recreate the %s service", controllers.MetricsServiceName))
 	})
 
-	It("[test_id: 8810] Should restore ssp-operator-metrics service after update", func() {
+	It("[test_id:8810] Should restore ssp-operator-metrics service after update", decorators.Conformance, func() {
 		service, serviceErr := getSspMetricsService()
 		Expect(serviceErr).ToNot(HaveOccurred(), "Failed to get ssp-operator-metrics service")
 		changed := service.DeepCopy()

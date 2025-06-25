@@ -12,6 +12,7 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -47,7 +48,7 @@ var _ = Describe("VM delete protection", func() {
 		}
 	})
 
-	DescribeTable("should not allow to delete a VM if the protection is enabled", func(labelValue string) {
+	DescribeTable("should not allow to delete a VM if the protection is enabled", decorators.Conformance, func(labelValue string) {
 		vm = createVMWithDeleteProtection(labelValue)
 
 		Expect(apiClient.Delete(ctx, vm)).To(MatchError(ContainSubstring("VirtualMachine %v cannot be deleted, disable/remove label "+
@@ -57,7 +58,7 @@ var _ = Describe("VM delete protection", func() {
 		Entry("[test_id:11927] using true as value", "true"),
 	)
 
-	DescribeTable("should be able to delete a VM if the protection is disabled", func(labelValue string) {
+	DescribeTable("should be able to delete a VM if the protection is disabled", decorators.Conformance, func(labelValue string) {
 		vm = createVMWithDeleteProtection(labelValue)
 
 		Expect(apiClient.Delete(ctx, vm)).To(Succeed())
@@ -70,7 +71,7 @@ var _ = Describe("VM delete protection", func() {
 		Entry("[test_id:11932] using empty string as value", ""),
 	)
 
-	It("[test_id:11934] should be able to delete a VM if the VM does not have any label", func() {
+	It("[test_id:11934] should be able to delete a VM if the VM does not have any label", decorators.Conformance, func() {
 		vm = createVMWithLabels(nil)
 
 		Expect(apiClient.Delete(ctx, vm)).To(Succeed())

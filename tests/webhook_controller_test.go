@@ -13,6 +13,7 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/controllers"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -55,7 +56,7 @@ var _ = Describe("Webhook controller", func() {
 		}
 	})
 
-	It("[test_id:TODO] should delete namespaceSelector from webhook configuration with OLM label", func() {
+	It("[test_id:TODO] should delete namespaceSelector from webhook configuration with OLM label", decorators.Conformance, func() {
 		Expect(apiClient.Create(ctx, webhook)).To(Succeed())
 		DeferCleanup(func() {
 			Expect(apiClient.Delete(ctx, webhook)).To(Succeed())
@@ -74,7 +75,7 @@ var _ = Describe("Webhook controller", func() {
 		}, env.ShortTimeout(), time.Second).Should(Succeed())
 	})
 
-	It("[test_id:TODO] should not delete namespaceSelector from webhook configuration without OLM label", func() {
+	It("[test_id:TODO] should not delete namespaceSelector from webhook configuration without OLM label", decorators.Conformance, func() {
 		webhook.Labels = nil
 
 		Expect(apiClient.Create(ctx, webhook)).To(Succeed())
