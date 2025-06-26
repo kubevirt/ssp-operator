@@ -367,7 +367,7 @@ var (
 	apiServerHostname  string
 	ctx                context.Context
 	strategy           TestSuiteStrategy
-	sspListerWatcher   cache.ListerWatcher
+	sspListerWatcher   cache.ListerWatcherWithContext
 	portForwarder      PortForwarder
 	deploymentTimedOut bool
 	nodeArchitecture   string
@@ -459,7 +459,7 @@ func setupApiClient() {
 	sspListerWatcher = createSspListerWatcher(cfg)
 }
 
-func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcher {
+func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcherWithContext {
 	sspGvk, err := apiutil.GVKForObject(&sspv1beta3.SSP{}, testScheme)
 	Expect(err).ToNot(HaveOccurred())
 
