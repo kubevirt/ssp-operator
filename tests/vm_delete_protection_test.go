@@ -12,12 +12,13 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
 const deleteProtectionLabel = "kubevirt.io/vm-delete-protection"
 
-var _ = Describe("VM delete protection", func() {
+var _ = Describe("VM delete protection", decorators.Conformance, func() {
 
 	var vm *kubevirtv1.VirtualMachine
 

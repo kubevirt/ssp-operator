@@ -21,10 +21,11 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/common"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
-var _ = Describe("Crypto Policy", func() {
+var _ = Describe("Crypto Policy", decorators.Conformance, func() {
 	const tls10AllowedCipher = "ECDHE-ECDSA-AES128-SHA"
 	var (
 		old          = ocpv1.TLSSecurityProfile{Type: "Old", Old: &ocpv1.OldTLSProfile{}}
@@ -114,7 +115,7 @@ var _ = Describe("Crypto Policy", func() {
 	})
 
 	Context("setting Crypto Policy", func() {
-		DescribeTable("Adhere to defined TLSConfig", func(tlsConfigTestPermutation tlsConfigTestPermutation) {
+		DescribeTable("Adhere to defined TLSConfig", decorators.Conformance, func(tlsConfigTestPermutation tlsConfigTestPermutation) {
 			pod := operatorPod()
 			validatorPod := templateValidatorPod()
 
