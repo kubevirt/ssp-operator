@@ -483,6 +483,7 @@ func getSsp() *sspv1beta3.SSP {
 	key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
 	foundSsp := &sspv1beta3.SSP{}
 	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
+	foundSsp.SetGroupVersionKind(sspv1beta3.GroupVersion.WithKind("SSP"))
 	return foundSsp
 }
 
