@@ -16,6 +16,7 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/common"
 	commonTemplates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -50,10 +51,10 @@ var _ = Describe("Common templates", func() {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			Entry("[test_id:5086]common-template in custom NS", &testTemplate),
+			Entry("[test_id:5086]common-template in custom NS", decorators.Conformance, &testTemplate),
 		)
 
-		It("[test_id:5352]creates only one default variant per OS", func() {
+		It("[test_id:5352]creates only one default variant per OS", decorators.Conformance, func() {
 			liveTemplates := &templatev1.TemplateList{}
 			err := apiClient.List(ctx, liveTemplates,
 				client.InNamespace(strategy.GetTemplatesNamespace()),
@@ -85,7 +86,7 @@ var _ = Describe("Common templates", func() {
 			}
 		})
 
-		It("[test_id:5545]did not create duplicate templates", func() {
+		It("[test_id:5545]did not create duplicate templates", decorators.Conformance, func() {
 			liveTemplates := &templatev1.TemplateList{}
 			err := apiClient.List(ctx, liveTemplates,
 				client.InNamespace(strategy.GetTemplatesNamespace()),
@@ -166,7 +167,7 @@ var _ = Describe("Common templates", func() {
 				Expect(err).ToNot(HaveOccurred(), "err should be nil")
 			})
 
-			It("[test_id:6057] should update commonTemplates.namespace", func() {
+			It("[test_id:6057] should update commonTemplates.namespace", decorators.Conformance, func() {
 				foundSsp := getSsp()
 				Expect(foundSsp.Spec.CommonTemplates.Namespace).ToNot(Equal(newTemplateNamespace), "namespaces should not equal")
 
@@ -186,7 +187,7 @@ var _ = Describe("Common templates", func() {
 		})
 
 		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
-			Entry("[test_id:5087]test template", &testTemplate),
+			Entry("[test_id:5087]test template", decorators.Conformance, &testTemplate),
 		)
 
 		It("[test_id: 7340] should increase metrics when restoring template", func() {
@@ -203,7 +204,7 @@ var _ = Describe("Common templates", func() {
 			})
 
 			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
-				Entry("[test_id:5391]testTemplate in custom NS", &testTemplate),
+				Entry("[test_id:5391]testTemplate in custom NS", decorators.Conformance, &testTemplate),
 			)
 		})
 
@@ -214,7 +215,7 @@ var _ = Describe("Common templates", func() {
 
 	Context("resource deletion", func() {
 		DescribeTable("recreate after delete", expectRecreateAfterDelete,
-			Entry("[test_id:5088]testTemplate in custom NS", &testTemplate),
+			Entry("[test_id:5088]testTemplate in custom NS", decorators.Conformance, &testTemplate),
 		)
 	})
 
@@ -314,7 +315,7 @@ var _ = Describe("Common templates", func() {
 				return updatedTpl.Annotations[commonTemplates.TemplateDeprecatedAnnotation] == "true", nil
 			}, env.ShortTimeout()).Should(BeTrue(), "deprecated annotation should be added to old template")
 		})
-		It("[test_id:5622]should continue to have labels on latest templates", func() {
+		It("[test_id:5622]should continue to have labels on latest templates", decorators.Conformance, func() {
 			triggerReconciliation()
 
 			var latestTemplates templatev1.TemplateList

@@ -21,6 +21,7 @@ import (
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/common"
 	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -114,7 +115,7 @@ var _ = Describe("Crypto Policy", func() {
 	})
 
 	Context("setting Crypto Policy", func() {
-		DescribeTable("Adhere to defined TLSConfig", func(tlsConfigTestPermutation tlsConfigTestPermutation) {
+		DescribeTable("Adhere to defined TLSConfig", decorators.Conformance, func(tlsConfigTestPermutation tlsConfigTestPermutation) {
 			pod := operatorPod()
 			validatorPod := templateValidatorPod()
 

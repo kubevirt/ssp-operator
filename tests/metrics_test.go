@@ -20,6 +20,7 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -104,7 +105,7 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("resource creation", func() {
-		DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", decorators.Conformance, func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
@@ -123,7 +124,7 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("resource deletion", func() {
-		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+		DescribeTable("recreate after delete", decorators.Conformance, expectRecreateAfterDelete,
 			Entry("[test_id:8351] service monitor", &serviceMonitorRes),
 			Entry("[test_id:8352] role", &rbacClusterRoleRes),
 			Entry("[test_id:8355] role binding", &rbacClusterRoleBindingRes),
@@ -132,7 +133,7 @@ var _ = Describe("Metrics", func() {
 	})
 
 	Context("resource change", func() {
-		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+		DescribeTable("should restore modified resource", decorators.Conformance, expectRestoreAfterUpdate,
 			Entry("[test_id:8356] service monitor", &serviceMonitorRes),
 			Entry("[test_id:8353] role", &rbacClusterRoleRes),
 			Entry("[test_id:8354] role binding", &rbacClusterRoleBindingRes),
@@ -148,7 +149,7 @@ var _ = Describe("Metrics", func() {
 				unpauseSsp()
 			})
 
-			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+			DescribeTable("should restore modified resource with pause", decorators.Conformance, expectRestoreAfterUpdateWithPause,
 				Entry("[test_id:8357] service monitor", &serviceMonitorRes),
 				Entry("[test_id:8358] role", &rbacClusterRoleRes),
 				Entry("[test_id:8361] role binding", &rbacClusterRoleBindingRes),

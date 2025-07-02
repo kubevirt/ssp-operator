@@ -23,6 +23,7 @@ import (
 	"kubevirt.io/ssp-operator/internal"
 	"kubevirt.io/ssp-operator/internal/common"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -105,7 +106,7 @@ var _ = Describe("DataSources", func() {
 	})
 
 	Context("resource creation", func() {
-		DescribeTable("created cluster resource", func(res *testResource) {
+		DescribeTable("created cluster resource", decorators.Conformance, func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
@@ -115,7 +116,7 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:4494]golden images namespace", &goldenImageNS),
 		)
 
-		DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", decorators.Conformance, func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
@@ -132,7 +133,7 @@ var _ = Describe("DataSources", func() {
 	})
 
 	Context("resource change", func() {
-		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+		DescribeTable("should restore modified resource", decorators.Conformance, expectRestoreAfterUpdate,
 			Entry("[test_id:5315]edit cluster role", &editClusterRole),
 			Entry("[test_id:5316]view role", &viewRole),
 			Entry("[test_id:5317]view role binding", &viewRoleBinding),
@@ -147,7 +148,7 @@ var _ = Describe("DataSources", func() {
 				unpauseSsp()
 			})
 
-			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+			DescribeTable("should restore modified resource with pause", decorators.Conformance, expectRestoreAfterUpdateWithPause,
 				Entry("[test_id:5388]view role", &viewRole),
 				Entry("[test_id:5389]view role binding", &viewRoleBinding),
 				Entry("[test_id:5393]edit cluster role", &editClusterRole),
@@ -163,7 +164,7 @@ var _ = Describe("DataSources", func() {
 	})
 
 	Context("resource deletion", func() {
-		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+		DescribeTable("recreate after delete", decorators.Conformance, expectRecreateAfterDelete,
 			Entry("[test_id:4773]view role", &viewRole),
 			Entry("[test_id:4842]view role binding", &viewRoleBinding),
 			Entry("[test_id:4771]edit cluster role", &editClusterRole),
@@ -195,7 +196,7 @@ var _ = Describe("DataSources", func() {
 				Expect(apiClient.Delete(ctx, regularSA)).NotTo(HaveOccurred())
 			})
 
-			DescribeTable("regular service account namespace RBAC", expectUserCan,
+			DescribeTable("regular service account namespace RBAC", decorators.Conformance, expectUserCan,
 				Entry("[test_id:6069] should be able to 'get' namespaces",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -230,7 +231,7 @@ var _ = Describe("DataSources", func() {
 						},
 					}))
 
-			DescribeTable("regular service account DV RBAC allowed", expectUserCan,
+			DescribeTable("regular service account DV RBAC allowed", decorators.Conformance, expectUserCan,
 				Entry("[test_id:6072] should be able to 'get' datavolumes",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -282,7 +283,7 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			DescribeTable("regular service account DV RBAC denied", expectUserCannot,
+			DescribeTable("regular service account DV RBAC denied", decorators.Conformance, expectUserCannot,
 				Entry("[test_id:4873]: ServiceAccounts with only view role cannot delete DVs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -309,7 +310,7 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			DescribeTable("regular service account PVC RBAC allowed", expectUserCan,
+			DescribeTable("regular service account PVC RBAC allowed", decorators.Conformance, expectUserCan,
 				Entry("[test_id:4775]: ServiceAccounts with view role can view PVCs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -322,7 +323,7 @@ var _ = Describe("DataSources", func() {
 						},
 					}))
 
-			DescribeTable("regular service account PVC RBAC denied", expectUserCannot,
+			DescribeTable("regular service account PVC RBAC denied", decorators.Conformance, expectUserCannot,
 				Entry("[test_id:4776]: ServiceAccounts with only view role cannot create PVCs",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -358,7 +359,7 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			DescribeTable("regular service account DataSource RBAC allowed", expectUserCan,
+			DescribeTable("regular service account DataSource RBAC allowed", decorators.Conformance, expectUserCan,
 				Entry("[test_id:7466] should be able to 'get' datasources",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -397,7 +398,7 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			DescribeTable("regular service account DataSource RBAC denied", expectUserCannot,
+			DescribeTable("regular service account DataSource RBAC denied", decorators.Conformance, expectUserCannot,
 				Entry("[test_id:7464]: ServiceAccounts with only view role cannot delete DataSources",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -424,7 +425,7 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			DescribeTable("regular service account DataImportCron RBAC allowed", expectUserCan,
+			DescribeTable("regular service account DataImportCron RBAC allowed", decorators.Conformance, expectUserCan,
 				Entry("[test_id:7460] should be able to 'get' DataImportCrons",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -463,7 +464,7 @@ var _ = Describe("DataSources", func() {
 					}),
 			)
 
-			DescribeTable("regular service account DataImportCron RBAC denied", expectUserCannot,
+			DescribeTable("regular service account DataImportCron RBAC denied", decorators.Conformance, expectUserCannot,
 				Entry("[test_id:7456]: ServiceAccounts with only view role cannot delete DataImportCrons",
 					&authv1.SubjectAccessReviewSpec{
 						User:   regularSAFullName,
@@ -530,7 +531,7 @@ var _ = Describe("DataSources", func() {
 					Expect(apiClient.Delete(ctx, editObj)).ToNot(HaveOccurred())
 					Expect(apiClient.Delete(ctx, privilegedSA)).NotTo(HaveOccurred())
 				})
-				DescribeTable("should verify resource permissions", func(sars *authv1.SubjectAccessReviewSpec) {
+				DescribeTable("should verify resource permissions", decorators.Conformance, func(sars *authv1.SubjectAccessReviewSpec) {
 					// Because privilegedSAFullName is filled after test Tree generation
 					sars.User = privilegedSAFullName
 					expectUserCan(sars)
@@ -626,7 +627,7 @@ var _ = Describe("DataSources", func() {
 							},
 						}),
 				)
-				It("[test_id:4878]should not create any other resurces than the ones listed in the Edit Cluster role", func() {
+				It("[test_id:4878]should not create any other resurces than the ones listed in the Edit Cluster role", decorators.Conformance, func() {
 					sars := &authv1.SubjectAccessReviewSpec{
 						ResourceAttributes: &authv1.ResourceAttributes{
 							Verb:      "create",
@@ -657,7 +658,7 @@ var _ = Describe("DataSources", func() {
 			strategy.RevertToOriginalSspCr()
 		})
 
-		It("[test_id:8105] should create DataSource", func() {
+		It("[test_id:8105] should create DataSource", decorators.Conformance, func() {
 			Expect(apiClient.Get(ctx, dataSource.GetKey(), dataSource.NewResource())).To(Succeed())
 		})
 
@@ -665,7 +666,7 @@ var _ = Describe("DataSources", func() {
 			expectAppLabels(&dataSource)
 		})
 
-		It("[test_id:8107] should restore modified DataSource", func() {
+		It("[test_id:8107] should restore modified DataSource", decorators.Conformance, func() {
 			expectRestoreAfterUpdate(&dataSource)
 		})
 
@@ -674,7 +675,7 @@ var _ = Describe("DataSources", func() {
 				unpauseSsp()
 			})
 
-			It("[test_id:8108] should restore modified DataSource with pause", func() {
+			It("[test_id:8108] should restore modified DataSource with pause", decorators.Conformance, func() {
 				expectRestoreAfterUpdateWithPause(&dataSource)
 			})
 		})
@@ -683,7 +684,7 @@ var _ = Describe("DataSources", func() {
 			expectAppLabelsRestoreAfterUpdate(&dataSource)
 		})
 
-		It("[test_id:8109] should recreate DataSource after delete", func() {
+		It("[test_id:8109] should recreate DataSource after delete", decorators.Conformance, func() {
 			expectRecreateAfterDelete(&dataSource)
 		})
 
@@ -714,7 +715,7 @@ var _ = Describe("DataSources", func() {
 				}, env.ShortTimeout(), time.Second).Should(Succeed())
 			})
 
-			It("[test_id:8294] should remove CDI label from DataSource", func() {
+			It("[test_id:8294] should remove CDI label from DataSource", decorators.Conformance, func() {
 				// Wait until it is removed
 				Eventually(func() (bool, error) {
 					ds := &cdiv1beta1.DataSource{}
@@ -808,7 +809,7 @@ var _ = Describe("DataSources", func() {
 				waitUntilDeployed()
 			})
 
-			It("[test_id:7469] should create DataImportCron in golden images namespace", func() {
+			It("[test_id:7469] should create DataImportCron in golden images namespace", decorators.Conformance, func() {
 				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron created")
 			})
 
@@ -816,11 +817,11 @@ var _ = Describe("DataSources", func() {
 				expectAppLabels(&dataImportCron)
 			})
 
-			It("[test_id:7458] should recreate DataImportCron after delete in golden images namespace", func() {
+			It("[test_id:7458] should recreate DataImportCron after delete in golden images namespace", decorators.Conformance, func() {
 				expectRecreateAfterDelete(&dataImportCron)
 			})
 
-			It("[test_id:7712] should update DataImportCron if updated in SSP CR", func() {
+			It("[test_id:7712] should update DataImportCron if updated in SSP CR", decorators.Conformance, func() {
 				updateSsp(func(foundSsp *ssp.SSP) {
 					foundSsp.Spec.CommonTemplates.DataImportCronTemplates[0].
 						Spec.Template.Spec.Storage.Resources.Requests[core.ResourceStorage] = resource.MustParse("32Mi")
@@ -833,7 +834,7 @@ var _ = Describe("DataSources", func() {
 				Expect(cron.Spec.Template.Spec.Storage.Resources.Requests).To(HaveKeyWithValue(core.ResourceStorage, resource.MustParse("32Mi")))
 			})
 
-			It("[test_id:7455] should remove DataImportCron in golden images namespace if removed from SSP CR", func() {
+			It("[test_id:7455] should remove DataImportCron in golden images namespace if removed from SSP CR", decorators.Conformance, func() {
 				updateSsp(func(foundSsp *ssp.SSP) {
 					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
 				})
@@ -849,7 +850,7 @@ var _ = Describe("DataSources", func() {
 				}
 			})
 
-			It("[test_id:8295] DataSource should have CDI label", func() {
+			It("[test_id:8295] DataSource should have CDI label", decorators.Conformance, func() {
 				Eventually(func(g Gomega) map[string]string {
 					ds := &cdiv1beta1.DataSource{}
 					g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
@@ -862,7 +863,7 @@ var _ = Describe("DataSources", func() {
 					logObject(dataImportCron.GetKey(), &cdiv1beta1.DataImportCron{})
 				})
 
-				It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", func() {
+				It("[test_id:8112] should restore DataSource if DataImportCron removed from SSP CR", decorators.Conformance, func() {
 					// Wait until DataImportCron imports PVC and changes data source
 					Eventually(func() bool {
 						cron := &cdiv1beta1.DataImportCron{}
@@ -897,7 +898,7 @@ var _ = Describe("DataSources", func() {
 				})
 			})
 
-			It("[test_id:8296] should restore CDI label on DataSource, if user removes it", func() {
+			It("[test_id:8296] should restore CDI label on DataSource, if user removes it", decorators.Conformance, func() {
 				Eventually(func(g Gomega) error {
 					ds := &cdiv1beta1.DataSource{}
 					g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
@@ -943,15 +944,15 @@ var _ = Describe("DataSources", func() {
 				waitForDeletion(client.ObjectKeyFromObject(&customNamespace), &core.Namespace{})
 			})
 
-			It("[test_id:8721] should create DataImportCron ", func() {
+			It("[test_id:8721] should create DataImportCron ", decorators.Conformance, func() {
 				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())).To(Succeed(), "custom DataImportCron created")
 			})
 
-			It("[test_id:8722] should recreate DataImportCron after delete", func() {
+			It("[test_id:8722] should recreate DataImportCron after delete", decorators.Conformance, func() {
 				expectRecreateAfterDelete(&dataImportCron)
 			})
 
-			It("[test_id:8723] should remove DataImportCron if removed from SSP CR", func() {
+			It("[test_id:8723] should remove DataImportCron if removed from SSP CR", decorators.Conformance, func() {
 				updateSsp(func(foundSsp *ssp.SSP) {
 					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
 				})
@@ -1053,13 +1054,13 @@ var _ = Describe("DataSources", func() {
 				deleteDVAndPVC()
 			})
 
-			It("[test_id:8110] should not create DataImportCron", func() {
+			It("[test_id:8110] should not create DataImportCron", decorators.Conformance, func() {
 				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 				Expect(err).To(HaveOccurred())
 				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 			})
 
-			It("[test_id:8114] should not create DataImportCron if DataSource is deleted", func() {
+			It("[test_id:8114] should not create DataImportCron if DataSource is deleted", decorators.Conformance, func() {
 				ds := dataSource.NewResource()
 				ds.SetName(dataSource.Name)
 				ds.SetNamespace(dataSource.Namespace)
@@ -1076,7 +1077,7 @@ var _ = Describe("DataSources", func() {
 				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound))
 			})
 
-			It("[test_id:8113] should create DataImportCron if PVC is deleted", func() {
+			It("[test_id:8113] should create DataImportCron if PVC is deleted", decorators.Conformance, func() {
 				err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 				Expect(err).To(HaveOccurred())
 				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
@@ -1121,13 +1122,13 @@ var _ = Describe("DataSources", func() {
 					}, env.ShortTimeout(), time.Second).Should(Succeed())
 				})
 
-				It("[test_id:8116] should create DataImportCron", func() {
+				It("[test_id:8116] should create DataImportCron", decorators.Conformance, func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 					}, env.ShortTimeout(), time.Second).Should(Succeed())
 				})
 
-				It("[test_id:8297] should delete DataImportCron, when CDI label is removed from DataSource", func() {
+				It("[test_id:8297] should delete DataImportCron, when CDI label is removed from DataSource", decorators.Conformance, func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 					}, env.ShortTimeout(), time.Second).Should(Succeed())
@@ -1147,7 +1148,7 @@ var _ = Describe("DataSources", func() {
 					}, env.Timeout(), time.Second).Should(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
 				})
 
-				It("[test_id:8298] should restore DataSource, when CDI label is removed", func() {
+				It("[test_id:8298] should restore DataSource, when CDI label is removed", decorators.Conformance, func() {
 					// Wait until DataImportCron imports PVC and changes data source
 					Eventually(func() (bool, error) {
 						cron := &cdiv1beta1.DataImportCron{}
@@ -1208,7 +1209,7 @@ var _ = Describe("DataSources", func() {
 					waitForDeletion(client.ObjectKeyFromObject(&customNamespace), &core.Namespace{})
 				})
 
-				It("[test_id:8724] should create DataImportCron", func() {
+				It("[test_id:8724] should create DataImportCron", decorators.Conformance, func() {
 					Eventually(func() error {
 						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
 					}, env.ShortTimeout(), time.Second).Should(Succeed())
@@ -1229,7 +1230,7 @@ var _ = Describe("DataSources", func() {
 				}
 			})
 
-			It("[test_id:7453] should keep DataImportCron if not owned by operator", func() {
+			It("[test_id:7453] should keep DataImportCron if not owned by operator", decorators.Conformance, func() {
 				cron = &cdiv1beta1.DataImportCron{
 					ObjectMeta: metav1.ObjectMeta{
 						GenerateName: "test-not-in-ssp",

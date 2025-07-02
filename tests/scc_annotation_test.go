@@ -12,10 +12,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/tests/decorators"
 )
 
 var _ = Describe("Required SCC annotation", func() {
-	It("[test_id:TODO] SSP pods should have 'openshift.io/required-scc' annotation", func() {
+	It("[test_id:TODO] SSP pods should have 'openshift.io/required-scc' annotation", decorators.Conformance, func() {
 		deployment := &apps.Deployment{}
 		Expect(apiClient.Get(ctx, types.NamespacedName{
 			Name:      strategy.GetSSPDeploymentName(),

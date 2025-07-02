@@ -32,6 +32,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/internal/template-validator/labels"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -152,7 +153,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	Context("resource creation", func() {
-		DescribeTable("created cluster resource", func(res *testResource) {
+		DescribeTable("created cluster resource", decorators.Conformance, func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
@@ -163,7 +164,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4909] validating webhook configuration", &webhookConfigRes),
 		)
 
-		DescribeTable("created namespaced resource", func(res *testResource) {
+		DescribeTable("created namespaced resource", decorators.Conformance, func(res *testResource) {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
@@ -187,7 +188,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	Context("resource deletion", func() {
-		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+		DescribeTable("recreate after delete", decorators.Conformance, expectRecreateAfterDelete,
 			Entry("[test_id:4914] cluster role", &clusterRoleRes),
 			Entry("[test_id:4916] cluster role binding", &clusterRoleBindingRes),
 			Entry("[test_id:4918] validating webhook configuration", &webhookConfigRes),
@@ -200,7 +201,7 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	Context("resource change", func() {
-		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+		DescribeTable("should restore modified resource", decorators.Conformance, expectRestoreAfterUpdate,
 			Entry("[test_id:4915] cluster role", &clusterRoleRes),
 			Entry("[test_id:4917] cluster role binding", &clusterRoleBindingRes),
 			Entry("[test_id:4919] validating webhook configuration", &webhookConfigRes),
@@ -219,7 +220,7 @@ var _ = Describe("Template validator operand", func() {
 				unpauseSsp()
 			})
 
-			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+			DescribeTable("should restore modified resource with pause", decorators.Conformance, expectRestoreAfterUpdateWithPause,
 				Entry("[test_id:5534] cluster role", &clusterRoleRes),
 				Entry("[test_id:5535] cluster role binding", &clusterRoleBindingRes),
 				Entry("[test_id:5536] validating webhook configuration", &webhookConfigRes),
@@ -241,7 +242,7 @@ var _ = Describe("Template validator operand", func() {
 		)
 	})
 
-	It("[test_id:4913] should successfully start template-validator pod", func() {
+	It("[test_id:4913] should successfully start template-validator pod", decorators.Conformance, func() {
 		strategy.SkipUnlessHighlyAvailableTopologyMode()
 		labels := map[string]string{"kubevirt.io": "virt-template-validator"}
 		Eventually(func() int {
@@ -261,7 +262,7 @@ var _ = Describe("Template validator operand", func() {
 		}, env.Timeout(), time.Second).Should(BeNumerically("==", strategy.GetValidatorReplicas()))
 	})
 
-	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", func() {
+	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", decorators.Conformance, func() {
 		foundSsp := getSsp()
 
 		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed), "SSP should be in phase Deployed")
@@ -293,7 +294,7 @@ var _ = Describe("Template validator operand", func() {
 			waitUntilDeployed()
 		})
 
-		It("[test_id:4926] should add and remove placement", func() {
+		It("[test_id:4926] should add and remove placement", decorators.Conformance, func() {
 			const testKey = "testKey"
 			const testValue = "testValue"
 
@@ -395,7 +396,7 @@ var _ = Describe("Template validator operand", func() {
 		// TODO - This test is currently pending, because it can be flaky.
 		//        If the operator is too slow and does not notice Deployment
 		//        state when not all pods are running, the test would fail.
-		PIt("[test_id:5830]should set available condition when at least one validator pod is running", func() {
+		PIt("[test_id:5830]should set available condition when at least one validator pod is running", decorators.Conformance, func() {
 			watch, err := StartWatch(sspListerWatcher)
 			Expect(err).ToNot(HaveOccurred())
 			defer watch.Stop()
@@ -467,7 +468,7 @@ var _ = Describe("Template validator webhooks", func() {
 			vm = NewVirtualMachine(vmi)
 			Expect(apiClient.Create(ctx, vm)).ToNot(HaveOccurred(), "Failed to create VM")
 		})
-		It("[test_id:5585]be created from template with no rules", func() {
+		It("[test_id:5585]be created from template with no rules", decorators.Conformance, func() {
 			template = TemplateWithoutRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -478,7 +479,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:5033]: Template with validations, VM without validations", func() {
+		It("[test_id:5033]: Template with validations, VM without validations", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -490,7 +491,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:2960] Negative test - Create a VM with machine type violation", func() {
+		It("[test_id:2960] Negative test - Create a VM with machine type violation", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 			// set value unfulfilling validation
@@ -503,13 +504,13 @@ var _ = Describe("Template validator webhooks", func() {
 			eventuallyFailToCreateVm(vm)
 		})
 
-		It("[test_id:7060]vm rejected metrics increases by one when vm is rejected", func() {
+		It("[test_id:7060]vm rejected metrics increases by one when vm is rejected", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 			failVmCreationToIncreaseRejectedVmsMetrics(template)
 		})
 
-		It("[test_id:5586]test with template optional rules unfulfilled", func() {
+		It("[test_id:5586]test with template optional rules unfulfilled", decorators.Conformance, func() {
 			template = TemplateWithRulesOptional()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -522,7 +523,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:5587]test with cpu jsonpath nil should fail", func() {
+		It("[test_id:5587]test with cpu jsonpath nil should fail", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -535,7 +536,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
-		It("[test_id:5589]Test template with incorrect rules satisfied", func() {
+		It("[test_id:5589]Test template with incorrect rules satisfied", decorators.Conformance, func() {
 			template = TemplateWithIncorrectRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -548,7 +549,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
-		It("[test_id:5590]Test template with incorrect rules unfulfilled", func() {
+		It("[test_id:5590]Test template with incorrect rules unfulfilled", decorators.Conformance, func() {
 			template = TemplateWithIncorrectRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -561,7 +562,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
-		It("[test_id:2959] Create a VM with memory restrictions violation that succeeds with a warning", func() {
+		It("[test_id:2959] Create a VM with memory restrictions violation that succeeds with a warning", decorators.Conformance, func() {
 			template = TemplateWithIncorrectRulesJustWarning()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -587,7 +588,7 @@ var _ = Describe("Template validator webhooks", func() {
 				return false
 			}, env.ShortTimeout()).Should(BeTrue(), "Failed to find error msg in the logs")
 		})
-		It("[test_id:5591]test with partial annotations", func() {
+		It("[test_id:5591]test with partial annotations", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -595,7 +596,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:6199]Test vm with UI style annotations", func() {
+		It("[test_id:6199]Test vm with UI style annotations", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -607,7 +608,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:5592]Test vm with template info in labels", func() {
+		It("[test_id:5592]Test vm with template info in labels", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -619,7 +620,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:5593]test template with incomplete CPU info", func() {
+		It("[test_id:5593]test template with incomplete CPU info", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -637,7 +638,7 @@ var _ = Describe("Template validator webhooks", func() {
 	})
 
 	Context("Validation inside VM object", func() {
-		It("[test_id:5173]: should create a VM that passes validation", func() {
+		It("[test_id:5173]: should create a VM that passes validation", decorators.Conformance, func() {
 			template = TemplateWithoutRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -659,7 +660,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:5034]: should fail to create VM that fails validation", func() {
+		It("[test_id:5034]: should fail to create VM that fails validation", decorators.Conformance, func() {
 			template = TemplateWithoutRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -681,7 +682,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
-		It("[test_id:5035]: Template with validations, VM with validations", func() {
+		It("[test_id:5035]: Template with validations, VM with validations", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -703,7 +704,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
-		It("[test_id:5036]: should successfully create a VM based on the VM validation rules priority over template rules", func() {
+		It("[test_id:5036]: should successfully create a VM based on the VM validation rules priority over template rules", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
@@ -725,7 +726,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:5174]: VM with validations and deleted template", func() {
+		It("[test_id:5174]: VM with validations and deleted template", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 3, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -744,7 +745,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 		})
-		It("[test_id:5046]: should override template rules and fail to create a VM based on the VM validation rules", func() {
+		It("[test_id:5046]: should override template rules and fail to create a VM based on the VM validation rules", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -763,7 +764,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
-		It("[test_id:5047]: should fail to create a VM based on the VM validation rules", func() {
+		It("[test_id:5047]: should fail to create a VM based on the VM validation rules", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -780,7 +781,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyFailToCreateVm(vm)
 		})
-		It("[test_id:5175]: VM with validations without template", func() {
+		It("[test_id:5175]: VM with validations without template", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 3, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
 			vm.ObjectMeta.Annotations = map[string]string{
@@ -800,7 +801,7 @@ var _ = Describe("Template validator webhooks", func() {
 	})
 
 	Context("Deleting template", func() {
-		It("[test_id:7026] Can delete template if no VM uses it", func() {
+		It("[test_id:7026] Can delete template if no VM uses it", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
 
@@ -809,7 +810,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}, 5*time.Second, 500*time.Millisecond).Should(Succeed())
 		})
 
-		It("[test_id:7027] Should fail to delete template if a VM uses it", func() {
+		It("[test_id:7027] Should fail to delete template if a VM uses it", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
 
@@ -827,7 +828,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}, env.ShortTimeout(), 1*time.Second).Should(Equal(metav1.StatusReasonForbidden), "Should have given forbidden error")
 		})
 
-		It("[test_id:7037] Can delete template without validations if a VM uses it", func() {
+		It("[test_id:7037] Can delete template without validations if a VM uses it", decorators.Conformance, func() {
 			template = TemplateWithoutRules()
 			delete(template.Annotations, "validations")
 
@@ -845,7 +846,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}, 5*time.Second, 500*time.Millisecond).Should(Succeed())
 		})
 
-		It("[test_id:7035] Can delete template if validations are defined on VM", func() {
+		It("[test_id:7035] Can delete template if validations are defined on VM", decorators.Conformance, func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
 
@@ -874,7 +875,7 @@ var _ = Describe("Template validator webhooks", func() {
 		})
 	})
 
-	It("[test_id:4375] Test refreshing of certificates", func() {
+	It("[test_id:4375] Test refreshing of certificates", decorators.Conformance, func() {
 		pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(pods.Items).ToNot(BeEmpty(), "no pods found")

@@ -22,6 +22,7 @@ import (
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -148,7 +149,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 	})
 
 	Context("Resource creation", Ordered, func() {
-		DescribeTable("created cluster resource", func(res *testResource) {
+		DescribeTable("created cluster resource", decorators.Conformance, func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
@@ -159,7 +160,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Entry("[test_id:TODO] role binding", &roleBindingResource),
 		)
 
-		DescribeTable("created resource", func(res *testResource) {
+		DescribeTable("created resource", decorators.Conformance, func(res *testResource) {
 			resource := res.NewResource()
 			err := apiClient.Get(ctx, res.GetKey(), resource)
 			Expect(err).ToNot(HaveOccurred())
@@ -184,7 +185,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 	})
 
 	Context("Resource deletion", func() {
-		DescribeTable("recreate after delete", expectRecreateAfterDelete,
+		DescribeTable("recreate after delete", decorators.Conformance, expectRecreateAfterDelete,
 			Entry("[test_id:9858] cluster role", &clusterRoleResource),
 			Entry("[test_id:9860] cluster role binding", &clusterRoleBindingResource),
 			Entry("[test_id:TODO] role binding", &roleBindingResource),
@@ -197,7 +198,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 	})
 
 	Context("Resource change", func() {
-		DescribeTable("should restore modified resource", expectRestoreAfterUpdate,
+		DescribeTable("should restore modified resource", decorators.Conformance, expectRestoreAfterUpdate,
 			Entry("[test_id:9863] cluster role", &clusterRoleResource),
 			Entry("[test_id:9865] cluster role binding", &clusterRoleBindingResource),
 			Entry("[test_id:TODO] role binding", &roleBindingResource),
@@ -212,7 +213,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 				unpauseSsp()
 			})
 
-			DescribeTable("should restore modified resource with pause", expectRestoreAfterUpdateWithPause,
+			DescribeTable("should restore modified resource with pause", decorators.Conformance, expectRestoreAfterUpdateWithPause,
 				Entry("[test_id:9873] cluster role", &clusterRoleResource),
 				Entry("[test_id:9874] cluster role binding", &clusterRoleBindingResource),
 				Entry("[test_id:TODO] role binding", &roleBindingResource),
@@ -315,7 +316,7 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			saToken = tokenRequest.Status.Token
 		})
 
-		It("[test_id:TODO] should be able to access /vnc endpoint", func() {
+		It("[test_id:TODO] should be able to access /vnc endpoint", decorators.Conformance, func() {
 			vmNamespace := strategy.GetNamespace()
 			vmName := "non-existing-vm"
 
