@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -22,8 +23,8 @@ type SspWatch interface {
 	Error() error
 }
 
-func StartWatch(listerWatcher cache.ListerWatcher) (SspWatch, error) {
-	listObj, err := listerWatcher.List(v1.ListOptions{ResourceVersion: ""})
+func StartWatch(listerWatcher cache.ListerWatcherWithContext) (SspWatch, error) {
+	listObj, err := listerWatcher.ListWithContext(context.Background(), v1.ListOptions{ResourceVersion: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +45,7 @@ func StartWatch(listerWatcher cache.ListerWatcher) (SspWatch, error) {
 }
 
 type sspWatch struct {
-	listerWatcher cache.ListerWatcher
+	listerWatcher cache.ListerWatcherWithContext
 	stopCh        chan struct{}
 	updateCh      chan *ssp.SSP
 	atomicError   atomic.Value
@@ -77,7 +78,7 @@ func (s *sspWatch) startWatch() {
 			TimeoutSeconds:  &timeoutSec,
 		}
 
-		w, err := s.listerWatcher.Watch(options)
+		w, err := s.listerWatcher.WatchWithContext(context.Background(), options)
 		if err != nil {
 			s.atomicError.Store(err)
 			return
