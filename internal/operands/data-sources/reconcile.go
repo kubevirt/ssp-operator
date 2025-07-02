@@ -60,20 +60,15 @@ func WatchClusterTypes() []operands.WatchType {
 }
 
 type dataSources struct {
-	sources            []cdiv1beta1.DataSource
+	sourceNames        []string
 	runningOnOpenShift bool
 }
 
 var _ operands.Operand = &dataSources{}
 
 func New(sourceNames []string, runningOnOpenShift bool) operands.Operand {
-	sources := make([]cdiv1beta1.DataSource, 0, len(sourceNames))
-	for _, name := range sourceNames {
-		sources = append(sources, newDataSource(name))
-	}
-
 	return &dataSources{
-		sources:            sources,
+		sourceNames:        sourceNames,
 		runningOnOpenShift: runningOnOpenShift,
 	}
 }
@@ -170,10 +165,8 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 
 	var objects []client.Object
 	if request.CrdList.CrdExists(dataSourceCrd) {
-		for i := range d.sources {
-			ds := d.sources[i]
-			ds.Namespace = internal.GoldenImagesNamespace
-			objects = append(objects, &ds)
+		for _, name := range d.sourceNames {
+			objects = append(objects, newDataSource(name))
 		}
 	}
 
@@ -237,21 +230,20 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 	}
 
 	var dataSourceInfos []dataSourceInfo
-	for i := range d.sources {
-		dataSource := d.sources[i] // Make a copy
-		dataSource.Namespace = internal.GoldenImagesNamespace
-		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(&dataSource, cronByDataSource, request)
+	for _, name := range d.sourceNames {
+		dataSource := newDataSource(name)
+		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(dataSource, cronByDataSource, request)
 		if err != nil {
 			return dataSourcesAndCrons{}, err
 		}
 
 		var dicName string
-		if dic, ok := cronByDataSource[client.ObjectKeyFromObject(&dataSource)]; ok {
+		if dic, ok := cronByDataSource[client.ObjectKeyFromObject(dataSource)]; ok {
 			dicName = dic.GetName()
 		}
 
 		dataSourceInfos = append(dataSourceInfos, dataSourceInfo{
-			dataSource:         &dataSource,
+			dataSource:         dataSource,
 			autoUpdateEnabled:  autoUpdateEnabled,
 			dataImportCronName: dicName,
 		})

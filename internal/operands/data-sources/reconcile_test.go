@@ -33,21 +33,15 @@ const (
 
 var _ = Describe("Data-Sources operand", func() {
 	var (
-		testDataSources []cdiv1beta1.DataSource
+		dataSourceNames []string
 
 		operand operands.Operand
 		request common.Request
-
-		dsNames []string
 	)
 
 	BeforeEach(func() {
-		testDataSources = getDataSources()
-
-		for _, ds := range testDataSources {
-			dsNames = append(dsNames, ds.Name)
-		}
-		operand = New(dsNames, false)
+		dataSourceNames = []string{"centos8", "win10"}
+		operand = New(dataSourceNames, false)
 
 		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
@@ -108,13 +102,13 @@ var _ = Describe("Data-Sources operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		for _, ds := range testDataSources {
-			ExpectResourceExists(&ds, request)
+		for _, name := range dataSourceNames {
+			ExpectResourceExists(testDataSource(name), request)
 		}
 	})
 
 	DescribeTable("should create NetworkPolicies", func(runningOnOpenShift bool) {
-		operand = New(dsNames, runningOnOpenShift)
+		operand = New(dataSourceNames, runningOnOpenShift)
 
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -133,7 +127,7 @@ var _ = Describe("Data-Sources operand", func() {
 		)
 
 		BeforeEach(func() {
-			dataSourceName := testDataSources[0].GetName()
+			dataSourceName := dataSourceNames[0]
 			cronTemplate = ssp.DataImportCronTemplate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: dataSourceName,
@@ -211,6 +205,8 @@ var _ = Describe("Data-Sources operand", func() {
 			})
 
 			It("should restore DataSource if DataImportCron template is removed", func() {
+				originalDataSource := testDataSource(dataSourceNames[0])
+
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -220,7 +216,9 @@ var _ = Describe("Data-Sources operand", func() {
 
 				// Update DataSource to simulate CDI
 				ds := &cdiv1beta1.DataSource{}
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				dsKey := client.ObjectKeyFromObject(originalDataSource)
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
+
 				ds.Spec.Source.PVC = &cdiv1beta1.DataVolumeSourcePVC{
 					Name:      "test",
 					Namespace: internal.GoldenImagesNamespace,
@@ -236,8 +234,9 @@ var _ = Describe("Data-Sources operand", func() {
 				ExpectResourceNotExists(&cron, request)
 
 				// Test that DataSource was restored
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
-				Expect(ds.Spec).To(Equal(testDataSources[0].Spec))
+				ds = &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
+				Expect(ds.Spec).To(Equal(originalDataSource.Spec))
 			})
 
 			DescribeTable("should not restore DataSource if DataImportCron is present", func(source cdiv1beta1.DataSourceSource) {
@@ -250,7 +249,8 @@ var _ = Describe("Data-Sources operand", func() {
 
 				// Update DataSource to simulate CDI
 				ds := &cdiv1beta1.DataSource{}
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				dsKey := client.ObjectKeyFromObject(testDataSource(dataSourceNames[0]))
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
 				ds.Spec.Source = source
 				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
 
@@ -258,7 +258,7 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Test that DataSource was not changed
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
 				Expect(ds.Spec.Source).To(Equal(source))
 			},
 				Entry("and prefers PVCs", cdiv1beta1.DataSourceSource{
@@ -286,8 +286,8 @@ var _ = Describe("Data-Sources operand", func() {
 			BeforeEach(func() {
 				pvc = &v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      testDataSources[0].Spec.Source.PVC.Name,
-						Namespace: testDataSources[0].Spec.Source.PVC.Namespace,
+						Name:      dataSourceNames[0],
+						Namespace: internal.GoldenImagesNamespace,
 					},
 					Spec: v1.PersistentVolumeClaimSpec{},
 				}
@@ -320,7 +320,8 @@ var _ = Describe("Data-Sources operand", func() {
 				ExpectResourceNotExists(&cron, request)
 
 				foundDs := &cdiv1beta1.DataSource{}
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), foundDs)).To(Succeed())
+				dsKey := client.ObjectKeyFromObject(testDataSource(dataSourceNames[0]))
+				Expect(request.Client.Get(request.Context, dsKey, foundDs)).To(Succeed())
 
 				if foundDs.GetLabels() == nil {
 					foundDs.SetLabels(map[string]string{})
@@ -359,37 +360,21 @@ var _ = Describe("Data-Sources operand", func() {
 	})
 })
 
-func getDataSources() []cdiv1beta1.DataSource {
-	const name1 = "centos8"
-	const name2 = "win10"
-
-	return []cdiv1beta1.DataSource{{
+func testDataSource(name string) *cdiv1beta1.DataSource {
+	return &cdiv1beta1.DataSource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name1,
+			Name:      name,
 			Namespace: internal.GoldenImagesNamespace,
 		},
 		Spec: cdiv1beta1.DataSourceSpec{
 			Source: cdiv1beta1.DataSourceSource{
 				PVC: &cdiv1beta1.DataVolumeSourcePVC{
-					Name:      name1,
+					Name:      name,
 					Namespace: internal.GoldenImagesNamespace,
 				},
 			},
 		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name2,
-			Namespace: internal.GoldenImagesNamespace,
-		},
-		Spec: cdiv1beta1.DataSourceSpec{
-			Source: cdiv1beta1.DataSourceSource{
-				PVC: &cdiv1beta1.DataVolumeSourcePVC{
-					Name:      name2,
-					Namespace: internal.GoldenImagesNamespace,
-				},
-			},
-		},
-	}}
+	}
 }
 
 func TestDataSources(t *testing.T) {
