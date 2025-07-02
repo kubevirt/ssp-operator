@@ -10,13 +10,16 @@ import (
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/utils/ptr"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 )
 
 // Define RBAC rules needed by this operand:
@@ -62,15 +65,15 @@ func WatchClusterTypes() []operands.WatchType {
 }
 
 type dataSources struct {
-	sourceNames        []string
+	sourceCollection   template_bundle.DataSourceCollection
 	runningOnOpenShift bool
 }
 
 var _ operands.Operand = &dataSources{}
 
-func New(sourceNames []string, runningOnOpenShift bool) operands.Operand {
+func New(sourceCollection template_bundle.DataSourceCollection, runningOnOpenShift bool) operands.Operand {
 	return &dataSources{
-		sourceNames:        sourceNames,
+		sourceCollection:   sourceCollection,
 		runningOnOpenShift: runningOnOpenShift,
 	}
 }
@@ -155,7 +158,7 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 
 	var objects []client.Object
 	if request.CrdList.CrdExists(dataSourceCrd) {
-		for _, name := range d.sourceNames {
+		for name := range d.sourceCollection.Names() {
 			objects = append(objects, newDataSource(name))
 		}
 	}
@@ -202,7 +205,7 @@ func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) 
 
 func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
 	cronByDataSource := getCronsByDataSource(&request.Instance.Spec)
-	dataSourceInfos, err := getDataSourceInfos(d.sourceNames, cronByDataSource, request)
+	dataSourceInfos, err := getDataSourceInfos(d.sourceCollection, cronByDataSource, request)
 	if err != nil {
 		return dataSourcesAndCrons{}, err
 	}
@@ -237,9 +240,21 @@ func getCronsByDataSource(sspSpec *ssp.SSPSpec) map[client.ObjectKey]*cdiv1beta1
 	return cronByDataSource
 }
 
-func getDataSourceInfos(sourceNames []string, cronByDataSource map[client.ObjectKey]*cdiv1beta1.DataImportCron, request *common.Request) ([]dataSourceInfo, error) {
+func getDataSourceInfos(sourceCollection template_bundle.DataSourceCollection, cronByDataSource map[client.ObjectKey]*cdiv1beta1.DataImportCron, request *common.Request) ([]dataSourceInfo, error) {
+	if ptr.Deref(request.Instance.Spec.EnableMultipleArchitectures, false) {
+		return nil, fmt.Errorf(".spec.enableMultipleArchitectures needs to be false")
+	}
+
+	clusterArchs, err := architecture.GetSSPArchs(&request.Instance.Spec)
+	if err != nil {
+		return nil, err
+	}
 	var dataSourceInfos []dataSourceInfo
-	for _, name := range sourceNames {
+	for name := range sourceCollection.Names() {
+		if !sourceCollection.Contains(name, clusterArchs[0]) {
+			continue
+		}
+
 		dataSource := newDataSource(name)
 		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(dataSource, cronByDataSource, request)
 		if err != nil {

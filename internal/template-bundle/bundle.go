@@ -95,6 +95,10 @@ func (d DataSourceCollection) Names() iter.Seq[string] {
 	return maps.Keys(d)
 }
 
+func (d DataSourceCollection) Contains(name string, arch architecture.Arch) bool {
+	return slices.Contains(d[name], arch)
+}
+
 func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
 	vmUnstructured := &unstructured.Unstructured{}
 	err := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(template.Objects[0].Raw), 1024).Decode(vmUnstructured)
