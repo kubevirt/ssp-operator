@@ -19,8 +19,10 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 )
 
@@ -32,16 +34,29 @@ const (
 )
 
 var _ = Describe("Data-Sources operand", func() {
+	const (
+		centos8 = "centos8"
+		win10   = "win10"
+	)
+
 	var (
-		dataSourceNames []string
+		dataSourceCollection template_bundle.DataSourceCollection
 
 		operand operands.Operand
 		request common.Request
 	)
 
 	BeforeEach(func() {
-		dataSourceNames = []string{"centos8", "win10"}
-		operand = New(dataSourceNames, false)
+		dataSourceCollection = template_bundle.DataSourceCollection{}
+
+		dataSourceCollection.AddNameAndArch(centos8, architecture.AMD64)
+		dataSourceCollection.AddNameAndArch(centos8, architecture.ARM64)
+		dataSourceCollection.AddNameAndArch(centos8, architecture.S390X)
+
+		dataSourceCollection.AddNameAndArch(win10, architecture.AMD64)
+		dataSourceCollection.AddNameAndArch(win10, architecture.ARM64)
+
+		operand = New(dataSourceCollection, false)
 
 		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
@@ -102,13 +117,13 @@ var _ = Describe("Data-Sources operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		for _, name := range dataSourceNames {
+		for name := range dataSourceCollection.Names() {
 			ExpectResourceExists(testDataSource(name), request)
 		}
 	})
 
 	DescribeTable("should create NetworkPolicies", func(runningOnOpenShift bool) {
-		operand = New(dataSourceNames, runningOnOpenShift)
+		operand = New(dataSourceCollection, runningOnOpenShift)
 
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -127,7 +142,7 @@ var _ = Describe("Data-Sources operand", func() {
 		)
 
 		BeforeEach(func() {
-			dataSourceName := dataSourceNames[0]
+			dataSourceName := centos8
 			cronTemplate = ssp.DataImportCronTemplate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: dataSourceName,
@@ -205,7 +220,7 @@ var _ = Describe("Data-Sources operand", func() {
 			})
 
 			It("should restore DataSource if DataImportCron template is removed", func() {
-				originalDataSource := testDataSource(dataSourceNames[0])
+				originalDataSource := testDataSource(centos8)
 
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
@@ -249,7 +264,7 @@ var _ = Describe("Data-Sources operand", func() {
 
 				// Update DataSource to simulate CDI
 				ds := &cdiv1beta1.DataSource{}
-				dsKey := client.ObjectKeyFromObject(testDataSource(dataSourceNames[0]))
+				dsKey := client.ObjectKeyFromObject(testDataSource(centos8))
 				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
 				ds.Spec.Source = source
 				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
@@ -286,7 +301,7 @@ var _ = Describe("Data-Sources operand", func() {
 			BeforeEach(func() {
 				pvc = &v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      dataSourceNames[0],
+						Name:      centos8,
 						Namespace: internal.GoldenImagesNamespace,
 					},
 					Spec: v1.PersistentVolumeClaimSpec{},
@@ -320,7 +335,7 @@ var _ = Describe("Data-Sources operand", func() {
 				ExpectResourceNotExists(&cron, request)
 
 				foundDs := &cdiv1beta1.DataSource{}
-				dsKey := client.ObjectKeyFromObject(testDataSource(dataSourceNames[0]))
+				dsKey := client.ObjectKeyFromObject(testDataSource(centos8))
 				Expect(request.Client.Get(request.Context, dsKey, foundDs)).To(Succeed())
 
 				if foundDs.GetLabels() == nil {
