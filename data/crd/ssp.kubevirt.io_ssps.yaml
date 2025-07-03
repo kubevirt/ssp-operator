@@ -2214,6 +2214,23 @@ spec:
           spec:
             description: SSPSpec defines the desired state of SSP
             properties:
+              cluster:
+                description: Cluster specifies what node architectures are present
+                  in the cluster.
+                properties:
+                  controlPlaneArchitectures:
+                    description: ControlPlaneArchitectures is a list of control plane
+                      architectures supported by the cluster
+                    items:
+                      type: string
+                    type: array
+                  workloadArchitectures:
+                    description: WorkloadArchitectures is a list of workload architectures
+                      supported by the cluster
+                    items:
+                      type: string
+                    type: array
+                type: object
               commonTemplates:
                 description: CommonTemplates is the configuration of the common templates
                   operand
@@ -3035,6 +3052,11 @@ spec:
                 required:
                 - namespace
                 type: object
+              enableMultipleArchitectures:
+                description: |-
+                  EnableMultipleArchitectures enables deployment of common Templates,
+                  DataSources and DataImportCrons for multiple node architectures.
+                type: boolean
               templateValidator:
                 description: TemplateValidator is configuration of the template validator
                   operand

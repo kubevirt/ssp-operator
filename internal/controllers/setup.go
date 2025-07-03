@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/openshift/api/config/v1"
@@ -48,13 +49,15 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		return nil, fmt.Errorf("failed to check if running on openshift: %w", err)
 	}
 
-	templatesBundleFile, err := template_bundle.RetrieveCommonTemplatesBundleFile(templateBundleDir)
-	if err != nil {
-		return nil, err
-	}
-	templatesBundle, err := template_bundle.ReadBundle(templatesBundleFile)
+	templatesBundleFile := filepath.Join(templateBundleDir, fmt.Sprintf("common-templates-%s.yaml", common_templates.Version))
+	templates, err := template_bundle.ReadTemplates(templatesBundleFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template bundle: %w", err)
+	}
+
+	dataSourceNamesAndArchs, err := template_bundle.CollectDataSourceNamesWithArchs(templates)
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect DataSource names from templates: %w", err)
 	}
 
 	vmConsoleProxyBundlePath := vm_console_proxy_bundle.GetBundlePath()
@@ -63,8 +66,17 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		return nil, fmt.Errorf("failed to read vm-console-proxy bundle: %w", err)
 	}
 
+	// Temporarily, only create DataSources for one architecture.
+	// TODO: Create all DataSources, when multi-arch DataSource logic is implemented
+	dataSourceNames := make([]string, 0, len(dataSourceNamesAndArchs))
+	for name, archs := range dataSourceNamesAndArchs {
+		if len(archs) != 0 {
+			dataSourceNames = append(dataSourceNames, name)
+		}
+	}
+
 	sspOperands := []operands.Operand{
-		data_sources.New(templatesBundle.DataSources),
+		data_sources.New(dataSourceNames),
 		vm_delete_protection.New(),
 	}
 
@@ -72,7 +84,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		sspOperands = append(sspOperands,
 			metrics.New(),
 			template_validator.New(),
-			common_templates.New(templatesBundle.Templates),
+			common_templates.New(templates),
 			vm_console_proxy.New(vmConsoleProxyBundle),
 		)
 	}
