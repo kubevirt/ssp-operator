@@ -45,7 +45,7 @@ golang.org/x/text/unicode/norm
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# k8s.io/api v0.33.0
+# k8s.io/api v0.33.2
 ## explicit; go 1.24.0
 k8s.io/api/authentication/v1
 k8s.io/api/authorization/v1
