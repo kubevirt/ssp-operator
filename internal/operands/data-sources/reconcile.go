@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
+	"github.com/go-logr/logr"
 	core "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -19,6 +21,7 @@ import (
 	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 )
 
@@ -204,10 +207,28 @@ func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) 
 }
 
 func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
-	cronByDataSource := getCronsByDataSource(&request.Instance.Spec)
-	dataSourceInfos, err := getDataSourceInfos(d.sourceCollection, cronByDataSource, request)
+	isMultiarch := ptr.Deref(request.Instance.Spec.EnableMultipleArchitectures, false)
+
+	var cronByDataSource map[client.ObjectKey]*cdiv1beta1.DataImportCron
+	if isMultiarch {
+		var err error
+		cronByDataSource, err = getCronsByDataSourceMultiArch(&request.Instance.Spec, d.sourceCollection, &request.Logger)
+		if err != nil {
+			return dataSourcesAndCrons{}, fmt.Errorf("failed to get DataImportCrons: %w", err)
+		}
+	} else {
+		cronByDataSource = getCronsByDataSource(&request.Instance.Spec)
+	}
+
+	var err error
+	var dataSourceInfos []dataSourceInfo
+	if isMultiarch {
+		dataSourceInfos, err = getDataSourceInfosMultiArch(d.sourceCollection, cronByDataSource, request)
+	} else {
+		dataSourceInfos, err = getDataSourceInfos(d.sourceCollection, cronByDataSource, request)
+	}
 	if err != nil {
-		return dataSourcesAndCrons{}, err
+		return dataSourcesAndCrons{}, fmt.Errorf("failed to get DataSources: %w", err)
 	}
 
 	for i := range dataSourceInfos {
@@ -231,13 +252,106 @@ func getCronsByDataSource(sspSpec *ssp.SSPSpec) map[client.ObjectKey]*cdiv1beta1
 		if cron.Namespace == "" {
 			cron.Namespace = internal.GoldenImagesNamespace
 		}
-		cronByDataSource[client.ObjectKey{
-			Name:      cron.Spec.ManagedDataSource,
-			Namespace: cron.Namespace,
-		}] = cron
+		// The architecture annotation should not be in the created DataImportCron.
+		delete(cron.Annotations, DataImportCronArchsAnnotation)
+
+		addToCronMap(cronByDataSource, cron)
 	}
 
 	return cronByDataSource
+}
+
+func getCronsByDataSourceMultiArch(sspSpec *ssp.SSPSpec, sourceCollection template_bundle.DataSourceCollection, logger *logr.Logger) (map[client.ObjectKey]*cdiv1beta1.DataImportCron, error) {
+	if !ptr.Deref(sspSpec.EnableMultipleArchitectures, false) {
+		return nil, fmt.Errorf("multi-architecture needs to be enabled")
+	}
+
+	clusterArchs, err := architecture.GetSSPArchs(sspSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	cronByDataSource := map[client.ObjectKey]*cdiv1beta1.DataImportCron{}
+	cronTemplates := sspSpec.CommonTemplates.DataImportCronTemplates
+	for i := range cronTemplates {
+		originalCron := cronTemplates[i].AsDataImportCron()
+
+		// Need a copy, because it is modified later.
+		cron := originalCron.DeepCopy()
+		if cron.Namespace == "" {
+			cron.Namespace = internal.GoldenImagesNamespace
+		}
+
+		archsAnnotationValue := cron.Annotations[DataImportCronArchsAnnotation]
+
+		// The architecture annotation should not be in the created DataImportCron.
+		delete(cron.Annotations, DataImportCronArchsAnnotation)
+
+		if archsAnnotationValue == "" {
+			// The ManagedDataSource needs to point to the default DataSource architecture.
+			dsArchs, dsExists := sourceCollection[cron.Spec.ManagedDataSource]
+			if !dsExists {
+				addToCronMap(cronByDataSource, cron)
+				continue
+			}
+
+			defaultArch := getDefaultDataSourceArch(clusterArchs, dsArchs)
+			if defaultArch == "" {
+				// If there is no compatible DataSource architecture, no DataSource is created.
+				addToCronMap(cronByDataSource, cron)
+				continue
+			}
+
+			cron.Spec.ManagedDataSource = cron.Spec.ManagedDataSource + "-" + string(defaultArch)
+			addToCronMap(cronByDataSource, cron)
+			continue
+		}
+
+		cronArchs := parseArchsAnnotation(archsAnnotationValue, logger)
+		for _, arch := range cronArchs {
+			if !slices.Contains(clusterArchs, arch) {
+				continue
+			}
+
+			cronCopy := cron.DeepCopy()
+			cronCopy.Name = cron.Name + "-" + string(arch)
+			setDataImportCronArchFields(cronCopy, arch)
+			addToCronMap(cronByDataSource, cronCopy)
+		}
+	}
+
+	return cronByDataSource, nil
+}
+
+func addToCronMap(cronMap map[client.ObjectKey]*cdiv1beta1.DataImportCron, cron *cdiv1beta1.DataImportCron) {
+	cronMap[client.ObjectKey{
+		Name:      cron.Spec.ManagedDataSource,
+		Namespace: cron.Namespace,
+	}] = cron
+}
+
+func setDataImportCronArchFields(cron *cdiv1beta1.DataImportCron, arch architecture.Arch) {
+	archStr := string(arch)
+	managedSource := cron.Spec.ManagedDataSource
+
+	if cron.Labels == nil {
+		cron.Labels = map[string]string{}
+	}
+	cron.Labels[common_templates.TemplateArchitectureLabel] = archStr
+	cron.Labels[DataImportCronDataSourceNameLabel] = managedSource
+
+	cron.Spec.ManagedDataSource = managedSource + "-" + archStr
+
+	if cron.Spec.Template.Spec.Source != nil {
+		source := cron.Spec.Template.Spec.Source
+		if source.Registry != nil {
+			registry := source.Registry
+			if registry.Platform == nil {
+				registry.Platform = &cdiv1beta1.PlatformOptions{}
+			}
+			registry.Platform.Architecture = archStr
+		}
+	}
 }
 
 func getDataSourceInfos(sourceCollection template_bundle.DataSourceCollection, cronByDataSource map[client.ObjectKey]*cdiv1beta1.DataImportCron, request *common.Request) ([]dataSourceInfo, error) {
@@ -271,6 +385,69 @@ func getDataSourceInfos(sourceCollection template_bundle.DataSourceCollection, c
 			autoUpdateEnabled:  autoUpdateEnabled,
 			dataImportCronName: dicName,
 		})
+	}
+	return dataSourceInfos, nil
+}
+
+func getDataSourceInfosMultiArch(sourceCollection template_bundle.DataSourceCollection, cronByDataSource map[client.ObjectKey]*cdiv1beta1.DataImportCron, request *common.Request) ([]dataSourceInfo, error) {
+	if !ptr.Deref(request.Instance.Spec.EnableMultipleArchitectures, false) {
+		return nil, fmt.Errorf("multi-architecture needs to be enabled")
+	}
+
+	clusterArchs, err := architecture.GetSSPArchs(&request.Instance.Spec)
+	if err != nil {
+		return nil, err
+	}
+
+	var dataSourceInfos []dataSourceInfo
+	for name, dsArchs := range sourceCollection {
+		defaultArch := getDefaultDataSourceArch(clusterArchs, dsArchs)
+		if defaultArch == "" {
+			// We can skip creating the DataSources, because none of its architectures
+			// are supported on the cluster.
+			continue
+		}
+
+		dataSourceInfos = append(dataSourceInfos, dataSourceInfo{
+			dataSource: newDataSourceReference(name, name+"-"+string(defaultArch)),
+		})
+
+		for _, arch := range dsArchs {
+			if !slices.Contains(clusterArchs, arch) {
+				continue
+			}
+
+			dsName := name + "-" + string(arch)
+			dataSource := newDataSource(dsName)
+			dataSource.Labels = map[string]string{
+				common_templates.TemplateArchitectureLabel: string(arch),
+			}
+
+			autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(dataSource, cronByDataSource, request)
+			if err != nil {
+				return nil, err
+			}
+
+			if arch == defaultArch {
+				// Special logic is needed for the default DataSource to keep backward compatibility.
+				var err error
+				dataSource, autoUpdateEnabled, err = handleDefaultDataSource(dataSource, autoUpdateEnabled, name, request)
+				if err != nil {
+					return nil, fmt.Errorf("faield to handle default DataSource: %w", err)
+				}
+			}
+
+			var dicName string
+			if dic, ok := cronByDataSource[client.ObjectKeyFromObject(dataSource)]; ok {
+				dicName = dic.GetName()
+			}
+
+			dataSourceInfos = append(dataSourceInfos, dataSourceInfo{
+				dataSource:         dataSource,
+				autoUpdateEnabled:  autoUpdateEnabled,
+				dataImportCronName: dicName,
+			})
+		}
 	}
 	return dataSourceInfos, nil
 }
@@ -343,6 +520,55 @@ func checkIfPvcExists(dataSource *cdiv1beta1.DataSource, request *common.Request
 	}
 
 	return true, nil
+}
+
+func handleDefaultDataSource(dataSource *cdiv1beta1.DataSource, autoUpdate bool, originalPvcName string, request *common.Request) (*cdiv1beta1.DataSource, bool, error) {
+	foundDataSource := &cdiv1beta1.DataSource{}
+	err := request.Client.Get(request.Context, client.ObjectKeyFromObject(dataSource), foundDataSource)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, false, err
+	}
+
+	if errors.IsNotFound(err) {
+		err := request.UncachedReader.Get(request.Context, client.ObjectKey{
+			Name:      originalPvcName,
+			Namespace: dataSource.Spec.Source.PVC.Namespace,
+		}, &core.PersistentVolumeClaim{})
+		if err != nil && !errors.IsNotFound(err) {
+			return nil, false, err
+		}
+
+		// For backward compatibility, if the original PVC exist,
+		// the default DataSource should point to it.
+		if !errors.IsNotFound(err) {
+			dataSource.Spec.Source.PVC.Name = originalPvcName
+			return dataSource, false, nil
+		}
+		return dataSource, autoUpdate, nil
+	}
+
+	if _, foundDsUsesAutoUpdate := foundDataSource.GetLabels()[dataImportCronLabel]; foundDsUsesAutoUpdate {
+		// Found DS is labeled to use auto-update.
+		return dataSource, autoUpdate, nil
+	}
+
+	dsReadyCondition := getDataSourceReadyCondition(foundDataSource)
+	if dsReadyCondition == nil {
+		// CDI has not yet seen this DataSource, so it is left unchanged.
+		dataSource.Spec = foundDataSource.Spec
+		return dataSource, false, nil
+	}
+
+	if dsReadyCondition.Status == core.ConditionTrue {
+		// If the found DataSource is pointing to the old PVC, don't change it.
+		sourcePVC := foundDataSource.Spec.Source.PVC
+		if sourcePVC != nil && sourcePVC.Name == originalPvcName && sourcePVC.Namespace == dataSource.Namespace {
+			dataSource.Spec.Source.PVC.Name = originalPvcName
+			return dataSource, false, nil
+		}
+	}
+
+	return dataSource, autoUpdate, nil
 }
 
 func reconcileDataSources(dataSourceInfos []dataSourceInfo, request *common.Request) ([]common.ReconcileFunc, error) {
@@ -497,4 +723,28 @@ func (d *dataSources) reconcileNetworkPolicies() []common.ReconcileFunc {
 		})
 	}
 	return funcs
+}
+
+func getDefaultDataSourceArch(clusterArchs, dataSourceArchs []architecture.Arch) architecture.Arch {
+	// Default arch is the first one that is defined in the SSP and in the common templates
+	for _, arch := range clusterArchs {
+		if slices.Contains(dataSourceArchs, arch) {
+			return arch
+		}
+	}
+	return ""
+}
+
+func parseArchsAnnotation(value string, logger *logr.Logger) []architecture.Arch {
+	var result []architecture.Arch
+	for archStr := range strings.SplitSeq(value, ",") {
+		arch, err := architecture.ToArch(strings.TrimSpace(archStr))
+		if err != nil {
+			// Ignoring invalid architectures
+			logger.V(4).Info("Unknown DataImportCron template architecture, ignoring it.", "value", archStr)
+			continue
+		}
+		result = append(result, arch)
+	}
+	return result
 }

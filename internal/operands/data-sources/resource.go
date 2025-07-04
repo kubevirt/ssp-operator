@@ -33,6 +33,23 @@ func newDataSource(name string) *cdiv1beta1.DataSource {
 	}
 }
 
+func newDataSourceReference(name string, referenceName string) *cdiv1beta1.DataSource {
+	return &cdiv1beta1.DataSource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: internal.GoldenImagesNamespace,
+		},
+		Spec: cdiv1beta1.DataSourceSpec{
+			Source: cdiv1beta1.DataSourceSource{
+				DataSource: &cdiv1beta1.DataSourceRefSourceDataSource{
+					Name:      referenceName,
+					Namespace: internal.GoldenImagesNamespace,
+				},
+			},
+		},
+	}
+}
+
 func newGoldenImagesNS(namespace string) *core.Namespace {
 	return &core.Namespace{
 		ObjectMeta: metav1.ObjectMeta{

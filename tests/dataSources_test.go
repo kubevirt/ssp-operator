@@ -22,7 +22,9 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
@@ -856,6 +858,74 @@ var _ = Describe("DataSources", func() {
 			})
 		})
 
+		Context("with multiple architectures", func() {
+			BeforeEach(func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+				})
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] should create arch-specific DataSources", decorators.Conformance, func() {
+				for _, arch := range []architecture.Arch{architecture.AMD64, architecture.ARM64, architecture.S390X} {
+					foundDs := &cdiv1beta1.DataSource{}
+					name := dataSourceName + "-" + string(arch)
+					Expect(apiClient.Get(ctx, client.ObjectKey{
+						Name:      name,
+						Namespace: internal.GoldenImagesNamespace,
+					}, foundDs)).To(Succeed(), fmt.Sprintf("Failed getting DataSource %s", name))
+
+					Expect(foundDs.Spec.Source.PVC.Name).To(Equal(name))
+					Expect(foundDs.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+				}
+			})
+
+			It("[test_id:TODO] should create DataSource reference pointing to default arch DataSource", decorators.Conformance, func() {
+				foundDs := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, client.ObjectKey{
+					Name:      dataSourceName,
+					Namespace: internal.GoldenImagesNamespace,
+				}, foundDs)).To(Succeed())
+
+				defaultDsName := dataSourceName + "-" + string(architecture.AMD64)
+
+				Expect(foundDs.Spec.Source.DataSource).ToNot(BeNil())
+				Expect(foundDs.Spec.Source.DataSource.Name).To(Equal(defaultDsName))
+				Expect(foundDs.Spec.Source.DataSource.Namespace).To(Equal(dataSource.Namespace))
+
+				Expect(foundDs.Spec.Source.PVC).To(BeNil())
+				Expect(foundDs.Spec.Source.Snapshot).To(BeNil())
+			})
+		})
+
+		contextWithPvc("and multiple architectures", func() {
+			BeforeEach(func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+				})
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] default DataSource should point to existing PVC", decorators.Conformance, func() {
+				foundDs := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, client.ObjectKey{
+					Name:      dataSourceName + "-" + string(architecture.AMD64),
+					Namespace: internal.GoldenImagesNamespace,
+				}, foundDs)).To(Succeed())
+
+				Expect(foundDs.Spec.Source.PVC).ToNot(BeNil())
+				Expect(foundDs.Spec.Source.PVC.Name).To(Equal(dataSourceName))
+				Expect(foundDs.Spec.Source.PVC.Namespace).To(Equal(internal.GoldenImagesNamespace))
+			})
+		})
 	})
 
 	Context("with DataImportCron template", func() {
@@ -1346,6 +1416,117 @@ var _ = Describe("DataSources", func() {
 
 				err := apiClient.Get(ctx, client.ObjectKeyFromObject(cron), &cdiv1beta1.DataImportCron{})
 				Expect(err).ToNot(HaveOccurred(), "unrelated DataImportCron was removed")
+			})
+		})
+
+		Context("with multiple architectures", func() {
+			BeforeEach(func() {
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,arm64,s390x"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+				})
+
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] should create arch-specific DataImportCrons", decorators.Conformance, func() {
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,arm64,s390x"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				})
+				waitUntilDeployed()
+
+				for _, arch := range []architecture.Arch{
+					architecture.AMD64,
+					architecture.ARM64,
+					architecture.S390X,
+				} {
+					cron := cdiv1beta1.DataImportCron{}
+					Expect(apiClient.Get(ctx, client.ObjectKey{
+						Name:      cronTemplate.Name + "-" + string(arch),
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cron)).To(Succeed())
+
+					Expect(cron.Annotations).ToNot(HaveKey(data_sources.DataImportCronArchsAnnotation))
+					Expect(cron.Labels).To(HaveKeyWithValue(data_sources.DataImportCronDataSourceNameLabel, cronTemplate.Spec.ManagedDataSource))
+					Expect(cron.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+					Expect(cron.Spec.ManagedDataSource).To(HaveSuffix(string(arch)))
+					Expect(cron.Spec.Template.Spec.Source.Registry.Platform).ToNot(BeNil())
+					Expect(cron.Spec.Template.Spec.Source.Registry.Platform.Architecture).To(Equal(string(arch)))
+				}
+			})
+
+			It("[test_id:TODO] should create only compatible arch-specific DataImportCrons", decorators.Conformance, func() {
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,invalid-ignored-arch"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				})
+				waitUntilDeployed()
+
+				arch := architecture.AMD64
+				cron := cdiv1beta1.DataImportCron{}
+				Expect(apiClient.Get(ctx, client.ObjectKey{
+					Name:      cronTemplate.Name + "-" + string(arch),
+					Namespace: internal.GoldenImagesNamespace,
+				}, &cron)).To(Succeed())
+
+				Expect(cron.Annotations).ToNot(HaveKey(data_sources.DataImportCronArchsAnnotation))
+				Expect(cron.Labels).To(HaveKeyWithValue(data_sources.DataImportCronDataSourceNameLabel, cronTemplate.Spec.ManagedDataSource))
+				Expect(cron.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+				Expect(cron.Spec.ManagedDataSource).To(HaveSuffix(string(arch)))
+				Expect(cron.Spec.Template.Spec.Source.Registry.Platform).ToNot(BeNil())
+				Expect(cron.Spec.Template.Spec.Source.Registry.Platform.Architecture).To(Equal(string(arch)))
+			})
+		})
+
+		contextWithPvc("and multiple architectures", func() {
+			var cronArchs []architecture.Arch
+
+			BeforeEach(func() {
+				cronArchs = []architecture.Arch{
+					architecture.AMD64,
+					architecture.ARM64,
+					architecture.S390X,
+				}
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,arm64,s390x"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+						cronTemplate,
+					)
+				})
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] should not create DataImportCron for default arch", decorators.Conformance, func() {
+				defaultArch := architecture.AMD64
+
+				for _, arch := range cronArchs {
+					err := apiClient.Get(ctx, client.ObjectKey{
+						Name:      cronTemplate.Name + "-" + string(arch),
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cdiv1beta1.DataImportCron{})
+
+					if arch == defaultArch {
+						Expect(err).To(MatchError(errors.IsNotFound, "errors.IsNotFound"),
+							fmt.Sprintf("Found DataImportCron for default architecture %s", string(arch)))
+					} else {
+						Expect(err).ToNot(HaveOccurred(),
+							"Error getting DataImportCron for non-default architecture")
+					}
+				}
 			})
 		})
 
