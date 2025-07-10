@@ -3,7 +3,6 @@ package common_templates
 import (
 	"context"
 	"strings"
-	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/operands"
@@ -35,11 +35,6 @@ const (
 	futureVersion = "v999.999.999"
 )
 
-func TestTemplates(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Common Templates Suite")
-}
-
 var _ = Describe("Common-Templates operand", func() {
 
 	var (
@@ -49,8 +44,13 @@ var _ = Describe("Common-Templates operand", func() {
 	)
 
 	BeforeEach(func() {
+		defaultArchitecture = architecture.AMD64
+
+		var err error
+		operand, err = New(getTestTemplatesMultiArch())
+		Expect(err).ToNot(HaveOccurred())
+
 		testTemplates = getTestTemplates()
-		operand = New(testTemplates)
 
 		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
@@ -145,7 +145,7 @@ var _ = Describe("Common-Templates operand", func() {
 		)
 
 		BeforeEach(func() {
-			oldTpl = createTestTemplate("test-tpl", "some-os", "test", "server")
+			oldTpl = createTestTemplate("test-tpl", "some-os", "test", "server", architecture.AMD64)
 			oldTpl.Namespace = namespace
 			oldTpl.Labels[TemplateVersionLabel] = "not-latest"
 
@@ -154,7 +154,7 @@ var _ = Describe("Common-Templates operand", func() {
 			err := request.Client.Create(request.Context, &oldTpl)
 			Expect(err).ToNot(HaveOccurred(), "creation of old template failed")
 
-			newerTemplate = createTestTemplate("test-tpl-newer", "some-os", "test", "server")
+			newerTemplate = createTestTemplate("test-tpl-newer", "some-os", "test", "server", architecture.AMD64)
 			newerTemplate.Namespace = namespace
 			newerTemplate.Labels[TemplateVersionLabel] = futureVersion
 
@@ -315,12 +315,23 @@ var _ = Describe("Common-Templates operand", func() {
 
 func getTestTemplates() []templatev1.Template {
 	return []templatev1.Template{
-		createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server"),
-		createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop"),
+		createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server", architecture.AMD64),
+		createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop", architecture.AMD64),
 	}
 }
 
-func createTestTemplate(name, os, flavor, workload string) templatev1.Template {
+func getTestTemplatesMultiArch() []templatev1.Template {
+	return []templatev1.Template{
+		createTestTemplate("centos-stream8-server-medium", "centos8", "medium", "server", architecture.AMD64),
+		createTestTemplate("windows10-desktop-medium", "win10", "medium", "desktop", architecture.AMD64),
+		createTestTemplate("centos-stream8-server-medium-"+string(architecture.ARM64), "centos8", "medium", "server", architecture.ARM64),
+		createTestTemplate("windows10-desktop-medium-"+string(architecture.ARM64), "win10", "medium", "desktop", architecture.ARM64),
+		createTestTemplate("centos-stream8-server-medium-"+string(architecture.S390X), "centos8", "medium", "server", architecture.S390X),
+		createTestTemplate("windows10-desktop-medium-"+string(architecture.S390X), "win10", "medium", "desktop", architecture.S390X),
+	}
+}
+
+func createTestTemplate(name, os, flavor, workload string, arch architecture.Arch) templatev1.Template {
 	return templatev1.Template{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -330,6 +341,7 @@ func createTestTemplate(name, os, flavor, workload string) templatev1.Template {
 				TemplateOsLabelPrefix + os:             "true",
 				TemplateFlavorLabelPrefix + flavor:     "true",
 				TemplateWorkloadLabelPrefix + workload: "true",
+				TemplateArchitectureLabel:              string(arch),
 			},
 		},
 	}

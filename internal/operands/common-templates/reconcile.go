@@ -3,6 +3,7 @@ package common_templates
 import (
 	"fmt"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/blang/semver/v4"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/common"
@@ -24,6 +26,9 @@ import (
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch;create;update;patch;delete
 
 var templateKubevirtIoPattern = regexp.MustCompile(`^(.*\.)?template\.kubevirt\.io/`)
+
+// This can be overwritten in unit tests, to make them independent of architecture
+var defaultArchitecture = architecture.ToArchOrPanic(runtime.GOARCH)
 
 func init() {
 	utilruntime.Must(templatev1.Install(common.Scheme))
@@ -42,12 +47,24 @@ type commonTemplates struct {
 
 var _ operands.Operand = &commonTemplates{}
 
-func New(templates []templatev1.Template) operands.Operand {
+func New(templates []templatev1.Template) (operands.Operand, error) {
+	var filteredTemplates []templatev1.Template
+	for _, template := range templates {
+		arch, err := GetTemplateArch(&template)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get architecture of template %s: %w", template.Name, err)
+		}
+
+		if arch == defaultArchitecture {
+			filteredTemplates = append(filteredTemplates, template)
+		}
+	}
+
 	deployedTemplates := make(map[string]bool)
-	for _, t := range templates {
+	for _, t := range filteredTemplates {
 		deployedTemplates[t.Name] = true
 	}
-	return &commonTemplates{templatesBundle: templates, deployedTemplates: deployedTemplates}
+	return &commonTemplates{templatesBundle: filteredTemplates, deployedTemplates: deployedTemplates}, nil
 }
 
 func (c *commonTemplates) Name() string {
