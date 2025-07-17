@@ -22,9 +22,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"net/http"
 	"os"
 	"path"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -120,6 +122,38 @@ type prometheusServer struct {
 	serverAddress string
 }
 
+func startCertWatcher(ctx context.Context, group *errgroup.Group, certWatcher *certwatcher.CertWatcher) {
+	group.Go(func() error {
+		if err := certWatcher.Start(ctx); err != nil {
+			setupLog.Error(err, "certificate watcher error")
+			return err
+		}
+		return nil
+	})
+}
+
+func startServer(ctx context.Context, group *errgroup.Group, server *http.Server) {
+	group.Go(func() error {
+		if err := server.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
+			setupLog.Error(err, "Failed to start Prometheus metrics endpoint server")
+			return err
+		}
+		return nil
+	})
+
+	group.Go(func() error {
+		<-ctx.Done()
+		setupLog.Info("shutting down Prometheus metrics server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			setupLog.Error(err, "error shutting down the HTTP server")
+			return err
+		}
+		return nil
+	})
+}
+
 // NeedLeaderElection implements the LeaderElectionRunnable interface, which indicates
 // the prometheus server doesn't need leader election.
 func (s *prometheusServer) NeedLeaderElection() bool {
@@ -132,46 +166,21 @@ func (s *prometheusServer) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)
 
-	server := &http.Server{
-		Addr:    s.serverAddress,
-		Handler: mux,
-	}
-
 	certWatcher, err := certwatcher.New(s.certPath, s.keyPath)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		// TODO: change context, so it can be closed when
-		// this function returns an error
-		if err := certWatcher.Start(ctx); err != nil {
-			setupLog.Error(err, "certificate watcher error")
-		}
-	}()
-
-	idleConnsClosed := make(chan struct{})
-	go func() {
-		// TODO: make sure that the goroutine finishes when
-		// this function returns an error
-		<-ctx.Done()
-		setupLog.Info("shutting down Prometheus metrics server")
-
-		if err := server.Shutdown(context.Background()); err != nil {
-			setupLog.Error(err, "error shutting down the HTTP server")
-		}
-		close(idleConnsClosed)
-	}()
-
-	server.TLSConfig = s.getPrometheusTLSConfig(ctx, certWatcher)
-
-	if err := server.ListenAndServeTLS(s.certPath, s.keyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		setupLog.Error(err, "Failed to start Prometheus metrics endpoint server")
-		return err
+	server := &http.Server{
+		Addr:      s.serverAddress,
+		Handler:   mux,
+		TLSConfig: s.getPrometheusTLSConfig(ctx, certWatcher),
 	}
 
-	<-idleConnsClosed
-	return nil
+	group, subCtx := errgroup.WithContext(ctx)
+	startCertWatcher(subCtx, group, certWatcher)
+	startServer(subCtx, group, server)
+	return group.Wait()
 }
 
 func (s *prometheusServer) getPrometheusTLSConfig(ctx context.Context, certWatcher *certwatcher.CertWatcher) *tls.Config {
