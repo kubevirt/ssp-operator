@@ -91,7 +91,7 @@ k8s.io/klog/v2/internal/sloghandler
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/ptr
-# kubevirt.io/containerized-data-importer-api v1.62.0
+# kubevirt.io/containerized-data-importer-api v1.63.0-alpha.0
 ## explicit; go 1.23.0
 kubevirt.io/containerized-data-importer-api/pkg/apis/core
 kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1
