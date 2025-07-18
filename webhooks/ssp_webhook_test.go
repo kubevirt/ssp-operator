@@ -297,6 +297,43 @@ var _ = Describe("SSP Validation", func() {
 			})
 		})
 
+		Context("with multi-arch enabled", func() {
+			It("should fail if .spec.cluster is nil", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						EnableMultipleArchitectures: ptr.To(true),
+						Cluster:                     nil,
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring(".spec.cluster needs to be non-nil, if multi-architecture is enabled")))
+			})
+
+			It("should fail if architectures are empty ", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						EnableMultipleArchitectures: ptr.To(true),
+						Cluster: &sspv1beta3.Cluster{
+							WorkloadArchitectures:     nil,
+							ControlPlaneArchitectures: nil,
+						},
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring("at least one architecture needs to be defined, if multi-architecture is enabled")))
+			})
+		})
+
 		Context("validate placement", func() {
 			It("should not call create API, if placement is nil", func() {
 				createIntercept = func(_ context.Context, _ client.WithWatch, _ client.Object, _ ...client.CreateOption) error {

@@ -104,6 +104,10 @@ func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admi
 }
 
 func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta3.SSP) (admission.Warnings, error) {
+	if err := validateCluster(ssp); err != nil {
+		return nil, fmt.Errorf("cluster validation error: %w", err)
+	}
+
 	if err := validateDataImportCronTemplates(ssp); err != nil {
 		return nil, fmt.Errorf("dataImportCronTemplates validation error: %w", err)
 	}
@@ -113,6 +117,20 @@ func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta3.SS
 	}
 
 	return nil, nil
+}
+
+func validateCluster(ssp *sspv1beta3.SSP) error {
+	if ptr.Deref(ssp.Spec.EnableMultipleArchitectures, false) {
+		cluster := ssp.Spec.Cluster
+		if cluster == nil {
+			return fmt.Errorf(".spec.cluster needs to be non-nil, if multi-architecture is enabled")
+		}
+		if len(cluster.WorkloadArchitectures) == 0 && len(cluster.ControlPlaneArchitectures) == 0 {
+			return fmt.Errorf("at least one architecture needs to be defined, if multi-architecture is enabled")
+		}
+	}
+
+	return nil
 }
 
 func (s *sspValidator) validatePlacement(ctx context.Context, ssp *sspv1beta3.SSP) error {
