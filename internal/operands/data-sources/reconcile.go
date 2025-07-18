@@ -62,7 +62,12 @@ type dataSources struct {
 
 var _ operands.Operand = &dataSources{}
 
-func New(sources []cdiv1beta1.DataSource) operands.Operand {
+func New(sourceNames []string) operands.Operand {
+	sources := make([]cdiv1beta1.DataSource, 0, len(sourceNames))
+	for _, name := range sourceNames {
+		sources = append(sources, newDataSource(name))
+	}
+
 	return &dataSources{
 		sources: sources,
 	}
