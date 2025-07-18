@@ -543,6 +543,16 @@ spec:
                                               description: ImageStream is the name
                                                 of image stream for import
                                               type: string
+                                            platform:
+                                              description: Platform describes the
+                                                minimum runtime requirements of the
+                                                image
+                                              properties:
+                                                architecture:
+                                                  description: Architecture specifies
+                                                    the image target CPU architecture
+                                                  type: string
+                                              type: object
                                             pullMethod:
                                               description: PullMethod can be either
                                                 "pod" (default import), or "node"
@@ -613,6 +623,11 @@ spec:
                                               description: BackingFile is the path
                                                 to the virtual hard disk to migrate
                                                 from vCenter/ESXi
+                                              type: string
+                                            extraArgs:
+                                              description: ExtraArgs is a reference
+                                                to a ConfigMap containing extra arguments
+                                                to pass directly to the VDDK library
                                               type: string
                                             initImageURL:
                                               description: InitImageURL is an optional
@@ -2681,6 +2696,16 @@ spec:
                                               description: ImageStream is the name
                                                 of image stream for import
                                               type: string
+                                            platform:
+                                              description: Platform describes the
+                                                minimum runtime requirements of the
+                                                image
+                                              properties:
+                                                architecture:
+                                                  description: Architecture specifies
+                                                    the image target CPU architecture
+                                                  type: string
+                                              type: object
                                             pullMethod:
                                               description: PullMethod can be either
                                                 "pod" (default import), or "node"
@@ -2751,6 +2776,11 @@ spec:
                                               description: BackingFile is the path
                                                 to the virtual hard disk to migrate
                                                 from vCenter/ESXi
+                                              type: string
+                                            extraArgs:
+                                              description: ExtraArgs is a reference
+                                                to a ConfigMap containing extra arguments
+                                                to pass directly to the VDDK library
                                               type: string
                                             initImageURL:
                                               description: InitImageURL is an optional
