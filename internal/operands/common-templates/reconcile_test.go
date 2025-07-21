@@ -45,8 +45,6 @@ var _ = Describe("Common-Templates operand", func() {
 	)
 
 	BeforeEach(func() {
-		defaultArchitecture = architecture.AMD64
-
 		var err error
 		operand, err = New(getTestTemplatesMultiArch())
 		Expect(err).ToNot(HaveOccurred())
@@ -79,6 +77,9 @@ var _ = Describe("Common-Templates operand", func() {
 				Spec: ssp.SSPSpec{
 					CommonTemplates: ssp.CommonTemplates{
 						Namespace: namespace,
+					},
+					Cluster: &ssp.Cluster{
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
 					},
 				},
 				Status: ssp.SSPStatus{
