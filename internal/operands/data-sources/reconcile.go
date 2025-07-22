@@ -2,6 +2,8 @@ package data_sources
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	core "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
@@ -83,6 +85,11 @@ func (d *dataSources) WatchTypes() []operands.WatchType {
 
 func (d *dataSources) WatchClusterTypes() []operands.WatchType {
 	return WatchClusterTypes()
+}
+
+type dataSourcesAndCrons struct {
+	dataSourceInfos []dataSourceInfo
+	dataImportCrons []cdiv1beta1.DataImportCron
 }
 
 type dataSourceInfo struct {
@@ -193,16 +200,30 @@ func reconcileEditRole(request *common.Request) (common.ReconcileResult, error) 
 		Reconcile()
 }
 
-type dataSourcesAndCrons struct {
-	dataSourceInfos []dataSourceInfo
-	dataImportCrons []cdiv1beta1.DataImportCron
+func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
+	cronByDataSource := getCronsByDataSource(&request.Instance.Spec)
+	dataSourceInfos, err := getDataSourceInfos(d.sourceNames, cronByDataSource, request)
+	if err != nil {
+		return dataSourcesAndCrons{}, err
+	}
+
+	for i := range dataSourceInfos {
+		if !dataSourceInfos[i].autoUpdateEnabled {
+			delete(cronByDataSource, client.ObjectKeyFromObject(dataSourceInfos[i].dataSource))
+		}
+	}
+
+	return dataSourcesAndCrons{
+		dataSourceInfos: dataSourceInfos,
+		dataImportCrons: slices.Collect(maps.Values(cronByDataSource)),
+	}, nil
 }
 
-func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourcesAndCrons, error) {
-	cronTemplates := request.Instance.Spec.CommonTemplates.DataImportCronTemplates
-	cronByDataSource := make(map[client.ObjectKey]*ssp.DataImportCronTemplate, len(cronTemplates))
+func getCronsByDataSource(sspSpec *ssp.SSPSpec) map[client.ObjectKey]cdiv1beta1.DataImportCron {
+	cronTemplates := sspSpec.CommonTemplates.DataImportCronTemplates
+	cronByDataSource := make(map[client.ObjectKey]cdiv1beta1.DataImportCron, len(cronTemplates))
 	for i := range cronTemplates {
-		cron := &cronTemplates[i]
+		cron := cronTemplates[i].AsDataImportCron()
 		if cron.Namespace == "" {
 			cron.Namespace = internal.GoldenImagesNamespace
 		}
@@ -212,12 +233,16 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 		}] = cron
 	}
 
+	return cronByDataSource
+}
+
+func getDataSourceInfos(sourceNames []string, cronByDataSource map[client.ObjectKey]cdiv1beta1.DataImportCron, request *common.Request) ([]dataSourceInfo, error) {
 	var dataSourceInfos []dataSourceInfo
-	for _, name := range d.sourceNames {
+	for _, name := range sourceNames {
 		dataSource := newDataSource(name)
 		autoUpdateEnabled, err := dataSourceAutoUpdateEnabled(dataSource, cronByDataSource, request)
 		if err != nil {
-			return dataSourcesAndCrons{}, err
+			return nil, err
 		}
 
 		var dicName string
@@ -231,27 +256,12 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 			dataImportCronName: dicName,
 		})
 	}
-
-	for i := range dataSourceInfos {
-		if !dataSourceInfos[i].autoUpdateEnabled {
-			delete(cronByDataSource, client.ObjectKeyFromObject(dataSourceInfos[i].dataSource))
-		}
-	}
-
-	dataImportCrons := make([]cdiv1beta1.DataImportCron, 0, len(cronByDataSource))
-	for _, cronTemplate := range cronByDataSource {
-		dataImportCrons = append(dataImportCrons, cronTemplate.AsDataImportCron())
-	}
-
-	return dataSourcesAndCrons{
-		dataSourceInfos: dataSourceInfos,
-		dataImportCrons: dataImportCrons,
-	}, nil
+	return dataSourceInfos, nil
 }
 
 const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
 
-func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSource map[client.ObjectKey]*ssp.DataImportCronTemplate, request *common.Request) (bool, error) {
+func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSource map[client.ObjectKey]cdiv1beta1.DataImportCron, request *common.Request) (bool, error) {
 	objectKey := client.ObjectKeyFromObject(dataSource)
 	_, cronExists := cronByDataSource[objectKey]
 	if !cronExists {
