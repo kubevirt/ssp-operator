@@ -1,123 +1,147 @@
 package template_bundle
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	"kubevirt.io/ssp-operator/internal/architecture"
+
+	templatev1 "github.com/openshift/api/template/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/json"
+	kubevirtv1 "kubevirt.io/api/core/v1"
+	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 )
 
-func retrieveSuffix() string {
-	switch runtime.GOARCH {
-	case "s390x":
-		return "-s390x"
-	default:
-		return ""
-	}
-}
-
-var _ = Describe("Template bundle", Ordered, func() {
-	var (
-		testBundle          Bundle
-		nameSuffix          string
-		tmpDir              string
-		archIndependentFile string
-		archDependentFile   string
-	)
-
-	BeforeAll(func() {
-		var err error
-		testBundle, err = ReadBundle("template-bundle-test.yaml")
+var _ = Describe("Template bundle", func() {
+	It("ReadTemplates() should correctly read templates", func() {
+		testTemplates, err := ReadTemplates("template-bundle-test.yaml")
 		Expect(err).ToNot(HaveOccurred())
-		nameSuffix = retrieveSuffix()
-	})
 
-	BeforeEach(func() {
-		tmpDir = GinkgoT().TempDir()
-		archIndependentFile = filepath.Join(tmpDir, fmt.Sprintf("common-templates-%s.yaml", common_templates.Version))
-		archDependentFile = filepath.Join(tmpDir, fmt.Sprintf("common-templates-%s-%s.yaml", runtime.GOARCH, common_templates.Version))
-	})
-
-	It("should correctly read templates", func() {
-		templates := testBundle.Templates
-		Expect(templates).To(HaveLen(4))
+		Expect(testTemplates).To(HaveLen(8))
 		{
-			templ := templates[0]
-			Expect(templ.Name).To(Equal("centos-stream8-server-medium" + nameSuffix))
+			templ := testTemplates[0]
+			Expect(templ.Name).To(Equal("centos-stream8-server-medium"))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}
 		{
-			templ := templates[1]
-			Expect(templ.Name).To(Equal("centos-stream8-desktop-large" + nameSuffix))
+			templ := testTemplates[1]
+			Expect(templ.Name).To(Equal("centos-stream8-desktop-large"))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}
 		{
-			templ := templates[2]
-			Expect(templ.Name).To(Equal("windows10-desktop-medium" + nameSuffix))
+			templ := testTemplates[2]
+			Expect(templ.Name).To(Equal("windows10-desktop-medium"))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}
 		{
-			templ := templates[3]
-			Expect(templ.Name).To(Equal("rhel8-saphana-tiny" + nameSuffix))
+			templ := testTemplates[3]
+			Expect(templ.Name).To(Equal("rhel8-saphana-tiny"))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/rhel8.4"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+
+		{
+			templ := testTemplates[4]
+			Expect(templ.Name).To(Equal("centos-stream8-server-medium-" + string(architecture.S390X)))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := testTemplates[5]
+			Expect(templ.Name).To(Equal("centos-stream8-desktop-large-" + string(architecture.S390X)))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/centos-stream8"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := testTemplates[6]
+			Expect(templ.Name).To(Equal("windows10-desktop-medium-" + string(architecture.S390X)))
+			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/win10"))
+			Expect(templ.Objects).To(HaveLen(1))
+		}
+		{
+			templ := testTemplates[7]
+			Expect(templ.Name).To(Equal("rhel8-saphana-tiny-" + string(architecture.S390X)))
 			Expect(templ.Annotations).To(HaveKey("name.os.template.kubevirt.io/rhel8.4"))
 			Expect(templ.Objects).To(HaveLen(1))
 		}
 	})
 
-	It("should create DataSources", func() {
-		dataSources := testBundle.DataSources
-		Expect(dataSources).To(HaveLen(2))
+	Context("CollectDataSources", func() {
+		It("should collect DataSource names", func() {
+			// The template object is not strictly a VirtualMachine, because it can contain
+			// string variables in fields that don't have string type. But for this test code,
+			// we don't use any such variables.
+			testVmTemplate := &kubevirtv1.VirtualMachine{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "VirtualMachine",
+					APIVersion: kubevirtv1.GroupVersion.String(),
+				},
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: kubevirtv1.VirtualMachineSpec{
+					DataVolumeTemplates: []kubevirtv1.DataVolumeTemplateSpec{{
+						Spec: cdiv1beta1.DataVolumeSpec{
+							SourceRef: &cdiv1beta1.DataVolumeSourceRef{},
+						},
+					}},
+				},
+			}
 
-		ds1 := dataSources[0]
-		Expect(ds1.Name).To(Equal("centos-stream8"))
-		Expect(ds1.Namespace).To(Equal("kubevirt-os-images"))
-		Expect(ds1.Spec.Source.PVC.Name).To(Equal("centos-stream8"))
-		Expect(ds1.Spec.Source.PVC.Namespace).To(Equal("kubevirt-os-images"))
+			const (
+				centosDsName  = "centos-stream8"
+				windowsDsName = "win10"
+			)
 
-		ds2 := dataSources[1]
-		Expect(ds2.Name).To(Equal("win10"))
-		Expect(ds2.Namespace).To(Equal("kubevirt-os-images"))
-		Expect(ds2.Spec.Source.PVC.Name).To(Equal("win10"))
-		Expect(ds2.Spec.Source.PVC.Namespace).To(Equal("kubevirt-os-images"))
-	})
+			testTemplates := []templatev1.Template{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "centos-stream8-server-medium",
+				},
+				Objects: []k8sruntime.RawExtension{{
+					Object: testVmTemplate,
+				}},
+				Parameters: []templatev1.Parameter{{
+					Name:  "DATA_SOURCE_NAME",
+					Value: centosDsName,
+				}, {
+					Name:  "DATA_SOURCE_NAMESPACE",
+					Value: "kubevirt-os-images",
+				}},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "windows10-desktop-medium",
+				},
+				Objects: []k8sruntime.RawExtension{{
+					Object: testVmTemplate,
+				}},
+				Parameters: []templatev1.Parameter{{
+					Name:  "DATA_SOURCE_NAME",
+					Value: windowsDsName,
+				}, {
+					Name:  "DATA_SOURCE_NAMESPACE",
+					Value: "kubevirt-os-images",
+				}},
+			}}
 
-	It("should throw an error retrieving the bundle file", func() {
-		_, err := RetrieveCommonTemplatesBundleFile(tmpDir)
-		Expect(err).To(MatchError(ContainSubstring("failed to find common-templates bundles, none of the files were found")))
-	})
+			for i := range testTemplates {
+				for j := range testTemplates[i].Objects {
+					object := &testTemplates[i].Objects[j]
+					var err error
+					object.Raw, err = json.Marshal(object.Object)
+					Expect(err).ToNot(HaveOccurred())
+				}
+			}
 
-	It("should retrieve the bundle arch independent file", func() {
-		err := os.WriteFile(archIndependentFile, []byte(""), 0644)
-		Expect(err).ToNot(HaveOccurred())
-		commonTemplatesBundleFile, err := RetrieveCommonTemplatesBundleFile(tmpDir)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(commonTemplatesBundleFile).To(Equal(archIndependentFile))
-	})
+			dataSourceCollection, err := CollectDataSources(testTemplates)
+			Expect(err).ToNot(HaveOccurred())
 
-	It("should retrieve the bundle arch dependent file", func() {
-		err := os.WriteFile(archDependentFile, []byte(""), 0644)
-		Expect(err).ToNot(HaveOccurred())
-		commonTemplatesBundleFile, err := RetrieveCommonTemplatesBundleFile(tmpDir)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(commonTemplatesBundleFile).To(Equal(archDependentFile))
-	})
-
-	It("should retrieve the bundle arch dependent file when the generic one also exists", func() {
-		err := os.WriteFile(archIndependentFile, []byte(""), 0644)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(archDependentFile, []byte(""), 0644)
-		Expect(err).ToNot(HaveOccurred())
-		commonTemplatesBundleFile, err := RetrieveCommonTemplatesBundleFile(tmpDir)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(commonTemplatesBundleFile).To(Equal(archDependentFile))
+			Expect(dataSourceCollection.Names()).To(ContainElement(centosDsName))
+			Expect(dataSourceCollection.Names()).To(ContainElement(windowsDsName))
+		})
 	})
 })
 

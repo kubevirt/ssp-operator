@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"kubevirt.io/ssp-operator/internal/architecture"
 
 	osconfv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -52,10 +53,7 @@ var (
 )
 
 const (
-	amd64   = "amd64"
-	s390x   = "s390x"
 	arm     = "arm"
-	arm64   = "arm64"
 	aarch64 = "aarch64"
 )
 
@@ -483,6 +481,7 @@ func getSsp() *sspv1beta3.SSP {
 	key := client.ObjectKey{Name: strategy.GetName(), Namespace: strategy.GetNamespace()}
 	foundSsp := &sspv1beta3.SSP{}
 	Expect(apiClient.Get(ctx, key, foundSsp)).ToNot(HaveOccurred())
+	foundSsp.SetGroupVersionKind(sspv1beta3.GroupVersion.WithKind("SSP"))
 	return foundSsp
 }
 
@@ -606,25 +605,31 @@ func retrieveNodeArchitecture() string {
 	Expect(err).NotTo(HaveOccurred(), "Failed to list nodes")
 	nodes := nodeList.Items
 	Expect(nodes).NotTo(BeEmpty(), "No nodes found")
-	architecture := nodes[0].Status.NodeInfo.Architecture
-	Expect(architecture).To(BeElementOf([]string{s390x, amd64, arm, arm64, aarch64}), "Unsupported architecture")
-	return architecture
+	arch := nodes[0].Status.NodeInfo.Architecture
+	Expect(arch).To(BeElementOf([]string{
+		string(architecture.S390X),
+		string(architecture.AMD64),
+		arm,
+		string(architecture.ARM64),
+		aarch64}), "Unsupported architecture")
+
+	return arch
 }
 
-func retrieveQemuMachineType(architecture string) string {
-	switch architecture {
-	case amd64:
+func retrieveQemuMachineType(arch string) string {
+	switch arch {
+	case string(architecture.AMD64):
 		return "q35"
-	case s390x:
+	case string(architecture.S390X):
 		return "s390-ccw-virtio"
 	default:
 		return "virt"
 	}
 }
 
-func retrieveTemplatesSuffix(architecture string) string {
-	if architecture == amd64 {
+func retrieveTemplatesSuffix(arch string) string {
+	if arch == string(architecture.AMD64) {
 		return ""
 	}
-	return "-" + architecture
+	return "-" + arch
 }

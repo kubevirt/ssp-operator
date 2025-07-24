@@ -4,59 +4,30 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"iter"
+	"maps"
 	"os"
-	"path/filepath"
-	"runtime"
+	"slices"
 
 	templatev1 "github.com/openshift/api/template/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+
+	"kubevirt.io/ssp-operator/internal"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 )
 
-type Bundle struct {
-	Templates   []templatev1.Template
-	DataSources []cdiv1beta1.DataSource
-}
-
-func ReadBundle(filename string) (Bundle, error) {
-	templates, err := readTemplates(filename)
-	if err != nil {
-		return Bundle{}, err
-	}
-
-	sources, err := extractDataSources(templates)
-	if err != nil {
-		return Bundle{}, err
-	}
-
-	return Bundle{
-		Templates:   templates,
-		DataSources: sources,
-	}, nil
-}
-
-func RetrieveCommonTemplatesBundleFile(templateBundleDir string) (string, error) {
-	archDependentFileName := filepath.Join(templateBundleDir, fmt.Sprintf("common-templates-%s-%s.yaml", runtime.GOARCH, common_templates.Version))
-	if _, err := os.Stat(archDependentFileName); err == nil {
-		return archDependentFileName, nil
-	}
-	archIndependentFileName := filepath.Join(templateBundleDir, fmt.Sprintf("common-templates-%s.yaml", common_templates.Version))
-	if _, err := os.Stat(archIndependentFileName); err == nil {
-		return archIndependentFileName, nil
-	}
-	return "", fmt.Errorf("failed to find common-templates bundles, none of the files were found: %s, %s", archDependentFileName, archIndependentFileName)
-}
-
-func readTemplates(filename string) ([]templatev1.Template, error) {
+func ReadTemplates(filename string) ([]templatev1.Template, error) {
 	var bundle []templatev1.Template
-	file, err := os.ReadFile(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(file), 1024)
+	// Ignoring error from close, because we have already read the data.
+	defer func() { _ = file.Close() }()
+
+	decoder := yaml.NewYAMLToJSONDecoder(file)
 	for {
 		template := templatev1.Template{}
 		err = decoder.Decode(&template)
@@ -69,23 +40,12 @@ func readTemplates(filename string) ([]templatev1.Template, error) {
 		if template.Name == "" {
 			continue
 		}
-		templateArch, ok := template.Labels["template.kubevirt.io/architecture"]
-		if !ok {
-			return nil, err
-		}
-		// The template bundles are delivered separately based on architecture.
-		// However, in cases where the generic template bundle includes architectures that are
-		// not released separately, this filter can still be useful.
-		if templateArch == runtime.GOARCH {
-			bundle = append(bundle, template)
-		}
+		bundle = append(bundle, template)
 	}
 }
 
-func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSource, error) {
-	uniqueNames := map[string]struct{}{}
-
-	var dataSources []cdiv1beta1.DataSource
+func CollectDataSources(templates []templatev1.Template) (DataSourceCollection, error) {
+	result := DataSourceCollection{}
 	for i := range templates {
 		template := &templates[i]
 
@@ -103,18 +63,36 @@ func extractDataSources(templates []templatev1.Template) ([]cdiv1beta1.DataSourc
 		}
 
 		namespace, exists := findDataSourceNamespace(template)
-		if !exists {
-			continue
+		// This check is needed, so later code can assume that all DataSources
+		// should be created in the internal.GoldenImagesNamespace
+		if exists && namespace != internal.GoldenImagesNamespace {
+			// If this happens, it is a programmer's error.
+			return nil, fmt.Errorf(
+				"common template %s has invalid default DATA_SOURCE_NAMESPACE value: %s, expected: %s",
+				template.Name, namespace, internal.GoldenImagesNamespace)
 		}
 
-		namespacedName := namespace + "/" + name
-		if _, duplicateName := uniqueNames[namespacedName]; !duplicateName {
-			dataSources = append(dataSources, createDataSource(name, namespace))
-			uniqueNames[namespacedName] = struct{}{}
+		templateArch, err := common_templates.GetTemplateArch(template)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get architecture for template %s: %w", template.Name, err)
 		}
+
+		result.AddNameAndArch(name, templateArch)
 	}
 
-	return dataSources, nil
+	return result, nil
+}
+
+type DataSourceCollection map[string][]architecture.Arch
+
+func (d DataSourceCollection) AddNameAndArch(name string, arch architecture.Arch) {
+	if !slices.Contains(d[name], arch) {
+		d[name] = append(d[name], arch)
+	}
+}
+
+func (d DataSourceCollection) Names() iter.Seq[string] {
+	return maps.Keys(d)
 }
 
 func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
@@ -183,21 +161,4 @@ func findParameterValue(name string, template *templatev1.Template) (string, boo
 		}
 	}
 	return "", false
-}
-
-func createDataSource(name, namespace string) cdiv1beta1.DataSource {
-	return cdiv1beta1.DataSource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: cdiv1beta1.DataSourceSpec{
-			Source: cdiv1beta1.DataSourceSource{
-				PVC: &cdiv1beta1.DataVolumeSourcePVC{
-					Name:      name,
-					Namespace: namespace,
-				},
-			},
-		},
-	}
 }
