@@ -16,6 +16,7 @@ import (
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/tests/decorators"
 )
 
@@ -201,6 +202,25 @@ var _ = Describe("Validation webhook", func() {
 				err := apiClient.Create(ctx, newSspV1Beta3, client.DryRunAll)
 				Expect(err).To(MatchError(ContainSubstring("at least one architecture needs to be defined, if multi-architecture is enabled")))
 			})
+
+			It("[test_id:TODO] should fail if workload architectures are incorrect", decorators.Conformance, func() {
+				newSspV1Beta3.Spec.EnableMultipleArchitectures = ptr.To(true)
+				newSspV1Beta3.Spec.Cluster = &sspv1beta3.Cluster{
+					WorkloadArchitectures:     []string{string(architecture.AMD64), "invalid-arch"},
+					ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+				}
+				err := apiClient.Create(ctx, newSspV1Beta3, client.DryRunAll)
+				Expect(err).To(MatchError(ContainSubstring("invalid workload architecture:")))
+			})
+
+			It("[test_id:TODO] should fail if control plane architectures are incorrect", decorators.Conformance, func() {
+				newSspV1Beta3.Spec.EnableMultipleArchitectures = ptr.To(true)
+				newSspV1Beta3.Spec.Cluster = &sspv1beta3.Cluster{
+					ControlPlaneArchitectures: []string{"invalid-arch"},
+				}
+				err := apiClient.Create(ctx, newSspV1Beta3, client.DryRunAll)
+				Expect(err).To(MatchError(ContainSubstring("invalid control plane architecture:")))
+			})
 		})
 	})
 
@@ -298,6 +318,31 @@ var _ = Describe("Validation webhook", func() {
 
 				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
 			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("at least one architecture needs to be defined, if multi-architecture is enabled")))
+		})
+
+		It("[test_id:TODO] should fail if workload architectures are incorrect", decorators.Conformance, func() {
+			Eventually(func() error {
+				foundSsp := getSsp()
+				foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+				foundSsp.Spec.Cluster = &sspv1beta3.Cluster{
+					WorkloadArchitectures:     []string{string(architecture.AMD64), "invalid-arch"},
+					ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+				}
+
+				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("invalid workload architecture:")))
+		})
+
+		It("[test_id:TODO] should fail if control plane architectures are incorrect", decorators.Conformance, func() {
+			Eventually(func() error {
+				foundSsp := getSsp()
+				foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+				foundSsp.Spec.Cluster = &sspv1beta3.Cluster{
+					ControlPlaneArchitectures: []string{"invalid-arch"},
+				}
+
+				return apiClient.Update(ctx, foundSsp, client.DryRunAll)
+			}, 20*time.Second, time.Second).Should(MatchError(ContainSubstring("invalid control plane architecture:")))
 		})
 	})
 })
