@@ -49,18 +49,20 @@ func GetSSPArchs(sspSpec *ssp.SSPSpec) ([]Arch, error) {
 		return []Arch{defaultArchitecture}, nil
 	}
 
-	archs := sspSpec.Cluster.WorkloadArchitectures
-	if len(archs) == 0 {
-		archs = sspSpec.Cluster.ControlPlaneArchitectures
-	}
+	// The resulting architecture order is ControlPlaneArchitectures
+	// followed by WorkloadArchitectures, without duplicates.
+	archStrs := concatWithoutRepetitions(
+		sspSpec.Cluster.ControlPlaneArchitectures,
+		sspSpec.Cluster.WorkloadArchitectures,
+	)
 
-	if len(archs) == 0 {
+	if len(archStrs) == 0 {
 		return nil, fmt.Errorf("no architectures are defined in .spec.cluster")
 	}
 
 	if ptr.Deref(sspSpec.EnableMultipleArchitectures, false) {
-		result := make([]Arch, 0, len(archs))
-		for _, archStr := range archs {
+		result := make([]Arch, 0, len(archStrs))
+		for _, archStr := range archStrs {
 			arch, err := ToArch(archStr)
 			if err != nil {
 				return nil, err
@@ -70,17 +72,24 @@ func GetSSPArchs(sspSpec *ssp.SSPSpec) ([]Arch, error) {
 		return result, nil
 	}
 
-	// For single architecture case, we prefer the first of ControlPlaneArchitectures.
-	// If there are none, we use the first of WorkloadArchitectures.
-	archStr := archs[0]
-	if len(sspSpec.Cluster.ControlPlaneArchitectures) > 0 {
-		archStr = sspSpec.Cluster.ControlPlaneArchitectures[0]
-	}
-
-	arch, err := ToArch(archStr)
+	arch, err := ToArch(archStrs[0])
 	if err != nil {
 		return nil, err
 	}
 
 	return []Arch{arch}, nil
+}
+
+func concatWithoutRepetitions[T comparable](data ...[]T) []T {
+	var result []T
+	set := map[T]struct{}{}
+	for _, slice := range data {
+		for _, val := range slice {
+			if _, ok := set[val]; !ok {
+				set[val] = struct{}{}
+				result = append(result, val)
+			}
+		}
+	}
+	return result
 }
