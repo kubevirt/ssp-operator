@@ -65,7 +65,7 @@ var _ = Describe("GetSSPArchs", func() {
 	})
 
 	Context("with multi-arch enabled", func() {
-		It("should return workload architectures", func() {
+		It("should return control plane architectures followed by workload architectures", func() {
 			archs, err := GetSSPArchs(&ssp.SSPSpec{
 				EnableMultipleArchitectures: ptr.To(true),
 				Cluster: &ssp.Cluster{
@@ -74,18 +74,7 @@ var _ = Describe("GetSSPArchs", func() {
 				},
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(archs).To(ConsistOf(AMD64, ARM64))
-		})
-
-		It("should return control plane architectures if workload architectures are empty", func() {
-			archs, err := GetSSPArchs(&ssp.SSPSpec{
-				EnableMultipleArchitectures: ptr.To(true),
-				Cluster: &ssp.Cluster{
-					ControlPlaneArchitectures: []string{string(S390X)},
-				},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(archs).To(ConsistOf(S390X))
+			Expect(archs).To(ConsistOf(S390X, AMD64, ARM64))
 		})
 
 		It("should fail if workload architectures contain an unknown architecture", func() {
