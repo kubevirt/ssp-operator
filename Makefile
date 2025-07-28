@@ -127,6 +127,11 @@ manager: generate lint fmt vet
 csv-generator: generate lint fmt vet
 	go build -o bin/csv-generator hack/csv-generator.go
 
+# Build network-policy-generator binary
+.PHONY: network-policy-generator
+network-policy-generator: lint fmt vet
+	go build -o bin/network-policy-generator tools/network-policy-generator/*.go
+
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
 run: generate lint fmt vet manifests
