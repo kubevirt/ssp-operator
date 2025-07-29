@@ -1,0 +1,16 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hco-allow-egress-to-api-server
+spec:
+  podSelector:
+    matchExpressions:
+    - key: hco.kubevirt.io/allow-access-cluster-services
+      operator: Exists
+  policyTypes:
+    - Egress
+  egress:
+  - ports:
+    - protocol: TCP
+      port: 6443

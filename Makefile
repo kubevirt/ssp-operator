@@ -151,11 +151,13 @@ manager-envsubst:
 deploy: manifests kustomize manager-envsubst
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(OC) apply -f -
+	$(KUSTOMIZE) build config/hco-network-policy | $(OC) apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 .PHONY: undeploy
 undeploy:
 	$(KUSTOMIZE) build config/default | $(OC) delete --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build config/hco-network-policy | $(OC) delete --ignore-not-found=$(ignore-not-found) -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
@@ -282,6 +284,9 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml _out/olm-crds.yaml
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml _out/olm-ssp-operator.clusterserviceversion.yaml
 	$(KUSTOMIZE) build config/default > _out/ssp-operator.yaml
+	# Append HCO policies to ssp-operator release so it works out of the box
+	echo "---" >> _out/ssp-operator.yaml
+	$(KUSTOMIZE) build config/hco-network-policy >> _out/ssp-operator.yaml
 
 # Build the bundle image.
 .PHONY: bundle-build
