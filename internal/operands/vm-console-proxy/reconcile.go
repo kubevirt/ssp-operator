@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/library-go/pkg/crypto"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -20,6 +21,7 @@ import (
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
+	"kubevirt.io/ssp-operator/internal/networkpolicies"
 	"kubevirt.io/ssp-operator/internal/operands"
 	vm_console_proxy_bundle "kubevirt.io/ssp-operator/internal/vm-console-proxy-bundle"
 )
@@ -37,6 +39,7 @@ const (
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings;rolebindings,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=list;watch;create;update;delete
 
 // Deprecated:
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list;watch;delete
@@ -72,6 +75,7 @@ func WatchTypes() []operands.WatchType {
 		{Object: &apps.Deployment{}, WatchFullObject: true},
 		{Object: &core.ConfigMap{}},
 		{Object: &routev1.Route{}},
+		{Object: &networkv1.NetworkPolicy{}},
 	}
 }
 
@@ -141,6 +145,7 @@ func (v *vmConsoleProxy) Reconcile(request *common.Request) ([]common.ReconcileR
 		reconcileService(*v.service.DeepCopy()),
 		reconcileDeployment(*v.deployment.DeepCopy()),
 		reconcileApiService(v.apiService.DeepCopy()))
+	reconcileFuncs = append(reconcileFuncs, reconcileNetworkPolicies(request)...)
 
 	reconcileResults, err := common.CollectResourceStatus(request, reconcileFuncs...)
 	if err != nil {
@@ -375,6 +380,27 @@ func reconcileApiService(apiService *apiregv1.APIService) common.ReconcileFunc {
 				foundApiService.Spec = expectedApiService.Spec
 			}).
 			Reconcile()
+	}
+}
+
+func reconcileNetworkPolicies(request *common.Request) []common.ReconcileFunc {
+	var funcs []common.ReconcileFunc
+	for _, policy := range newNetworkPolicies(request.Namespace) {
+		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
+			return common.CreateOrUpdate(request).
+				NamespacedResource(policy).
+				WithAppLabels(operandName, operandComponent).
+				Reconcile()
+		})
+	}
+	return funcs
+}
+
+func newNetworkPolicies(namespace string) []*networkv1.NetworkPolicy {
+	g := networkpolicies.NewOpenShiftGenerator()
+	return []*networkv1.NetworkPolicy{
+		g.NewEgressToKubeAPIAndDNS(namespace, networkpolicies.LabelVMConsoleProxyKubevirtIo, operandComponent),
+		networkpolicies.NewIngressToVMConsoleProxyAPI(namespace),
 	}
 }
 

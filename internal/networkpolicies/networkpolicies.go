@@ -8,6 +8,10 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+const (
+	LabelVMConsoleProxyKubevirtIo = "vm-console-proxy.kubevirt.io"
+)
+
 type Generator struct {
 	apiNamespace  string
 	apiLabelKey   string
@@ -101,6 +105,29 @@ func NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *netwo
 					Ports: []networkv1.NetworkPolicyPort{
 						{
 							Port:     ptr.To(intstr.FromInt32(8443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+					},
+				},
+			},
+		},
+	)
+}
+
+func NewIngressToVMConsoleProxyAPI(namespace string) *networkv1.NetworkPolicy {
+	return newNetworkPolicy(
+		namespace,
+		"ssp-operator-allow-ingress-to-vm-console-proxy-api",
+		&networkv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{LabelVMConsoleProxyKubevirtIo: "vm-console-proxy"},
+			},
+			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeIngress},
+			Ingress: []networkv1.NetworkPolicyIngressRule{
+				{
+					Ports: []networkv1.NetworkPolicyPort{
+						{
+							Port:     ptr.To(intstr.FromString("api")),
 							Protocol: ptr.To(k8sv1.ProtocolTCP),
 						},
 					},

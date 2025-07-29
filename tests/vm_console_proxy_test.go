@@ -28,14 +28,16 @@ import (
 
 var _ = Describe("VM Console Proxy Operand", func() {
 	var (
-		clusterRoleResource        testResource
-		clusterRoleBindingResource testResource
-		roleBindingResource        testResource
-		serviceAccountResource     testResource
-		serviceResource            testResource
-		deploymentResource         testResource
-		configMapResource          testResource
-		apiServiceResource         testResource
+		clusterRoleResource           testResource
+		clusterRoleBindingResource    testResource
+		roleBindingResource           testResource
+		serviceAccountResource        testResource
+		serviceResource               testResource
+		deploymentResource            testResource
+		configMapResource             testResource
+		apiServiceResource            testResource
+		networkPolicyKubeAPIAndDNSRes testResource
+		networkPolicyAPIRes           testResource
 	)
 
 	BeforeEach(OncePerOrdered, func() {
@@ -140,6 +142,11 @@ var _ = Describe("VM Console Proxy Operand", func() {
 				return reflect.DeepEqual(old.Spec, new.Spec)
 			},
 		}
+		networkPolicyKubeAPIAndDNSRes = testNetworkPolicyResource(
+			"ssp-operator-allow-egress-to-kube-api-and-dns-vm-console-proxy", expectedLabels,
+		)
+		networkPolicyAPIRes = testNetworkPolicyResource(
+			"ssp-operator-allow-ingress-to-vm-console-proxy-api", expectedLabels)
 
 		waitUntilDeployed()
 	})
@@ -170,6 +177,8 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Entry("[test_id:9850] deployment", &deploymentResource),
 			Entry("[test_id:9852] config map", &configMapResource),
 			Entry("[test_id:TODO] API service", &apiServiceResource),
+			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO] network policy api", &networkPolicyAPIRes),
 		)
 
 		DescribeTable("should set app labels", expectAppLabels,
@@ -181,6 +190,8 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Entry("[test_id:9856] deployment", &deploymentResource),
 			Entry("[test_id:9857] config map", &configMapResource),
 			Entry("[test_id:TODO] API service", &apiServiceResource),
+			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO] network policy api", &networkPolicyAPIRes),
 		)
 	})
 
@@ -194,6 +205,8 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Entry("[test_id:9864] deployment", &deploymentResource),
 			Entry("[test_id:9866] config map", &configMapResource),
 			Entry("[test_id:TODO] API service", &apiServiceResource),
+			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO] network policy api", &networkPolicyAPIRes),
 		)
 	})
 
@@ -206,6 +219,8 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Entry("[test_id:9870] deployment", &deploymentResource),
 			Entry("[test_id:9871] config map", &configMapResource),
 			Entry("[test_id:TODO] API service", &apiServiceResource),
+			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO] network policy api", &networkPolicyAPIRes),
 		)
 
 		Context("With pause", func() {
@@ -221,6 +236,8 @@ var _ = Describe("VM Console Proxy Operand", func() {
 				Entry("[test_id:9877] deployment", &deploymentResource),
 				Entry("[test_id:9878] config map", &configMapResource),
 				Entry("[test_id:TODO] API service", &apiServiceResource),
+				Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+				Entry("[test_id:TODO] network policy api", &networkPolicyAPIRes),
 			)
 		})
 
@@ -233,6 +250,8 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			Entry("[test_id:9883] deployment", &deploymentResource),
 			Entry("[test_id:9884] config map", &configMapResource),
 			Entry("[test_id:TODO] API service", &apiServiceResource),
+			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO] network policy api", &networkPolicyAPIRes),
 		)
 	})
 
