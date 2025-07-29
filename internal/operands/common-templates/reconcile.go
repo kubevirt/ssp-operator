@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/utils/ptr"
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"kubevirt.io/ssp-operator/internal/architecture"
@@ -79,10 +81,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 		return nil, err
 	}
 
-	var templates []templatev1.Template
-	for _, arch := range clusterArchs {
-		templates = append(templates, c.templatesByArch[arch]...)
-	}
+	templates := c.getTemplatesForArchs(clusterArchs, &request.Instance.Spec)
 
 	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(templates)...)
 	if err != nil {
@@ -104,6 +103,33 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 	}
 
 	return append(reconcileTemplatesResults, oldTemplatesResults...), nil
+}
+
+func (c *commonTemplates) getTemplatesForArchs(clusterArchs []architecture.Arch, sspSpec *ssp.SSPSpec) []templatev1.Template {
+	isMultiarch := ptr.Deref(sspSpec.EnableMultipleArchitectures, false)
+
+	var templates []templatev1.Template
+	for _, arch := range clusterArchs {
+		templatesForArch := c.templatesByArch[arch]
+		if !isMultiarch {
+			templates = append(templates, templatesForArch...)
+			continue
+		}
+
+		for i := range templatesForArch {
+			templateCopy := templatesForArch[i].DeepCopy()
+			for j := range templateCopy.Parameters {
+				param := &templateCopy.Parameters[j]
+				if param.Name == TemplateDataSourceParameterName {
+					param.Value = param.Value + "-" + string(arch)
+					break
+				}
+			}
+
+			templates = append(templates, *templateCopy)
+		}
+	}
+	return templates
 }
 
 func operatorIsUpgrading(request *common.Request) bool {

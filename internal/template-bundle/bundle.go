@@ -138,9 +138,8 @@ func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
 
 func findDataSourceName(template *templatev1.Template) (string, bool) {
 	const dataSourceNameOld = "SRC_PVC_NAME"
-	const dataSourceName = "DATA_SOURCE_NAME"
 
-	name, exists := findParameterValue(dataSourceName, template)
+	name, exists := findParameterValue(common_templates.TemplateDataSourceParameterName, template)
 	if exists {
 		return name, true
 	}
