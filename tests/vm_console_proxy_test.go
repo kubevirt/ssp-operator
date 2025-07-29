@@ -143,10 +143,13 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			},
 		}
 		networkPolicyKubeAPIAndDNSRes = testNetworkPolicyResource(
-			"ssp-operator-allow-egress-to-kube-api-and-dns-vm-console-proxy", expectedLabels,
+			"ssp-operator-allow-egress-to-kube-api-and-dns-vm-console-proxy",
+			strategy.GetNamespace(), expectedLabels,
 		)
 		networkPolicyAPIRes = testNetworkPolicyResource(
-			"ssp-operator-allow-ingress-to-vm-console-proxy-api", expectedLabels)
+			"ssp-operator-allow-ingress-to-vm-console-proxy-api",
+			strategy.GetNamespace(), expectedLabels,
+		)
 
 		waitUntilDeployed()
 	})

@@ -72,7 +72,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 	dataSourceNames := slices.Collect(dataSourceCollection.Names())
 
 	sspOperands := []operands.Operand{
-		data_sources.New(dataSourceNames),
+		data_sources.New(dataSourceNames, runningOnOpenShift),
 		vm_delete_protection.New(),
 	}
 

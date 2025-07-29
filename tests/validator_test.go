@@ -52,10 +52,10 @@ func testDeploymentResource() testResource {
 	}
 }
 
-func testNetworkPolicyResource(name string, expectedLabels map[string]string) testResource {
+func testNetworkPolicyResource(name, namespace string, expectedLabels map[string]string) testResource {
 	return testResource{
 		Name:           name,
-		Namespace:      strategy.GetNamespace(),
+		Namespace:      namespace,
 		Resource:       &networkv1.NetworkPolicy{},
 		ExpectedLabels: expectedLabels,
 		UpdateFunc: func(policy *networkv1.NetworkPolicy) {
@@ -167,10 +167,13 @@ var _ = Describe("Template validator operand", func() {
 		}
 		deploymentRes = testDeploymentResource()
 		networkPolicyKubeAPIAndDNSRes = testNetworkPolicyResource(
-			"ssp-operator-allow-egress-to-kube-api-and-dns-virt-template-validator", expectedLabels,
+			"ssp-operator-allow-egress-to-kube-api-and-dns-virt-template-validator",
+			strategy.GetNamespace(), expectedLabels,
 		)
 		networkPolicyWebhookAndMetricsRes = testNetworkPolicyResource(
-			"ssp-operator-allow-ingress-to-virt-template-validator-webhook-and-metrics", expectedLabels)
+			"ssp-operator-allow-ingress-to-virt-template-validator-webhook-and-metrics",
+			strategy.GetNamespace(), expectedLabels,
+		)
 
 		waitUntilDeployed()
 	})

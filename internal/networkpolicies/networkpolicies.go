@@ -6,10 +6,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"strings"
 )
 
 const (
 	LabelVMConsoleProxyKubevirtIo = "vm-console-proxy.kubevirt.io"
+	LabelCDIKubevirtIo            = "cdi.kubevirt.io"
 )
 
 type Generator struct {
@@ -21,6 +23,19 @@ type Generator struct {
 	dnsLabelKey   string
 	dnsLabelValue string
 	dnsPort       int32
+}
+
+func NewKubernetesGenerator() *Generator {
+	return &Generator{
+		apiNamespace:  "kube-system",
+		apiLabelKey:   "component",
+		apiLabelValue: "kube-apiserver",
+		apiPort:       6443,
+		dnsNamespace:  "kube-system",
+		dnsLabelKey:   "k8s-app",
+		dnsLabelValue: "kube-dns",
+		dnsPort:       53,
+	}
 }
 
 func NewOpenShiftGenerator() *Generator {
@@ -36,13 +51,19 @@ func NewOpenShiftGenerator() *Generator {
 	}
 }
 
-func (g *Generator) NewEgressToKubeAPIAndDNS(namespace, labelKey, labelValue string) *networkv1.NetworkPolicy {
+func (g *Generator) NewEgressToKubeAPIAndDNS(namespace, labelKey string, labelValues ...string) *networkv1.NetworkPolicy {
 	return newNetworkPolicy(
 		namespace,
-		"ssp-operator-allow-egress-to-kube-api-and-dns-"+labelValue,
+		"ssp-operator-allow-egress-to-kube-api-and-dns-"+strings.Join(labelValues, "-"),
 		&networkv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{labelKey: labelValue},
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      labelKey,
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   labelValues,
+					},
+				},
 			},
 			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeEgress},
 			Egress: []networkv1.NetworkPolicyEgressRule{
@@ -133,6 +154,116 @@ func NewIngressToVMConsoleProxyAPI(namespace string) *networkv1.NetworkPolicy {
 					},
 				},
 			},
+		},
+	)
+}
+
+func NewIngressToImporterMetrics(namespace string) *networkv1.NetworkPolicy {
+	return newNetworkPolicy(
+		namespace,
+		"ssp-operator-allow-ingress-to-importer-metrics",
+		&networkv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					LabelCDIKubevirtIo:           "importer",
+					"prometheus.cdi.kubevirt.io": "true",
+				},
+			},
+			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeIngress},
+			Ingress: []networkv1.NetworkPolicyIngressRule{
+				{
+					From: []networkv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{LabelCDIKubevirtIo: "cdi-deployment"},
+							},
+						},
+					},
+					Ports: []networkv1.NetworkPolicyPort{
+						{
+							Port:     ptr.To(intstr.FromInt32(8443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+					},
+				},
+			},
+		},
+	)
+}
+
+func NewIngressFromCDIUploadServerToCDICloneSource(namespace string) *networkv1.NetworkPolicy {
+	return newNetworkPolicy(
+		namespace,
+		"ssp-operator-allow-ingress-from-cdi-upload-server-to-cdi-clone-source",
+		&networkv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{LabelCDIKubevirtIo: "cdi-upload-server"},
+			},
+			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeIngress},
+			Ingress: []networkv1.NetworkPolicyIngressRule{
+				{
+					From: []networkv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{LabelCDIKubevirtIo: "cdi-clone-source"},
+							},
+						},
+					},
+					Ports: []networkv1.NetworkPolicyPort{
+						{
+							Port:     ptr.To(intstr.FromInt32(8443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+					},
+				},
+			},
+		},
+	)
+}
+
+func NewEgressFromCDICloneSourceToCDIUploadServer(namespace string) *networkv1.NetworkPolicy {
+	return newNetworkPolicy(
+		namespace,
+		"ssp-operator-allow-egress-from-cdi-clone-source-to-cdi-upload-server",
+		&networkv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{LabelCDIKubevirtIo: "cdi-clone-source"},
+			},
+			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeEgress},
+			Egress: []networkv1.NetworkPolicyEgressRule{
+				{
+					To: []networkv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{LabelCDIKubevirtIo: "cdi-upload-server"},
+							},
+						},
+					},
+					Ports: []networkv1.NetworkPolicyPort{
+						{
+							Port:     ptr.To(intstr.FromInt32(8443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+					},
+				},
+			},
+		},
+	)
+}
+
+func NewEgressFromImporterToDataSource(namespace string) *networkv1.NetworkPolicy {
+	return newNetworkPolicy(
+		namespace,
+		"ssp-operator-allow-egress-from-importer-to-datasource",
+		&networkv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{LabelCDIKubevirtIo: "importer"},
+			},
+			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeEgress},
+			Egress:      []networkv1.NetworkPolicyEgressRule{{}},
 		},
 	)
 }
