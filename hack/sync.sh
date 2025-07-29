@@ -53,3 +53,5 @@ cd config/manager && ${KUSTOMIZE} edit set image controller=registry:5000/kubevi
 "${KUBECTL}" wait deployment/ssp-operator -n kubevirt --for=condition=Available --timeout="540s"
 "${KUBECTL}" apply -n kubevirt -f "${KUBEVIRT_SSP}"
 
+# Install network policy to block traffic to/from SSP and its components by default
+KUBECTL=${KUBECTL} ./hack/install-network-policy.sh
