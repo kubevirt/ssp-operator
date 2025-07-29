@@ -12,4 +12,6 @@ const (
 	TemplateFlavorLabelPrefix    = "flavor.template.kubevirt.io/"
 	TemplateWorkloadLabelPrefix  = "workload.template.kubevirt.io/"
 	TemplateDeprecatedAnnotation = "template.kubevirt.io/deprecated"
+
+	TemplateDataSourceParameterName = "DATA_SOURCE_NAME"
 )

@@ -13,8 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
@@ -79,10 +81,7 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 		return nil, err
 	}
 
-	var templates []templatev1.Template
-	for _, arch := range clusterArchs {
-		templates = append(templates, c.templatesByArch[arch]...)
-	}
+	templates := c.getTemplatesForArchs(clusterArchs, &request.Instance.Spec)
 
 	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(templates)...)
 	if err != nil {
@@ -104,6 +103,37 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 	}
 
 	return append(reconcileTemplatesResults, oldTemplatesResults...), nil
+}
+
+func (c *commonTemplates) getTemplatesForArchs(clusterArchs []architecture.Arch, sspSpec *ssp.SSPSpec) []templatev1.Template {
+	var templates []templatev1.Template
+	for _, arch := range clusterArchs {
+		templatesForArch := c.templatesByArch[arch]
+		if !ptr.Deref(sspSpec.EnableMultipleArchitectures, false) {
+			// If multi-arch is disabled, the templates are not modified.
+			templates = append(templates, templatesForArch...)
+			continue
+		}
+
+		// If multi-arch is enabled, the DATA_SOURCE_NAME parameter
+		// has to point to the correct multi-arch DataSource.
+		for i := range templatesForArch {
+			templateCopy := templatesForArch[i].DeepCopy()
+			addArchSuffixToDataSourceParameter(templateCopy, arch)
+			templates = append(templates, *templateCopy)
+		}
+	}
+	return templates
+}
+
+func addArchSuffixToDataSourceParameter(template *templatev1.Template, arch architecture.Arch) {
+	for j := range template.Parameters {
+		param := &template.Parameters[j]
+		if param.Name == TemplateDataSourceParameterName {
+			param.Value = param.Value + "-" + string(arch)
+			return
+		}
+	}
 }
 
 func operatorIsUpgrading(request *common.Request) bool {
