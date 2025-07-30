@@ -6,6 +6,7 @@ import (
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,6 +21,7 @@ import (
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=list;watch;create;update;delete
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=list;watch;create;update;delete
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=list;watch
@@ -31,6 +33,7 @@ func WatchTypes() []operands.WatchType {
 		{Object: &v1.Service{}},
 		{Object: &apps.Deployment{}, WatchFullObject: true},
 		{Object: &v1.ConfigMap{}},
+		{Object: &networkv1.NetworkPolicy{}},
 	}
 }
 
@@ -57,7 +60,7 @@ func (t *templateValidator) WatchClusterTypes() []operands.WatchType {
 }
 
 func (t *templateValidator) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	return common.CollectResourceStatus(request,
+	funcs := []common.ReconcileFunc{
 		reconcileClusterRole,
 		reconcileServiceAccount,
 		reconcileClusterRoleBinding,
@@ -66,7 +69,9 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Reconci
 		reconcileConfigMap,
 		reconcileDeployment,
 		reconcileValidatingWebhook,
-	)
+	}
+	funcs = append(funcs, reconcileNetworkPolicies(request)...)
+	return common.CollectResourceStatus(request, funcs...)
 }
 
 func (t *templateValidator) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
@@ -262,4 +267,17 @@ func copyFoundCaBundles(newWebhooks []admission.ValidatingWebhook, foundWebhooks
 			}
 		}
 	}
+}
+
+func reconcileNetworkPolicies(request *common.Request) []common.ReconcileFunc {
+	var funcs []common.ReconcileFunc
+	for _, policy := range newNetworkPolicies(request.Namespace) {
+		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
+			return common.CreateOrUpdate(request).
+				NamespacedResource(policy).
+				WithAppLabels(operandName, operandComponent).
+				Reconcile()
+		})
+	}
+	return funcs
 }

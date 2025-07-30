@@ -8,6 +8,7 @@ import (
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +19,7 @@ import (
 
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/env"
+	"kubevirt.io/ssp-operator/internal/networkpolicies"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
@@ -376,5 +378,13 @@ func newPrometheusService(namespace string) *core.Service {
 			},
 			Type: core.ServiceTypeClusterIP,
 		},
+	}
+}
+
+func newNetworkPolicies(namespace string) []*networkv1.NetworkPolicy {
+	g := networkpolicies.NewOpenShiftGenerator()
+	return []*networkv1.NetworkPolicy{
+		g.NewEgressToKubeAPIAndDNS(namespace, KubevirtIo, VirtTemplateValidator),
+		networkpolicies.NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace),
 	}
 }
