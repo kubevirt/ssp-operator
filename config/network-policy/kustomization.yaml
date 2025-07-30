@@ -1,0 +1,3 @@
+---
+resources:
+  - allow_ingress_to_ssp_operator_webhook_and_metrics.yaml

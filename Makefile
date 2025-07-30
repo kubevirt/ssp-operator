@@ -151,11 +151,13 @@ manager-envsubst:
 deploy: manifests kustomize manager-envsubst
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(OC) apply -f -
+	$(KUSTOMIZE) build config/hco-network-policy | $(OC) apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 .PHONY: undeploy
 undeploy:
 	$(KUSTOMIZE) build config/default | $(OC) delete --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build config/hco-network-policy | $(OC) delete --ignore-not-found=$(ignore-not-found) -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
@@ -196,8 +198,10 @@ generate: controller-gen
 container-build: unittest bundle
 	mkdir -p data/olm-catalog
 	mkdir -p data/crd
+	mkdir -p data/network-policy
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
+	cp bundle/manifests/allow_ingress_to_ssp_operator_webhook_and_metrics.yaml data/network-policy/allow_ingress_to_ssp_operator_webhook_and_metrics.yaml
 	podman manifest rm ${IMG} || true
 	podman build --build-arg TARGET_ARCH=amd64 --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} . && \
     podman build --build-arg TARGET_ARCH=s390x --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} .
@@ -264,6 +268,7 @@ operator-sdk: $(OPERATOR_SDK)
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
 bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
+	rm -rf bundle
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	./bin/csv-generator --csv-version $(VERSION) --namespace kubevirt --operator-image $(IMG) --operator-version $(VERSION) \
@@ -271,11 +276,17 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 			--webhook-port 9443 --webhook-remove-certs > bundle/manifests/ssp-operator.clusterserviceversion.yaml.new
 	mv bundle/manifests/ssp-operator.clusterserviceversion.yaml.new bundle/manifests/ssp-operator.clusterserviceversion.yaml
 	$(OPERATOR_SDK) bundle validate ./bundle
+	# Copy the network policy after validation since the used operator-sdk does not support it yet
+	# TODO: Update operator-sdk to a recent version that supports network policies
+	cp config/network-policy/allow_ingress_to_ssp_operator_webhook_and_metrics.yaml bundle/manifests
 	rm -rf _out
 	mkdir -p _out
 	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml _out/olm-crds.yaml
 	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml _out/olm-ssp-operator.clusterserviceversion.yaml
 	$(KUSTOMIZE) build config/default > _out/ssp-operator.yaml
+	# Append HCO policies to ssp-operator release so it works out of the box
+	echo "---" >> _out/ssp-operator.yaml
+	$(KUSTOMIZE) build config/hco-network-policy >> _out/ssp-operator.yaml
 
 # Build the bundle image.
 .PHONY: bundle-build

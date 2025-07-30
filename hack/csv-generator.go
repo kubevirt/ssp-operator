@@ -20,17 +20,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-
 	"github.com/blang/semver/v4"
 	"github.com/operator-framework/api/pkg/lib/version"
 	csvv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
+	"io"
 	v1 "k8s.io/api/core/v1"
-	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"os"
 	sigsyaml "sigs.k8s.io/yaml"
 
 	"kubevirt.io/ssp-operator/internal/env"
@@ -39,6 +37,7 @@ import (
 type generatorFlags struct {
 	file                string
 	dumpCRDs            bool
+	dumpNPs             bool
 	removeCerts         bool
 	webhookPort         int32
 	csvVersion          string
@@ -85,6 +84,7 @@ func init() {
 	rootCmd.Flags().Int32Var(&f.webhookPort, "webhook-port", 0, "Container port for the admission webhook")
 	rootCmd.Flags().BoolVar(&f.removeCerts, "webhook-remove-certs", false, "Remove the webhook certificate volume and mount")
 	rootCmd.Flags().BoolVar(&f.dumpCRDs, "dump-crds", false, "Dump crds to stdout")
+	rootCmd.Flags().BoolVar(&f.dumpNPs, "dump-network-policies", false, "Dump NetworkPolicies to stdout")
 
 	if err := rootCmd.MarkFlagRequired("csv-version"); err != nil {
 		panic(fmt.Sprintf("%v", err))
@@ -108,13 +108,11 @@ func runGenerator() error {
 
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(csvFile), 1024)
 	csv := csvv1.ClusterServiceVersion{}
-	err = decoder.Decode(&csv)
-	if err != nil {
+	if err := decoder.Decode(&csv); err != nil {
 		return err
 	}
 
-	err = replaceVariables(f, &csv)
-	if err != nil {
+	if err := replaceVariables(f, &csv); err != nil {
 		return err
 	}
 
@@ -127,31 +125,43 @@ func runGenerator() error {
 		return err
 	}
 
-	err = marshallObject(csv, relatedImages, os.Stdout)
-	if err != nil {
+	if err := marshallObject(csv, relatedImages, os.Stdout); err != nil {
 		return err
 	}
-	if !f.dumpCRDs {
-		return nil
+
+	if f.dumpCRDs {
+		if err := dumpFiles("data/crd"); err != nil {
+			return err
+		}
 	}
-	files, err := os.ReadDir("data/crd")
+
+	if f.dumpNPs {
+		if err := dumpFiles("data/network-policy"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func dumpFiles(path string) error {
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
-		crd := extv1.CustomResourceDefinition{}
-
 		fsInfo, err := file.Info()
 		if err != nil {
 			return err
 		}
 
-		err = readAndDecodeToCRD(fsInfo, &crd)
+		obj := unstructured.Unstructured{}
+		err = readAndDecodeToUnstructured(fmt.Sprintf("%s/%s", path, fsInfo.Name()), &obj)
 		if err != nil {
 			return err
 		}
 
-		err = marshallObject(crd, nil, os.Stdout)
+		err = marshallObject(obj.Object, nil, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -159,13 +169,13 @@ func runGenerator() error {
 	return nil
 }
 
-func readAndDecodeToCRD(file os.FileInfo, crd *extv1.CustomResourceDefinition) error {
-	crdFile, err := os.ReadFile(fmt.Sprintf("data/crd/%s", file.Name()))
+func readAndDecodeToUnstructured(path string, obj *unstructured.Unstructured) error {
+	crdFile, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(crdFile), 1024)
-	err = decoder.Decode(&crd)
+	err = decoder.Decode(&obj)
 	if err != nil {
 		return err
 	}

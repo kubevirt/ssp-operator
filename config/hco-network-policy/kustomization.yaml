@@ -1,0 +1,8 @@
+---
+# Adds namespace to all resources.
+namespace: kubevirt
+
+resources:
+  - hco_allow_egress_to_api_server.yaml
+  - ocp_hco-allow-egress-to-dns.yaml
+  # - k8s_hco-allow-egress-to-dns.yaml
