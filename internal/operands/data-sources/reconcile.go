@@ -111,30 +111,13 @@ func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResu
 	funcs = append(funcs, dsFuncs...)
 	funcs = append(funcs, d.reconcileNetworkPolicies()...)
 
-	results, err := common.CollectResourceStatus(request, funcs...)
-	if err != nil {
-		return nil, err
-	}
-
-	var allSucceeded = true
-	for i := range results {
-		if !results[i].IsSuccess() {
-			allSucceeded = false
-			break
-		}
-	}
-
-	// DataImportCrons can be reconciled only after all resources successfully reconciled.
-	if !allSucceeded {
-		return results, nil
-	}
-
 	dicFuncs, err := reconcileDataImportCrons(dsAndCrons.dataImportCrons, request)
 	if err != nil {
 		return nil, err
 	}
+	funcs = append(funcs, dicFuncs...)
 
-	return common.CollectResourceStatus(request, dicFuncs...)
+	return common.CollectResourceStatus(request, funcs...)
 }
 
 func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
