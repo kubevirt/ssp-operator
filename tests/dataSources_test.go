@@ -36,6 +36,76 @@ var _ = Describe("DataSources", func() {
 	const cdiLabel = cdiLabelPrefix + "/dataImportCron"
 	const cdiCleanupLabel = cdiLabel + ".cleanup"
 
+	const registryURL = "docker://quay.io/kubevirt/cirros-container-disk-demo"
+
+	var commonAnnotations = map[string]string{
+		"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+	}
+
+	// Helper context that can be reused
+	var contextWithPvc = func(text string, args ...any) {
+		Context("with existing PVC", func() {
+			var (
+				dataVolume *cdiv1beta1.DataVolume
+			)
+
+			BeforeEach(func() {
+				dataVolume = &cdiv1beta1.DataVolume{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        dataSourceName,
+						Namespace:   internal.GoldenImagesNamespace,
+						Annotations: commonAnnotations,
+					},
+					Spec: cdiv1beta1.DataVolumeSpec{
+						Source: &cdiv1beta1.DataVolumeSource{
+							Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+								URL:        ptr.To(registryURL),
+								PullMethod: ptr.To(cdiv1beta1.RegistryPullNode),
+							},
+						},
+						Storage: &cdiv1beta1.StorageSpec{
+							Resources: core.VolumeResourceRequirements{
+								Requests: core.ResourceList{
+									core.ResourceStorage: resource.MustParse("128Mi"),
+								},
+							},
+						},
+					},
+				}
+				Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
+
+				Eventually(func(g Gomega) {
+					foundDv := &cdiv1beta1.DataVolume{}
+					err := apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)
+
+					// When DataVolume succeeds importing, CDI may remove it and leave only PVC.
+					if errors.IsNotFound(err) {
+						g.Expect(apiClient.Get(ctx,
+							client.ObjectKeyFromObject(dataVolume),
+							&core.PersistentVolumeClaim{}),
+						).To(Succeed())
+						return
+					}
+
+					g.Expect(err).ToNot(HaveOccurred())
+					g.Expect(foundDv.Status.Phase).To(Equal(cdiv1beta1.Succeeded))
+				}, env.Timeout(), time.Second).Should(Succeed(), "DataVolume should successfully import.")
+			})
+
+			AfterEach(func() {
+				pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
+
+				Expect(apiClient.Delete(ctx, dataVolume)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+				Expect(apiClient.Delete(ctx, pvc)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+
+				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+				waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
+			})
+
+			Context(text, args...)
+		})
+	}
+
 	var (
 		expectedLabels map[string]string
 
@@ -794,11 +864,7 @@ var _ = Describe("DataSources", func() {
 		const cronName = "test-data-import-cron"
 
 		var (
-			registryURL       = "docker://quay.io/kubevirt/cirros-container-disk-demo"
-			pullMethod        = cdiv1beta1.RegistryPullNode
-			commonAnnotations = map[string]string{
-				"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
-			}
+			pullMethod = cdiv1beta1.RegistryPullNode
 
 			cronTemplate   ssp.DataImportCronTemplate
 			dataImportCron testResource
@@ -826,7 +892,7 @@ var _ = Describe("DataSources", func() {
 						Spec: cdiv1beta1.DataVolumeSpec{
 							Source: &cdiv1beta1.DataVolumeSource{
 								Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-									URL:        &registryURL,
+									URL:        ptr.To(registryURL),
 									PullMethod: &pullMethod,
 								},
 							},
@@ -1025,55 +1091,12 @@ var _ = Describe("DataSources", func() {
 			})
 		})
 
-		Context("with existing PVC", func() {
-			var (
-				dataVolume *cdiv1beta1.DataVolume
-			)
-
+		contextWithPvc("", func() {
 			JustAfterEach(func() {
 				logObject(client.ObjectKey{Namespace: internal.GoldenImagesNamespace, Name: dataSourceName}, &cdiv1beta1.DataVolume{})
 			})
 
 			BeforeEach(func() {
-				dataVolume = &cdiv1beta1.DataVolume{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        dataSourceName,
-						Namespace:   internal.GoldenImagesNamespace,
-						Annotations: commonAnnotations,
-					},
-					Spec: cdiv1beta1.DataVolumeSpec{
-						Source: &cdiv1beta1.DataVolumeSource{
-							Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-								URL:        &registryURL,
-								PullMethod: &pullMethod,
-							},
-						},
-						Storage: &cdiv1beta1.StorageSpec{
-							Resources: core.VolumeResourceRequirements{
-								Requests: core.ResourceList{
-									core.ResourceStorage: resource.MustParse("128Mi"),
-								},
-							},
-						},
-					},
-				}
-				Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
-
-				Eventually(func() bool {
-					foundDv := &cdiv1beta1.DataVolume{}
-					err := apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)
-
-					if errors.IsNotFound(err) {
-						foundPvc := &core.PersistentVolumeClaim{}
-						err = apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundPvc)
-						Expect(err).ToNot(HaveOccurred())
-						return true
-					}
-
-					Expect(err).ToNot(HaveOccurred())
-					return foundDv.Status.Phase == cdiv1beta1.Succeeded
-				}, env.Timeout(), time.Second).Should(BeTrue(), "DataVolume should successfully import.")
-
 				Eventually(func() bool {
 					foundDs := &cdiv1beta1.DataSource{}
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), foundDs)).To(Succeed())
@@ -1089,25 +1112,6 @@ var _ = Describe("DataSources", func() {
 				})
 
 				waitUntilDeployed()
-			})
-
-			deleteDVAndPVC := func() {
-				err := apiClient.Delete(ctx, dataVolume)
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred(), "Failed to delete data volume")
-				}
-				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
-
-				pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
-				err = apiClient.Delete(ctx, pvc)
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred(), "Failed to delete persistent volume claim")
-				}
-				waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
-			}
-
-			AfterEach(func() {
-				deleteDVAndPVC()
 			})
 
 			It("[test_id:8110] should not create DataImportCron", decorators.Conformance, func() {
@@ -1138,7 +1142,19 @@ var _ = Describe("DataSources", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
 
-				deleteDVAndPVC()
+				dataVolume := &cdiv1beta1.DataVolume{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      dataSourceName,
+						Namespace: internal.GoldenImagesNamespace,
+					},
+				}
+
+				Expect(apiClient.Delete(ctx, dataVolume)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+
+				pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
+				Expect(apiClient.Delete(ctx, pvc)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+				waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
 
 				Eventually(func() error {
 					return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
@@ -1301,7 +1317,7 @@ var _ = Describe("DataSources", func() {
 							Spec: cdiv1beta1.DataVolumeSpec{
 								Source: &cdiv1beta1.DataVolumeSource{
 									Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-										URL:        &registryURL,
+										URL:        ptr.To(registryURL),
 										PullMethod: &pullMethod,
 									},
 								},
