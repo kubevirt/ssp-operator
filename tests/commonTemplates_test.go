@@ -403,9 +403,17 @@ var _ = Describe("Common templates with multiple architectures enabled", Ordered
 	})
 
 	DescribeTable("created resource", func(res *testResource, arch architecture.Arch) {
-		found := res.NewResource()
-		Expect(apiClient.Get(ctx, res.GetKey(), found)).To(Succeed())
-		Expect(found.GetLabels()).To(HaveKeyWithValue(commonTemplates.TemplateArchitectureLabel, string(arch)))
+		foundTemplate := &templatev1.Template{}
+		Expect(apiClient.Get(ctx, res.GetKey(), foundTemplate)).To(Succeed())
+		Expect(foundTemplate.GetLabels()).To(HaveKeyWithValue(commonTemplates.TemplateArchitectureLabel, string(arch)))
+
+		for _, parameter := range foundTemplate.Parameters {
+			if parameter.Name == commonTemplates.TemplateDataSourceParameterName {
+				Expect(parameter.Value).To(HaveSuffix("-" + string(arch)))
+				return
+			}
+		}
+		Fail(fmt.Sprintf("Template did not have parameter %s", commonTemplates.TemplateDataSourceParameterName))
 	},
 		Entry("[test_id:TODO] template for amd64", decorators.Conformance, &testTemplateAmd64, architecture.AMD64),
 		Entry("[test_id:TODO] template for arm64", decorators.Conformance, &testTemplateArm64, architecture.ARM64),
