@@ -142,19 +142,17 @@ func (s *prometheusServer) Start(ctx context.Context) error {
 		return err
 	}
 
+	subCtx, cancel := context.WithCancel(ctx)
 	go func() {
-		// TODO: change context, so it can be closed when
-		// this function returns an error
-		if err := certWatcher.Start(ctx); err != nil {
+		if err := certWatcher.Start(subCtx); err != nil {
 			setupLog.Error(err, "certificate watcher error")
 		}
+		cancel()
 	}()
 
 	idleConnsClosed := make(chan struct{})
 	go func() {
-		// TODO: make sure that the goroutine finishes when
-		// this function returns an error
-		<-ctx.Done()
+		<-subCtx.Done()
 		setupLog.Info("shutting down Prometheus metrics server")
 
 		if err := server.Shutdown(context.Background()); err != nil {
@@ -165,13 +163,16 @@ func (s *prometheusServer) Start(ctx context.Context) error {
 
 	server.TLSConfig = s.getPrometheusTLSConfig(ctx, certWatcher)
 
-	if err := server.ListenAndServeTLS(s.certPath, s.keyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err = server.ListenAndServeTLS(s.certPath, s.keyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		setupLog.Error(err, "Failed to start Prometheus metrics endpoint server")
-		return err
+		cancel()
 	}
 
 	<-idleConnsClosed
-	return nil
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
 
 func (s *prometheusServer) getPrometheusTLSConfig(ctx context.Context, certWatcher *certwatcher.CertWatcher) *tls.Config {
