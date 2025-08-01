@@ -36,6 +36,7 @@ import (
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 )
 
@@ -297,8 +298,8 @@ var _ = Describe("SSP Validation", func() {
 			})
 		})
 
-		Context("with multi-arch enabled", func() {
-			It("should fail if .spec.cluster is nil", func() {
+		Context("Cluster", func() {
+			It("should fail if multi-arch is enabled and .spec.cluster is nil", func() {
 				ssp := &sspv1beta3.SSP{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-ssp",
@@ -331,6 +332,43 @@ var _ = Describe("SSP Validation", func() {
 
 				_, err := validator.ValidateCreate(ctx, ssp)
 				Expect(err).To(MatchError(ContainSubstring("at least one architecture needs to be defined, if multi-architecture is enabled")))
+			})
+
+			It("should fail if workload architectures contain invalid value", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						EnableMultipleArchitectures: ptr.To(true),
+						Cluster: &sspv1beta3.Cluster{
+							WorkloadArchitectures:     []string{string(architecture.AMD64), "invalid-arch"},
+							ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+						},
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring("invalid workload architecture:")))
+			})
+
+			It("should fail if control place architectures contain invalid value", func() {
+				ssp := &sspv1beta3.SSP{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ssp",
+						Namespace: "test-ns",
+					},
+					Spec: sspv1beta3.SSPSpec{
+						EnableMultipleArchitectures: ptr.To(true),
+						Cluster: &sspv1beta3.Cluster{
+							ControlPlaneArchitectures: []string{"invalid-arch"},
+						},
+					},
+				}
+
+				_, err := validator.ValidateCreate(ctx, ssp)
+				Expect(err).To(MatchError(ContainSubstring("invalid control plane architecture:")))
 			})
 		})
 

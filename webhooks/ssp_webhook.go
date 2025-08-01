@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
-	"kubevirt.io/ssp-operator/webhooks/convert"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,6 +33,8 @@ import (
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/internal/architecture"
+	"kubevirt.io/ssp-operator/webhooks/convert"
 )
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-ssp-kubevirt-io-v1beta2-ssp,mutating=false,failurePolicy=fail,groups=ssp.kubevirt.io,resources=ssps,versions=v1beta2,name=validation.v1beta2.ssp.kubevirt.io,admissionReviewVersions=v1,sideEffects=None
@@ -120,13 +121,26 @@ func (s *sspValidator) validateSspObject(ctx context.Context, ssp *sspv1beta3.SS
 }
 
 func validateCluster(ssp *sspv1beta3.SSP) error {
-	if ptr.Deref(ssp.Spec.EnableMultipleArchitectures, false) {
-		cluster := ssp.Spec.Cluster
-		if cluster == nil {
-			return fmt.Errorf(".spec.cluster needs to be non-nil, if multi-architecture is enabled")
-		}
+	if ptr.Deref(ssp.Spec.EnableMultipleArchitectures, false) && ssp.Spec.Cluster == nil {
+		return fmt.Errorf(".spec.cluster needs to be non-nil, if multi-architecture is enabled")
+	}
+
+	cluster := ssp.Spec.Cluster
+	if cluster != nil {
 		if len(cluster.WorkloadArchitectures) == 0 && len(cluster.ControlPlaneArchitectures) == 0 {
 			return fmt.Errorf("at least one architecture needs to be defined, if multi-architecture is enabled")
+		}
+
+		for _, archStr := range cluster.WorkloadArchitectures {
+			if _, err := architecture.ToArch(archStr); err != nil {
+				return fmt.Errorf("invalid workload architecture: %w", err)
+			}
+		}
+
+		for _, archStr := range cluster.ControlPlaneArchitectures {
+			if _, err := architecture.ToArch(archStr); err != nil {
+				return fmt.Errorf("invalid control plane architecture: %w", err)
+			}
 		}
 	}
 
