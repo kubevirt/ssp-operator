@@ -20,9 +20,30 @@ NAMESPACE=${1:-kubevirt}
 RELEASE_BRANCH=${CI_BRANCH}
 if [[ -z ${RELEASE_BRANCH} ]] || [[ ${RELEASE_BRANCH} == "main" ]]
 then
-  # Get the latest release branch
-  RELEASE_BRANCH=$(curl -s 'https://api.github.com/repos/kubevirt/ssp-operator/branches?per_page=100' |
-    jq -r '[.[].name | select(startswith("release-v"))] | max_by(ltrimstr("release-v") | split(".") | map(tonumber))')
+  LATEST_RELEASE_BRANCH=""
+  PAGE=1
+  BRANCHES=$(curl -s "https://api.github.com/repos/kubevirt/ssp-operator/branches?page=$PAGE&per_page=100")
+  while [[ $(echo "$BRANCHES" | jq 'length') -ne 0 ]]
+  do
+    BRANCH=$(echo "$BRANCHES" | jq -r '[.[].name | select(startswith("release-v"))] | max_by(ltrimstr("release-v") | split(".") | map(tonumber))')
+    if [[ ${BRANCH} != 'null' ]]
+    then
+      if [[ -z ${LATEST_RELEASE_BRANCH} ]]
+      then
+        LATEST_RELEASE_BRANCH=$BRANCH
+      else
+        LATEST_RELEASE_BRANCH=$(jq -n -r --arg B1 "$BRANCH" --arg B2 "$LATEST_RELEASE_BRANCH" '[ $B1, $B2 ] | max_by(ltrimstr("release-v") | split(".") | map(tonumber))')
+      fi
+    fi
+    ((PAGE++))
+    BRANCHES=$(curl -s "https://api.github.com/repos/kubevirt/ssp-operator/branches?page=$PAGE&per_page=100")
+  done
+  RELEASE_BRANCH=$LATEST_RELEASE_BRANCH
+  if [[ -z ${RELEASE_BRANCH} ]]
+  then
+    echo "No branch with prefix release-v found" >&2
+    exit 1
+  fi
 fi
 
 # GitHub API returns releases sorted by creation time. Latest release is the first.
