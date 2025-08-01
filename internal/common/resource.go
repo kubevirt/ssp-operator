@@ -10,6 +10,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -488,6 +489,9 @@ func defaultUpdateFunc(newObj, foundObj client.Object) {
 
 	case *promv1.ServiceMonitor:
 		foundObj.(*promv1.ServiceMonitor).Spec = newTyped.Spec
+
+	case *networkv1.NetworkPolicy:
+		foundObj.(*networkv1.NetworkPolicy).Spec = newTyped.Spec
 
 	default:
 		panic(fmt.Sprintf("Default update is not supported for type: %T", newObj))

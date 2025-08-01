@@ -37,16 +37,17 @@ var _ = Describe("Data-Sources operand", func() {
 
 		operand operands.Operand
 		request common.Request
+
+		dsNames []string
 	)
 
 	BeforeEach(func() {
 		testDataSources = getDataSources()
 
-		var dsNames []string
 		for _, ds := range testDataSources {
 			dsNames = append(dsNames, ds.Name)
 		}
-		operand = New(dsNames)
+		operand = New(dsNames, false)
 
 		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
@@ -111,6 +112,20 @@ var _ = Describe("Data-Sources operand", func() {
 			ExpectResourceExists(&ds, request)
 		}
 	})
+
+	DescribeTable("should create NetworkPolicies", func(runningOnOpenShift bool) {
+		operand = New(dsNames, runningOnOpenShift)
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		for _, policy := range newNetworkPolicies(internal.GoldenImagesNamespace, runningOnOpenShift) {
+			ExpectResourceExists(policy, request)
+		}
+	},
+		Entry("on Kubernetes", false),
+		Entry("on OpenShift", true),
+	)
 
 	Context("with DataImportCron template", func() {
 		var (

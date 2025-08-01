@@ -17,6 +17,7 @@ import (
 var _ = Describe("csv generator", func() {
 	flags := generatorFlags{
 		dumpCRDs:        true,
+		dumpNPs:         true,
 		removeCerts:     false,
 		csvVersion:      "9.9.9",
 		namespace:       "testOperatorNamespace",

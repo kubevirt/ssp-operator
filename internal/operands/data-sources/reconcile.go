@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	core "k8s.io/api/core/v1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -21,6 +22,7 @@ import (
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;rolebindings,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=datasources,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cdi.kubevirt.io,resources=dataimportcrons,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=list;watch;create;update;delete
 
 // RBAC for created roles
 // +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
@@ -53,23 +55,26 @@ func WatchClusterTypes() []operands.WatchType {
 		// Need to watch status of DataSource to notice if referenced PVC was deleted.
 		{Object: &cdiv1beta1.DataSource{}, Crd: dataSourceCrd, WatchFullObject: true},
 		{Object: &cdiv1beta1.DataImportCron{}, Crd: dataImportCronCrd},
+		{Object: &networkv1.NetworkPolicy{}},
 	}
 }
 
 type dataSources struct {
-	sources []cdiv1beta1.DataSource
+	sources            []cdiv1beta1.DataSource
+	runningOnOpenShift bool
 }
 
 var _ operands.Operand = &dataSources{}
 
-func New(sourceNames []string) operands.Operand {
+func New(sourceNames []string, runningOnOpenShift bool) operands.Operand {
 	sources := make([]cdiv1beta1.DataSource, 0, len(sourceNames))
 	for _, name := range sourceNames {
 		sources = append(sources, newDataSource(name))
 	}
 
 	return &dataSources{
-		sources: sources,
+		sources:            sources,
+		runningOnOpenShift: runningOnOpenShift,
 	}
 }
 
@@ -109,6 +114,7 @@ func (d *dataSources) Reconcile(request *common.Request) ([]common.ReconcileResu
 		return nil, err
 	}
 	funcs = append(funcs, dsFuncs...)
+	funcs = append(funcs, d.reconcileNetworkPolicies()...)
 
 	results, err := common.CollectResourceStatus(request, funcs...)
 	if err != nil {
@@ -176,6 +182,9 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 		newViewRole(internal.GoldenImagesNamespace),
 		newViewRoleBinding(internal.GoldenImagesNamespace),
 		newEditRole())
+	for _, policy := range newNetworkPolicies(internal.GoldenImagesNamespace, d.runningOnOpenShift) {
+		objects = append(objects, policy)
+	}
 
 	return common.DeleteAll(request, objects...)
 }
@@ -474,4 +483,17 @@ func listAllOwnedDataSources(request *common.Request) ([]cdiv1beta1.DataSource, 
 
 func listAllOwnedDataImportCrons(request *common.Request) ([]cdiv1beta1.DataImportCron, error) {
 	return common.ListOwnedResources[cdiv1beta1.DataImportCronList, cdiv1beta1.DataImportCron](request)
+}
+
+func (d *dataSources) reconcileNetworkPolicies() []common.ReconcileFunc {
+	var funcs []common.ReconcileFunc
+	for _, policy := range newNetworkPolicies(internal.GoldenImagesNamespace, d.runningOnOpenShift) {
+		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
+			return common.CreateOrUpdate(request).
+				ClusterResource(policy).
+				WithAppLabels(operandName, operandComponent).
+				Reconcile()
+		})
+	}
+	return funcs
 }

@@ -226,6 +226,16 @@ spec:
           - update
           - watch
         - apiGroups:
+          - networking.k8s.io
+          resources:
+          - networkpolicies
+          verbs:
+          - create
+          - delete
+          - list
+          - update
+          - watch
+        - apiGroups:
           - rbac.authorization.k8s.io
           resources:
           - clusterrolebindings
@@ -315,6 +325,7 @@ spec:
                 openshift.io/required-scc: restricted-v2
               labels:
                 control-plane: ssp-operator
+                hco.kubevirt.io/allow-access-cluster-services: "true"
                 name: ssp-operator
                 prometheus.ssp.kubevirt.io: "true"
             spec:

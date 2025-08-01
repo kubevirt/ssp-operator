@@ -88,6 +88,9 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		ExpectResourceExists(bundle.Service, request)
 		ExpectResourceExists(bundle.Deployment, request)
 		ExpectResourceExists(bundle.ApiService, request)
+		for _, policy := range newNetworkPolicies(namespace) {
+			ExpectResourceExists(policy, request)
+		}
 	})
 
 	It("should read deployment image the environment variable", func() {

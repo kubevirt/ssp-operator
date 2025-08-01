@@ -2,9 +2,11 @@ package data_sources
 
 import (
 	core "k8s.io/api/core/v1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
+	"kubevirt.io/ssp-operator/internal/networkpolicies"
 
 	"kubevirt.io/ssp-operator/internal"
 )
@@ -143,5 +145,22 @@ func newEditRole() *rbac.ClusterRole {
 				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 			},
 		},
+	}
+}
+
+func newNetworkPolicies(namespace string, runningOnOpenShift bool) []*networkv1.NetworkPolicy {
+	var g *networkpolicies.Generator
+	if runningOnOpenShift {
+		g = networkpolicies.NewOpenShiftGenerator()
+	} else {
+		g = networkpolicies.NewKubernetesGenerator()
+	}
+
+	return []*networkv1.NetworkPolicy{
+		g.NewEgressToKubeAPIAndDNS(namespace, networkpolicies.LabelCDIKubevirtIo, "importer", "cdi-clone-source"),
+		networkpolicies.NewIngressToImporterMetrics(namespace),
+		networkpolicies.NewIngressFromCDIUploadServerToCDICloneSource(namespace),
+		networkpolicies.NewEgressFromCDICloneSourceToCDIUploadServer(namespace),
+		networkpolicies.NewEgressFromImporterToDataSource(namespace),
 	}
 }

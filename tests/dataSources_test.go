@@ -11,6 +11,7 @@ import (
 
 	authv1 "k8s.io/api/authorization/v1"
 	core "k8s.io/api/core/v1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -38,11 +39,16 @@ var _ = Describe("DataSources", func() {
 	var (
 		expectedLabels map[string]string
 
-		viewRole        testResource
-		viewRoleBinding testResource
-		editClusterRole testResource
-		goldenImageNS   testResource
-		dataSource      testResource
+		viewRole                            testResource
+		viewRoleBinding                     testResource
+		editClusterRole                     testResource
+		goldenImageNS                       testResource
+		dataSource                          testResource
+		networkPolicyKubeAPIAndDNSRes       testResource
+		networkPolicyImporterMetricsRes     testResource
+		networkPolicyIngressUploadServerRes testResource
+		networkPolicyEgressUploadServerRes  testResource
+		networkPolicyEgressImporterRes      testResource
 	)
 
 	BeforeEach(func() {
@@ -101,6 +107,26 @@ var _ = Describe("DataSources", func() {
 				return reflect.DeepEqual(old.Spec, new.Spec)
 			},
 		}
+		networkPolicyKubeAPIAndDNSRes = testNetworkPolicyResource(
+			"ssp-operator-allow-egress-to-kube-api-and-dns-importer-cdi-clone-source",
+			internal.GoldenImagesNamespace, expectedLabels,
+		)
+		networkPolicyImporterMetricsRes = testNetworkPolicyResource(
+			"ssp-operator-allow-ingress-to-importer-metrics",
+			internal.GoldenImagesNamespace, expectedLabels,
+		)
+		networkPolicyIngressUploadServerRes = testNetworkPolicyResource(
+			"ssp-operator-allow-ingress-from-cdi-upload-server-to-cdi-clone-source",
+			internal.GoldenImagesNamespace, expectedLabels,
+		)
+		networkPolicyEgressUploadServerRes = testNetworkPolicyResource(
+			"ssp-operator-allow-egress-from-cdi-clone-source-to-cdi-upload-server",
+			internal.GoldenImagesNamespace, expectedLabels,
+		)
+		networkPolicyEgressImporterRes = testNetworkPolicyResource(
+			"ssp-operator-allow-egress-from-importer-to-datasource",
+			internal.GoldenImagesNamespace, expectedLabels,
+		)
 
 		waitUntilDeployed()
 	})
@@ -122,6 +148,11 @@ var _ = Describe("DataSources", func() {
 		},
 			Entry("[test_id:4777]view role", &viewRole),
 			Entry("[test_id:4772]view role binding", &viewRoleBinding),
+			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
+			Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
+			Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 		)
 
 		DescribeTable("should set app labels", expectAppLabels,
@@ -129,6 +160,11 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:6216] golden images namespace", &goldenImageNS),
 			Entry("[test_id:6217] view role", &viewRole),
 			Entry("[test_id:6218] view role binding", &viewRoleBinding),
+			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO] network policy importer metrics", &networkPolicyImporterMetricsRes),
+			Entry("[test_id:TODO] network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO] network policy egress upload server", &networkPolicyEgressUploadServerRes),
+			Entry("[test_id:TODO] network policy egress importer", &networkPolicyEgressImporterRes),
 		)
 	})
 
@@ -137,6 +173,11 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:5315]edit cluster role", &editClusterRole),
 			Entry("[test_id:5316]view role", &viewRole),
 			Entry("[test_id:5317]view role binding", &viewRoleBinding),
+			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
+			Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
+			Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 		)
 
 		Context("with pause", func() {
@@ -152,6 +193,11 @@ var _ = Describe("DataSources", func() {
 				Entry("[test_id:5388]view role", &viewRole),
 				Entry("[test_id:5389]view role binding", &viewRoleBinding),
 				Entry("[test_id:5393]edit cluster role", &editClusterRole),
+				Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+				Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
+				Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+				Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
+				Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 			)
 		})
 
@@ -160,6 +206,11 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:6211] golden images namespace", &goldenImageNS),
 			Entry("[test_id:6212] view role", &viewRole),
 			Entry("[test_id:6213] view role binding", &viewRoleBinding),
+			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO] network policy importer metrics", &networkPolicyImporterMetricsRes),
+			Entry("[test_id:TODO] network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO] network policy egress upload server", &networkPolicyEgressUploadServerRes),
+			Entry("[test_id:TODO] network policy egress importer", &networkPolicyEgressImporterRes),
 		)
 	})
 
@@ -168,6 +219,11 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:4773]view role", &viewRole),
 			Entry("[test_id:4842]view role binding", &viewRoleBinding),
 			Entry("[test_id:4771]edit cluster role", &editClusterRole),
+			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
+			Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
+			Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
+			Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 			Entry("[test_id:4770]golden image NS", &goldenImageNS),
 		)
 	})
@@ -1274,6 +1330,57 @@ var _ = Describe("DataSources", func() {
 
 				err := apiClient.Get(ctx, client.ObjectKeyFromObject(cron), &cdiv1beta1.DataImportCron{})
 				Expect(err).ToNot(HaveOccurred(), "unrelated DataImportCron was removed")
+			})
+		})
+
+		Context("with default deny NetworkPolicy", func() {
+			var defaultDenyPolicy *networkv1.NetworkPolicy
+
+			BeforeEach(func() {
+				defaultDenyPolicy = &networkv1.NetworkPolicy{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: networkv1.SchemeGroupVersion.String(),
+						Kind:       "NetworkPolicy",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "default-deny-all",
+						Namespace: internal.GoldenImagesNamespace,
+					},
+					Spec: networkv1.NetworkPolicySpec{
+						PodSelector: metav1.LabelSelector{},
+						PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeIngress, networkv1.PolicyTypeEgress},
+					},
+				}
+				Expect(apiClient.Create(ctx, defaultDenyPolicy)).To(Succeed())
+
+				cronTemplate.Spec.Template.Spec.Source.Registry.PullMethod = ptr.To(cdiv1beta1.RegistryPullPod)
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+						cronTemplate,
+					)
+				})
+
+				waitUntilDeployed()
+			})
+
+			AfterEach(func() {
+				Expect(apiClient.Delete(ctx, defaultDenyPolicy)).To(Succeed())
+			})
+
+			It("[test_id:TODO import should succeed", func() {
+				Eventually(func(g Gomega) {
+					cron := &cdiv1beta1.DataImportCron{}
+					g.Expect(apiClient.Get(ctx, dataImportCron.GetKey(), cron)).To(Succeed())
+
+					found := false
+					for _, condition := range cron.Status.Conditions {
+						if condition.Type == cdiv1beta1.DataImportCronUpToDate {
+							g.Expect(condition.Status).To(Equal(core.ConditionTrue))
+							found = true
+						}
+					}
+					g.Expect(found).To(BeTrue())
+				}, env.Timeout(), time.Second).Should(Succeed())
 			})
 		})
 	})
