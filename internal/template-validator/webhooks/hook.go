@@ -43,7 +43,7 @@ const (
 type admitFunc func(*admissionv1.AdmissionReview) *admissionv1.AdmissionResponse
 
 type Webhooks interface {
-	Register()
+	Register(mux *http.ServeMux)
 }
 
 type webhooks struct {
@@ -56,11 +56,11 @@ func NewWebhooks(informers *virtinformers.Informers) Webhooks {
 	}
 }
 
-func (w *webhooks) Register() {
-	http.HandleFunc(VmValidatePath, func(resp http.ResponseWriter, req *http.Request) {
+func (w *webhooks) Register(mux *http.ServeMux) {
+	mux.HandleFunc(VmValidatePath, func(resp http.ResponseWriter, req *http.Request) {
 		serve(resp, req, w.admitVm)
 	})
-	http.HandleFunc(TemplateValidatePath, func(resp http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc(TemplateValidatePath, func(resp http.ResponseWriter, req *http.Request) {
 		serve(resp, req, w.admitTemplate)
 	})
 }
