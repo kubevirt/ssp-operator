@@ -18,15 +18,20 @@ type Service interface {
 type ServiceListen struct {
 	Name        string
 	BindAddress string
-	Port        int
+	MetricsPort int
+	WebhookPort int
 }
 
 type ServiceLibvirt struct {
 	LibvirtUri string
 }
 
-func (service *ServiceListen) Address() string {
-	return fmt.Sprintf("%s:%s", service.BindAddress, strconv.Itoa(service.Port))
+func (service *ServiceListen) MetricsAddress() string {
+	return fmt.Sprintf("%s:%s", service.BindAddress, strconv.Itoa(service.MetricsPort))
+}
+
+func (service *ServiceListen) WebhookAddress() string {
+	return fmt.Sprintf("%s:%s", service.BindAddress, strconv.Itoa(service.WebhookPort))
 }
 
 func (service *ServiceListen) InitFlags() {
@@ -35,7 +40,8 @@ func (service *ServiceListen) InitFlags() {
 
 func (service *ServiceListen) AddCommonFlags() {
 	flag.StringVar(&service.BindAddress, "listen", service.BindAddress, "Address where to listen on")
-	flag.IntVar(&service.Port, "port", service.Port, "Port to listen on")
+	flag.IntVar(&service.MetricsPort, "metrics-port", service.MetricsPort, "Port to listen on for metrics")
+	flag.IntVar(&service.WebhookPort, "webhook-port", service.WebhookPort, "Port to listen on for webhooks")
 }
 
 func (service *ServiceLibvirt) AddLibvirtFlags() {
