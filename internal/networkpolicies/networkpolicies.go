@@ -113,7 +113,7 @@ func (g *Generator) NewEgressToKubeAPIAndDNS(namespace, labelKey string, labelVa
 	)
 }
 
-func NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *networkv1.NetworkPolicy {
+func (g *Generator) NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *networkv1.NetworkPolicy {
 	return newNetworkPolicy(
 		namespace,
 		"ssp-operator-allow-ingress-to-virt-template-validator-webhook-and-metrics",
@@ -127,6 +127,24 @@ func NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *netwo
 					Ports: []networkv1.NetworkPolicyPort{
 						{
 							Port:     ptr.To(intstr.FromInt32(8443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+					},
+				},
+				{
+					From: []networkv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"kubernetes.io/metadata.name": g.apiNamespace},
+							},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{g.apiLabelKey: g.apiLabelValue},
+							},
+						},
+					},
+					Ports: []networkv1.NetworkPolicyPort{
+						{
+							Port:     ptr.To(intstr.FromInt32(9443)),
 							Protocol: ptr.To(k8sv1.ProtocolTCP),
 						},
 					},
