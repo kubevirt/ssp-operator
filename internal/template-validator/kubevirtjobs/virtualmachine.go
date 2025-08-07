@@ -60,8 +60,8 @@ func setVirtualMachineDefaults(in *k6tv1.VirtualMachine) {
 	if in.Spec.Template != nil {
 		for i := range in.Spec.Template.Spec.Domain.Devices.Disks {
 			a := &in.Spec.Template.Spec.Domain.Devices.Disks[i]
-			if a.DiskDevice.CDRom != nil {
-				setCDRomTargetDefaults(a.DiskDevice.CDRom)
+			if a.CDRom != nil {
+				setCDRomTargetDefaults(a.CDRom)
 			}
 		}
 	}

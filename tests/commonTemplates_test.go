@@ -111,7 +111,7 @@ var _ = Describe("Common templates", func() {
 					flavors   []string
 				)
 
-				for labelKey := range template.ObjectMeta.Labels {
+				for labelKey := range template.Labels {
 					if strings.HasPrefix(labelKey, commonTemplates.TemplateOsLabelPrefix) {
 						oss = append(oss, labelKey)
 						continue
