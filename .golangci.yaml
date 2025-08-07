@@ -1,14 +1,35 @@
+version: "2"
 linters:
-  # Disable all linters.
-  disable-all: true
-  # Enable specific linter
-  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  default: none
   enable:
-    - whitespace
-    - misspell
-    - ginkgolinter
     - errcheck
+    - errname
+    - ginkgolinter
     - ineffassign
+    - misspell
     - staticcheck
     - unused
-    - errname
+    - whitespace
+  settings:
+    staticcheck:
+      dot-import-whitelist:
+        - github.com/onsi/ginkgo/v2
+        - github.com/onsi/gomega
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

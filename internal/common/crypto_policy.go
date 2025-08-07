@@ -79,7 +79,7 @@ func selectCipherSuitesAndMinTLSVersion(profile *ocpv1.TLSSecurityProfile) ([]st
 		return nil, ""
 	}
 	if profile.Custom != nil {
-		return profile.Custom.TLSProfileSpec.Ciphers, profile.Custom.TLSProfileSpec.MinTLSVersion
+		return profile.Custom.Ciphers, profile.Custom.MinTLSVersion
 	}
 	tlsProfileSpec := ocpv1.TLSProfiles[profile.Type]
 	return tlsProfileSpec.Ciphers, tlsProfileSpec.MinTLSVersion

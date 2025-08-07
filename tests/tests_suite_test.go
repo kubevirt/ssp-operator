@@ -19,7 +19,6 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -89,7 +88,7 @@ func (s *newSspStrategy) Init() {
 	validateDeploymentExists()
 
 	Eventually(func() error {
-		namespaceObj := &v1.Namespace{
+		namespaceObj := &core.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.GetNamespace(),
 				Labels: map[string]string{
@@ -100,7 +99,7 @@ func (s *newSspStrategy) Init() {
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
 	Eventually(func() error {
-		namespaceObj := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}}
+		namespaceObj := &core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}}
 		return apiClient.Create(ctx, namespaceObj)
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 
@@ -149,13 +148,13 @@ func (s *newSspStrategy) Cleanup() {
 		}, &sspv1beta3.SSP{})
 	}
 
-	err1 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}})
-	err2 := apiClient.Delete(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}})
+	err1 := apiClient.Delete(ctx, &core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetNamespace()}})
+	err2 := apiClient.Delete(ctx, &core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: s.GetTemplatesNamespace()}})
 	expectSuccessOrNotFound(err1)
 	expectSuccessOrNotFound(err2)
 
-	waitForDeletion(client.ObjectKey{Name: s.GetNamespace()}, &v1.Namespace{})
-	waitForDeletion(client.ObjectKey{Name: s.GetTemplatesNamespace()}, &v1.Namespace{})
+	waitForDeletion(client.ObjectKey{Name: s.GetNamespace()}, &core.Namespace{})
+	waitForDeletion(client.ObjectKey{Name: s.GetTemplatesNamespace()}, &core.Namespace{})
 }
 
 func (s *newSspStrategy) GetName() string {
@@ -243,7 +242,7 @@ func (s *existingSspStrategy) Init() {
 	Expect(err).ToNot(HaveOccurred())
 
 	templatesNamespace := existingSsp.Spec.CommonTemplates.Namespace
-	Expect(apiClient.Get(ctx, client.ObjectKey{Name: templatesNamespace}, &v1.Namespace{})).To(Succeed())
+	Expect(apiClient.Get(ctx, client.ObjectKey{Name: templatesNamespace}, &core.Namespace{})).To(Succeed())
 
 	validateDeploymentExists()
 
@@ -383,27 +382,27 @@ var _ = BeforeSuite(func() {
 		strategy = &existingSspStrategy{Name: existingCrName, Namespace: existingCrNamespace}
 	}
 
-	fmt.Println(fmt.Sprintf("timeout set to %d minutes", env.Timeout()))
-	fmt.Println(fmt.Sprintf("short timeout set to %d minutes", env.ShortTimeout()))
+	fmt.Printf("timeout set to %d minutes\n", env.Timeout())
+	fmt.Printf("short timeout set to %d minutes\n", env.ShortTimeout())
 
 	if envTopologyMode, set := env.TopologyMode(); set {
 		topologyMode = envTopologyMode
-		fmt.Println(fmt.Sprintf("TopologyMode set to %s", envTopologyMode))
+		fmt.Printf("TopologyMode set to %s\n", envTopologyMode)
 	}
 
 	if envSspDeploymentName := env.SspDeploymentName(); envSspDeploymentName != "" {
 		sspDeploymentName = envSspDeploymentName
-		fmt.Println(fmt.Sprintf("SspDeploymentName set to %s", envSspDeploymentName))
+		fmt.Printf("SspDeploymentName set to %s\n", envSspDeploymentName)
 	}
 
 	if envSspDeploymentNamespace := env.SspDeploymentNamespace(); envSspDeploymentNamespace != "" {
 		sspDeploymentNamespace = envSspDeploymentNamespace
-		fmt.Println(fmt.Sprintf("SspDeploymentNamespace set to %s", envSspDeploymentNamespace))
+		fmt.Printf("SspDeploymentNamespace set to %s\n", envSspDeploymentNamespace)
 	}
 
 	if envSspWebhookServiceName := env.SspWebhookServiceName(); envSspWebhookServiceName != "" {
 		sspWebhookServiceName = envSspWebhookServiceName
-		fmt.Println(fmt.Sprintf("SspWebhookServiceName set to %s", envSspWebhookServiceName))
+		fmt.Printf("SspWebhookServiceName set to %s\n", envSspWebhookServiceName)
 	}
 
 	testScheme = runtime.NewScheme()

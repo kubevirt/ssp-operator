@@ -70,7 +70,7 @@ func reconcileVAP(request *common.Request) (common.ReconcileResult, error) {
 		StatusFunc(func(resource client.Object) common.ResourceStatus {
 			vap := resource.(*admissionregistrationv1.ValidatingAdmissionPolicy)
 			if vap.Status.TypeChecking == nil {
-				msg := fmt.Sprintf("Delete protection VAP type checking in progress")
+				msg := "Delete protection VAP type checking in progress"
 				return common.ResourceStatus{
 					Progressing:  &msg,
 					NotAvailable: &msg,

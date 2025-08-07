@@ -37,14 +37,14 @@ func SetVmWithVolume(vm *kubevirtv1.VirtualMachine, pvc *k8sv1.PersistentVolumeC
 		return
 	}
 
-	mounter, ok := pv.Spec.PersistentVolumeSource.CSI.VolumeAttributes["mounter"]
+	mounter, ok := pv.Spec.CSI.VolumeAttributes["mounter"]
 	// If mounter is not set, it is using the default mounter, which is "rbd"
 	if ok && mounter != "rbd" {
 		vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Set(0)
 		return
 	}
 
-	rxbounce, ok := pv.Spec.PersistentVolumeSource.CSI.VolumeAttributes["mapOptions"]
+	rxbounce, ok := pv.Spec.CSI.VolumeAttributes["mapOptions"]
 	// If mapOptions is not set, or if it is set but does not contain "krbd:rxbounce", it might be impacted by https://bugzilla.redhat.com/2109455
 	if !ok || !strings.Contains(rxbounce, "krbd:rxbounce") {
 		vmRbdVolume.WithLabelValues(vm.Name, vm.Namespace).Set(1)
@@ -55,5 +55,5 @@ func SetVmWithVolume(vm *kubevirtv1.VirtualMachine, pvc *k8sv1.PersistentVolumeC
 }
 
 func usesRbdCsiDriver(pv *k8sv1.PersistentVolume) bool {
-	return pv.Spec.PersistentVolumeSource.CSI != nil && strings.Contains(pv.Spec.PersistentVolumeSource.CSI.Driver, "rbd.csi.ceph.com")
+	return pv.Spec.CSI != nil && strings.Contains(pv.Spec.CSI.Driver, "rbd.csi.ceph.com")
 }

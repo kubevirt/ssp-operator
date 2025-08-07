@@ -307,7 +307,7 @@ func reconcileTemplatesFuncs(templatesBundle []templatev1.Template) []common.Rec
 		template := &templatesBundle[i]
 		funcs = append(funcs, func(request *common.Request) (common.ReconcileResult, error) {
 			namespace := request.Instance.Spec.CommonTemplates.Namespace
-			template.ObjectMeta.Namespace = namespace
+			template.Namespace = namespace
 			return common.CreateOrUpdate(request).
 				ClusterResource(template).
 				WithAppLabels(operandName, operandComponent).

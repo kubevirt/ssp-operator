@@ -511,7 +511,7 @@ var _ = Describe("Template validator webhooks", func() {
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
 
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -523,7 +523,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -535,7 +535,7 @@ var _ = Describe("Template validator webhooks", func() {
 			// set value unfulfilling validation
 			vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -555,7 +555,7 @@ var _ = Describe("Template validator webhooks", func() {
 			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "128M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -568,7 +568,7 @@ var _ = Describe("Template validator webhooks", func() {
 			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "128M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -581,7 +581,7 @@ var _ = Describe("Template validator webhooks", func() {
 			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "128M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -594,7 +594,7 @@ var _ = Describe("Template validator webhooks", func() {
 			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "32M")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -607,7 +607,7 @@ var _ = Describe("Template validator webhooks", func() {
 			vmi = addDomainResourcesToVMI(vmi, 0, clusterMachineType, "1G")
 			vmi.Spec.Domain.CPU = nil
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -629,7 +629,7 @@ var _ = Describe("Template validator webhooks", func() {
 		It("[test_id:5591]test with partial annotations", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				"vm.kubevirt.io/template-namespace": strategy.GetNamespace(),
 			}
 			eventuallyCreateVm(vm)
@@ -640,7 +640,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:              template.Name,
 				"vm.kubevirt.io/template.namespace": template.Namespace,
 			}
@@ -652,7 +652,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Labels = map[string]string{
+			vm.Labels = map[string]string{
 				TemplateNameAnnotation:              template.Name,
 				"vm.kubevirt.io/template.namespace": template.Namespace,
 			}
@@ -667,7 +667,7 @@ var _ = Describe("Template validator webhooks", func() {
 				Sockets: 1,
 			}
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -682,7 +682,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 1, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 				"vm.kubevirt.io/validations": `[
@@ -704,7 +704,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 				"vm.kubevirt.io/validations": `[
@@ -726,7 +726,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 				"vm.kubevirt.io/validations": `[
@@ -748,7 +748,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 				"vm.kubevirt.io/validations": `[
@@ -767,7 +767,7 @@ var _ = Describe("Template validator webhooks", func() {
 		It("[test_id:5174]: VM with validations and deleted template", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 3, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      "nonexisting-vm-template",
 				TemplateNamespaceAnnotation: strategy.GetTemplatesNamespace(),
 				"vm.kubevirt.io/validations": `[
@@ -786,7 +786,7 @@ var _ = Describe("Template validator webhooks", func() {
 		It("[test_id:5046]: should override template rules and fail to create a VM based on the VM validation rules", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      "nonexisting-vm-template",
 				TemplateNamespaceAnnotation: strategy.GetTemplatesNamespace(),
 				"vm.kubevirt.io/validations": `[
@@ -805,7 +805,7 @@ var _ = Describe("Template validator webhooks", func() {
 		It("[test_id:5047]: should fail to create a VM based on the VM validation rules", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 5, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
@@ -822,7 +822,7 @@ var _ = Describe("Template validator webhooks", func() {
 		It("[test_id:5175]: VM with validations without template", decorators.Conformance, func() {
 			vmi = addDomainResourcesToVMI(vmi, 3, clusterMachineType, "64M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				"vm.kubevirt.io/validations": `[
 												 {
 														"name": "LimitCores",
@@ -854,7 +854,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -873,7 +873,7 @@ var _ = Describe("Template validator webhooks", func() {
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
 
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 			}
@@ -890,7 +890,7 @@ var _ = Describe("Template validator webhooks", func() {
 
 			vmi = addDomainResourcesToVMI(vmi, 2, clusterMachineType, "128M")
 			vm = NewVirtualMachine(vmi)
-			vm.ObjectMeta.Annotations = map[string]string{
+			vm.Annotations = map[string]string{
 				TemplateNameAnnotation:      template.Name,
 				TemplateNamespaceAnnotation: template.Namespace,
 				"vm.kubevirt.io/validations": `[
@@ -991,7 +991,7 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 	// set values that will fail validation
 	vmi = addDomainResourcesToVMI(vmi, 2, "test", "128M")
 	vm := NewVirtualMachine(vmi)
-	vm.ObjectMeta.Annotations = map[string]string{
+	vm.Annotations = map[string]string{
 		labels.AnnotationTemplateNameKey:      template.Name,
 		labels.AnnotationTemplateNamespaceKey: template.Namespace,
 	}

@@ -60,7 +60,7 @@ var _ = Describe("rbd_metrics", func() {
 		}
 
 		if mounter != "" {
-			pv.Spec.PersistentVolumeSource.CSI.VolumeAttributes["mounter"] = mounter
+			pv.Spec.CSI.VolumeAttributes["mounter"] = mounter
 		}
 	}
 

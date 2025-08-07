@@ -149,11 +149,11 @@ func loadCertificates(directory string) (serverCrt *tls.Certificate, err error) 
 
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load certificate: %v\n", err)
+		return nil, fmt.Errorf("failed to load certificate: %v", err)
 	}
 	leaf, err := x509.ParseCertificate(cert.Certificate[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to load leaf certificate: %v\n", err)
+		return nil, fmt.Errorf("failed to load leaf certificate: %v", err)
 	}
 	cert.Leaf = leaf
 	return &cert, nil

@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,7 +75,7 @@ var _ = Describe("Validation webhook", func() {
 		It("[test_id:5242] [v1beta2] should fail to create a second SSP CR", decorators.Conformance, func() {
 			foundSsp := getSspV1Beta2()
 			ssp2 := foundSsp.DeepCopy()
-			ssp2.ObjectMeta = v1.ObjectMeta{
+			ssp2.ObjectMeta = metav1.ObjectMeta{
 				Name:      "test-ssp2",
 				Namespace: foundSsp.GetNamespace(),
 			}
@@ -92,7 +91,7 @@ var _ = Describe("Validation webhook", func() {
 		It("[test_id:TODO] [v1beta3] should fail to create a second SSP CR", decorators.Conformance, func() {
 			foundSsp := getSsp()
 			ssp2 := foundSsp.DeepCopy()
-			ssp2.ObjectMeta = v1.ObjectMeta{
+			ssp2.ObjectMeta = metav1.ObjectMeta{
 				Name:      "test-ssp2",
 				Namespace: foundSsp.GetNamespace(),
 			}
@@ -120,7 +119,7 @@ var _ = Describe("Validation webhook", func() {
 				Expect(apiClient.Delete(ctx, foundSsp)).ToNot(HaveOccurred())
 				waitForDeletion(client.ObjectKey{Name: foundSsp.GetName(), Namespace: foundSsp.GetNamespace()}, &sspv1beta2.SSP{})
 
-				foundSsp.ObjectMeta = v1.ObjectMeta{
+				foundSsp.ObjectMeta = metav1.ObjectMeta{
 					Name:      foundSsp.GetName(),
 					Namespace: foundSsp.GetNamespace(),
 				}
@@ -255,7 +254,7 @@ var _ = Describe("Validation webhook", func() {
 			})
 
 			It("[test_id:5989] [v1beta2] should fail with invalid template-validator placement fields", func() {
-				Eventually(func() v1.StatusReason {
+				Eventually(func() metav1.StatusReason {
 					foundSsp := getSspV1Beta2()
 					foundSsp.Spec.TemplateValidator = &sspv1beta2.TemplateValidator{
 						Placement: &placementAPIValidationInvalidPlacement,
@@ -266,7 +265,7 @@ var _ = Describe("Validation webhook", func() {
 			})
 
 			It("[test_id:5989] [v1beta3] should fail with invalid template-validator placement fields", decorators.Conformance, func() {
-				Eventually(func() v1.StatusReason {
+				Eventually(func() metav1.StatusReason {
 					foundSsp := getSsp()
 					foundSsp.Spec.TemplateValidator = &sspv1beta3.TemplateValidator{
 						Placement: &placementAPIValidationInvalidPlacement,
