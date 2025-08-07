@@ -1,12 +1,13 @@
 package networkpolicies
 
 import (
+	"strings"
+
 	k8sv1 "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	"strings"
 )
 
 const (
@@ -112,7 +113,7 @@ func (g *Generator) NewEgressToKubeAPIAndDNS(namespace, labelKey string, labelVa
 	)
 }
 
-func NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *networkv1.NetworkPolicy {
+func (g *Generator) NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *networkv1.NetworkPolicy {
 	return newNetworkPolicy(
 		namespace,
 		"ssp-operator-allow-ingress-to-virt-template-validator-webhook-and-metrics",
@@ -130,12 +131,30 @@ func NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *netwo
 						},
 					},
 				},
+				{
+					From: []networkv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"kubernetes.io/metadata.name": g.apiNamespace},
+							},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{g.apiLabelKey: g.apiLabelValue},
+							},
+						},
+					},
+					Ports: []networkv1.NetworkPolicyPort{
+						{
+							Port:     ptr.To(intstr.FromInt32(9443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+					},
+				},
 			},
 		},
 	)
 }
 
-func NewIngressToVMConsoleProxyAPI(namespace string) *networkv1.NetworkPolicy {
+func (g *Generator) NewIngressToVMConsoleProxyAPI(namespace string) *networkv1.NetworkPolicy {
 	return newNetworkPolicy(
 		namespace,
 		"ssp-operator-allow-ingress-to-vm-console-proxy-api",
@@ -146,9 +165,19 @@ func NewIngressToVMConsoleProxyAPI(namespace string) *networkv1.NetworkPolicy {
 			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeIngress},
 			Ingress: []networkv1.NetworkPolicyIngressRule{
 				{
+					From: []networkv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"kubernetes.io/metadata.name": g.apiNamespace},
+							},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{g.apiLabelKey: g.apiLabelValue},
+							},
+						},
+					},
 					Ports: []networkv1.NetworkPolicyPort{
 						{
-							Port:     ptr.To(intstr.FromString("api")),
+							Port:     ptr.To(intstr.FromInt32(8768)),
 							Protocol: ptr.To(k8sv1.ProtocolTCP),
 						},
 					},

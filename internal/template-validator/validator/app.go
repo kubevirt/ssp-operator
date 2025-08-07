@@ -1,13 +1,16 @@
 package validator
 
 import (
+	"context"
 	"crypto/tls"
 	"net/http"
 	"os"
+	"time"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	flag "github.com/spf13/pflag"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -23,10 +26,14 @@ import (
 )
 
 const (
-	defaultPort = 8443
-	defaultHost = "0.0.0.0"
+	defaultMetricsPort = 8443
+	defaultWebhookPort = 9443
+	defaultHost        = "0.0.0.0"
 
 	tlsOptionsDirectory = "/tls-options"
+
+	metricsServerType = "metrics"
+	webhookServerType = "webhook"
 )
 
 type App struct {
@@ -40,7 +47,8 @@ var _ service.Service = &App{}
 func (app *App) AddFlags() {
 	app.InitFlags()
 	app.BindAddress = defaultHost
-	app.Port = defaultPort
+	app.MetricsPort = defaultMetricsPort
+	app.WebhookPort = defaultWebhookPort
 	app.AddCommonFlags()
 
 	flag.StringVarP(&app.certsDir, "cert-dir", "c", "", "specify path to the directory containing TLS key and certificate - this enables TLS")
@@ -71,68 +79,122 @@ func (app *App) Run() {
 	informers.Start()
 	defer informers.Stop()
 
-	validating.NewWebhooks(informers).Register()
-
-	registerReadinessProbe()
-
-	// setup monitoring
-	err = validatorMetrics.SetupMetrics()
-	if err != nil {
+	if err := validatorMetrics.SetupMetrics(); err != nil {
 		logger.Log.Error(err, "Error setting up metrics")
 		panic(err)
 	}
 
-	http.Handle("/metrics", promhttp.Handler())
-
-	if app.certsDir != "" {
-		logger.Log.Info("TLS certs directory", "directory", app.certsDir)
-
-		tlsInfo := tlsinfo.TLSInfo{
-			CertsDirectory:      app.certsDir,
-			TLSOptionsDirectory: tlsOptionsDirectory,
-		}
-
-		if err := tlsInfo.Init(); err != nil {
-			logger.Log.Error(err, "Failed initializing TLSInfo")
-			panic(err)
-		}
+	tlsInfo, err := app.setupTLS()
+	if err != nil {
+		panic(err)
+	}
+	if tlsInfo != nil {
 		defer tlsInfo.Clean()
+	}
 
-		server := &http.Server{
-			Addr: app.Address(),
-			TLSConfig: &tls.Config{
-				GetConfigForClient: func(_ *tls.ClientHelloInfo) (*tls.Config, error) {
-					return tlsInfo.CreateTlsConfig()
-				},
-				GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
-					// This function is not called, but it needs to be non-nil, otherwise
-					// the server tries to load certificate from filenames passed to
-					// ListenAndServe().
-					panic("function should not be called")
-				},
-			},
-		}
+	metricsServer := app.createMetricsServer()
+	webhookServer := app.createWebhookServer(informers)
+	if tlsInfo != nil {
+		metricsServer.TLSConfig = createTLSConfig(tlsInfo)
+		webhookServer.TLSConfig = createTLSConfig(tlsInfo)
+	}
 
-		logger.Log.Info("TLS configured, serving over HTTPS", "address", app.Address())
-		if err := server.ListenAndServeTLS("", ""); err != nil {
-			logger.Log.Error(err, "Error listening TLS")
-			panic(err)
-		}
-	} else {
-		logger.Log.Info("TLS disabled, serving over HTTP", "address", app.Address())
-		if err := http.ListenAndServe(app.Address(), nil); err != nil {
-			logger.Log.Error(err, "Error listening")
-			panic(err)
-		}
+	g := &errgroup.Group{}
+	g.Go(func() error { return startServer(metricsServer, metricsServerType) })
+	g.Go(func() error { return startServer(webhookServer, webhookServerType) })
+
+	if err := g.Wait(); err != nil {
+		panic(err)
+	}
+
+	shutdownServer(metricsServer, metricsServerType)
+	shutdownServer(webhookServer, webhookServerType)
+}
+
+func (app *App) setupTLS() (*tlsinfo.TLSInfo, error) {
+	if app.certsDir == "" {
+		return nil, nil
+	}
+
+	logger.Log.Info("TLS certs directory", "directory", app.certsDir)
+
+	tlsInfo := &tlsinfo.TLSInfo{
+		CertsDirectory:      app.certsDir,
+		TLSOptionsDirectory: tlsOptionsDirectory,
+	}
+
+	if err := tlsInfo.Init(); err != nil {
+		logger.Log.Error(err, "Failed initializing TLSInfo")
+		return nil, err
+	}
+
+	return tlsInfo, nil
+}
+
+func (app *App) createMetricsServer() *http.Server {
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+
+	return &http.Server{
+		Addr:    app.MetricsAddress(),
+		Handler: metricsMux,
 	}
 }
 
-func registerReadinessProbe() {
-	http.HandleFunc("/readyz", func(resp http.ResponseWriter, req *http.Request) {
+func (app *App) createWebhookServer(informers *virtinformers.Informers) *http.Server {
+	webhookMux := http.NewServeMux()
+	validating.NewWebhooks(informers).Register(webhookMux)
+
+	webhookMux.HandleFunc("/readyz", func(resp http.ResponseWriter, req *http.Request) {
 		if _, err := resp.Write([]byte("ok")); err != nil {
 			logger.Log.Error(err, "Failed to write response to /readyz")
 		}
 	})
+
+	return &http.Server{
+		Addr:    app.WebhookAddress(),
+		Handler: webhookMux,
+	}
+}
+
+func startServer(server *http.Server, serverType string) error {
+	if server.TLSConfig != nil {
+		logger.Log.Info("TLS configured, serving "+serverType+" over HTTPS", "address", server.Addr)
+		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			logger.Log.Error(err, "Error listening "+serverType+" TLS")
+			return err
+		}
+	} else {
+		logger.Log.Info("TLS disabled, serving "+serverType+" over HTTP", "address", server.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Log.Error(err, "Error listening "+serverType)
+			return err
+		}
+	}
+	return nil
+}
+
+func shutdownServer(server *http.Server, serverType string) {
+	logger.Log.Info("Shutting down " + serverType + " server")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Log.Error(err, "Error shutting down "+serverType)
+	}
+}
+
+func createTLSConfig(tlsInfo *tlsinfo.TLSInfo) *tls.Config {
+	return &tls.Config{
+		GetConfigForClient: func(_ *tls.ClientHelloInfo) (*tls.Config, error) {
+			return tlsInfo.CreateTlsConfig()
+		},
+		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			// This function is not called, but it needs to be non-nil, otherwise
+			// the server tries to load certificate from filenames passed to
+			// ListenAndServe().
+			panic("function should not be called")
+		},
+	}
 }
 
 func createScheme() *runtime.Scheme {
