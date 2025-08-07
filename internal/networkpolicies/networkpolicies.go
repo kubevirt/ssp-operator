@@ -1,12 +1,13 @@
 package networkpolicies
 
 import (
+	"strings"
+
 	k8sv1 "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	"strings"
 )
 
 const (
@@ -126,6 +127,10 @@ func NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *netwo
 					Ports: []networkv1.NetworkPolicyPort{
 						{
 							Port:     ptr.To(intstr.FromInt32(8443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+						{
+							Port:     ptr.To(intstr.FromInt32(9443)),
 							Protocol: ptr.To(k8sv1.ProtocolTCP),
 						},
 					},
