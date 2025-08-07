@@ -1252,7 +1252,7 @@ func TemplateWithoutRules() *templatev1.Template {
 }
 
 func getWebhookServerCertificates(validatorPod *core.Pod) ([]*x509.Certificate, error) {
-	conn, err := portForwarder.Connect(validatorPod, validator.ContainerPort)
+	conn, err := portForwarder.Connect(validatorPod, validator.WebhookPort)
 	if err != nil {
 		return nil, err
 	}

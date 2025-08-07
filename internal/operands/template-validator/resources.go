@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	ContainerPort                 = 8443
 	MetricsPort                   = 8443
+	WebhookPort                   = 9443
 	KubevirtIo                    = "kubevirt.io"
 	SecretName                    = "virt-template-validator-certs"
 	VirtTemplateValidator         = "virt-template-validator"
@@ -119,7 +119,7 @@ func newService(namespace string) *core.Service {
 			Ports: []core.ServicePort{{
 				Name:       "webhook",
 				Port:       443,
-				TargetPort: intstr.FromInt32(ContainerPort),
+				TargetPort: intstr.FromInt32(WebhookPort),
 			}},
 			Selector: CommonLabels(),
 		},
@@ -205,7 +205,8 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							},
 						},
 						Args: []string{
-							fmt.Sprintf("--port=%d", ContainerPort),
+							fmt.Sprintf("--webhook-port=%d", WebhookPort),
+							fmt.Sprintf("--metrics-port=%d", MetricsPort),
 							fmt.Sprintf("--cert-dir=%s", certMountPath),
 						},
 						VolumeMounts: []core.VolumeMount{{
@@ -226,7 +227,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 						},
 						Ports: []core.ContainerPort{{
 							Name:          "webhook",
-							ContainerPort: ContainerPort,
+							ContainerPort: WebhookPort,
 							Protocol:      core.ProtocolTCP,
 						}, {
 							Name:          metrics.MetricsPortName,
@@ -237,7 +238,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ProbeHandler: core.ProbeHandler{
 								HTTPGet: &core.HTTPGetAction{
 									Path:   "/readyz",
-									Port:   intstr.FromInt32(ContainerPort),
+									Port:   intstr.FromInt32(WebhookPort),
 									Scheme: core.URISchemeHTTPS,
 								},
 							},
