@@ -8,7 +8,20 @@ spec:
   - ports:
     - port: 8443
       protocol: TCP
-  - ports:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          component: kube-apiserver
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-kube-apiserver
+      podSelector:
+        matchLabels:
+          app: openshift-kube-apiserver
+    ports:
     - port: 9443
       protocol: TCP
   podSelector:
