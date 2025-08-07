@@ -400,7 +400,7 @@ func newNetworkPolicies(namespace string) []*networkv1.NetworkPolicy {
 	g := networkpolicies.NewOpenShiftGenerator()
 	return []*networkv1.NetworkPolicy{
 		g.NewEgressToKubeAPIAndDNS(namespace, networkpolicies.LabelVMConsoleProxyKubevirtIo, operandComponent),
-		networkpolicies.NewIngressToVMConsoleProxyAPI(namespace),
+		g.NewIngressToVMConsoleProxyAPI(namespace),
 	}
 }
 
