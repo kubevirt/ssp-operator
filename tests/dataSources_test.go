@@ -22,7 +22,9 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	data_sources "kubevirt.io/ssp-operator/internal/operands/data-sources"
 	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
@@ -35,6 +37,76 @@ var _ = Describe("DataSources", func() {
 	const cdiLabelPrefix = "cdi.kubevirt.io"
 	const cdiLabel = cdiLabelPrefix + "/dataImportCron"
 	const cdiCleanupLabel = cdiLabel + ".cleanup"
+
+	const registryURL = "docker://quay.io/kubevirt/cirros-container-disk-demo"
+
+	var commonAnnotations = map[string]string{
+		"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+	}
+
+	// Helper context that can be reused
+	var contextWithPvc = func(text string, args ...any) {
+		Context("with existing PVC", func() {
+			var (
+				dataVolume *cdiv1beta1.DataVolume
+			)
+
+			BeforeEach(func() {
+				dataVolume = &cdiv1beta1.DataVolume{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        dataSourceName,
+						Namespace:   internal.GoldenImagesNamespace,
+						Annotations: commonAnnotations,
+					},
+					Spec: cdiv1beta1.DataVolumeSpec{
+						Source: &cdiv1beta1.DataVolumeSource{
+							Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+								URL:        ptr.To(registryURL),
+								PullMethod: ptr.To(cdiv1beta1.RegistryPullNode),
+							},
+						},
+						Storage: &cdiv1beta1.StorageSpec{
+							Resources: core.VolumeResourceRequirements{
+								Requests: core.ResourceList{
+									core.ResourceStorage: resource.MustParse("128Mi"),
+								},
+							},
+						},
+					},
+				}
+				Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
+
+				Eventually(func(g Gomega) {
+					foundDv := &cdiv1beta1.DataVolume{}
+					err := apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)
+
+					// When DataVolume succeeds importing, CDI may remove it and leave only PVC.
+					if errors.IsNotFound(err) {
+						g.Expect(apiClient.Get(ctx,
+							client.ObjectKeyFromObject(dataVolume),
+							&core.PersistentVolumeClaim{}),
+						).To(Succeed())
+						return
+					}
+
+					g.Expect(err).ToNot(HaveOccurred())
+					g.Expect(foundDv.Status.Phase).To(Equal(cdiv1beta1.Succeeded))
+				}, env.Timeout(), time.Second).Should(Succeed(), "DataVolume should successfully import.")
+			})
+
+			AfterEach(func() {
+				pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
+
+				Expect(apiClient.Delete(ctx, dataVolume)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+				Expect(apiClient.Delete(ctx, pvc)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+
+				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+				waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
+			})
+
+			Context(text, args...)
+		})
+	}
 
 	var (
 		expectedLabels map[string]string
@@ -786,6 +858,74 @@ var _ = Describe("DataSources", func() {
 			})
 		})
 
+		Context("with multiple architectures", func() {
+			BeforeEach(func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+				})
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] should create arch-specific DataSources", decorators.Conformance, func() {
+				for _, arch := range []architecture.Arch{architecture.AMD64, architecture.ARM64, architecture.S390X} {
+					foundDs := &cdiv1beta1.DataSource{}
+					name := dataSourceName + "-" + string(arch)
+					Expect(apiClient.Get(ctx, client.ObjectKey{
+						Name:      name,
+						Namespace: internal.GoldenImagesNamespace,
+					}, foundDs)).To(Succeed(), fmt.Sprintf("Failed getting DataSource %s", name))
+
+					Expect(foundDs.Spec.Source.PVC.Name).To(Equal(name))
+					Expect(foundDs.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+				}
+			})
+
+			It("[test_id:TODO] should create DataSource reference pointing to default arch DataSource", decorators.Conformance, func() {
+				foundDs := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, client.ObjectKey{
+					Name:      dataSourceName,
+					Namespace: internal.GoldenImagesNamespace,
+				}, foundDs)).To(Succeed())
+
+				defaultDsName := dataSourceName + "-" + string(architecture.AMD64)
+
+				Expect(foundDs.Spec.Source.DataSource).ToNot(BeNil())
+				Expect(foundDs.Spec.Source.DataSource.Name).To(Equal(defaultDsName))
+				Expect(foundDs.Spec.Source.DataSource.Namespace).To(Equal(dataSource.Namespace))
+
+				Expect(foundDs.Spec.Source.PVC).To(BeNil())
+				Expect(foundDs.Spec.Source.Snapshot).To(BeNil())
+			})
+		})
+
+		contextWithPvc("and multiple architectures", func() {
+			BeforeEach(func() {
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+				})
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] default DataSource should point to existing PVC", decorators.Conformance, func() {
+				foundDs := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, client.ObjectKey{
+					Name:      dataSourceName + "-" + string(architecture.AMD64),
+					Namespace: internal.GoldenImagesNamespace,
+				}, foundDs)).To(Succeed())
+
+				Expect(foundDs.Spec.Source.PVC).ToNot(BeNil())
+				Expect(foundDs.Spec.Source.PVC.Name).To(Equal(dataSourceName))
+				Expect(foundDs.Spec.Source.PVC.Namespace).To(Equal(internal.GoldenImagesNamespace))
+			})
+		})
 	})
 
 	Context("with DataImportCron template", func() {
@@ -794,11 +934,7 @@ var _ = Describe("DataSources", func() {
 		const cronName = "test-data-import-cron"
 
 		var (
-			registryURL       = "docker://quay.io/kubevirt/cirros-container-disk-demo"
-			pullMethod        = cdiv1beta1.RegistryPullNode
-			commonAnnotations = map[string]string{
-				"cdi.kubevirt.io/storage.bind.immediate.requested": "true",
-			}
+			pullMethod = cdiv1beta1.RegistryPullNode
 
 			cronTemplate   ssp.DataImportCronTemplate
 			dataImportCron testResource
@@ -826,7 +962,7 @@ var _ = Describe("DataSources", func() {
 						Spec: cdiv1beta1.DataVolumeSpec{
 							Source: &cdiv1beta1.DataVolumeSource{
 								Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-									URL:        &registryURL,
+									URL:        ptr.To(registryURL),
 									PullMethod: &pullMethod,
 								},
 							},
@@ -1025,55 +1161,12 @@ var _ = Describe("DataSources", func() {
 			})
 		})
 
-		Context("with existing PVC", func() {
-			var (
-				dataVolume *cdiv1beta1.DataVolume
-			)
-
+		contextWithPvc("", func() {
 			JustAfterEach(func() {
 				logObject(client.ObjectKey{Namespace: internal.GoldenImagesNamespace, Name: dataSourceName}, &cdiv1beta1.DataVolume{})
 			})
 
 			BeforeEach(func() {
-				dataVolume = &cdiv1beta1.DataVolume{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        dataSourceName,
-						Namespace:   internal.GoldenImagesNamespace,
-						Annotations: commonAnnotations,
-					},
-					Spec: cdiv1beta1.DataVolumeSpec{
-						Source: &cdiv1beta1.DataVolumeSource{
-							Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-								URL:        &registryURL,
-								PullMethod: &pullMethod,
-							},
-						},
-						Storage: &cdiv1beta1.StorageSpec{
-							Resources: core.VolumeResourceRequirements{
-								Requests: core.ResourceList{
-									core.ResourceStorage: resource.MustParse("128Mi"),
-								},
-							},
-						},
-					},
-				}
-				Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
-
-				Eventually(func() bool {
-					foundDv := &cdiv1beta1.DataVolume{}
-					err := apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)
-
-					if errors.IsNotFound(err) {
-						foundPvc := &core.PersistentVolumeClaim{}
-						err = apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundPvc)
-						Expect(err).ToNot(HaveOccurred())
-						return true
-					}
-
-					Expect(err).ToNot(HaveOccurred())
-					return foundDv.Status.Phase == cdiv1beta1.Succeeded
-				}, env.Timeout(), time.Second).Should(BeTrue(), "DataVolume should successfully import.")
-
 				Eventually(func() bool {
 					foundDs := &cdiv1beta1.DataSource{}
 					Expect(apiClient.Get(ctx, dataSource.GetKey(), foundDs)).To(Succeed())
@@ -1089,25 +1182,6 @@ var _ = Describe("DataSources", func() {
 				})
 
 				waitUntilDeployed()
-			})
-
-			deleteDVAndPVC := func() {
-				err := apiClient.Delete(ctx, dataVolume)
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred(), "Failed to delete data volume")
-				}
-				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
-
-				pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
-				err = apiClient.Delete(ctx, pvc)
-				if !errors.IsNotFound(err) {
-					Expect(err).ToNot(HaveOccurred(), "Failed to delete persistent volume claim")
-				}
-				waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
-			}
-
-			AfterEach(func() {
-				deleteDVAndPVC()
 			})
 
 			It("[test_id:8110] should not create DataImportCron", decorators.Conformance, func() {
@@ -1138,7 +1212,19 @@ var _ = Describe("DataSources", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(errors.ReasonForError(err)).To(Equal(metav1.StatusReasonNotFound), "DataImportCron should not exist.")
 
-				deleteDVAndPVC()
+				dataVolume := &cdiv1beta1.DataVolume{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      dataSourceName,
+						Namespace: internal.GoldenImagesNamespace,
+					},
+				}
+
+				Expect(apiClient.Delete(ctx, dataVolume)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+				waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+
+				pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
+				Expect(apiClient.Delete(ctx, pvc)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+				waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
 
 				Eventually(func() error {
 					return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
@@ -1301,7 +1387,7 @@ var _ = Describe("DataSources", func() {
 							Spec: cdiv1beta1.DataVolumeSpec{
 								Source: &cdiv1beta1.DataVolumeSource{
 									Registry: &cdiv1beta1.DataVolumeSourceRegistry{
-										URL:        &registryURL,
+										URL:        ptr.To(registryURL),
 										PullMethod: &pullMethod,
 									},
 								},
@@ -1330,6 +1416,117 @@ var _ = Describe("DataSources", func() {
 
 				err := apiClient.Get(ctx, client.ObjectKeyFromObject(cron), &cdiv1beta1.DataImportCron{})
 				Expect(err).ToNot(HaveOccurred(), "unrelated DataImportCron was removed")
+			})
+		})
+
+		Context("with multiple architectures", func() {
+			BeforeEach(func() {
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,arm64,s390x"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+				})
+
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] should create arch-specific DataImportCrons", decorators.Conformance, func() {
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,arm64,s390x"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				})
+				waitUntilDeployed()
+
+				for _, arch := range []architecture.Arch{
+					architecture.AMD64,
+					architecture.ARM64,
+					architecture.S390X,
+				} {
+					cron := cdiv1beta1.DataImportCron{}
+					Expect(apiClient.Get(ctx, client.ObjectKey{
+						Name:      cronTemplate.Name + "-" + string(arch),
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cron)).To(Succeed())
+
+					Expect(cron.Annotations).ToNot(HaveKey(data_sources.DataImportCronArchsAnnotation))
+					Expect(cron.Labels).To(HaveKeyWithValue(data_sources.DataImportCronDataSourceNameLabel, cronTemplate.Spec.ManagedDataSource))
+					Expect(cron.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+					Expect(cron.Spec.ManagedDataSource).To(HaveSuffix(string(arch)))
+					Expect(cron.Spec.Template.Spec.Source.Registry.Platform).ToNot(BeNil())
+					Expect(cron.Spec.Template.Spec.Source.Registry.Platform.Architecture).To(Equal(string(arch)))
+				}
+			})
+
+			It("[test_id:TODO] should create only compatible arch-specific DataImportCrons", decorators.Conformance, func() {
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,invalid-ignored-arch"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				})
+				waitUntilDeployed()
+
+				arch := architecture.AMD64
+				cron := cdiv1beta1.DataImportCron{}
+				Expect(apiClient.Get(ctx, client.ObjectKey{
+					Name:      cronTemplate.Name + "-" + string(arch),
+					Namespace: internal.GoldenImagesNamespace,
+				}, &cron)).To(Succeed())
+
+				Expect(cron.Annotations).ToNot(HaveKey(data_sources.DataImportCronArchsAnnotation))
+				Expect(cron.Labels).To(HaveKeyWithValue(data_sources.DataImportCronDataSourceNameLabel, cronTemplate.Spec.ManagedDataSource))
+				Expect(cron.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+				Expect(cron.Spec.ManagedDataSource).To(HaveSuffix(string(arch)))
+				Expect(cron.Spec.Template.Spec.Source.Registry.Platform).ToNot(BeNil())
+				Expect(cron.Spec.Template.Spec.Source.Registry.Platform.Architecture).To(Equal(string(arch)))
+			})
+		})
+
+		contextWithPvc("and multiple architectures", func() {
+			var cronArchs []architecture.Arch
+
+			BeforeEach(func() {
+				cronArchs = []architecture.Arch{
+					architecture.AMD64,
+					architecture.ARM64,
+					architecture.S390X,
+				}
+				cronTemplate.Annotations[data_sources.DataImportCronArchsAnnotation] = "amd64,arm64,s390x"
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.EnableMultipleArchitectures = ptr.To(true)
+					foundSsp.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+					}
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+						cronTemplate,
+					)
+				})
+				waitUntilDeployed()
+			})
+
+			It("[test_id:TODO] should not create DataImportCron for default arch", decorators.Conformance, func() {
+				defaultArch := architecture.AMD64
+
+				for _, arch := range cronArchs {
+					err := apiClient.Get(ctx, client.ObjectKey{
+						Name:      cronTemplate.Name + "-" + string(arch),
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cdiv1beta1.DataImportCron{})
+
+					if arch == defaultArch {
+						Expect(err).To(MatchError(errors.IsNotFound, "errors.IsNotFound"),
+							fmt.Sprintf("Found DataImportCron for default architecture %s", string(arch)))
+					} else {
+						Expect(err).ToNot(HaveOccurred(),
+							"Error getting DataImportCron for non-default architecture")
+					}
+				}
 			})
 		})
 

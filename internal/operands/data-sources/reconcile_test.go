@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -19,8 +20,11 @@ import (
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
 	"kubevirt.io/ssp-operator/internal"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
+	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
+	template_bundle "kubevirt.io/ssp-operator/internal/template-bundle"
 	. "kubevirt.io/ssp-operator/internal/test-utils"
 )
 
@@ -32,22 +36,29 @@ const (
 )
 
 var _ = Describe("Data-Sources operand", func() {
+	const (
+		centos8 = "centos8"
+		win10   = "win10"
+	)
+
 	var (
-		testDataSources []cdiv1beta1.DataSource
+		dataSourceCollection template_bundle.DataSourceCollection
 
 		operand operands.Operand
 		request common.Request
-
-		dsNames []string
 	)
 
 	BeforeEach(func() {
-		testDataSources = getDataSources()
+		dataSourceCollection = template_bundle.DataSourceCollection{}
 
-		for _, ds := range testDataSources {
-			dsNames = append(dsNames, ds.Name)
-		}
-		operand = New(dsNames, false)
+		dataSourceCollection.AddNameAndArch(centos8, architecture.AMD64)
+		dataSourceCollection.AddNameAndArch(centos8, architecture.ARM64)
+		dataSourceCollection.AddNameAndArch(centos8, architecture.S390X)
+
+		dataSourceCollection.AddNameAndArch(win10, architecture.AMD64)
+		dataSourceCollection.AddNameAndArch(win10, architecture.ARM64)
+
+		operand = New(dataSourceCollection, false)
 
 		client := fake.NewClientBuilder().WithScheme(common.Scheme).Build()
 		request = common.Request{
@@ -108,13 +119,13 @@ var _ = Describe("Data-Sources operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		for _, ds := range testDataSources {
-			ExpectResourceExists(&ds, request)
+		for name := range dataSourceCollection.Names() {
+			ExpectResourceExists(testDataSource(name), request)
 		}
 	})
 
 	DescribeTable("should create NetworkPolicies", func(runningOnOpenShift bool) {
-		operand = New(dsNames, runningOnOpenShift)
+		operand = New(dataSourceCollection, runningOnOpenShift)
 
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
@@ -133,7 +144,7 @@ var _ = Describe("Data-Sources operand", func() {
 		)
 
 		BeforeEach(func() {
-			dataSourceName := testDataSources[0].GetName()
+			dataSourceName := centos8
 			cronTemplate = ssp.DataImportCronTemplate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: dataSourceName,
@@ -211,6 +222,8 @@ var _ = Describe("Data-Sources operand", func() {
 			})
 
 			It("should restore DataSource if DataImportCron template is removed", func() {
+				originalDataSource := testDataSource(centos8)
+
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -220,7 +233,9 @@ var _ = Describe("Data-Sources operand", func() {
 
 				// Update DataSource to simulate CDI
 				ds := &cdiv1beta1.DataSource{}
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				dsKey := client.ObjectKeyFromObject(originalDataSource)
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
+
 				ds.Spec.Source.PVC = &cdiv1beta1.DataVolumeSourcePVC{
 					Name:      "test",
 					Namespace: internal.GoldenImagesNamespace,
@@ -236,8 +251,9 @@ var _ = Describe("Data-Sources operand", func() {
 				ExpectResourceNotExists(&cron, request)
 
 				// Test that DataSource was restored
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
-				Expect(ds.Spec).To(Equal(testDataSources[0].Spec))
+				ds = &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
+				Expect(ds.Spec).To(Equal(originalDataSource.Spec))
 			})
 
 			DescribeTable("should not restore DataSource if DataImportCron is present", func(source cdiv1beta1.DataSourceSource) {
@@ -250,7 +266,8 @@ var _ = Describe("Data-Sources operand", func() {
 
 				// Update DataSource to simulate CDI
 				ds := &cdiv1beta1.DataSource{}
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				dsKey := client.ObjectKeyFromObject(testDataSource(centos8))
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
 				ds.Spec.Source = source
 				Expect(request.Client.Update(request.Context, ds)).To(Succeed())
 
@@ -258,7 +275,7 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Test that DataSource was not changed
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), ds)).To(Succeed())
+				Expect(request.Client.Get(request.Context, dsKey, ds)).To(Succeed())
 				Expect(ds.Spec.Source).To(Equal(source))
 			},
 				Entry("and prefers PVCs", cdiv1beta1.DataSourceSource{
@@ -286,8 +303,8 @@ var _ = Describe("Data-Sources operand", func() {
 			BeforeEach(func() {
 				pvc = &v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      testDataSources[0].Spec.Source.PVC.Name,
-						Namespace: testDataSources[0].Spec.Source.PVC.Namespace,
+						Name:      centos8,
+						Namespace: internal.GoldenImagesNamespace,
 					},
 					Spec: v1.PersistentVolumeClaimSpec{},
 				}
@@ -320,7 +337,8 @@ var _ = Describe("Data-Sources operand", func() {
 				ExpectResourceNotExists(&cron, request)
 
 				foundDs := &cdiv1beta1.DataSource{}
-				Expect(request.Client.Get(request.Context, client.ObjectKeyFromObject(&testDataSources[0]), foundDs)).To(Succeed())
+				dsKey := client.ObjectKeyFromObject(testDataSource(centos8))
+				Expect(request.Client.Get(request.Context, dsKey, foundDs)).To(Succeed())
 
 				if foundDs.GetLabels() == nil {
 					foundDs.SetLabels(map[string]string{})
@@ -357,39 +375,456 @@ var _ = Describe("Data-Sources operand", func() {
 			ExpectResourceExists(cron, request)
 		})
 	})
+
+	Context("with multi-arch enabled", func() {
+		BeforeEach(func() {
+			request.Instance.Spec.EnableMultipleArchitectures = ptr.To(true)
+			request.Instance.Spec.Cluster = &ssp.Cluster{
+				WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+				ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+			}
+		})
+
+		It("should create arch-specific DataSources", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for dsName, archs := range dataSourceCollection {
+				dataSource := testDataSource(dsName)
+				for _, arch := range archs {
+					key := client.ObjectKey{
+						Name:      dataSource.Name + "-" + string(arch),
+						Namespace: dataSource.Namespace,
+					}
+
+					found := &cdiv1beta1.DataSource{}
+					Expect(request.Client.Get(request.Context, key, found)).To(Succeed())
+					Expect(found.Spec.Source.PVC.Name).To(Equal(dataSource.Spec.Source.PVC.Name + "-" + string(arch)))
+					Expect(found.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+				}
+			}
+		})
+
+		It("should not create DataSources for architectures not supported in cluster", func() {
+			request.Instance.Spec.Cluster = &ssp.Cluster{
+				WorkloadArchitectures:     []string{string(architecture.S390X)},
+				ControlPlaneArchitectures: []string{string(architecture.S390X)},
+			}
+
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for dsName, archs := range dataSourceCollection {
+				dataSource := testDataSource(dsName)
+				for _, arch := range archs {
+					if arch == architecture.S390X {
+						continue
+					}
+
+					Expect(request.Client.Get(request.Context, client.ObjectKey{
+						Name:      dataSource.Name + "-" + string(arch),
+						Namespace: dataSource.Namespace,
+					}, &cdiv1beta1.DataSource{})).
+						To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+				}
+			}
+		})
+
+		It("should remove DataSources for architecture that is no longer in cluster", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			key := client.ObjectKey{
+				Name:      centos8 + "-" + string(architecture.S390X),
+				Namespace: internal.GoldenImagesNamespace,
+			}
+
+			Expect(request.Client.Get(request.Context, key, &cdiv1beta1.DataSource{})).To(Succeed())
+
+			request.Instance.Spec.Cluster = &ssp.Cluster{
+				WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64)},
+				ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+			}
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(request.Client.Get(request.Context, key, &cdiv1beta1.DataSource{})).
+				To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+		})
+
+		It("should create DataSource reference pointing to default arch DataSource", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for dsName := range dataSourceCollection.Names() {
+				dataSource := testDataSource(dsName)
+				key := client.ObjectKey{
+					Name:      dataSource.Name,
+					Namespace: dataSource.Namespace,
+				}
+
+				found := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, key, found)).To(Succeed())
+
+				defaultDsName := dsName + "-" + string(architecture.AMD64)
+
+				Expect(found.Spec.Source.DataSource).ToNot(BeNil())
+				Expect(found.Spec.Source.DataSource.Name).To(Equal(defaultDsName))
+				Expect(found.Spec.Source.DataSource.Namespace).To(Equal(dataSource.Namespace))
+
+				Expect(found.Spec.Source.PVC).To(BeNil())
+				Expect(found.Spec.Source.Snapshot).To(BeNil())
+			}
+		})
+
+		It("should create DataSource reference pointing to existing DataSource", func() {
+			request.Instance.Spec.Cluster = &ssp.Cluster{
+				WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+				ControlPlaneArchitectures: []string{string(architecture.S390X)},
+			}
+
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			foundCentosDs := &cdiv1beta1.DataSource{}
+			Expect(request.Client.Get(request.Context, client.ObjectKey{
+				Name:      centos8,
+				Namespace: internal.GoldenImagesNamespace,
+			}, foundCentosDs)).To(Succeed())
+
+			// Default DataSource for centos8 can be control plane architecture
+			centosDefaultDsName := centos8 + "-" + string(architecture.S390X)
+			Expect(foundCentosDs.Spec.Source.DataSource).ToNot(BeNil())
+			Expect(foundCentosDs.Spec.Source.DataSource.Name).To(Equal(centosDefaultDsName))
+			Expect(foundCentosDs.Spec.Source.DataSource.Namespace).To(Equal(internal.GoldenImagesNamespace))
+
+			foundWinDs := &cdiv1beta1.DataSource{}
+			Expect(request.Client.Get(request.Context, client.ObjectKey{
+				Name:      win10,
+				Namespace: internal.GoldenImagesNamespace,
+			}, foundWinDs)).To(Succeed())
+
+			// Default DataSource for windows will be the first compatible workload arch
+			winDefaultDsName := win10 + "-" + string(architecture.AMD64)
+			Expect(foundWinDs.Spec.Source.DataSource).ToNot(BeNil())
+			Expect(foundWinDs.Spec.Source.DataSource.Name).To(Equal(winDefaultDsName))
+			Expect(foundWinDs.Spec.Source.DataSource.Namespace).To(Equal(internal.GoldenImagesNamespace))
+		})
+
+		It("should remove arch-specific DataSources when multi-arch is disabled", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			request.Instance.Spec.EnableMultipleArchitectures = nil
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for dsName := range dataSourceCollection.Names() {
+				dataSource := testDataSource(dsName)
+				for _, arch := range []architecture.Arch{architecture.AMD64, architecture.ARM64, architecture.S390X} {
+					key := client.ObjectKey{
+						Name:      dataSource.Name + "-" + string(arch),
+						Namespace: dataSource.Namespace,
+					}
+
+					Expect(request.Client.Get(request.Context, key, &cdiv1beta1.DataSource{})).
+						To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+				}
+			}
+		})
+
+		It("should update default DataSource when multi-arch is disabled", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			request.Instance.Spec.EnableMultipleArchitectures = nil
+
+			_, err = operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			for dsName := range dataSourceCollection.Names() {
+				dataSource := testDataSource(dsName)
+				key := client.ObjectKey{
+					Name:      dataSource.Name,
+					Namespace: dataSource.Namespace,
+				}
+
+				found := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, key, found)).To(Succeed())
+				Expect(found.Spec.Source.PVC.Name).To(Equal(dataSource.Spec.Source.PVC.Name))
+			}
+		})
+
+		It("default DataSource should point to PVC without arch specific suffix", func() {
+			pvc := &v1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      centos8,
+					Namespace: internal.GoldenImagesNamespace,
+				},
+				Spec: v1.PersistentVolumeClaimSpec{},
+			}
+			Expect(request.Client.Create(request.Context, pvc)).To(Succeed())
+
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
+			found := &cdiv1beta1.DataSource{}
+			Expect(request.Client.Get(request.Context, client.ObjectKey{
+				Name:      centos8 + "-" + string(architecture.AMD64),
+				Namespace: internal.GoldenImagesNamespace,
+			}, found)).To(Succeed())
+
+			Expect(found.Spec.Source.PVC.Name).To(Equal(pvc.Name))
+		})
+
+		Context("with DataImportCron template", func() {
+			var (
+				cronTemplate ssp.DataImportCronTemplate
+				cronArchs    []architecture.Arch
+			)
+
+			BeforeEach(func() {
+				cronArchs = []architecture.Arch{
+					architecture.AMD64,
+					architecture.ARM64,
+					architecture.S390X,
+				}
+				cronTemplate = ssp.DataImportCronTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: centos8,
+						Annotations: map[string]string{
+							DataImportCronArchsAnnotation: "amd64,arm64,s390x",
+						},
+					},
+					Spec: cdiv1beta1.DataImportCronSpec{
+						ManagedDataSource: centos8,
+						Template: cdiv1beta1.DataVolume{
+							Spec: cdiv1beta1.DataVolumeSpec{
+								Source: &cdiv1beta1.DataVolumeSource{
+									Registry: &cdiv1beta1.DataVolumeSourceRegistry{},
+								},
+							},
+						},
+					},
+				}
+
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+			})
+
+			It("should create multiple DataImportCrons", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				for _, arch := range cronArchs {
+					cron := cdiv1beta1.DataImportCron{}
+					Expect(request.Client.Get(request.Context, client.ObjectKey{
+						Name:      cronTemplate.Name + "-" + string(arch),
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cron)).To(Succeed())
+
+					Expect(cron.Annotations).ToNot(HaveKey(DataImportCronArchsAnnotation))
+					Expect(cron.Labels).To(HaveKeyWithValue(DataImportCronDataSourceNameLabel, cronTemplate.Spec.ManagedDataSource))
+					Expect(cron.Labels).To(HaveKeyWithValue(common_templates.TemplateArchitectureLabel, string(arch)))
+					Expect(cron.Spec.ManagedDataSource).To(HaveSuffix(string(arch)))
+					Expect(cron.Spec.Template.Spec.Source.Registry.Platform).ToNot(BeNil())
+					Expect(cron.Spec.Template.Spec.Source.Registry.Platform.Architecture).To(Equal(string(arch)))
+				}
+			})
+
+			It("should not create DataImportCron for unsupported architecture", func() {
+				request.Instance.Spec.Cluster.WorkloadArchitectures = []string{string(architecture.AMD64), string(architecture.ARM64)}
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(request.Client.Get(request.Context, client.ObjectKey{
+					Name:      cronTemplate.Name + "-" + string(architecture.S390X),
+					Namespace: internal.GoldenImagesNamespace,
+				}, &cdiv1beta1.DataImportCron{})).
+					To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+			})
+
+			It("should remove DataImportCron when multi-arch is disabled", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataImportCronList := &cdiv1beta1.DataImportCronList{}
+				Expect(request.Client.List(request.Context, dataImportCronList)).To(Succeed())
+				Expect(dataImportCronList.Items).To(HaveLen(3))
+
+				request.Instance.Spec.EnableMultipleArchitectures = ptr.To(false)
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataImportCronList = &cdiv1beta1.DataImportCronList{}
+				Expect(request.Client.List(request.Context, dataImportCronList)).To(Succeed())
+				Expect(dataImportCronList.Items).To(HaveLen(1))
+
+				dataImportCron := dataImportCronList.Items[0]
+				Expect(dataImportCron.Name).To(Equal(cronTemplate.Name))
+				Expect(dataImportCron.Annotations).ToNot(HaveKey(DataImportCronArchsAnnotation))
+				Expect(dataImportCron.Spec).To(Equal(cronTemplate.Spec))
+			})
+
+			Context("without architecture annotation", func() {
+				BeforeEach(func() {
+					cronTemplate.Annotations = nil
+					request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				})
+
+				It("should create DataImportCron for default arch, if it manages a DataSource from common template", func() {
+					_, err := operand.Reconcile(&request)
+					Expect(err).ToNot(HaveOccurred())
+
+					cron := cdiv1beta1.DataImportCron{}
+					Expect(request.Client.Get(request.Context, client.ObjectKey{
+						Name:      cronTemplate.Name,
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cron)).To(Succeed())
+
+					const defaultArch = architecture.AMD64
+					Expect(cron.Spec.ManagedDataSource).To(Equal(cronTemplate.Spec.ManagedDataSource + "-" + string(defaultArch)))
+				})
+
+				It("should create DataImportCron for default arch that is different from control-plane arch, if it manages a DataSource from common template", func() {
+					request.Instance.Spec.Cluster = &ssp.Cluster{
+						WorkloadArchitectures:     []string{string(architecture.ARM64), string(architecture.S390X)},
+						ControlPlaneArchitectures: []string{string(architecture.S390X)},
+					}
+
+					cronTemplate.Name = win10
+					cronTemplate.Spec.ManagedDataSource = win10
+					request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+					_, err := operand.Reconcile(&request)
+					Expect(err).ToNot(HaveOccurred())
+
+					cron := cdiv1beta1.DataImportCron{}
+					Expect(request.Client.Get(request.Context, client.ObjectKey{
+						Name:      cronTemplate.Name,
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cron)).To(Succeed())
+
+					const defaultArch = architecture.ARM64
+					Expect(cron.Spec.ManagedDataSource).To(Equal(cronTemplate.Spec.ManagedDataSource + "-" + string(defaultArch)))
+				})
+
+				It("should create an architecture agnostic DataImportCron, if it does not manage DataSource from common template", func() {
+					cronTemplate.Name = "test-cron"
+					cronTemplate.Spec.ManagedDataSource = "test-ds"
+					request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+					_, err := operand.Reconcile(&request)
+					Expect(err).ToNot(HaveOccurred())
+
+					cron := cdiv1beta1.DataImportCron{}
+					Expect(request.Client.Get(request.Context, client.ObjectKey{
+						Name:      cronTemplate.Name,
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cron)).To(Succeed())
+
+					Expect(cron.Spec.ManagedDataSource).To(Equal(cronTemplate.Spec.ManagedDataSource))
+				})
+			})
+
+			It("should not create DataImportCron, if default DataSource points to an existing PVC without arch specific suffix", func() {
+				pvc := &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      centos8,
+						Namespace: internal.GoldenImagesNamespace,
+					},
+					Spec: v1.PersistentVolumeClaimSpec{},
+				}
+				Expect(request.Client.Create(request.Context, pvc)).To(Succeed())
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				defaultArch := architecture.AMD64
+
+				for _, arch := range cronArchs {
+					err := request.Client.Get(request.Context, client.ObjectKey{
+						Name:      cronTemplate.Name + "-" + string(arch),
+						Namespace: internal.GoldenImagesNamespace,
+					}, &cdiv1beta1.DataImportCron{})
+
+					if arch == defaultArch {
+						Expect(err).To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+					} else {
+						Expect(err).ToNot(HaveOccurred())
+					}
+				}
+			})
+		})
+	})
+
+	It("should remove old DataImportCron when multi-arch is enabled", func() {
+		cronTemplate := ssp.DataImportCronTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: centos8,
+			},
+			Spec: cdiv1beta1.DataImportCronSpec{
+				ManagedDataSource: centos8,
+				Template: cdiv1beta1.DataVolume{
+					Spec: cdiv1beta1.DataVolumeSpec{
+						Source: &cdiv1beta1.DataVolumeSource{
+							Registry: &cdiv1beta1.DataVolumeSourceRegistry{},
+						},
+					},
+				},
+			},
+		}
+		request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(request.Client.Get(request.Context, client.ObjectKey{
+			Name:      cronTemplate.GetName(),
+			Namespace: internal.GoldenImagesNamespace,
+		}, &cdiv1beta1.DataImportCron{})).To(Succeed())
+
+		// Enable multi-arch
+		cronTemplate.Annotations = map[string]string{
+			DataImportCronArchsAnnotation: "amd64,arm64,s390x",
+		}
+		request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+		request.Instance.Spec.EnableMultipleArchitectures = ptr.To(true)
+		request.Instance.Spec.Cluster = &ssp.Cluster{
+			WorkloadArchitectures:     []string{string(architecture.AMD64), string(architecture.ARM64), string(architecture.S390X)},
+			ControlPlaneArchitectures: []string{string(architecture.AMD64)},
+		}
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(request.Client.Get(request.Context, client.ObjectKey{
+			Name:      cronTemplate.GetName(),
+			Namespace: internal.GoldenImagesNamespace,
+		}, &cdiv1beta1.DataImportCron{})).
+			To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+	})
 })
 
-func getDataSources() []cdiv1beta1.DataSource {
-	const name1 = "centos8"
-	const name2 = "win10"
-
-	return []cdiv1beta1.DataSource{{
+func testDataSource(name string) *cdiv1beta1.DataSource {
+	return &cdiv1beta1.DataSource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name1,
+			Name:      name,
 			Namespace: internal.GoldenImagesNamespace,
 		},
 		Spec: cdiv1beta1.DataSourceSpec{
 			Source: cdiv1beta1.DataSourceSource{
 				PVC: &cdiv1beta1.DataVolumeSourcePVC{
-					Name:      name1,
+					Name:      name,
 					Namespace: internal.GoldenImagesNamespace,
 				},
 			},
 		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name2,
-			Namespace: internal.GoldenImagesNamespace,
-		},
-		Spec: cdiv1beta1.DataSourceSpec{
-			Source: cdiv1beta1.DataSourceSource{
-				PVC: &cdiv1beta1.DataVolumeSourcePVC{
-					Name:      name2,
-					Namespace: internal.GoldenImagesNamespace,
-				},
-			},
-		},
-	}}
+	}
 }
 
 func TestDataSources(t *testing.T) {

@@ -2,6 +2,7 @@ package common_templates
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -45,8 +46,6 @@ var _ = Describe("Common-Templates operand", func() {
 	)
 
 	BeforeEach(func() {
-		defaultArchitecture = architecture.AMD64
-
 		var err error
 		operand, err = New(getTestTemplatesMultiArch())
 		Expect(err).ToNot(HaveOccurred())
@@ -79,6 +78,9 @@ var _ = Describe("Common-Templates operand", func() {
 				Spec: ssp.SSPSpec{
 					CommonTemplates: ssp.CommonTemplates{
 						Namespace: namespace,
+					},
+					Cluster: &ssp.Cluster{
+						ControlPlaneArchitectures: []string{string(architecture.AMD64)},
 					},
 				},
 				Status: ssp.SSPStatus{
@@ -342,9 +344,28 @@ var _ = Describe("Common-Templates operand", func() {
 		It("should create common-template resources", func() {
 			_, err := operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
-			for _, template := range multiArchTemplates {
-				template.Namespace = namespace
-				ExpectResourceExists(&template, request)
+
+			for i := range multiArchTemplates {
+				foundTemplate := &templatev1.Template{}
+				Expect(request.Client.Get(request.Context, client.ObjectKey{
+					Name:      multiArchTemplates[i].Name,
+					Namespace: namespace,
+				}, foundTemplate)).To(Succeed())
+
+				Expect(foundTemplate.Labels).To(HaveKey(TemplateArchitectureLabel))
+				arch := foundTemplate.Labels[TemplateArchitectureLabel]
+
+				foundParam := false
+				for _, parameter := range foundTemplate.Parameters {
+					if parameter.Name == TemplateDataSourceParameterName {
+						Expect(parameter.Value).To(HaveSuffix("-" + arch))
+						foundParam = true
+						break
+					}
+				}
+				Expect(foundParam).To(BeTrue(), fmt.Sprintf("Template %s does not have parameter %s",
+					multiArchTemplates[i].Name,
+					TemplateDataSourceParameterName))
 			}
 		})
 
@@ -451,5 +472,9 @@ func createTestTemplate(name, os, flavor, workload string, arch architecture.Arc
 				TemplateArchitectureLabel:              string(arch),
 			},
 		},
+		Parameters: []templatev1.Parameter{{
+			Name:  TemplateDataSourceParameterName,
+			Value: os,
+		}},
 	}
 }
