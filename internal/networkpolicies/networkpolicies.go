@@ -69,16 +69,6 @@ func (g *Generator) NewEgressToKubeAPIAndDNS(namespace, labelKey string, labelVa
 			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeEgress},
 			Egress: []networkv1.NetworkPolicyEgressRule{
 				{
-					To: []networkv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{"kubernetes.io/metadata.name": g.apiNamespace},
-							},
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{g.apiLabelKey: g.apiLabelValue},
-							},
-						},
-					},
 					Ports: []networkv1.NetworkPolicyPort{
 						{
 							Port:     ptr.To(intstr.FromInt32(g.apiPort)),
