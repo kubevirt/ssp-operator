@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -45,10 +46,17 @@ var _ = Describe("Service Controller", func() {
 		service, serviceErr := getSspMetricsService()
 		Expect(serviceErr).ToNot(HaveOccurred(), "Failed to get ssp-operator-metrics service")
 
+		deployment := &apps.Deployment{}
+		Expect(apiClient.Get(ctx, types.NamespacedName{
+			Name:      strategy.GetSSPDeploymentName(),
+			Namespace: strategy.GetSSPDeploymentNameSpace(),
+		}, deployment)).To(Succeed())
+
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesManagedByLabel, controllers.ServiceManagedByLabelValue))
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, sspenv.GetOperatorVersion()))
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesComponentLabel, controllers.ServiceControllerName))
-		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(BeEmpty())
+		// Not using HaveKeyWithValue, because the annotation does not need to exist.
+		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(Equal(deployment.Labels[common.AppKubernetesPartOfLabel]))
 	})
 
 	It("[test_id:8808] Should re-create ssp-operator-metrics service if deleted", decorators.Conformance, func() {
