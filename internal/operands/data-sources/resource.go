@@ -16,8 +16,8 @@ const (
 	EditClusterRoleName = "os-images.kubevirt.io:edit"
 )
 
-func newDataSource(name string) cdiv1beta1.DataSource {
-	return cdiv1beta1.DataSource{
+func newDataSource(name string) *cdiv1beta1.DataSource {
+	return &cdiv1beta1.DataSource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: internal.GoldenImagesNamespace,
@@ -26,6 +26,23 @@ func newDataSource(name string) cdiv1beta1.DataSource {
 			Source: cdiv1beta1.DataSourceSource{
 				PVC: &cdiv1beta1.DataVolumeSourcePVC{
 					Name:      name,
+					Namespace: internal.GoldenImagesNamespace,
+				},
+			},
+		},
+	}
+}
+
+func newDataSourceReference(name string, referenceName string) *cdiv1beta1.DataSource {
+	return &cdiv1beta1.DataSource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: internal.GoldenImagesNamespace,
+		},
+		Spec: cdiv1beta1.DataSourceSpec{
+			Source: cdiv1beta1.DataSourceSource{
+				DataSource: &cdiv1beta1.DataSourceRefSourceDataSource{
+					Name:      referenceName,
 					Namespace: internal.GoldenImagesNamespace,
 				},
 			},

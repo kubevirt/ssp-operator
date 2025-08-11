@@ -95,6 +95,10 @@ func (d DataSourceCollection) Names() iter.Seq[string] {
 	return maps.Keys(d)
 }
 
+func (d DataSourceCollection) Contains(name string, arch architecture.Arch) bool {
+	return slices.Contains(d[name], arch)
+}
+
 func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
 	vmUnstructured := &unstructured.Unstructured{}
 	err := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(template.Objects[0].Raw), 1024).Decode(vmUnstructured)
@@ -134,9 +138,8 @@ func vmTemplateUsesSourceRef(template *templatev1.Template) (bool, error) {
 
 func findDataSourceName(template *templatev1.Template) (string, bool) {
 	const dataSourceNameOld = "SRC_PVC_NAME"
-	const dataSourceName = "DATA_SOURCE_NAME"
 
-	name, exists := findParameterValue(dataSourceName, template)
+	name, exists := findParameterValue(common_templates.TemplateDataSourceParameterName, template)
 	if exists {
 		return name, true
 	}

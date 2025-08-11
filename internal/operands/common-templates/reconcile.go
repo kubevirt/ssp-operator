@@ -3,7 +3,6 @@ package common_templates
 import (
 	"fmt"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
 
@@ -29,9 +28,6 @@ import (
 // +kubebuilder:rbac:groups=template.openshift.io,resources=templates,verbs=get;list;watch;create;update;patch;delete
 
 var templateKubevirtIoPattern = regexp.MustCompile(`^(.*\.)?template\.kubevirt\.io/`)
-
-// This can be overwritten in unit tests, to make them independent of architecture
-var defaultArchitecture = architecture.ToArchOrPanic(runtime.GOARCH)
 
 func init() {
 	utilruntime.Must(templatev1.Install(common.Scheme))
@@ -80,15 +76,12 @@ func (c *commonTemplates) WatchTypes() []operands.WatchType {
 }
 
 func (c *commonTemplates) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
-	clusterArchs, err := getClusterArchitectures(request.Instance)
+	clusterArchs, err := architecture.GetSSPArchs(&request.Instance.Spec)
 	if err != nil {
 		return nil, err
 	}
 
-	var templates []templatev1.Template
-	for _, arch := range clusterArchs {
-		templates = append(templates, c.templatesByArch[arch]...)
-	}
+	templates := c.getTemplatesForArchs(clusterArchs, &request.Instance.Spec)
 
 	reconcileTemplatesResults, err := common.CollectResourceStatus(request, reconcileTemplatesFuncs(templates)...)
 	if err != nil {
@@ -112,48 +105,35 @@ func (c *commonTemplates) Reconcile(request *common.Request) ([]common.Reconcile
 	return append(reconcileTemplatesResults, oldTemplatesResults...), nil
 }
 
-func getClusterArchitectures(sspObj *ssp.SSP) ([]architecture.Arch, error) {
-	if sspObj.Spec.Cluster == nil {
-		if ptr.Deref(sspObj.Spec.EnableMultipleArchitectures, false) {
-			return nil, fmt.Errorf(".spec.cluster cannot be nil, if .spec.enableMultipleArchitectures is true")
+func (c *commonTemplates) getTemplatesForArchs(clusterArchs []architecture.Arch, sspSpec *ssp.SSPSpec) []templatev1.Template {
+	var templates []templatev1.Template
+	for _, arch := range clusterArchs {
+		templatesForArch := c.templatesByArch[arch]
+		if !ptr.Deref(sspSpec.EnableMultipleArchitectures, false) {
+			// If multi-arch is disabled, the templates are not modified.
+			templates = append(templates, templatesForArch...)
+			continue
 		}
-		return []architecture.Arch{defaultArchitecture}, nil
-	}
 
-	archs := sspObj.Spec.Cluster.WorkloadArchitectures
-	if len(archs) == 0 {
-		archs = sspObj.Spec.Cluster.ControlPlaneArchitectures
-	}
-
-	if len(archs) == 0 {
-		return nil, fmt.Errorf("no architectrues are defined in .spec.cluster")
-	}
-
-	if ptr.Deref(sspObj.Spec.EnableMultipleArchitectures, false) {
-		result := make([]architecture.Arch, 0, len(archs))
-		for _, archStr := range archs {
-			arch, err := architecture.ToArch(archStr)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, arch)
+		// If multi-arch is enabled, the DATA_SOURCE_NAME parameter
+		// has to point to the correct multi-arch DataSource.
+		for i := range templatesForArch {
+			templateCopy := templatesForArch[i].DeepCopy()
+			addArchSuffixToDataSourceParameter(templateCopy, arch)
+			templates = append(templates, *templateCopy)
 		}
-		return result, nil
 	}
+	return templates
+}
 
-	// For single architecture case, we prefer the first of ControlPlaneArchitectures.
-	// If there are none, we use the first of WorkloadArchitectures.
-	archStr := archs[0]
-	if len(sspObj.Spec.Cluster.ControlPlaneArchitectures) > 0 {
-		archStr = sspObj.Spec.Cluster.ControlPlaneArchitectures[0]
+func addArchSuffixToDataSourceParameter(template *templatev1.Template, arch architecture.Arch) {
+	for j := range template.Parameters {
+		param := &template.Parameters[j]
+		if param.Name == TemplateDataSourceParameterName {
+			param.Value = param.Value + "-" + string(arch)
+			return
+		}
 	}
-
-	arch, err := architecture.ToArch(archStr)
-	if err != nil {
-		return nil, err
-	}
-
-	return []architecture.Arch{arch}, nil
 }
 
 func operatorIsUpgrading(request *common.Request) bool {

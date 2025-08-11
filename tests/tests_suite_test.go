@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -496,14 +497,39 @@ func waitUntilDeployed() {
 		Fail("Timed out waiting for SSP to be in phase Deployed.")
 	}
 
+	defer func() {
+		// If the below check fails, output the SSP object to log.
+		// Its .status.conditions can be helpful.
+		if rec := recover(); rec != nil {
+			ssp := &sspv1beta3.SSP{}
+			err := apiClient.Get(ctx, client.ObjectKey{
+				Name:      strategy.GetName(),
+				Namespace: strategy.GetNamespace(),
+			}, ssp)
+			if err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "Could not get SSP object: %s\n", err.Error())
+				panic(rec)
+			}
+
+			sspJson, err := json.MarshalIndent(ssp, "", "    ")
+			if err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "Could not convert SSP to JSON: %s\n", err.Error())
+				panic(rec)
+			}
+
+			_, _ = fmt.Fprintf(GinkgoWriter, "SSP object:\n%s\n", sspJson)
+			panic(rec)
+		}
+	}()
+
 	// Set to true before waiting. In case Eventually fails,
 	// it will panic and the deploymentTimedOut will be left true
 	deploymentTimedOut = true
-	EventuallyWithOffset(1, func() bool {
+	EventuallyWithOffset(1, func(g Gomega) {
 		ssp := getSsp()
-		return ssp.Status.ObservedGeneration == ssp.Generation &&
-			ssp.Status.Phase == lifecycleapi.PhaseDeployed
-	}, env.Timeout(), time.Second).Should(BeTrue())
+		g.Expect(ssp.Status.ObservedGeneration).To(Equal(ssp.Generation))
+		g.Expect(ssp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed))
+	}, env.Timeout(), time.Second).Should(Succeed())
 	deploymentTimedOut = false
 }
 
