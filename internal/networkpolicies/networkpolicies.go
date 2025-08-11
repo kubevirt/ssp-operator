@@ -1,12 +1,13 @@
 package networkpolicies
 
 import (
+	"strings"
+
 	k8sv1 "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	"strings"
 )
 
 const (
@@ -68,16 +69,6 @@ func (g *Generator) NewEgressToKubeAPIAndDNS(namespace, labelKey string, labelVa
 			PolicyTypes: []networkv1.PolicyType{networkv1.PolicyTypeEgress},
 			Egress: []networkv1.NetworkPolicyEgressRule{
 				{
-					To: []networkv1.NetworkPolicyPeer{
-						{
-							NamespaceSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{"kubernetes.io/metadata.name": g.apiNamespace},
-							},
-							PodSelector: &metav1.LabelSelector{
-								MatchLabels: map[string]string{g.apiLabelKey: g.apiLabelValue},
-							},
-						},
-					},
 					Ports: []networkv1.NetworkPolicyPort{
 						{
 							Port:     ptr.To(intstr.FromInt32(g.apiPort)),
@@ -148,7 +139,7 @@ func NewIngressToVMConsoleProxyAPI(namespace string) *networkv1.NetworkPolicy {
 				{
 					Ports: []networkv1.NetworkPolicyPort{
 						{
-							Port:     ptr.To(intstr.FromString("api")),
+							Port:     ptr.To(intstr.FromInt32(8768)),
 							Protocol: ptr.To(k8sv1.ProtocolTCP),
 						},
 					},
