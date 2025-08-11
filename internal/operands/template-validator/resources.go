@@ -201,7 +201,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 						Resources: core.ResourceRequirements{
 							Requests: core.ResourceList{
 								core.ResourceCPU:    resource.MustParse("50m"),
-								core.ResourceMemory: resource.MustParse("150Mi"),
+								core.ResourceMemory: resource.MustParse("100Mi"),
 							},
 						},
 						Args: []string{
