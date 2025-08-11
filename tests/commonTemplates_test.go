@@ -238,16 +238,22 @@ var _ = Describe("Common templates", func() {
 		BeforeEach(func() {
 			ssp := getSsp()
 
+			// The old template has to have the default architecture, otherwise it will be deleted.
+			archs, err := architecture.GetSSPArchs(&ssp.Spec)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(archs).ToNot(BeEmpty())
+
 			oldTemplate = &templatev1.Template{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "test-old-template-",
 					Namespace:    strategy.GetTemplatesNamespace(),
 					Labels: map[string]string{
-						commonTemplates.TemplateVersionLabel: "not-latest",
-						commonTemplates.TemplateTypeLabel:    commonTemplates.TemplateTypeLabelBaseValue,
-						testOsLabel:                          "true",
-						testFlavorLabel:                      "true",
-						testWorkflowLabel:                    "true",
+						commonTemplates.TemplateVersionLabel:      "not-latest",
+						commonTemplates.TemplateTypeLabel:         commonTemplates.TemplateTypeLabelBaseValue,
+						commonTemplates.TemplateArchitectureLabel: string(archs[0]),
+						testOsLabel:       "true",
+						testFlavorLabel:   "true",
+						testWorkflowLabel: "true",
 					},
 				},
 			}
