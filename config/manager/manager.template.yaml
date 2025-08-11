@@ -48,7 +48,7 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         resources:
           requests:
-            memory: "150Mi"
+            memory: "200Mi"
             cpu: "200m"
         securityContext:
           allowPrivilegeEscalation: false
