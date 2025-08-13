@@ -229,6 +229,8 @@ var _ = Describe("Common templates", func() {
 			testOsLabel       = commonTemplates.TemplateOsLabelPrefix + "some-os"
 			testFlavorLabel   = commonTemplates.TemplateFlavorLabelPrefix + "test"
 			testWorkflowLabel = commonTemplates.TemplateWorkloadLabelPrefix + "server"
+
+			versionLabelValue = "not-latest"
 		)
 
 		var (
@@ -238,58 +240,61 @@ var _ = Describe("Common templates", func() {
 		BeforeEach(func() {
 			ssp := getSsp()
 
+			// The old template has to have the default architecture, otherwise it will be deleted.
+			archs, err := architecture.GetSSPArchs(&ssp.Spec)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(archs).ToNot(BeEmpty())
+
 			oldTemplate = &templatev1.Template{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "test-old-template-",
 					Namespace:    strategy.GetTemplatesNamespace(),
 					Labels: map[string]string{
-						commonTemplates.TemplateVersionLabel: "not-latest",
-						commonTemplates.TemplateTypeLabel:    commonTemplates.TemplateTypeLabelBaseValue,
-						testOsLabel:                          "true",
-						testFlavorLabel:                      "true",
-						testWorkflowLabel:                    "true",
+						commonTemplates.TemplateVersionLabel:      versionLabelValue,
+						commonTemplates.TemplateTypeLabel:         commonTemplates.TemplateTypeLabelBaseValue,
+						commonTemplates.TemplateArchitectureLabel: string(archs[0]),
+						testOsLabel:       "true",
+						testFlavorLabel:   "true",
+						testWorkflowLabel: "true",
 					},
 				},
 			}
 			Expect(libhandler.SetOwnerAnnotations(ssp, oldTemplate)).To(Succeed())
 
-			Expect(apiClient.Create(ctx, oldTemplate)).ToNot(HaveOccurred(), "creation of dummy old template failed")
+			Expect(apiClient.Create(ctx, oldTemplate)).To(Succeed(), "creation of dummy old template failed")
 		})
 
 		AfterEach(func() {
-			Expect(apiClient.Delete(ctx, oldTemplate)).ToNot(HaveOccurred(), "deletion of dummy old template failed")
+			Expect(apiClient.Delete(ctx, oldTemplate)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")), "deletion of dummy old template failed")
 		})
 
 		It("[test_id:5620]should remove labels from old templates", func() {
 			triggerReconciliation()
 			// Template should eventually be updated by the operator
-			Eventually(func() (bool, error) {
+			Eventually(func(g Gomega) {
 				updatedTpl := &templatev1.Template{}
 				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
-				err := apiClient.Get(ctx, key, updatedTpl)
-				if err != nil {
-					return false, err
-				}
-				return updatedTpl.Labels[testOsLabel] == "" &&
-					updatedTpl.Labels[testFlavorLabel] == "" &&
-					updatedTpl.Labels[testWorkflowLabel] == "" &&
-					updatedTpl.Labels[commonTemplates.TemplateTypeLabel] == commonTemplates.TemplateTypeLabelBaseValue &&
-					updatedTpl.Labels[commonTemplates.TemplateVersionLabel] == "not-latest", nil
-			}, env.ShortTimeout()).Should(BeTrue(), "labels were not removed from older templates")
+				g.Expect(apiClient.Get(ctx, key, updatedTpl)).To(Succeed())
+
+				g.Expect(updatedTpl.Labels).ToNot(HaveKey(testOsLabel))
+				g.Expect(updatedTpl.Labels).ToNot(HaveKey(testFlavorLabel))
+				g.Expect(updatedTpl.Labels).ToNot(HaveKey(testWorkflowLabel))
+				g.Expect(updatedTpl.Labels).To(HaveKeyWithValue(commonTemplates.TemplateTypeLabel, commonTemplates.TemplateTypeLabelBaseValue))
+				g.Expect(updatedTpl.Labels).To(HaveKeyWithValue(commonTemplates.TemplateVersionLabel, versionLabelValue))
+			}, env.ShortTimeout()).Should(Succeed(), "labels were not removed from older templates")
 		})
+
 		It("[test_id:5969] should add deprecated annotation to old templates", func() {
 			triggerReconciliation()
 
-			Eventually(func() (bool, error) {
+			Eventually(func(g Gomega) {
 				updatedTpl := &templatev1.Template{}
 				key := client.ObjectKey{Name: oldTemplate.Name, Namespace: oldTemplate.Namespace}
-				err := apiClient.Get(ctx, key, updatedTpl)
-				if err != nil {
-					return false, err
-				}
-				return updatedTpl.Annotations[commonTemplates.TemplateDeprecatedAnnotation] == "true", nil
-			}, env.ShortTimeout()).Should(BeTrue(), "deprecated annotation should be added to old template")
+				g.Expect(apiClient.Get(ctx, key, updatedTpl)).To(Succeed())
+				g.Expect(updatedTpl.Annotations).To(HaveKeyWithValue(commonTemplates.TemplateDeprecatedAnnotation, "true"))
+			}, env.ShortTimeout()).Should(Succeed(), "deprecated annotation should be added to old template")
 		})
+
 		It("[test_id:5622]should continue to have labels on latest templates", decorators.Conformance, func() {
 			triggerReconciliation()
 
@@ -304,27 +309,28 @@ var _ = Describe("Common templates", func() {
 			Expect(latestTemplates.Items).ToNot(BeEmpty(), "Latest templates are missing")
 
 			for _, template := range latestTemplates.Items {
-				for label, value := range template.Labels {
-					if strings.HasPrefix(label, commonTemplates.TemplateOsLabelPrefix) ||
-						strings.HasPrefix(label, commonTemplates.TemplateFlavorLabelPrefix) ||
-						strings.HasPrefix(label, commonTemplates.TemplateWorkloadLabelPrefix) {
-						Expect(value).To(Equal("true"),
-							fmt.Sprintf("Required label for template is not 'true': {template: %s/%s, label: %s}",
-								template.GetNamespace(), template.GetName(), label),
-						)
-					}
-				}
-				Expect(template.Labels[commonTemplates.TemplateTypeLabel]).To(Equal(commonTemplates.TemplateTypeLabelBaseValue),
-					fmt.Sprintf("Label '%s' is not equal 'base' for template %s/%s",
-						commonTemplates.TemplateTypeLabel,
-						template.GetNamespace(), template.GetName()),
-				)
-				Expect(template.Labels[commonTemplates.TemplateVersionLabel]).To(Equal(commonTemplates.Version),
-					fmt.Sprintf("Label '%s' is not equal '%s' for template %s/%s",
-						commonTemplates.TemplateVersionLabel,
-						commonTemplates.Version,
-						template.GetNamespace(), template.GetName()),
-				)
+				Expect(template.Labels).To(HaveKeyWithValue(HavePrefix(commonTemplates.TemplateOsLabelPrefix), "true"),
+					"Required label for template %s/%s is not 'true'",
+					template.GetNamespace(), template.GetName())
+
+				Expect(template.Labels).To(HaveKeyWithValue(HavePrefix(commonTemplates.TemplateFlavorLabelPrefix), "true"),
+					"Required label for template %s/%s is not 'true'",
+					template.GetNamespace(), template.GetName())
+
+				Expect(template.Labels).To(HaveKeyWithValue(HavePrefix(commonTemplates.TemplateWorkloadLabelPrefix), "true"),
+					"Required label for template %s/%s is not 'true'",
+					template.GetNamespace(), template.GetName())
+
+				Expect(template.Labels).To(HaveKeyWithValue(commonTemplates.TemplateTypeLabel, commonTemplates.TemplateTypeLabelBaseValue),
+					"Label '%s' is not equal 'base' for template %s/%s",
+					commonTemplates.TemplateTypeLabel,
+					template.GetNamespace(), template.GetName())
+
+				Expect(template.Labels).To(HaveKeyWithValue(commonTemplates.TemplateVersionLabel, commonTemplates.Version),
+					"Label '%s' is not equal '%s' for template %s/%s",
+					commonTemplates.TemplateVersionLabel,
+					commonTemplates.Version,
+					template.GetNamespace(), template.GetName())
 			}
 		})
 	})
