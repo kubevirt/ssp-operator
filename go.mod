@@ -24,9 +24,9 @@ require (
 	github.com/spf13/pflag v1.0.7
 	golang.org/x/sync v0.16.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
-	k8s.io/api v0.33.3
+	k8s.io/api v0.33.4
 	k8s.io/apiextensions-apiserver v0.33.3
-	k8s.io/apimachinery v0.33.3
+	k8s.io/apimachinery v0.33.4
 	k8s.io/client-go v0.33.3
 	k8s.io/kube-aggregator v0.33.3
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
