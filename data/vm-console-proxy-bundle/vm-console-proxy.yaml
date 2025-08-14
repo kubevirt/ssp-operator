@@ -154,18 +154,23 @@ spec:
       - args: []
         command:
         - /console
-        image: quay.io/kubevirt/vm-console-proxy:v0.8.1
+        image: quay.io/kubevirt/vm-console-proxy:v0.9.0
         imagePullPolicy: Always
         name: console
         ports:
         - containerPort: 8768
           name: api
           protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 65Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
+        terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /config
           name: config
