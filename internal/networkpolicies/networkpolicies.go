@@ -119,6 +119,10 @@ func NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace string) *netwo
 							Port:     ptr.To(intstr.FromInt32(8443)),
 							Protocol: ptr.To(k8sv1.ProtocolTCP),
 						},
+						{
+							Port:     ptr.To(intstr.FromInt32(9443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
 					},
 				},
 			},

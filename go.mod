@@ -22,6 +22,7 @@ require (
 	github.com/prometheus/common v0.65.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
+	golang.org/x/sync v0.16.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/api v0.33.3
 	k8s.io/apiextensions-apiserver v0.33.3
@@ -37,8 +38,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/yaml v1.6.0
 )
-
-require golang.org/x/sync v0.16.0
 
 require (
 	cel.dev/expr v0.24.0 // indirect
