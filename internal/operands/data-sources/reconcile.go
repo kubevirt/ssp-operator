@@ -161,8 +161,13 @@ func (d *dataSources) Cleanup(request *common.Request) ([]common.CleanupResult, 
 
 	var objects []client.Object
 	if request.CrdList.CrdExists(dataSourceCrd) {
-		for name := range d.sourceCollection.Names() {
-			objects = append(objects, newDataSource(name))
+		ownedDataSources, err := listAllOwnedDataSources(request)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range ownedDataSources {
+			objects = append(objects, &ownedDataSources[i])
 		}
 	}
 
@@ -220,15 +225,26 @@ func (d *dataSources) getDataSourcesAndCrons(request *common.Request) (dataSourc
 		cronByDataSource = getCronsByDataSource(&request.Instance.Spec)
 	}
 
-	var err error
 	var dataSourceInfos []dataSourceInfo
 	if isMultiarch {
+		var err error
 		dataSourceInfos, err = getDataSourceInfosMultiArch(d.sourceCollection, cronByDataSource, request)
+		if err != nil {
+			return dataSourcesAndCrons{}, fmt.Errorf("failed to get DataSources: %w", err)
+		}
+
+		clusterArchs, err := architecture.GetSSPArchs(&request.Instance.Spec)
+		if err != nil {
+			return dataSourcesAndCrons{}, fmt.Errorf("failed to get ClusterArchs: %w", err)
+		}
+
+		dataSourceInfos = addDataSourceReferenceForCrons(dataSourceInfos, request.Instance.Spec.CommonTemplates.DataImportCronTemplates, clusterArchs)
 	} else {
+		var err error
 		dataSourceInfos, err = getDataSourceInfos(d.sourceCollection, cronByDataSource, request)
-	}
-	if err != nil {
-		return dataSourcesAndCrons{}, fmt.Errorf("failed to get DataSources: %w", err)
+		if err != nil {
+			return dataSourcesAndCrons{}, fmt.Errorf("failed to get DataSources: %w", err)
+		}
 	}
 
 	for i := range dataSourceInfos {
@@ -328,6 +344,40 @@ func addToCronMap(cronMap map[client.ObjectKey]*cdiv1beta1.DataImportCron, cron 
 		Name:      cron.Spec.ManagedDataSource,
 		Namespace: cron.Namespace,
 	}] = cron
+}
+
+// addDataSourceReferenceForCrons adds DataSource references for custom DataImportCron templates.
+// The SSP object can contain DataImportCron templates that don't have a common template defined.
+func addDataSourceReferenceForCrons(dataSourceInfos []dataSourceInfo, cronTemplates []ssp.DataImportCronTemplate, clusterArchs []architecture.Arch) []dataSourceInfo {
+	for i := range cronTemplates {
+		originalCron := cronTemplates[i].AsDataImportCron()
+		cron := originalCron.DeepCopy()
+
+		dsName := cron.Spec.ManagedDataSource
+		if slices.ContainsFunc(dataSourceInfos, func(info dataSourceInfo) bool {
+			return info.dataSource.Name == dsName
+		}) {
+			continue
+		}
+
+		archsAnnotationValue := cron.Annotations[DataImportCronArchsAnnotation]
+		if archsAnnotationValue == "" {
+			// The DataImportCron is not multi-arch.
+			continue
+		}
+
+		cronArchs := parseArchsAnnotation(archsAnnotationValue, nil)
+		defaultArch := getDefaultDataSourceArch(clusterArchs, cronArchs)
+		if defaultArch == "" {
+			// There is no compatible architecture of DataImportCron. It will not be created.
+			continue
+		}
+
+		dataSourceInfos = append(dataSourceInfos, dataSourceInfo{
+			dataSource: newDataSourceReference(dsName, dsName+"-"+string(defaultArch)),
+		})
+	}
+	return dataSourceInfos
 }
 
 func setDataImportCronArchFields(cron *cdiv1beta1.DataImportCron, arch architecture.Arch) {
@@ -741,7 +791,9 @@ func parseArchsAnnotation(value string, logger *logr.Logger) []architecture.Arch
 		arch, err := architecture.ToArch(strings.TrimSpace(archStr))
 		if err != nil {
 			// Ignoring invalid architectures
-			logger.V(4).Info("Unknown DataImportCron template architecture, ignoring it.", "value", archStr)
+			if logger != nil {
+				logger.V(4).Info("Unknown DataImportCron template architecture, ignoring it.", "value", archStr)
+			}
 			continue
 		}
 		result = append(result, arch)

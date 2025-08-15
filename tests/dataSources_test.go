@@ -1484,6 +1484,32 @@ var _ = Describe("DataSources", func() {
 				Expect(cron.Spec.Template.Spec.Source.Registry.Platform).ToNot(BeNil())
 				Expect(cron.Spec.Template.Spec.Source.Registry.Platform.Architecture).To(Equal(string(arch)))
 			})
+
+			It("[test_id:TODO] should create DataSource reference for custom DataImportCron template", decorators.Conformance, func() {
+				const name = "custom-cron"
+				cronTemplate.Name = name
+				cronTemplate.Spec.ManagedDataSource = name
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				})
+				waitUntilDeployed()
+
+				foundDs := &cdiv1beta1.DataSource{}
+				Expect(apiClient.Get(ctx, client.ObjectKey{
+					Name:      cronTemplate.Name,
+					Namespace: internal.GoldenImagesNamespace,
+				}, foundDs)).To(Succeed())
+
+				defaultDsName := cronTemplate.Name + "-" + string(architecture.AMD64)
+
+				Expect(foundDs.Spec.Source.DataSource).ToNot(BeNil())
+				Expect(foundDs.Spec.Source.DataSource.Name).To(Equal(defaultDsName))
+				Expect(foundDs.Spec.Source.DataSource.Namespace).To(Equal(dataSource.Namespace))
+
+				Expect(foundDs.Spec.Source.PVC).To(BeNil())
+				Expect(foundDs.Spec.Source.Snapshot).To(BeNil())
+			})
 		})
 
 		contextWithPvc("and multiple architectures", func() {

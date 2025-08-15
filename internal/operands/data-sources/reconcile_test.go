@@ -758,6 +758,29 @@ var _ = Describe("Data-Sources operand", func() {
 					}
 				}
 			})
+
+			It("should create DataSource reference for custom DataImportCron", func() {
+				const name = "custom-image"
+				cronTemplate.Name = name
+				cronTemplate.Spec.ManagedDataSource = name
+
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataSource := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, client.ObjectKey{
+					Name:      cronTemplate.Spec.ManagedDataSource,
+					Namespace: internal.GoldenImagesNamespace,
+				}, dataSource)).To(Succeed())
+
+				defaultArch := architecture.AMD64
+
+				Expect(dataSource.Spec.Source.DataSource).ToNot(BeNil())
+				Expect(dataSource.Spec.Source.DataSource.Name).To(Equal(name + "-" + string(defaultArch)))
+				Expect(dataSource.Spec.Source.DataSource.Namespace).To(Equal(internal.GoldenImagesNamespace))
+			})
 		})
 	})
 
