@@ -2,6 +2,7 @@ package data_sources
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -781,6 +782,27 @@ var _ = Describe("Data-Sources operand", func() {
 				Expect(dataSource.Spec.Source.DataSource.Name).To(Equal(name + "-" + string(defaultArch)))
 				Expect(dataSource.Spec.Source.DataSource.Namespace).To(Equal(internal.GoldenImagesNamespace))
 			})
+
+			It("should delete all DataSources on cleanup", func() {
+				request.CrdList = &crdListMock{dataImportCronCrd, dataSourceCrd}
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataSourceList := &cdiv1beta1.DataSourceList{}
+				Expect(request.Client.List(request.Context, dataSourceList)).To(Succeed())
+				Expect(dataSourceList.Items).ToNot(BeEmpty())
+
+				_, err = operand.Cleanup(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = operand.Cleanup(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataSourceList = &cdiv1beta1.DataSourceList{}
+				Expect(request.Client.List(request.Context, dataSourceList)).To(Succeed())
+				Expect(dataSourceList.Items).To(BeEmpty())
+			})
 		})
 	})
 
@@ -848,6 +870,16 @@ func testDataSource(name string) *cdiv1beta1.DataSource {
 			},
 		},
 	}
+}
+
+type crdListMock []string
+
+func (c *crdListMock) CrdExists(crdName string) bool {
+	return slices.Contains(*c, crdName)
+}
+
+func (c *crdListMock) MissingCrds() []string {
+	return nil
 }
 
 func TestDataSources(t *testing.T) {
