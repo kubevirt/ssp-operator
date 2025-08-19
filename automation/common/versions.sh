@@ -58,7 +58,4 @@ function latest_version() {
 KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
 
 # Latest released CDI version
-
-# Using the latest pre-release of CDI, so the new API is available.
-# TODO: Revert back this line when CDI creates a proper release.
-CDI_VERSION="v1.63.0-alpha.0"
+CDI_VERSION=$(latest_version "kubevirt" "containerized-data-importer")
