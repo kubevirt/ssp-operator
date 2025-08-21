@@ -8,7 +8,7 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/google/cel-go v0.26.0
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20250814163632-a02989939f4a
-	github.com/machadovilaca/operator-observability v0.0.27
+	github.com/rhobs/operator-observability-toolkit v0.0.29
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.38.0
 	github.com/openshift/api v0.0.0-20250305013520-e7f23be12279 // release-4.18
