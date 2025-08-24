@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
-	"kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
+	metrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 )
 
 // +kubebuilder:rbac:groups=kubevirt.io,resources=virtualmachines,verbs=get;list;watch
@@ -88,7 +88,6 @@ func (v *vmController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	if err := v.setVmVolumesMetrics(ctx, &vm); err != nil {
-		v.log.Error(err, "Could not set vm volumes metrics", "vm", req.NamespacedName)
 		return ctrl.Result{
 				Requeue:      true,
 				RequeueAfter: 5 * time.Second,
