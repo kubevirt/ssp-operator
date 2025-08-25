@@ -54,11 +54,8 @@ function latest_version() {
     tail -n1
 }
 
-# Latest released Kubevirt version
-KUBEVIRT_VERSION=$(latest_version "kubevirt" "kubevirt")
+# Fix kubevirt version to v1.6.x
+KUBEVIRT_VERSION=$(latest_patch_version "kubevirt" "kubevirt" "v1.6")
 
-# Latest released CDI version
-
-# Using the latest pre-release of CDI, so the new API is available.
-# TODO: Revert back this line when CDI creates a proper release.
-CDI_VERSION="v1.63.0-alpha.0"
+# Fix CDI version to v.1.63.x
+CDI_VERSION=$(latest_patch_version "kubevirt" "containerized-data-importer" "v1.63")
