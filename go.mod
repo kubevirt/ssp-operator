@@ -9,7 +9,7 @@ require (
 	github.com/google/cel-go v0.26.0
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20250814163632-a02989939f4a
 	github.com/machadovilaca/operator-observability v0.0.27
-	github.com/onsi/ginkgo/v2 v2.23.4
+	github.com/onsi/ginkgo/v2 v2.24.0
 	github.com/onsi/gomega v1.38.0
 	github.com/openshift/api v0.0.0-20250305013520-e7f23be12279 // release-4.18
 	github.com/openshift/custom-resource-status v1.1.2
@@ -41,6 +41,7 @@ require (
 
 require (
 	cel.dev/expr v0.24.0 // indirect
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
