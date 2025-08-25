@@ -3,8 +3,11 @@ package validator
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	templatev1 "github.com/openshift/api/template/v1"
@@ -15,7 +18,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	kubevirtv1 "kubevirt.io/api/core/v1"
-
 	"kubevirt.io/ssp-operator/internal/template-validator/logger"
 	"kubevirt.io/ssp-operator/internal/template-validator/service"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
@@ -99,7 +101,9 @@ func (app *App) Run() {
 		webhookServer.TLSConfig = createTLSConfig(tlsInfo)
 	}
 
-	g, ctx := errgroup.WithContext(context.Background())
+	signalsCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+	g, ctx := errgroup.WithContext(signalsCtx)
 	g.Go(func() error { return startServer(metricsServer, metricsServerType) })
 	g.Go(func() error { return startServer(webhookServer, webhookServerType) })
 	g.Go(func() error { return shutdownServer(metricsServer, metricsServerType, ctx) })
@@ -159,13 +163,13 @@ func (app *App) createWebhookServer(informers *virtinformers.Informers) *http.Se
 func startServer(server *http.Server, serverType string) error {
 	if server.TLSConfig != nil {
 		logger.Log.Info("TLS configured, serving "+serverType+" over HTTPS", "address", server.Addr)
-		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Log.Error(err, "Error listening "+serverType+" TLS")
 			return err
 		}
 	} else {
 		logger.Log.Info("TLS disabled, serving "+serverType+" over HTTP", "address", server.Addr)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Log.Error(err, "Error listening "+serverType)
 			return err
 		}
