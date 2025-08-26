@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Checkout code
         if: ${{ github.event.client_payload.release_version }} != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - run: |
           RELEASE_VERSION=${{ github.event.client_payload.release_version }}
           OUTPUT_FILE=./data/vm-console-proxy-bundle/vm-console-proxy.yaml
