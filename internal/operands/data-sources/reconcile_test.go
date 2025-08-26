@@ -2,6 +2,7 @@ package data_sources
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -758,6 +759,50 @@ var _ = Describe("Data-Sources operand", func() {
 					}
 				}
 			})
+
+			It("should create DataSource reference for custom DataImportCron", func() {
+				const name = "custom-image"
+				cronTemplate.Name = name
+				cronTemplate.Spec.ManagedDataSource = name
+
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataSource := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, client.ObjectKey{
+					Name:      cronTemplate.Spec.ManagedDataSource,
+					Namespace: internal.GoldenImagesNamespace,
+				}, dataSource)).To(Succeed())
+
+				defaultArch := architecture.AMD64
+
+				Expect(dataSource.Spec.Source.DataSource).ToNot(BeNil())
+				Expect(dataSource.Spec.Source.DataSource.Name).To(Equal(name + "-" + string(defaultArch)))
+				Expect(dataSource.Spec.Source.DataSource.Namespace).To(Equal(internal.GoldenImagesNamespace))
+			})
+
+			It("should delete all DataSources on cleanup", func() {
+				request.CrdList = &crdListMock{dataImportCronCrd, dataSourceCrd}
+
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataSourceList := &cdiv1beta1.DataSourceList{}
+				Expect(request.Client.List(request.Context, dataSourceList)).To(Succeed())
+				Expect(dataSourceList.Items).ToNot(BeEmpty())
+
+				_, err = operand.Cleanup(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = operand.Cleanup(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dataSourceList = &cdiv1beta1.DataSourceList{}
+				Expect(request.Client.List(request.Context, dataSourceList)).To(Succeed())
+				Expect(dataSourceList.Items).To(BeEmpty())
+			})
 		})
 	})
 
@@ -825,6 +870,16 @@ func testDataSource(name string) *cdiv1beta1.DataSource {
 			},
 		},
 	}
+}
+
+type crdListMock []string
+
+func (c *crdListMock) CrdExists(crdName string) bool {
+	return slices.Contains(*c, crdName)
+}
+
+func (c *crdListMock) MissingCrds() []string {
+	return nil
 }
 
 func TestDataSources(t *testing.T) {
