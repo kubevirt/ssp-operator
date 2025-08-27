@@ -17,7 +17,7 @@ const (
 	PrometheusLabelValue         = "true"
 	PrometheusClusterRoleName    = "prometheus-k8s-ssp"
 	PrometheusServiceAccountName = "prometheus-k8s"
-	MetricsPortName              = "metrics"
+	MetricsPortName              = "http-metrics"
 )
 
 func newMonitoringClusterRole() *rbac.ClusterRole {

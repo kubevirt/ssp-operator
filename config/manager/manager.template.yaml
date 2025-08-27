@@ -62,7 +62,7 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 20
         ports:
-          - name: metrics
+          - name: http-metrics
             protocol: TCP
             containerPort: 8443
         readinessProbe:
