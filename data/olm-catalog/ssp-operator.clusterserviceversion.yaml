@@ -345,6 +345,7 @@ spec:
                     fieldRef:
                       fieldPath: metadata.namespace
                 image: quay.io/kubevirt/ssp-operator:latest
+                imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
                     path: /healthz
