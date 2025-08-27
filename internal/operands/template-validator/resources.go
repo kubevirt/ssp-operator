@@ -30,6 +30,7 @@ import (
 const (
 	MetricsPort                   = 8443
 	WebhookPort                   = 9443
+	webhookPortName               = "http-webhook"
 	KubevirtIo                    = "kubevirt.io"
 	SecretName                    = "virt-template-validator-certs"
 	VirtTemplateValidator         = "virt-template-validator"
@@ -118,7 +119,7 @@ func newService(namespace string) *core.Service {
 		},
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{{
-				Name:       "webhook",
+				Name:       webhookPortName,
 				Port:       443,
 				TargetPort: intstr.FromInt32(WebhookPort),
 			}},
@@ -227,7 +228,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							},
 						},
 						Ports: []core.ContainerPort{{
-							Name:          "webhook",
+							Name:          webhookPortName,
 							ContainerPort: WebhookPort,
 							Protocol:      core.ProtocolTCP,
 						}, {
