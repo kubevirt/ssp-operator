@@ -182,8 +182,14 @@ var _ = Describe("Metrics", func() {
 				return err
 			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
-			template.Labels[common_templates.TemplateTypeLabel] = "test"
-			Expect(apiClient.Update(ctx, template)).To(Succeed())
+			Eventually(func(g Gomega) {
+				foundTemplate := &templatev1.Template{}
+				g.Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(template), foundTemplate)).To(Succeed())
+
+				foundTemplate.Labels[common_templates.TemplateTypeLabel] = "test"
+
+				g.Expect(apiClient.Update(ctx, foundTemplate)).To(Succeed())
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 			Eventually(func() (int, error) {
 				return totalRestoredTemplatesCount()
@@ -198,9 +204,15 @@ var _ = Describe("Metrics", func() {
 				return err
 			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
-			template.Labels[common_templates.TemplateTypeLabel] = "test"
-			template.Labels[common_templates.TemplateVersionLabel] = "v" + rand.String(5)
-			Expect(apiClient.Update(ctx, template)).To(Succeed())
+			Eventually(func(g Gomega) {
+				foundTemplate := &templatev1.Template{}
+				g.Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(template), foundTemplate)).To(Succeed())
+
+				foundTemplate.Labels[common_templates.TemplateTypeLabel] = "test"
+				foundTemplate.Labels[common_templates.TemplateVersionLabel] = "v" + rand.String(5)
+
+				g.Expect(apiClient.Update(ctx, foundTemplate)).To(Succeed())
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 			// TODO: replace 'Consistently' with a direct wait for the template update
 			Consistently(func() (int, error) {
