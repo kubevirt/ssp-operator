@@ -17,6 +17,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
+	policy "k8s.io/api/policy/v1"
 	rbac "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -79,6 +80,7 @@ var _ = Describe("Template validator operand", func() {
 		deploymentRes                     testResource
 		networkPolicyKubeAPIAndDNSRes     testResource
 		networkPolicyWebhookAndMetricsRes testResource
+		podDisruptionBudgetRes            testResource
 
 		replicas int32 = 2
 	)
@@ -174,6 +176,18 @@ var _ = Describe("Template validator operand", func() {
 			"ssp-operator-allow-ingress-to-virt-template-validator-webhook-and-metrics",
 			strategy.GetNamespace(), expectedLabels,
 		)
+		podDisruptionBudgetRes = testResource{
+			Name:           validator.DeploymentName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &policy.PodDisruptionBudget{},
+			ExpectedLabels: expectedLabels,
+			UpdateFunc: func(pdb *policy.PodDisruptionBudget) {
+				pdb.Spec.MinAvailable = ptr.To(intstr.FromInt32(0))
+			},
+			EqualsFunc: func(old *policy.PodDisruptionBudget, new *policy.PodDisruptionBudget) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
+		}
 
 		waitUntilDeployed()
 	})
@@ -201,6 +215,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4912] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
+			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
 
 		DescribeTable("should set app labels", expectAppLabels,
@@ -214,6 +229,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:5828]deployment", &deploymentRes),
 			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO]network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
+			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
 	})
 
@@ -229,6 +245,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4924] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
+			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
 	})
 
@@ -243,6 +260,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4925] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
+			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
 
 		Context("with pause", func() {
@@ -264,6 +282,7 @@ var _ = Describe("Template validator operand", func() {
 				Entry("[test_id:5539] deployment", &deploymentRes),
 				Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 				Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
+				Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 			)
 		})
 
@@ -277,6 +296,7 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:6209] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
+			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
 	})
 
