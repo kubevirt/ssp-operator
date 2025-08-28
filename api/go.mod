@@ -7,7 +7,7 @@ require (
 	k8s.io/apimachinery v0.34.0
 	kubevirt.io/containerized-data-importer-api v1.63.0
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
-	sigs.k8s.io/controller-runtime v0.21.0
+	sigs.k8s.io/controller-runtime v0.22.0
 )
 
 require (
