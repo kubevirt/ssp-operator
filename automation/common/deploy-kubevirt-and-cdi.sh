@@ -13,7 +13,12 @@ metadata:
 EOF
 
 # Deploy Tekton
-oc apply -f "https://github.com/tektoncd/operator/releases/download/${TEKTON_VERSION}/openshift-release.yaml"
+#
+# Tekton has changed image repository URL, but did not update old release files, so we need to modify the downloaded file
+TEKTON_URL="https://github.com/tektoncd/operator/releases/download/${TEKTON_VERSION}/openshift-release.yaml"
+curl --silent --show-error --location "${TEKTON_URL}" \
+  | sed 's|gcr.io/tekton-releases|ghcr.io/tektoncd|g' \
+  | oc apply -f -
 
 # Deploying kuebvirt
 oc apply -n $NAMESPACE -f "https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml"
