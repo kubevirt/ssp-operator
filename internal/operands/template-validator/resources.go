@@ -9,6 +9,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
+	policy "k8s.io/api/policy/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -387,5 +388,20 @@ func newNetworkPolicies(namespace string) []*networkv1.NetworkPolicy {
 	return []*networkv1.NetworkPolicy{
 		g.NewEgressToKubeAPIAndDNS(namespace, KubevirtIo, VirtTemplateValidator),
 		networkpolicies.NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace),
+	}
+}
+
+func newPodDisruptionBudget(namespace string) *policy.PodDisruptionBudget {
+	return &policy.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      DeploymentName,
+			Namespace: namespace,
+		},
+		Spec: policy.PodDisruptionBudgetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: CommonLabels(),
+			},
+			MinAvailable: ptr.To(intstr.FromInt32(1)),
+		},
 	}
 }
