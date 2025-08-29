@@ -20,6 +20,7 @@ import (
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
 	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 func mergeMaps(maps ...map[string]string) map[string]string {
@@ -176,8 +177,14 @@ var _ = Describe("Metrics", func() {
 
 			restoredCount := totalRestoredTemplatesCount()
 
-			template.Labels[common_templates.TemplateTypeLabel] = "test"
-			Expect(apiClient.Update(ctx, template)).To(Succeed())
+			Eventually(func(g Gomega) {
+				foundTemplate := &templatev1.Template{}
+				g.Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(template), foundTemplate)).To(Succeed())
+
+				foundTemplate.Labels[common_templates.TemplateTypeLabel] = "test"
+
+				g.Expect(apiClient.Update(ctx, foundTemplate)).To(Succeed())
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 			Eventually(func() int {
 				return totalRestoredTemplatesCount()
@@ -187,9 +194,15 @@ var _ = Describe("Metrics", func() {
 		It("[test_id:TODO]should not increment kubevirt_ssp_common_templates_restored_total during upgrades", func() {
 			restoredCount := totalRestoredTemplatesCount()
 
-			template.Labels[common_templates.TemplateTypeLabel] = "test"
-			template.Labels[common_templates.TemplateVersionLabel] = "v" + rand.String(5)
-			Expect(apiClient.Update(ctx, template)).To(Succeed())
+			Eventually(func(g Gomega) {
+				foundTemplate := &templatev1.Template{}
+				g.Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(template), foundTemplate)).To(Succeed())
+
+				foundTemplate.Labels[common_templates.TemplateTypeLabel] = "test"
+				foundTemplate.Labels[common_templates.TemplateVersionLabel] = "v" + rand.String(5)
+
+				g.Expect(apiClient.Update(ctx, foundTemplate)).To(Succeed())
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 			// TODO: replace 'Consistently' with a direct wait for the template update
 			Consistently(func() int {
