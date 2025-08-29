@@ -141,11 +141,14 @@ var _ = Describe("Prometheus Alerts", func() {
 				Namespace: strategy.GetSSPDeploymentNameSpace(),
 			}
 			replicas = 0
-			deployment = &apps.Deployment{}
-			Expect(apiClient.Get(ctx, sspDeploymentKeys, deployment)).ToNot(HaveOccurred())
-			origReplicas = *deployment.Spec.Replicas
-			deployment.Spec.Replicas = &replicas
-			Expect(apiClient.Update(ctx, deployment)).ToNot(HaveOccurred())
+
+			Eventually(func(g Gomega) {
+				deployment = &apps.Deployment{}
+				g.Expect(apiClient.Get(ctx, sspDeploymentKeys, deployment)).ToNot(HaveOccurred())
+				origReplicas = *deployment.Spec.Replicas
+				deployment.Spec.Replicas = &replicas
+				g.Expect(apiClient.Update(ctx, deployment)).ToNot(HaveOccurred())
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		AfterEach(func() {
