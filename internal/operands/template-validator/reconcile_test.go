@@ -89,6 +89,7 @@ var _ = Describe("Template validator operand", func() {
 		ExpectResourceExists(newDeployment(namespace, replicas, "test-img"), request)
 		ExpectResourceExists(newValidatingWebhook(namespace), request)
 		ExpectResourceExists(newPrometheusService(namespace), request)
+		ExpectResourceExists(newPodDisruptionBudget(namespace), request)
 		for _, policy := range newNetworkPolicies(namespace) {
 			ExpectResourceExists(policy, request)
 		}
