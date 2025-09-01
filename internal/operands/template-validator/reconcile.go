@@ -7,6 +7,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
+	policy "k8s.io/api/policy/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -19,6 +20,7 @@ import (
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=list;watch;create;update;delete
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=list;watch;create;update;delete
@@ -34,6 +36,7 @@ func WatchTypes() []operands.WatchType {
 		{Object: &apps.Deployment{}, WatchFullObject: true},
 		{Object: &v1.ConfigMap{}},
 		{Object: &networkv1.NetworkPolicy{}},
+		{Object: &policy.PodDisruptionBudget{}},
 	}
 }
 
@@ -69,6 +72,7 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Reconci
 		reconcileConfigMap,
 		reconcileDeployment,
 		reconcileValidatingWebhook,
+		reconcilePodDisruptionBudget,
 	}
 	funcs = append(funcs, reconcileNetworkPolicies(request)...)
 	return common.CollectResourceStatus(request, funcs...)
@@ -280,4 +284,14 @@ func reconcileNetworkPolicies(request *common.Request) []common.ReconcileFunc {
 		})
 	}
 	return funcs
+}
+
+func reconcilePodDisruptionBudget(request *common.Request) (common.ReconcileResult, error) {
+	return common.CreateOrUpdate(request).
+		NamespacedResource(newPodDisruptionBudget(request.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(newRes, foundRes client.Object) {
+			foundRes.(*policy.PodDisruptionBudget).Spec = newRes.(*policy.PodDisruptionBudget).Spec
+		}).
+		Reconcile()
 }
