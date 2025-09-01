@@ -3,6 +3,7 @@ package common
 import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 type cacheKey struct {
@@ -35,8 +36,8 @@ func (v VersionCache) Contains(obj client.Object) bool {
 }
 
 func (v VersionCache) Add(obj client.Object) {
-	kind := obj.GetObjectKind().GroupVersionKind().Kind
-	if kind == "" {
+	gvk, _ := apiutil.GVKForObject(obj, Scheme)
+	if gvk.Kind == "" {
 		// Do not cache objects without kind
 		return
 	}
@@ -52,8 +53,9 @@ func (v VersionCache) RemoveObj(obj client.Object) {
 }
 
 func cacheKeyFromObj(obj client.Object) cacheKey {
+	gvk, _ := apiutil.GVKForObject(obj, Scheme)
 	return cacheKey{
-		Kind:      obj.GetObjectKind().GroupVersionKind().Kind,
+		Kind:      gvk.Kind,
 		Name:      obj.GetName(),
 		Namespace: obj.GetNamespace(),
 	}
