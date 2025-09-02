@@ -464,7 +464,7 @@ func createSspListerWatcher(cfg *rest.Config) cache.ListerWatcherWithContext {
 	httpClient, err := rest.HTTPClientFor(cfg)
 	Expect(err).ToNot(HaveOccurred())
 
-	restClient, err := apiutil.RESTClientForGVK(sspGvk, false, cfg, serializer.NewCodecFactory(testScheme), httpClient)
+	restClient, err := apiutil.RESTClientForGVK(sspGvk, false, false, cfg, serializer.NewCodecFactory(testScheme), httpClient)
 	Expect(err).ToNot(HaveOccurred())
 
 	return cache.NewListWatchFromClient(restClient, "ssps", strategy.GetNamespace(), fields.Everything())

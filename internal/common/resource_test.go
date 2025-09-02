@@ -2,10 +2,8 @@ package common
 
 import (
 	"context"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -304,10 +302,6 @@ func createOrUpdateTestResource(request *Request) (ReconcileResult, error) {
 
 func newTestResource(namespace string) *v1.Service {
 	return &v1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testservice",
 			Namespace: namespace,
