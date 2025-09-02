@@ -33,7 +33,7 @@ spec:
       containers:
       - command:
         - /manager
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: $IMG_PULL_POLICY
         args: ["--leader-elect"]
         env:
           - name: VALIDATOR_IMAGE

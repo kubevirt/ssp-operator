@@ -46,6 +46,8 @@ IMG_REPOSITORY ?= quay.io/kubevirt/ssp-operator
 IMG_TAG ?= latest
 IMG ?= ${IMG_REPOSITORY}:${IMG_TAG}
 
+IMG_PULL_POLICY ?= "IfNotPresent"
+
 # Image URL variables for template-validator
 VALIDATOR_REPOSITORY ?= quay.io/kubevirt/kubevirt-template-validator
 VALIDATOR_IMG_TAG ?= latest
@@ -144,10 +146,13 @@ uninstall: manifests kustomize
 
 .PHONY: manager-envsubst
 manager-envsubst:
-	cd config/manager && VALIDATOR_IMG=${VALIDATOR_IMG} envsubst < manager.template.yaml > manager.yaml
+	cd config/manager && \
+		VALIDATOR_IMG=${VALIDATOR_IMG} IMG_PULL_POLICY=${IMG_PULL_POLICY} \
+		envsubst < manager.template.yaml > manager.yaml
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 .PHONY: deploy
+deploy: IMG_PULL_POLICY := Always
 deploy: manifests kustomize manager-envsubst
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(OC) apply -f -
