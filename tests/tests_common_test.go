@@ -174,9 +174,12 @@ func expectRestoreAfterUpdate(res *testResource) {
 	Expect(err).ToNot(HaveOccurred())
 	defer watch.Stop()
 
-	changed := original.DeepCopyObject().(client.Object)
-	res.Update(changed)
-	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
+	Eventually(func(g Gomega) {
+		found := res.NewResource()
+		g.Expect(apiClient.Get(ctx, res.GetKey(), found)).To(Succeed())
+		res.Update(found)
+		g.Expect(apiClient.Update(ctx, found)).ToNot(HaveOccurred())
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 	err = WatchChangesUntil(watch, isStatusDeploying, env.ShortTimeout())
 	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
@@ -199,9 +202,13 @@ func expectRestoreAfterUpdateWithPause(res *testResource) {
 
 	pauseSsp()
 
-	changed := original.DeepCopyObject().(client.Object)
-	res.Update(changed)
-	Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
+	changed := res.NewResource()
+	Eventually(func(g Gomega) {
+		changed = res.NewResource()
+		g.Expect(apiClient.Get(ctx, res.GetKey(), changed)).To(Succeed())
+		res.Update(changed)
+		g.Expect(apiClient.Update(ctx, changed)).ToNot(HaveOccurred())
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 	Consistently(func() (client.Object, error) {
 		found := res.NewResource()
