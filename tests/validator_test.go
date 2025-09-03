@@ -863,6 +863,12 @@ var _ = Describe("Template validator webhooks", func() {
 			template = TemplateWithRules()
 			Expect(apiClient.Create(ctx, template)).To(Succeed())
 
+			// First, the test waits until the deletion succeeds, and then it should succeed consistently.
+			// This allows for validator to stabilize, and not fail because of unrelated issues.
+			Eventually(func() error {
+				return apiClient.Delete(ctx, template, client.DryRunAll)
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
+
 			Consistently(func() error {
 				return apiClient.Delete(ctx, template, client.DryRunAll)
 			}, 5*time.Second, 500*time.Millisecond).Should(Succeed())
@@ -899,6 +905,12 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 
+			// First, the test waits until the deletion succeeds, and then it should succeed consistently.
+			// This allows for validator to stabilize, and not fail because of unrelated issues.
+			Eventually(func() error {
+				return apiClient.Delete(ctx, template, client.DryRunAll)
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
+
 			Consistently(func() error {
 				return apiClient.Delete(ctx, template, client.DryRunAll)
 			}, 5*time.Second, 500*time.Millisecond).Should(Succeed())
@@ -926,6 +938,12 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 
 			eventuallyCreateVm(vm)
+
+			// First, the test waits until the deletion succeeds, and then it should succeed consistently.
+			// This allows for validator to stabilize, and not fail because of unrelated issues.
+			Eventually(func() error {
+				return apiClient.Delete(ctx, template, client.DryRunAll)
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 
 			Consistently(func() error {
 				return apiClient.Delete(ctx, template, client.DryRunAll)
