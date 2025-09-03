@@ -43,6 +43,7 @@ const (
 	ConfigMapName                 = VirtTemplateValidator
 	PrometheusLabel               = "prometheus.ssp.kubevirt.io"
 	kubernetesHostnameTopologyKey = "kubernetes.io/hostname"
+	webhookPortName               = "http-webhook"
 )
 
 func CommonLabels() map[string]string {
@@ -118,7 +119,7 @@ func newService(namespace string) *core.Service {
 		},
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{{
-				Name:       "webhook",
+				Name:       webhookPortName,
 				Port:       443,
 				TargetPort: intstr.FromInt32(ContainerPort),
 			}},
@@ -226,7 +227,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							},
 						},
 						Ports: []core.ContainerPort{{
-							Name:          "webhook",
+							Name:          webhookPortName,
 							ContainerPort: ContainerPort,
 							Protocol:      core.ProtocolTCP,
 						}, {
