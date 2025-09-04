@@ -72,4 +72,10 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          failureThreshold: 30
+          periodSeconds: 10
       terminationGracePeriodSeconds: 10

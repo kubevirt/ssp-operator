@@ -236,6 +236,17 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ContainerPort: MetricsPort,
 							Protocol:      core.ProtocolTCP,
 						}},
+						LivenessProbe: &core.Probe{
+							ProbeHandler: core.ProbeHandler{
+								HTTPGet: &core.HTTPGetAction{
+									Path:   "/readyz",
+									Port:   intstr.FromInt32(WebhookPort),
+									Scheme: core.URISchemeHTTPS,
+								},
+							},
+							InitialDelaySeconds: 5,
+							PeriodSeconds:       10,
+						},
 						ReadinessProbe: &core.Probe{
 							ProbeHandler: core.ProbeHandler{
 								HTTPGet: &core.HTTPGetAction{
@@ -246,6 +257,17 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							},
 							InitialDelaySeconds: 5,
 							PeriodSeconds:       10,
+						},
+						StartupProbe: &core.Probe{
+							ProbeHandler: core.ProbeHandler{
+								HTTPGet: &core.HTTPGetAction{
+									Path:   "/readyz",
+									Port:   intstr.FromInt32(WebhookPort),
+									Scheme: core.URISchemeHTTPS,
+								},
+							},
+							FailureThreshold: 30,
+							PeriodSeconds:    10,
 						},
 					}},
 					Volumes: []core.Volume{{
