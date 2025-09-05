@@ -9,7 +9,7 @@ require (
 	github.com/google/cel-go v0.26.1
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20250827132441-79d811960459
 	github.com/machadovilaca/operator-observability v0.0.27
-	github.com/onsi/ginkgo/v2 v2.25.2
+	github.com/onsi/ginkgo/v2 v2.25.3
 	github.com/onsi/gomega v1.38.2
 	github.com/openshift/api v0.0.0-20250305013520-e7f23be12279 // release-4.18
 	github.com/openshift/custom-resource-status v1.1.2
@@ -17,7 +17,7 @@ require (
 	github.com/operator-framework/api v0.34.0
 	github.com/operator-framework/operator-lib v0.19.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.0
-	github.com/prometheus/client_golang v1.23.0
+	github.com/prometheus/client_golang v1.23.1
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.66.0
 	github.com/spf13/cobra v1.10.1
