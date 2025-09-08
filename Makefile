@@ -340,7 +340,7 @@ GOLANGCI_LINT_VERSION ?= v2.3.1
 .PHONY: lint
 lint:
 	test -s $(GOLANGCI_LINT) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION)
-	$(GOLANGCI_LINT) run --timeout 5m
+	$(GOLANGCI_LINT) run --timeout 10m
 
 .PHONY: lint-metrics
 lint-metrics:
