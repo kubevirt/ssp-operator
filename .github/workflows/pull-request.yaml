@@ -11,7 +11,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Install Golang
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: Generate metrics docs
@@ -25,7 +25,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
     - name: Install Golang
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version-file: 'go.mod'
     - name: Build and Test csv-generator
@@ -36,7 +36,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Install Golang
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version-file: 'go.mod'
     - name: Check commited files
