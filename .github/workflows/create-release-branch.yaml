@@ -29,7 +29,7 @@ jobs:
       COMMIT_MESSAGE: "kubevirt: ssp: add CI for branch: ${{ inputs.new_branch }}"
     steps:
       - name: Create new branch
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const newBranch = "${{ inputs.new_branch }}";
@@ -76,7 +76,7 @@ jobs:
           git push fork HEAD:${CI_FORK_BRANCH_NAME}
 
       - name: Post a PR to openshift/release repository from the fork
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           # Using CI_FORK_TOKEN, because to create a PR
           # the caller needs permission to write to the forked repo.
