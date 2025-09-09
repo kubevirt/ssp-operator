@@ -127,28 +127,28 @@ var _ = Describe("SSPOperatorReconcileSucceeded metric", func() {
 	})
 })
 
-func removeFinalizer(deploymentRes testResource, finalizerName string) {
+func removeFinalizer(res testResource, finalizerName string) {
 	Eventually(func() error {
-		deployment := &apps.Deployment{}
-		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		obj := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), obj)
 		if err != nil {
 			return err
 		}
 		// remove the finalizer so everything can go back to normal
-		controllerutil.RemoveFinalizer(deployment, finalizerName)
-		return apiClient.Update(ctx, deployment)
+		controllerutil.RemoveFinalizer(obj, finalizerName)
+		return apiClient.Update(ctx, obj)
 	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
-func addFinalizer(deploymentRes testResource, finalizerName string) {
+func addFinalizer(res testResource, finalizerName string) {
 	Eventually(func() error {
-		deployment := &apps.Deployment{}
-		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		obj := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), obj)
 		if err != nil {
 			return err
 		}
-		controllerutil.AddFinalizer(deployment, finalizerName)
-		return apiClient.Update(ctx, deployment)
+		controllerutil.AddFinalizer(obj, finalizerName)
+		return apiClient.Update(ctx, obj)
 	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
@@ -369,6 +369,41 @@ var _ = Describe("RHEL VM creation", func() {
 		Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
 		Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
 	)
+})
+
+var _ = Describe("SSP Status Phase", func() {
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
+	It("should set phase to Deploying when owned resource gets deletionTimestamp", func() {
+		finalizerName := "ssp.kubernetes.io/deletion-test"
+
+		configMapRes := testResource{
+			Name:      validator.ConfigMapName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.ConfigMap{},
+		}
+
+		defer func() {
+			removeFinalizer(configMapRes, finalizerName)
+		}()
+
+		addFinalizer(configMapRes, finalizerName)
+
+		Expect(apiClient.Delete(ctx, &core.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      configMapRes.Name,
+				Namespace: configMapRes.Namespace,
+			},
+		})).ToNot(HaveOccurred())
+
+		Eventually(func() bool { return isStatusDeploying(getSsp()) }, env.Timeout(), time.Second).Should(BeTrue())
+
+		removeFinalizer(configMapRes, finalizerName)
+
+		Eventually(func() bool { return isStatusDeployed(getSsp()) }, env.Timeout(), time.Second).Should(BeTrue())
+	})
 })
 
 func logObject(key client.ObjectKey, obj client.Object) {
