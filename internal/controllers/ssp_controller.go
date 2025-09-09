@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -652,10 +651,7 @@ func watchSspResource(bldr *ctrl.Builder) {
 	// Otherwise, it would cause a reconciliation loop.
 	pred := predicate.Or(
 		relevantChangesPredicate(),
-		predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
-			return !event.ObjectNew.GetDeletionTimestamp().Equal(event.ObjectOld.GetDeletionTimestamp()) ||
-				!reflect.DeepEqual(event.ObjectNew.GetFinalizers(), event.ObjectOld.GetFinalizers())
-		}},
+		predicates.FinalizerChangedPredicate{},
 	)
 
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
