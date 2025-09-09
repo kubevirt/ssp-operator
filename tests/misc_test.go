@@ -127,28 +127,28 @@ var _ = Describe("SSPOperatorReconcileSucceeded metric", func() {
 	})
 })
 
-func removeFinalizer(deploymentRes testResource, finalizerName string) {
+func removeFinalizer(res testResource, finalizerName string) {
 	Eventually(func() error {
-		deployment := &apps.Deployment{}
-		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		obj := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), obj)
 		if err != nil {
 			return err
 		}
 		// remove the finalizer so everything can go back to normal
-		controllerutil.RemoveFinalizer(deployment, finalizerName)
-		return apiClient.Update(ctx, deployment)
+		controllerutil.RemoveFinalizer(obj, finalizerName)
+		return apiClient.Update(ctx, obj)
 	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
-func addFinalizer(deploymentRes testResource, finalizerName string) {
+func addFinalizer(res testResource, finalizerName string) {
 	Eventually(func() error {
-		deployment := &apps.Deployment{}
-		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		obj := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), obj)
 		if err != nil {
 			return err
 		}
-		controllerutil.AddFinalizer(deployment, finalizerName)
-		return apiClient.Update(ctx, deployment)
+		controllerutil.AddFinalizer(obj, finalizerName)
+		return apiClient.Update(ctx, obj)
 	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
@@ -369,6 +369,52 @@ var _ = Describe("RHEL VM creation", func() {
 		Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
 		Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
 	)
+})
+
+var _ = Describe("SSP Status Phase", func() {
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
+	It("should set phase to Deploying when owned resource gets deletionTimestamp", func() {
+		watch, err := StartWatch(sspListerWatcher)
+		Expect(err).ToNot(HaveOccurred())
+		defer watch.Stop()
+
+		finalizerName := "ssp.kubernetes.io/deletion-test"
+
+		configMapRes := testResource{
+			Name:      "virt-template-validator",
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.ConfigMap{},
+		}
+
+		defer func() {
+			removeFinalizer(configMapRes, finalizerName)
+		}()
+
+		addFinalizer(configMapRes, finalizerName)
+
+		cm := &core.ConfigMap{}
+		cm.Name = configMapRes.Name
+		cm.Namespace = configMapRes.Namespace
+		Expect(apiClient.Delete(ctx, cm)).ToNot(HaveOccurred())
+
+		// Wait for ConfigMap to get deletionTimestamp
+		Eventually(func() bool {
+			cm := &core.ConfigMap{}
+			err := apiClient.Get(ctx, configMapRes.GetKey(), cm)
+			return err == nil && cm.DeletionTimestamp != nil
+		}, env.ShortTimeout(), time.Second).Should(BeTrue())
+
+		err = WatchChangesUntil(watch, isStatusDeploying, env.ShortTimeout())
+		Expect(err).ToNot(HaveOccurred(), "SSP should enter Deploying phase when owned resource has deletionTimestamp")
+
+		removeFinalizer(configMapRes, finalizerName)
+
+		err = WatchChangesUntil(watch, isStatusDeployed, env.ShortTimeout())
+		Expect(err).ToNot(HaveOccurred(), "SSP should return to Deployed phase after resource is recreated")
+	})
 })
 
 func logObject(key client.ObjectKey, obj client.Object) {
