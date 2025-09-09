@@ -724,10 +724,12 @@ func watchResources(ctrlBuilder *ctrl.Builder, crdList crd_watch.CrdList, handle
 // relevantChangesPredicate is used to only reconcile on certain changes to watched resources
 // - any change in spec
 // - labels or annotations - to detect if necessary labels or annotations were modified or removed
+// - deletion timestamp changes - to detect when resources are marked for deletion
 func relevantChangesPredicate() predicate.Predicate {
 	return predicate.Or(
 		predicate.LabelChangedPredicate{},
 		predicate.AnnotationChangedPredicate{},
 		predicates.SpecChangedPredicate{},
+		predicates.DeletionTimestampChangedPredicate{},
 	)
 }
