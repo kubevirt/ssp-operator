@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -127,28 +128,28 @@ var _ = Describe("SSPOperatorReconcileSucceeded metric", func() {
 	})
 })
 
-func removeFinalizer(deploymentRes testResource, finalizerName string) {
+func removeFinalizer(res testResource, finalizerName string) {
 	Eventually(func() error {
-		deployment := &apps.Deployment{}
-		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		obj := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), obj)
 		if err != nil {
 			return err
 		}
 		// remove the finalizer so everything can go back to normal
-		controllerutil.RemoveFinalizer(deployment, finalizerName)
-		return apiClient.Update(ctx, deployment)
+		controllerutil.RemoveFinalizer(obj, finalizerName)
+		return apiClient.Update(ctx, obj)
 	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
-func addFinalizer(deploymentRes testResource, finalizerName string) {
+func addFinalizer(res testResource, finalizerName string) {
 	Eventually(func() error {
-		deployment := &apps.Deployment{}
-		err := apiClient.Get(ctx, deploymentRes.GetKey(), deployment)
+		obj := res.NewResource()
+		err := apiClient.Get(ctx, res.GetKey(), obj)
 		if err != nil {
 			return err
 		}
-		controllerutil.AddFinalizer(deployment, finalizerName)
-		return apiClient.Update(ctx, deployment)
+		controllerutil.AddFinalizer(obj, finalizerName)
+		return apiClient.Update(ctx, obj)
 	}, env.ShortTimeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
@@ -369,6 +370,55 @@ var _ = Describe("RHEL VM creation", func() {
 		Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
 		Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
 	)
+})
+
+var _ = Describe("SSP Status Phase", func() {
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
+	It("should set phase to Deploying when owned resource gets deletionTimestamp", func() {
+		finalizerName := "ssp.kubernetes.io/deletion-test"
+
+		configMapRes := testResource{
+			Name:      validator.ConfigMapName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.ConfigMap{},
+		}
+
+		addFinalizer(configMapRes, finalizerName)
+		defer removeFinalizer(configMapRes, finalizerName)
+
+		Expect(apiClient.Delete(ctx, &core.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      configMapRes.Name,
+				Namespace: configMapRes.Namespace,
+			},
+		})).To(Succeed())
+
+		message := "Resource is being deleted"
+		Eventually(func(g Gomega) {
+			ssp := getSsp()
+
+			available := conditionsv1.FindStatusCondition(ssp.Status.Conditions, conditionsv1.ConditionAvailable)
+			progressing := conditionsv1.FindStatusCondition(ssp.Status.Conditions, conditionsv1.ConditionProgressing)
+			degraded := conditionsv1.FindStatusCondition(ssp.Status.Conditions, conditionsv1.ConditionDegraded)
+
+			g.Expect(available.Status).To(Equal(core.ConditionFalse))
+			g.Expect(available.Message).To(ContainSubstring(message))
+
+			g.Expect(progressing.Status).To(Equal(core.ConditionTrue))
+			g.Expect(progressing.Message).To(ContainSubstring(message))
+
+			g.Expect(degraded.Status).To(Equal(core.ConditionTrue))
+			g.Expect(degraded.Message).To(ContainSubstring(message))
+
+		}, env.ShortTimeout(), time.Second).Should(Succeed())
+
+		removeFinalizer(configMapRes, finalizerName)
+
+		Eventually(func() bool { return isStatusDeployed(getSsp()) }, env.ShortTimeout(), time.Second).Should(BeTrue())
+	})
 })
 
 func logObject(key client.ObjectKey, obj client.Object) {
