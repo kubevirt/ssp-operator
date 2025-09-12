@@ -58,10 +58,11 @@ spec:
             - "ALL"
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /readyz
             port: 8081
           initialDelaySeconds: 15
-          periodSeconds: 20
+          periodSeconds: 10
+          failureThreshold: 5
         ports:
           - name: http-metrics
             protocol: TCP
@@ -72,4 +73,5 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+          failureThreshold: 2
       terminationGracePeriodSeconds: 10
