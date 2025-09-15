@@ -358,11 +358,12 @@ spec:
                 image: quay.io/kubevirt/ssp-operator:latest
                 imagePullPolicy: IfNotPresent
                 livenessProbe:
+                  failureThreshold: 5
                   httpGet:
-                    path: /healthz
+                    path: /readyz
                     port: 8081
                   initialDelaySeconds: 15
-                  periodSeconds: 20
+                  periodSeconds: 10
                 name: manager
                 ports:
                 - containerPort: 9443
@@ -372,6 +373,7 @@ spec:
                   name: http-metrics
                   protocol: TCP
                 readinessProbe:
+                  failureThreshold: 2
                   httpGet:
                     path: /readyz
                     port: 8081
