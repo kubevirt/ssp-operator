@@ -158,7 +158,7 @@ github.com/jpillora/backoff
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
-# github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20250827132441-79d811960459
+# github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20250915084107-914b00f97c73
 ## explicit; go 1.20
 github.com/kubevirt/monitoring/pkg/metrics/parser
 # github.com/machadovilaca/operator-observability v0.0.27
