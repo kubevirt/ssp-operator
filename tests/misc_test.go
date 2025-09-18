@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/internal"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
@@ -369,6 +370,48 @@ var _ = Describe("RHEL VM creation", func() {
 		Entry("[test_id:8299] with RHEL 8 image", rhel8Image),
 		Entry("[test_id:8300] with RHEL 9 image", rhel9Image),
 	)
+})
+
+var _ = Describe("SSP Status Phase", func() {
+	BeforeEach(func() {
+		waitUntilDeployed()
+	})
+
+	It("should set phase to Deploying when owned resource gets deletionTimestamp", func() {
+		watch, err := StartWatch(sspListerWatcher)
+		Expect(err).ToNot(HaveOccurred())
+		defer watch.Stop()
+
+		// Get the golden images namespace
+		goldenImagesNS := &core.Namespace{}
+		err = apiClient.Get(ctx, client.ObjectKey{Name: internal.GoldenImagesNamespace}, goldenImagesNS)
+		Expect(err).ToNot(HaveOccurred(), "Golden images namespace should exist")
+
+		// Delete the golden images namespace
+		Expect(apiClient.Delete(ctx, goldenImagesNS)).ToNot(HaveOccurred())
+
+		// Make sure deletion timestamp is present
+		err = apiClient.Get(ctx, client.ObjectKey{Name: internal.GoldenImagesNamespace}, goldenImagesNS)
+		Expect(err).ToNot(HaveOccurred(), "Golden images namespace should exist")
+		Expect(goldenImagesNS.DeletionTimestamp).ToNot(BeZero())
+
+		// Watch for SSP to enter Deploying phase in response to namespace deletion
+		err = WatchChangesUntil(watch, isStatusDeploying, env.ShortTimeout())
+		Expect(err).ToNot(HaveOccurred(), "SSP should enter Deploying phase when golden images namespace is deleted")
+
+		// Check that deletion timestamp is still present
+		err = apiClient.Get(ctx, client.ObjectKey{Name: internal.GoldenImagesNamespace}, goldenImagesNS)
+		Expect(err).ToNot(HaveOccurred(), "Golden images namespace should exist")
+		Expect(goldenImagesNS.DeletionTimestamp).ToNot(BeZero())
+
+		err = WatchChangesUntil(watch, isStatusDeployed, env.ShortTimeout())
+		Expect(err).ToNot(HaveOccurred(), "SSP should enter Deployed phase when golden images namespace is deleted")
+
+		// Make sure the namespace was recreated
+		err = apiClient.Get(ctx, client.ObjectKey{Name: internal.GoldenImagesNamespace}, goldenImagesNS)
+		Expect(err).ToNot(HaveOccurred(), "Golden images namespace should exist")
+		Expect(goldenImagesNS.DeletionTimestamp).To(BeZero())
+	})
 })
 
 func logObject(key client.ObjectKey, obj client.Object) {
