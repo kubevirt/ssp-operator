@@ -30,7 +30,7 @@ require (
 	k8s.io/client-go v0.34.1
 	k8s.io/kube-aggregator v0.34.1
 	k8s.io/utils v0.0.0-20250820121507-0af2bda4dd1d
-	kubevirt.io/api v1.6.0
+	kubevirt.io/api v1.6.1
 	kubevirt.io/containerized-data-importer-api v1.63.0
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/ssp-operator/api v0.0.0
@@ -78,7 +78,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/mailru/easyjson v0.9.0 // indirect
+	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
