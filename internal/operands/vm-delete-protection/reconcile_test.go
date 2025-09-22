@@ -30,6 +30,7 @@ var _ = Describe("VM delete protection operand", func() {
 		request common.Request
 		operand = New()
 		key     = client.ObjectKey{Name: virtualMachineDeleteProtectionPolicyName}
+		icrKey  = client.ObjectKey{Name: instancetypeControllerRevisionsPolicyName}
 	)
 
 	BeforeEach(func() {
@@ -118,6 +119,76 @@ var _ = Describe("VM delete protection operand", func() {
 		vap := &admissionregistrationv1.ValidatingAdmissionPolicy{}
 
 		Expect(request.Client.Get(request.Context, key, vap)).To(Succeed())
+		Expect(vap.Spec.Validations).To(HaveLen(1))
+
+		celEnv, err := cel.NewEnv()
+		Expect(err).ToNot(HaveOccurred())
+
+		_, issues := celEnv.Parse(vap.Spec.Validations[0].Expression)
+		Expect(issues.Err()).ToNot(HaveOccurred())
+	})
+
+	It("should create instancetype controller revisions resources", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		ExpectResourceExists(newInstancetypeControllerRevisionsValidatingAdmissionPolicy(request.Instance.Namespace), request)
+		ExpectResourceExists(newInstancetypeControllerRevisionsValidatingAdmissionPolicyBinding(), request)
+	})
+
+	It("should update instancetype controller revisions VAP spec if changed", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		vap := &admissionregistrationv1.ValidatingAdmissionPolicy{}
+
+		Expect(request.Client.Get(request.Context, icrKey, vap)).To(Succeed())
+
+		vap.Spec.Variables = []admissionregistrationv1.Variable{
+			{
+				Name:       "test-variable",
+				Expression: `test-expression`,
+			},
+		}
+
+		Expect(request.Client.Update(request.Context, vap)).ToNot(HaveOccurred())
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(request.Client.Get(request.Context, icrKey, vap)).To(Succeed())
+		Expect(vap.Spec).To(Equal(newInstancetypeControllerRevisionsValidatingAdmissionPolicy(request.Instance.Namespace).Spec))
+	})
+
+	It("should update instancetype controller revisions VAPB spec if changed", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		vapb := &admissionregistrationv1.ValidatingAdmissionPolicyBinding{}
+		icrVapbKey := client.ObjectKey{Name: icrKey.Name + "-binding"}
+
+		Expect(request.Client.Get(request.Context, icrVapbKey, vapb)).To(Succeed())
+
+		vapb.Spec.ValidationActions = []admissionregistrationv1.ValidationAction{
+			admissionregistrationv1.Warn,
+		}
+
+		Expect(request.Client.Update(request.Context, vapb)).To(Succeed())
+
+		_, err = operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(request.Client.Get(request.Context, icrVapbKey, vapb)).To(Succeed())
+		Expect(vapb.Spec).To(Equal(newInstancetypeControllerRevisionsValidatingAdmissionPolicyBinding().Spec))
+	})
+
+	It("should create one valid CEL expression for instancetype controller revisions VAP", func() {
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		vap := &admissionregistrationv1.ValidatingAdmissionPolicy{}
+
+		Expect(request.Client.Get(request.Context, icrKey, vap)).To(Succeed())
 		Expect(vap.Spec.Validations).To(HaveLen(1))
 
 		celEnv, err := cel.NewEnv()
