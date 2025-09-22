@@ -61,8 +61,8 @@ var _ = Describe("VM delete protection operand", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
 
-		ExpectResourceExists(newValidatingAdmissionPolicy(), request)
-		ExpectResourceExists(newValidatingAdmissionPolicyBinding(), request)
+		ExpectResourceExists(newVMDeletionProtectionValidatingAdmissionPolicy(), request)
+		ExpectResourceExists(newVMDeletionProtectionValidatingAdmissionPolicyBinding(), request)
 	})
 
 	It("should update VAP spec if changed", func() {
@@ -86,7 +86,7 @@ var _ = Describe("VM delete protection operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(request.Client.Get(request.Context, key, vap)).To(Succeed())
-		Expect(vap.Spec).To(Equal(newValidatingAdmissionPolicy().Spec))
+		Expect(vap.Spec).To(Equal(newVMDeletionProtectionValidatingAdmissionPolicy().Spec))
 
 	})
 
@@ -108,7 +108,7 @@ var _ = Describe("VM delete protection operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(request.Client.Get(request.Context, key, vapb)).To(Succeed())
-		Expect(vapb.Spec).To(Equal(newValidatingAdmissionPolicyBinding().Spec))
+		Expect(vapb.Spec).To(Equal(newVMDeletionProtectionValidatingAdmissionPolicyBinding().Spec))
 	})
 
 	It("should create one valid CEL expression", func() {

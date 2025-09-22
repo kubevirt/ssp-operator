@@ -10,7 +10,7 @@ import (
 
 const vmDeleteProtectionCELExpression = `(!has(oldObject.metadata.labels) || !(variables.label in oldObject.metadata.labels) || !oldObject.metadata.labels[variables.label].matches('^(true|True)$'))`
 
-func newValidatingAdmissionPolicy() *admissionregistrationv1.ValidatingAdmissionPolicy {
+func newVMDeletionProtectionValidatingAdmissionPolicy() *admissionregistrationv1.ValidatingAdmissionPolicy {
 	var apiVersions []string
 	for _, version := range kubevirtv1.ApiSupportedVersions {
 		apiVersions = append(apiVersions, version.Name)
@@ -54,7 +54,7 @@ func newValidatingAdmissionPolicy() *admissionregistrationv1.ValidatingAdmission
 	}
 }
 
-func newValidatingAdmissionPolicyBinding() *admissionregistrationv1.ValidatingAdmissionPolicyBinding {
+func newVMDeletionProtectionValidatingAdmissionPolicyBinding() *admissionregistrationv1.ValidatingAdmissionPolicyBinding {
 	return &admissionregistrationv1.ValidatingAdmissionPolicyBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: virtualMachineDeleteProtectionPolicyName,

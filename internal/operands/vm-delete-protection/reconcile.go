@@ -43,23 +43,23 @@ func (v *VMDeleteProtection) WatchClusterTypes() []operands.WatchType { return W
 
 func (v *VMDeleteProtection) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	return common.CollectResourceStatus(request,
-		reconcileVAP,
-		reconcileVAPB,
+		reconcileVMDeletionProtectionVAP,
+		reconcileVMDeletionProtectionVAPB,
 	)
 }
 
 func (v *VMDeleteProtection) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	return common.DeleteAll(request,
-		newValidatingAdmissionPolicy(),
-		newValidatingAdmissionPolicyBinding(),
+		newVMDeletionProtectionValidatingAdmissionPolicy(),
+		newVMDeletionProtectionValidatingAdmissionPolicyBinding(),
 	)
 }
 
 func (v *VMDeleteProtection) Name() string { return operandName }
 
-func reconcileVAP(request *common.Request) (common.ReconcileResult, error) {
+func reconcileVMDeletionProtectionVAP(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newValidatingAdmissionPolicy()).
+		ClusterResource(newVMDeletionProtectionValidatingAdmissionPolicy()).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(expected, found client.Object) {
 			foundVAP := found.(*admissionregistrationv1.ValidatingAdmissionPolicy)
@@ -91,9 +91,9 @@ func reconcileVAP(request *common.Request) (common.ReconcileResult, error) {
 		Reconcile()
 }
 
-func reconcileVAPB(request *common.Request) (common.ReconcileResult, error) {
+func reconcileVMDeletionProtectionVAPB(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newValidatingAdmissionPolicyBinding()).
+		ClusterResource(newVMDeletionProtectionValidatingAdmissionPolicyBinding()).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(expected, found client.Object) {
 			foundVAPB := found.(*admissionregistrationv1.ValidatingAdmissionPolicyBinding)
