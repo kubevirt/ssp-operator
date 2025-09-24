@@ -372,6 +372,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 func PrometheusServiceLabels() map[string]string {
 	return map[string]string{
 		metrics.PrometheusLabelKey: metrics.PrometheusLabelValue,
+		metrics.MetricsServiceKey:  MetricsServiceName,
 	}
 }
 

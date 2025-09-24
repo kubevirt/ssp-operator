@@ -43,7 +43,7 @@ func StartControllers(ctx context.Context, mgr controllerruntime.Manager, contro
 	return nil
 }
 
-func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controller, error) {
+func CreateControllers(ctx context.Context, apiReader client.Reader, olmDeployment bool, sspServiceHostname string) ([]Controller, error) {
 	runningOnOpenShift, err := env.RunningOnOpenshift(ctx, apiReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if running on openshift: %w", err)
@@ -102,7 +102,7 @@ func CreateControllers(ctx context.Context, apiReader client.Reader) ([]Controll
 		serviceController,
 		NewWebhookConfigurationController(),
 		NewVmController(),
-		NewSspController(infrastructureTopology, sspOperands),
+		NewSspController(infrastructureTopology, sspOperands, olmDeployment, sspServiceHostname),
 	}, nil
 }
 
