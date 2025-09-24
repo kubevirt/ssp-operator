@@ -38,6 +38,7 @@ func ServiceObject(namespace string, appKubernetesPartOfValue string) *v1.Servic
 		common.AppKubernetesVersionLabel:   env.GetOperatorVersion(),
 		common.AppKubernetesComponentLabel: ServiceControllerName,
 		metrics.PrometheusLabelKey:         metrics.PrometheusLabelValue,
+		metrics.MetricsServiceKey:          MetricsServiceName,
 	}
 	if appKubernetesPartOfValue != "" {
 		labels[common.AppKubernetesPartOfLabel] = appKubernetesPartOfValue
