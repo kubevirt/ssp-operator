@@ -201,12 +201,6 @@ generate: controller-gen
 # Build the container image
 .PHONY: container-build
 container-build: unittest bundle
-	mkdir -p data/olm-catalog
-	mkdir -p data/crd
-	mkdir -p data/network-policy
-	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
-	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
-	cp bundle/manifests/allow_ingress_to_ssp_operator_webhook_and_metrics.yaml data/network-policy/allow_ingress_to_ssp_operator_webhook_and_metrics.yaml
 	podman manifest rm ${IMG} || true
 	podman build --build-arg TARGET_ARCH=amd64 --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} . && \
     podman build --build-arg TARGET_ARCH=s390x --build-arg VALIDATOR_IMG=${VALIDATOR_IMG} --manifest=${IMG} .
@@ -292,6 +286,12 @@ bundle: operator-sdk manifests kustomize csv-generator manager-envsubst
 	# Append HCO policies to ssp-operator release so it works out of the box
 	echo "---" >> _out/ssp-operator.yaml
 	$(KUSTOMIZE) build config/hco-network-policy >> _out/ssp-operator.yaml
+	mkdir -p data/olm-catalog
+	mkdir -p data/crd
+	mkdir -p data/network-policy
+	cp bundle/manifests/ssp-operator.clusterserviceversion.yaml data/olm-catalog/ssp-operator.clusterserviceversion.yaml
+	cp bundle/manifests/ssp.kubevirt.io_ssps.yaml data/crd/ssp.kubevirt.io_ssps.yaml
+	cp bundle/manifests/allow_ingress_to_ssp_operator_webhook_and_metrics.yaml data/network-policy/allow_ingress_to_ssp_operator_webhook_and_metrics.yaml
 
 # Build the bundle image.
 .PHONY: bundle-build

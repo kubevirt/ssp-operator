@@ -11,6 +11,7 @@ check_make vendor
 check_make generate
 check_make manifests
 check_make fmt
+check_make bundle
 
 # check git status
 status=$(git status --porcelain)
