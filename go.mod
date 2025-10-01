@@ -30,7 +30,7 @@ require (
 	k8s.io/client-go v0.34.1
 	k8s.io/kube-aggregator v0.34.1
 	k8s.io/utils v0.0.0-20250820121507-0af2bda4dd1d
-	kubevirt.io/api v1.6.1
+	kubevirt.io/api v1.6.2
 	kubevirt.io/containerized-data-importer-api v1.63.1
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/ssp-operator/api v0.0.0
