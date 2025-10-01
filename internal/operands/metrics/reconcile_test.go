@@ -74,7 +74,8 @@ var _ = Describe("Metrics operand", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ExpectResourceExists(prometheusRule, request)
-		ExpectResourceExists(newServiceMonitorCR(namespace), request)
+		ExpectResourceExists(newSspServiceMonitor(namespace), request)
+		ExpectResourceExists(newValidatorServiceMonitor(namespace), request)
 		ExpectResourceExists(newMonitoringClusterRole(), request)
 		ExpectResourceExists(newMonitoringClusterRoleBinding(), request)
 	})
