@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -16,6 +17,7 @@ import (
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
+	"kubevirt.io/ssp-operator/tests/env"
 )
 
 var _ = Describe("Tekton Cleanup Operand", func() {
@@ -154,63 +156,73 @@ var _ = Describe("Tekton Cleanup Operand", func() {
 		})
 
 		It("[test_id:TODO] check ServiceAccounts annotations", func() {
-			objList := &v1.ServiceAccountList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &v1.ServiceAccountList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ServiceAccount %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj v1.ServiceAccount) bool {
-				return obj.Namespace == serviceAccount.Namespace && obj.Name == serviceAccount.Name
-			})), "The fake ServiceAccount was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ServiceAccount %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj v1.ServiceAccount) bool {
+					return obj.Namespace == serviceAccount.Namespace && obj.Name == serviceAccount.Name
+				})), "The fake ServiceAccount was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		It("[test_id:TODO] check ClusterRoles annotations", func() {
-			objList := &rbac.ClusterRoleList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &rbac.ClusterRoleList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ClusterRole %s does not have deprecation annotation.", obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.ClusterRole) bool {
-				return obj.Name == clusterRole.Name
-			})), "The fake ClusterRole was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ClusterRole %s does not have deprecation annotation.", obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.ClusterRole) bool {
+					return obj.Name == clusterRole.Name
+				})), "The fake ClusterRole was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		It("[test_id:TODO] check RoleBindings annotations", func() {
-			objList := &rbac.RoleBindingList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &rbac.RoleBindingList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("RoleBinding %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.RoleBinding) bool {
-				return obj.Namespace == roleBinding.Namespace && obj.Name == roleBinding.Name
-			})), "The fake RoleBinding was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("RoleBinding %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.RoleBinding) bool {
+					return obj.Namespace == roleBinding.Namespace && obj.Name == roleBinding.Name
+				})), "The fake RoleBinding was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		It("[test_id:TODO] check ConfigMaps annotations", func() {
-			objList := &v1.ConfigMapList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &v1.ConfigMapList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ConfigMap %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj v1.ConfigMap) bool {
-				return obj.Namespace == configMap.Namespace && obj.Name == configMap.Name
-			})), "The fake ConfigMap was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ConfigMap %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj v1.ConfigMap) bool {
+					return obj.Namespace == configMap.Namespace && obj.Name == configMap.Name
+				})), "The fake ConfigMap was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		It("[test_id:TODO] check Pipelines annotations", func() {
-			objList := &pipeline.PipelineList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &pipeline.PipelineList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("Pipeline %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj pipeline.Pipeline) bool { //nolint:staticcheck
-				return obj.Namespace == fakePipeline.Namespace && obj.Name == fakePipeline.Name
-			})), "The fake Pipeline was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("Pipeline %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj pipeline.Pipeline) bool { //nolint:staticcheck
+					return obj.Namespace == fakePipeline.Namespace && obj.Name == fakePipeline.Name
+				})), "The fake Pipeline was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 	})
 
@@ -337,51 +349,59 @@ var _ = Describe("Tekton Cleanup Operand", func() {
 		})
 
 		It("[test_id:TODO] check ServiceAccounts annotations", func() {
-			objList := &v1.ServiceAccountList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &v1.ServiceAccountList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ServiceAccount %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj v1.ServiceAccount) bool {
-				return obj.Namespace == serviceAccount.Namespace && obj.Name == serviceAccount.Name
-			})), "The fake ServiceAccount was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ServiceAccount %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj v1.ServiceAccount) bool {
+					return obj.Namespace == serviceAccount.Namespace && obj.Name == serviceAccount.Name
+				})), "The fake ServiceAccount was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		It("[test_id:TODO] check ClusterRoles annotations", func() {
-			objList := &rbac.ClusterRoleList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &rbac.ClusterRoleList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ClusterRole %s does not have deprecation annotation.", obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.ClusterRole) bool {
-				return obj.Name == clusterRole.Name
-			})), "The fake ClusterRole was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("ClusterRole %s does not have deprecation annotation.", obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.ClusterRole) bool {
+					return obj.Name == clusterRole.Name
+				})), "The fake ClusterRole was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		It("[test_id:TODO] check RoleBindings annotations", func() {
-			objList := &rbac.RoleBindingList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &rbac.RoleBindingList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("RoleBinding %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.RoleBinding) bool {
-				return obj.Namespace == roleBinding.Namespace && obj.Name == roleBinding.Name
-			})), "The fake RoleBinding was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("RoleBinding %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj rbac.RoleBinding) bool {
+					return obj.Namespace == roleBinding.Namespace && obj.Name == roleBinding.Name
+				})), "The fake RoleBinding was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 
 		It("[test_id:TODO] check Tasks annotations", func() {
-			objList := &pipeline.TaskList{}
-			Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
+			Eventually(func(g Gomega) {
+				objList := &pipeline.TaskList{}
+				g.Expect(apiClient.List(ctx, objList, matchingLabels)).To(Succeed())
 
-			for _, obj := range objList.Items {
-				Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("Task %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
-			}
-			Expect(objList.Items).To(ContainElement(Satisfy(func(obj pipeline.Task) bool { //nolint:staticcheck
-				return obj.Namespace == task.Namespace && obj.Name == task.Name
-			})), "The fake Task was not listed.")
+				for _, obj := range objList.Items {
+					g.Expect(obj.GetAnnotations()).To(HaveKeyWithValue(tektonDeprecatedAnnotation, "true"), fmt.Sprintf("Task %s/%s does not have deprecation annotation.", obj.Namespace, obj.Name))
+				}
+				g.Expect(objList.Items).To(ContainElement(Satisfy(func(obj pipeline.Task) bool { //nolint:staticcheck
+					return obj.Namespace == task.Namespace && obj.Name == task.Name
+				})), "The fake Task was not listed.")
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 	})
 })
