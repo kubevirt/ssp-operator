@@ -7,7 +7,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-logr/logr v1.4.3
 	github.com/google/cel-go v0.26.1
-	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20250922142608-a4b5158834c7
+	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251006125138-91178e6e5d6e
 	github.com/machadovilaca/operator-observability v0.0.27
 	github.com/onsi/ginkgo/v2 v2.26.0
 	github.com/onsi/gomega v1.38.2
@@ -35,7 +35,7 @@ require (
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/ssp-operator/api v0.0.0
 	kubevirt.io/vm-console-proxy/api v0.8.1
-	sigs.k8s.io/controller-runtime v0.22.2
+	sigs.k8s.io/controller-runtime v0.22.3
 	sigs.k8s.io/yaml v1.6.0
 )
 
