@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -652,10 +651,7 @@ func watchSspResource(bldr *ctrl.Builder) {
 	// Otherwise, it would cause a reconciliation loop.
 	pred := predicate.Or(
 		relevantChangesPredicate(),
-		predicate.Funcs{UpdateFunc: func(event event.UpdateEvent) bool {
-			return !event.ObjectNew.GetDeletionTimestamp().Equal(event.ObjectOld.GetDeletionTimestamp()) ||
-				!reflect.DeepEqual(event.ObjectNew.GetFinalizers(), event.ObjectOld.GetFinalizers())
-		}},
+		predicates.FinalizerChangedPredicate{},
 	)
 
 	bldr.For(&ssp.SSP{}, builder.WithPredicates(pred))
@@ -728,10 +724,12 @@ func watchResources(ctrlBuilder *ctrl.Builder, crdList crd_watch.CrdList, handle
 // relevantChangesPredicate is used to only reconcile on certain changes to watched resources
 // - any change in spec
 // - labels or annotations - to detect if necessary labels or annotations were modified or removed
+// - deletion timestamp changes - to detect when resources are marked for deletion
 func relevantChangesPredicate() predicate.Predicate {
 	return predicate.Or(
 		predicate.LabelChangedPredicate{},
 		predicate.AnnotationChangedPredicate{},
 		predicates.SpecChangedPredicate{},
+		predicates.DeletionTimestampChangedPredicate{},
 	)
 }
