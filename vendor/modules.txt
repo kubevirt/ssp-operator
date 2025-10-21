@@ -161,12 +161,6 @@ github.com/json-iterator/go
 # github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251006125138-91178e6e5d6e
 ## explicit; go 1.20
 github.com/kubevirt/monitoring/pkg/metrics/parser
-# github.com/machadovilaca/operator-observability v0.0.27
-## explicit; go 1.21
-github.com/machadovilaca/operator-observability/pkg/docs
-github.com/machadovilaca/operator-observability/pkg/operatormetrics
-github.com/machadovilaca/operator-observability/pkg/operatorrules
-github.com/machadovilaca/operator-observability/pkg/testutil
 # github.com/moby/spdystream v0.5.0
 ## explicit; go 1.13
 github.com/moby/spdystream
@@ -276,6 +270,12 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/rhobs/operator-observability-toolkit v0.0.29
+## explicit; go 1.21
+github.com/rhobs/operator-observability-toolkit/pkg/docs
+github.com/rhobs/operator-observability-toolkit/pkg/operatormetrics
+github.com/rhobs/operator-observability-toolkit/pkg/operatorrules
+github.com/rhobs/operator-observability-toolkit/pkg/testutil
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus

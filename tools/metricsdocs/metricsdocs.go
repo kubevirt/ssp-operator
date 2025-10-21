@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/machadovilaca/operator-observability/pkg/docs"
+	"github.com/rhobs/operator-observability-toolkit/pkg/docs"
 
 	sspMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/ssp-operator"
 	validatorMetrics "kubevirt.io/ssp-operator/pkg/monitoring/metrics/template-validator"

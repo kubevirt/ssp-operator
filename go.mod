@@ -8,7 +8,6 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/google/cel-go v0.26.1
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251006125138-91178e6e5d6e
-	github.com/machadovilaca/operator-observability v0.0.27
 	github.com/onsi/ginkgo/v2 v2.26.0
 	github.com/onsi/gomega v1.38.2
 	github.com/openshift/api v0.0.0-20250305013520-e7f23be12279 // release-4.18
@@ -20,6 +19,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.1
+	github.com/rhobs/operator-observability-toolkit v0.0.29
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/sync v0.17.0
