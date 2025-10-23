@@ -20,7 +20,7 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: ssp-operator
-        hco.kubevirt.io/allow-access-cluster-services: "true"
+        np.kubevirt.io/allow-access-cluster-services: "true"
         name: ssp-operator
         prometheus.ssp.kubevirt.io: "true"
     spec:
