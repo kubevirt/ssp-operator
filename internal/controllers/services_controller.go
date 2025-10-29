@@ -8,8 +8,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"kubevirt.io/ssp-operator/internal/resources"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,7 +20,6 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	crd_watch "kubevirt.io/ssp-operator/internal/crd-watch"
 	"kubevirt.io/ssp-operator/internal/env"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 )
 
 const (
@@ -30,44 +28,6 @@ const (
 	OperatorName               = "ssp-operator"
 	ServiceControllerName      = "service-controller"
 )
-
-func ServiceObject(namespace string, appKubernetesPartOfValue string) *v1.Service {
-	policyCluster := v1.ServiceInternalTrafficPolicyCluster
-	labels := map[string]string{
-		common.AppKubernetesManagedByLabel: ServiceManagedByLabelValue,
-		common.AppKubernetesVersionLabel:   env.GetOperatorVersion(),
-		common.AppKubernetesComponentLabel: ServiceControllerName,
-		metrics.PrometheusLabelKey:         metrics.PrometheusLabelValue,
-		metrics.MetricsServiceKey:          MetricsServiceName,
-	}
-	if appKubernetesPartOfValue != "" {
-		labels[common.AppKubernetesPartOfLabel] = appKubernetesPartOfValue
-	}
-	return &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      MetricsServiceName,
-			Namespace: namespace,
-			Labels:    labels,
-		},
-		Spec: v1.ServiceSpec{
-			InternalTrafficPolicy: &policyCluster,
-			Ports: []v1.ServicePort{
-				{
-					Name:       metrics.MetricsPortName,
-					Port:       443,
-					Protocol:   v1.ProtocolTCP,
-					TargetPort: intstr.FromString(metrics.MetricsPortName),
-				},
-			},
-			Selector: map[string]string{
-				metrics.PrometheusLabelKey: metrics.PrometheusLabelValue,
-				"name":                     OperatorName,
-			},
-			SessionAffinity: v1.ServiceAffinityNone,
-			Type:            v1.ServiceTypeClusterIP,
-		},
-	}
-}
 
 // Annotation to generate RBAC roles to read and modify services
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;watch;list;create;update;delete
@@ -143,8 +103,19 @@ func (s *serviceReconciler) setupController(mgr ctrl.Manager) error {
 }
 
 func createMetricsService(ctx context.Context, deployment *apps.Deployment, apiClient client.Client) error {
+	service := resources.SspMetricsService(deployment.Namespace)
+
+	labels := map[string]string{
+		common.AppKubernetesManagedByLabel: ServiceManagedByLabelValue,
+		common.AppKubernetesVersionLabel:   env.GetOperatorVersion(),
+		common.AppKubernetesComponentLabel: ServiceControllerName,
+	}
 	appKubernetesPartOfValue := deployment.GetLabels()[common.AppKubernetesPartOfLabel]
-	service := ServiceObject(deployment.Namespace, appKubernetesPartOfValue)
+	if appKubernetesPartOfValue != "" {
+		labels[common.AppKubernetesPartOfLabel] = appKubernetesPartOfValue
+	}
+	common.UpdateStringMap(labels, service.GetLabels())
+
 	err := controllerutil.SetOwnerReference(deployment, service, apiClient.Scheme())
 	if err != nil {
 		return fmt.Errorf("error setting owner reference: %w", err)
@@ -164,8 +135,7 @@ func getOperatorDeployment(ctx context.Context, namespace string, apiReader clie
 
 func (s *serviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	s.log.Info("Starting service reconciliation...", "request", req.String())
-	appKubernetesPartOfValue := s.deployment.GetLabels()[common.AppKubernetesPartOfLabel]
-	service := ServiceObject(req.Namespace, appKubernetesPartOfValue)
+	service := resources.SspMetricsService(req.Namespace)
 	var foundService v1.Service
 	foundService.Name = service.Name
 	foundService.Namespace = service.Namespace

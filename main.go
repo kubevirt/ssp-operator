@@ -207,6 +207,7 @@ func newPrometheusServer(metricsAddr string, cache cache.Cache) (*prometheusServ
 	}, nil
 }
 
+// due to the difference in how the certificate is issued, hostname extraction from the certificate itself is preferred
 func extractHostnameFromCert(certPath string) (string, error) {
 	certBytes, err := os.ReadFile(certPath)
 	if err != nil {

@@ -9,26 +9,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"kubevirt.io/ssp-operator/internal/common"
-	"kubevirt.io/ssp-operator/pkg/monitoring/rules"
+	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	"kubevirt.io/ssp-operator/internal/resources"
 )
 
 const (
 	MonitorNamespace             = "openshift-monitoring"
 	defaultRunbookURLTemplate    = "https://kubevirt.io/monitoring/runbooks/%s"
 	runbookURLTemplateEnv        = "RUNBOOK_URL_TEMPLATE"
-	PrometheusLabelKey           = "prometheus.ssp.kubevirt.io"
-	PrometheusLabelValue         = "true"
 	PrometheusClusterRoleName    = "prometheus-k8s-ssp"
 	PrometheusServiceAccountName = "prometheus-k8s"
-	MetricsPortName              = "http-metrics"
 
-	TemplateValidatorMetricsServiceName = "template-validator-metrics"
-	MetricsServiceName                  = "ssp-operator-metrics"
-	MetricsServiceKey                   = "metrics.ssp.kubevirt.io"
-	ServiceCABundle                     = "openshift-service-ca.crt"
-	ServiceCABUndleKey                  = "service-ca.crt"
-	OLMManagedCert                      = "ssp-operator-service-cert"
-	OLMManagedCertKey                   = "olmCAKey"
+	ServiceCABundle    = "openshift-service-ca.crt"
+	ServiceCABUndleKey = "service-ca.crt"
+	OLMManagedCert     = "ssp-operator-service-cert"
+	OLMManagedCertKey  = "olmCAKey"
 )
 
 func newMonitoringClusterRole() *rbac.ClusterRole {
@@ -64,12 +59,17 @@ func newMonitoringClusterRoleBinding() *rbac.ClusterRoleBinding {
 	}
 }
 
-func ServiceMonitorLabels() map[string]string {
-	return map[string]string{
+func serviceMonitorLabels(serviceLabels map[string]string) map[string]string {
+	labels := map[string]string{
 		"openshift.io/cluster-monitoring": "true",
-		PrometheusLabelKey:                PrometheusLabelValue,
 		"k8s-app":                         "kubevirt",
 	}
+
+	for k, v := range serviceLabels {
+		labels[k] = v
+	}
+
+	return labels
 }
 
 func serviceCABundle() promv1.SecretOrConfigMap {
@@ -94,6 +94,9 @@ func olmManagedCABundle() promv1.SecretOrConfigMap {
 	}
 }
 
+// when deployed via OLM, we need to retrieve the CABundle from the secret containing the certificate itself,
+// otherwise certificate issued by service-ca operator is used and the CABundle is available in a configmap
+// which is present in every namespace
 func getCAConfigForServiceMonitor(olmDeployment bool) promv1.SecretOrConfigMap {
 	if olmDeployment {
 		return olmManagedCABundle()
@@ -101,56 +104,75 @@ func getCAConfigForServiceMonitor(olmDeployment bool) promv1.SecretOrConfigMap {
 	return serviceCABundle()
 }
 
+func TemplateValidatorServiceMonitorLabels() map[string]string {
+	return serviceMonitorLabels(
+		template_validator.PrometheusServiceLabels(),
+	)
+}
+
 func newValidatorServiceMonitor(request common.Request) *promv1.ServiceMonitor {
 	tlsConfig := &promv1.TLSConfig{
 		SafeTLSConfig: promv1.SafeTLSConfig{
-			CA: serviceCABundle(),
+			CA:         serviceCABundle(),
+			ServerName: ptr.To(fmt.Sprintf("%s.%s.svc", template_validator.VirtTemplateValidator, request.Namespace)),
 		},
 	}
-	tlsConfig.ServerName = ptr.To(fmt.Sprintf("virt-template-validator.%s.svc", request.Namespace))
 
-	serviceMonitor := newServiceMonitor(TemplateValidatorMetricsServiceName, request.Namespace, tlsConfig, metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			MetricsServiceKey: TemplateValidatorMetricsServiceName,
-		},
-	})
-	return &serviceMonitor
-}
-
-func newSspServiceMonitor(request common.Request) *promv1.ServiceMonitor {
-	tlsConfig := &promv1.TLSConfig{
-		SafeTLSConfig: promv1.SafeTLSConfig{
-			CA: getCAConfigForServiceMonitor(request.OLMDeployment),
-		},
-	}
-	tlsConfig.ServerName = ptr.To(request.SSPServiceHostname)
-
-	serviceMonitor := newServiceMonitor(rules.RuleName, request.Namespace, tlsConfig, metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			MetricsServiceKey: MetricsServiceName,
-		},
-	})
-	return &serviceMonitor
-}
-
-func newServiceMonitor(name,
-	namespace string,
-	tlsConfig *promv1.TLSConfig,
-	selector metav1.LabelSelector) promv1.ServiceMonitor {
-	return promv1.ServiceMonitor{
+	return &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
-			Labels:    ServiceMonitorLabels(),
+			Name:      template_validator.MetricsServiceName,
+			Namespace: request.Namespace,
+			Labels:    TemplateValidatorServiceMonitorLabels(),
 		},
 		Spec: promv1.ServiceMonitorSpec{
 			NamespaceSelector: promv1.NamespaceSelector{
 				Any: true,
 			},
-			Selector: selector,
+			Selector: metav1.LabelSelector{
+				MatchLabels: template_validator.PrometheusServiceLabels(),
+			},
 			Endpoints: []promv1.Endpoint{
 				{
-					Port:        MetricsPortName,
+					Port:        template_validator.MetricsPortName,
+					Scheme:      "https",
+					TLSConfig:   tlsConfig,
+					HonorLabels: true,
+				},
+			},
+		},
+	}
+}
+
+func SspServiceMonitorLabels() map[string]string {
+	return serviceMonitorLabels(
+		resources.PrometheusServiceLabels(),
+	)
+}
+
+func newSspServiceMonitor(request common.Request) *promv1.ServiceMonitor {
+	tlsConfig := &promv1.TLSConfig{
+		SafeTLSConfig: promv1.SafeTLSConfig{
+			CA:         getCAConfigForServiceMonitor(request.OLMDeployment),
+			ServerName: ptr.To(request.SSPServiceHostname),
+		},
+	}
+
+	return &promv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      resources.MetricsServiceName,
+			Namespace: request.Namespace,
+			Labels:    SspServiceMonitorLabels(),
+		},
+		Spec: promv1.ServiceMonitorSpec{
+			NamespaceSelector: promv1.NamespaceSelector{
+				Any: true,
+			},
+			Selector: metav1.LabelSelector{
+				MatchLabels: resources.PrometheusServiceLabels(),
+			},
+			Endpoints: []promv1.Endpoint{
+				{
+					Port:        resources.MetricsPortName,
 					Scheme:      "https",
 					TLSConfig:   tlsConfig,
 					HonorLabels: true,

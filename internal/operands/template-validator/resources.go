@@ -22,13 +22,13 @@ import (
 	"kubevirt.io/ssp-operator/internal/env"
 	"kubevirt.io/ssp-operator/internal/networkpolicies"
 	common_templates "kubevirt.io/ssp-operator/internal/operands/common-templates"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/internal/template-validator/tlsinfo"
 	webhook "kubevirt.io/ssp-operator/internal/template-validator/webhooks"
 )
 
 const (
 	MetricsPort                   = 8443
+	MetricsPortName               = "http-metrics"
 	WebhookPort                   = 9443
 	webhookPortName               = "http-webhook"
 	KubevirtIo                    = "kubevirt.io"
@@ -232,7 +232,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 							ContainerPort: WebhookPort,
 							Protocol:      core.ProtocolTCP,
 						}, {
-							Name:          metrics.MetricsPortName,
+							Name:          MetricsPortName,
 							ContainerPort: MetricsPort,
 							Protocol:      core.ProtocolTCP,
 						}},
@@ -370,10 +370,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 }
 
 func PrometheusServiceLabels() map[string]string {
-	return map[string]string{
-		metrics.PrometheusLabelKey: metrics.PrometheusLabelValue,
-		metrics.MetricsServiceKey:  MetricsServiceName,
-	}
+	return common.PrometheusServiceLabels(MetricsServiceName)
 }
 
 func newPrometheusService(namespace string) *core.Service {
@@ -387,9 +384,9 @@ func newPrometheusService(namespace string) *core.Service {
 			Selector: CommonLabels(),
 			Ports: []core.ServicePort{
 				{
-					Name:       metrics.MetricsPortName,
+					Name:       MetricsPortName,
 					Port:       443,
-					TargetPort: intstr.FromString(metrics.MetricsPortName),
+					TargetPort: intstr.FromString(MetricsPortName),
 					Protocol:   core.ProtocolTCP,
 				},
 			},
