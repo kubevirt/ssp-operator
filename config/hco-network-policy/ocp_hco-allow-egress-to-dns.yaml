@@ -6,7 +6,7 @@ metadata:
 spec:
   podSelector:
     matchExpressions:
-    - key: hco.kubevirt.io/allow-access-cluster-services
+    - key: np.kubevirt.io/allow-access-cluster-services
       operator: Exists
   policyTypes:
   - Egress

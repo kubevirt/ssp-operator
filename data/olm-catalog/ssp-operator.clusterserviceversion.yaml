@@ -336,8 +336,8 @@ spec:
                 openshift.io/required-scc: restricted-v2
               labels:
                 control-plane: ssp-operator
-                hco.kubevirt.io/allow-access-cluster-services: "true"
                 name: ssp-operator
+                np.kubevirt.io/allow-access-cluster-services: "true"
                 prometheus.ssp.kubevirt.io: "true"
             spec:
               containers:
