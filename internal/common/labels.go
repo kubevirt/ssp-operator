@@ -12,7 +12,8 @@ const (
 	AppKubernetesManagedByLabel = "app.kubernetes.io/managed-by"
 	AppKubernetesComponentLabel = "app.kubernetes.io/component"
 
-	AppKubernetesManagedByValue string = "ssp-operator"
+	AppKubernetesManagedByValue = "ssp-operator"
+	PrometheusLabelKey          = "prometheus.ssp.kubevirt.io"
 )
 
 const (
@@ -70,4 +71,10 @@ func addInstanceLabels(requestInstance *ssp.SSP, to map[string]string) {
 
 func copyLabel(from, to map[string]string, key string) {
 	to[key] = from[key]
+}
+
+func PrometheusServiceLabels(serviceName string) map[string]string {
+	return map[string]string{
+		PrometheusLabelKey: serviceName,
+	}
 }

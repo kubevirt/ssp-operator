@@ -5,4 +5,6 @@ package internal
 const (
 	GoldenImagesNamespace  = "kubevirt-os-images"
 	DefaultOperatorVersion = "devel"
+	SspDeploymentName      = "ssp-operator"
+	ServiceControllerName  = "service-controller"
 )

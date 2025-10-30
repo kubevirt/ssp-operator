@@ -7,6 +7,7 @@ import (
 
 	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
+	"kubevirt.io/ssp-operator/internal/resources"
 
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -163,7 +163,7 @@ func metricsPort(pod core.Pod) (uint16, error) {
 	}
 	ports := container.Ports
 	for _, port := range ports {
-		if port.Name == metrics.MetricsPortName {
+		if port.Name == resources.MetricsPortName {
 			return uint16(port.ContainerPort), nil
 		}
 	}

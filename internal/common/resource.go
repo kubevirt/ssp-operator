@@ -360,7 +360,7 @@ func updateAnnotations(expected, found client.Object) {
 		found.SetAnnotations(expected.GetAnnotations())
 		return
 	}
-	updateStringMap(expected.GetAnnotations(), found.GetAnnotations())
+	UpdateStringMap(expected.GetAnnotations(), found.GetAnnotations())
 }
 
 func UpdateLabels(expected, found client.Object) {
@@ -368,10 +368,10 @@ func UpdateLabels(expected, found client.Object) {
 		found.SetLabels(expected.GetLabels())
 		return
 	}
-	updateStringMap(expected.GetLabels(), found.GetLabels())
+	UpdateStringMap(expected.GetLabels(), found.GetLabels())
 }
 
-func updateStringMap(expected, found map[string]string) {
+func UpdateStringMap(expected, found map[string]string) {
 	if expected == nil {
 		return
 	}

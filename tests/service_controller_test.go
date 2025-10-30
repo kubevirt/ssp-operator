@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"kubevirt.io/ssp-operator/internal/resources"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -17,13 +18,12 @@ import (
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/controllers"
 	sspenv "kubevirt.io/ssp-operator/internal/env"
-	"kubevirt.io/ssp-operator/internal/operands/metrics"
 	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
 func getSspMetricsService() (*v1.Service, error) {
-	service := controllers.ServiceObject(strategy.GetSSPDeploymentNameSpace(), "")
+	service := resources.SspMetricsService(strategy.GetSSPDeploymentNameSpace())
 	err := apiClient.Get(ctx, client.ObjectKeyFromObject(service), service)
 	return service, err
 }
@@ -81,10 +81,10 @@ var _ = Describe("Service Controller", func() {
 		changed.Labels = nil
 		changed.Spec.Ports = []v1.ServicePort{
 			{
-				Name:       metrics.MetricsPortName,
+				Name:       resources.MetricsPortName,
 				Port:       755,
 				Protocol:   v1.ProtocolTCP,
-				TargetPort: intstr.FromString(metrics.MetricsPortName),
+				TargetPort: intstr.FromString(resources.MetricsPortName),
 			},
 		}
 

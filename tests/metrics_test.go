@@ -8,6 +8,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	template_validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
+	"kubevirt.io/ssp-operator/internal/resources"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -36,20 +38,21 @@ func mergeMaps(maps ...map[string]string) map[string]string {
 
 var _ = Describe("Metrics", func() {
 	var (
-		prometheusRuleRes         testResource
-		serviceMonitorRes         testResource
-		rbacClusterRoleRes        testResource
-		rbacClusterRoleBindingRes testResource
+		prometheusRuleRes                  testResource
+		sspServiceMonitorRes               testResource
+		templateValidatorServiceMonitorRes testResource
+		rbacClusterRoleRes                 testResource
+		rbacClusterRoleBindingRes          testResource
 	)
 
 	BeforeEach(func() {
 		expectedLabels := expectedLabelsFor("metrics", common.AppComponentMonitoring)
 
-		serviceMonitorRes = testResource{
-			Name:           rules.RuleName,
+		sspServiceMonitorRes = testResource{
+			Name:           resources.MetricsServiceName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &promv1.ServiceMonitor{},
-			ExpectedLabels: mergeMaps(expectedLabels, metrics.ServiceMonitorLabels()),
+			ExpectedLabels: mergeMaps(expectedLabels, metrics.SspServiceMonitorLabels()),
 			UpdateFunc: func(ServiceMonitor *promv1.ServiceMonitor) {
 				ServiceMonitor.Spec.Selector = v1.LabelSelector{}
 				ServiceMonitor.Spec.NamespaceSelector = promv1.NamespaceSelector{}
@@ -58,6 +61,21 @@ var _ = Describe("Metrics", func() {
 				return reflect.DeepEqual(old.Spec, new.Spec)
 			},
 		}
+
+		templateValidatorServiceMonitorRes = testResource{
+			Name:           template_validator.MetricsServiceName,
+			Namespace:      strategy.GetNamespace(),
+			Resource:       &promv1.ServiceMonitor{},
+			ExpectedLabels: mergeMaps(expectedLabels, metrics.TemplateValidatorServiceMonitorLabels()),
+			UpdateFunc: func(ServiceMonitor *promv1.ServiceMonitor) {
+				ServiceMonitor.Spec.Selector = v1.LabelSelector{}
+				ServiceMonitor.Spec.NamespaceSelector = promv1.NamespaceSelector{}
+			},
+			EqualsFunc: func(old *promv1.ServiceMonitor, new *promv1.ServiceMonitor) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
+		}
+
 		rbacClusterRoleRes = testResource{
 			Name:           metrics.PrometheusClusterRoleName,
 			Namespace:      strategy.GetNamespace(),
@@ -109,14 +127,16 @@ var _ = Describe("Metrics", func() {
 			err := apiClient.Get(ctx, res.GetKey(), res.NewResource())
 			Expect(err).ToNot(HaveOccurred())
 		},
-			Entry("[test_id:8346] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8346] ssp service monitor", &sspServiceMonitorRes),
+			Entry("[test_id:TODO] template validator service monitor", &templateValidatorServiceMonitorRes),
 			Entry("[test_id:8347] role", &rbacClusterRoleRes),
 			Entry("[test_id:8345] role binding", &rbacClusterRoleBindingRes),
 			Entry("[test_id:4665] prometheus rules", &prometheusRuleRes),
 		)
 
 		DescribeTable("should set app labels", expectAppLabels,
-			Entry("[test_id:8348] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8348] ssp service monitor", &sspServiceMonitorRes),
+			Entry("[test_id:TODO] template validator service monitor", &templateValidatorServiceMonitorRes),
 			Entry("[test_id:8349] role", &rbacClusterRoleRes),
 			Entry("[test_id:8350] role binding", &rbacClusterRoleBindingRes),
 			Entry("[test_id:5790] prometheus rules", &prometheusRuleRes),
@@ -125,7 +145,8 @@ var _ = Describe("Metrics", func() {
 
 	Context("resource deletion", func() {
 		DescribeTable("recreate after delete", decorators.Conformance, expectRecreateAfterDelete,
-			Entry("[test_id:8351] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8351] ssp service monitor", &sspServiceMonitorRes),
+			Entry("[test_id:TODO] template validator service monitor", &templateValidatorServiceMonitorRes),
 			Entry("[test_id:8352] role", &rbacClusterRoleRes),
 			Entry("[test_id:8355] role binding", &rbacClusterRoleBindingRes),
 			Entry("[test_id:6055] prometheus rules", &prometheusRuleRes),
@@ -134,7 +155,8 @@ var _ = Describe("Metrics", func() {
 
 	Context("resource change", func() {
 		DescribeTable("should restore modified resource", decorators.Conformance, expectRestoreAfterUpdate,
-			Entry("[test_id:8356] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8356] ssp service monitor", &sspServiceMonitorRes),
+			Entry("[test_id:TODO] template validator service monitor", &templateValidatorServiceMonitorRes),
 			Entry("[test_id:8353] role", &rbacClusterRoleRes),
 			Entry("[test_id:8354] role binding", &rbacClusterRoleBindingRes),
 			Entry("[test_id:4666] prometheus rules", &prometheusRuleRes),
@@ -150,7 +172,8 @@ var _ = Describe("Metrics", func() {
 			})
 
 			DescribeTable("should restore modified resource with pause", decorators.Conformance, expectRestoreAfterUpdateWithPause,
-				Entry("[test_id:8357] service monitor", &serviceMonitorRes),
+				Entry("[test_id:8357] ssp service monitor", &sspServiceMonitorRes),
+				Entry("[test_id:TODO] template validator service monitor", &templateValidatorServiceMonitorRes),
 				Entry("[test_id:8358] role", &rbacClusterRoleRes),
 				Entry("[test_id:8361] role binding", &rbacClusterRoleBindingRes),
 				Entry("[test_id:5397] prometheus rules", &prometheusRuleRes),
@@ -158,7 +181,8 @@ var _ = Describe("Metrics", func() {
 		})
 
 		DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
-			Entry("[test_id:8362] service monitor", &serviceMonitorRes),
+			Entry("[test_id:8362] ssp service monitor", &sspServiceMonitorRes),
+			Entry("[test_id:TODO] template validator service monitor", &templateValidatorServiceMonitorRes),
 			Entry("[test_id:8359] role", &rbacClusterRoleRes),
 			Entry("[test_id:8360] role binding", &rbacClusterRoleBindingRes),
 			Entry("[test_id:5790] prometheus rules", &prometheusRuleRes),
