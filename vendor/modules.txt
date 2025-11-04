@@ -158,7 +158,7 @@ github.com/jpillora/backoff
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
-# github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251006125138-91178e6e5d6e
+# github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251102092204-7f098051a939
 ## explicit; go 1.20
 github.com/kubevirt/monitoring/pkg/metrics/parser
 # github.com/moby/spdystream v0.5.0
@@ -400,10 +400,10 @@ golang.org/x/tools/internal/versions
 # gomodules.xyz/jsonpatch/v2 v2.5.0
 ## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
-# google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8
+# google.golang.org/genproto/googleapis/api v0.0.0-20251103181224-f26f9409b101
 ## explicit; go 1.24.0
 google.golang.org/genproto/googleapis/api/expr/v1alpha1
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20251103181224-f26f9409b101
 ## explicit; go 1.24.0
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/protobuf v1.36.10
