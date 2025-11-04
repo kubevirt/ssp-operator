@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -52,10 +53,28 @@ var _ = Describe("Service Controller", func() {
 			Namespace: strategy.GetSSPDeploymentNameSpace(),
 		}, deployment)).To(Succeed())
 
+		containers := deployment.Spec.Template.Spec.Containers
+		id := slices.IndexFunc(containers, func(container v1.Container) bool {
+			return container.Name == "manager"
+		})
+		Expect(id).ToNot(Equal(-1), "SSP deployment does not contain manager container")
+
+		envId := slices.IndexFunc(containers[id].Env, func(envVar v1.EnvVar) bool {
+			return envVar.Name == sspenv.OperatorVersionKey
+		})
+		Expect(envId).ToNot(Equal(-1), "SSP manager container does not have the operator version variable")
+
+		version := containers[id].Env[envId].Value
+		if version != "" {
+			Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, version))
+		} else {
+			// If the version env variable is not defined, then it is not simple to get the version from test code.
+			Expect(service.GetLabels()).To(HaveKey(common.AppKubernetesVersionLabel))
+		}
+
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesManagedByLabel, controllers.ServiceManagedByLabelValue))
-		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, sspenv.GetOperatorVersion()))
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesComponentLabel, controllers.ServiceControllerName))
-		// Not using HaveKeyWithValue, because the annotation does not need to exist.
+		// Not using HaveKeyWithValue, because the label does not need to exist.
 		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(Equal(deployment.Labels[common.AppKubernetesPartOfLabel]))
 	})
 
