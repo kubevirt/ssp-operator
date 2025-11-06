@@ -111,16 +111,17 @@ var _ = Describe("DataSources", func() {
 	var (
 		expectedLabels map[string]string
 
-		viewRole                            testResource
-		viewRoleBinding                     testResource
-		editClusterRole                     testResource
-		goldenImageNS                       testResource
-		dataSource                          testResource
-		networkPolicyKubeAPIAndDNSRes       testResource
-		networkPolicyImporterMetricsRes     testResource
-		networkPolicyIngressUploadServerRes testResource
-		networkPolicyEgressUploadServerRes  testResource
-		networkPolicyEgressImporterRes      testResource
+		viewRole                                     testResource
+		viewRoleBinding                              testResource
+		editClusterRole                              testResource
+		goldenImageNS                                testResource
+		dataSource                                   testResource
+		networkPolicyKubeAPIAndDNSRes                testResource
+		networkPolicyImporterMetricsRes              testResource
+		networkPolicyIngressUploadServerFromCloneRes testResource
+		networkPolicyIngressUploadServerFromProxyRes testResource
+		networkPolicyEgressUploadServerRes           testResource
+		networkPolicyEgressImporterRes               testResource
 	)
 
 	BeforeEach(func() {
@@ -187,8 +188,12 @@ var _ = Describe("DataSources", func() {
 			"ssp-operator-allow-ingress-to-importer-metrics",
 			internal.GoldenImagesNamespace, expectedLabels,
 		)
-		networkPolicyIngressUploadServerRes = testNetworkPolicyResource(
+		networkPolicyIngressUploadServerFromCloneRes = testNetworkPolicyResource(
 			"ssp-operator-allow-ingress-from-cdi-upload-server-to-cdi-clone-source",
+			internal.GoldenImagesNamespace, expectedLabels,
+		)
+		networkPolicyIngressUploadServerFromProxyRes = testNetworkPolicyResource(
+			"ssp-operator-allow-ingress-from-cdi-upload-proxy-to-cdi-upload-server",
 			internal.GoldenImagesNamespace, expectedLabels,
 		)
 		networkPolicyEgressUploadServerRes = testNetworkPolicyResource(
@@ -222,7 +227,8 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:4772]view role binding", &viewRoleBinding),
 			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
-			Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy ingress upload server from clone source", &networkPolicyIngressUploadServerFromCloneRes),
+			Entry("[test_id:TODO]network policy ingress upload server from upload proxy", &networkPolicyIngressUploadServerFromProxyRes),
 			Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
 			Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 		)
@@ -234,7 +240,8 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:6218] view role binding", &viewRoleBinding),
 			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy importer metrics", &networkPolicyImporterMetricsRes),
-			Entry("[test_id:TODO] network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy ingress upload server from clone source", &networkPolicyIngressUploadServerFromCloneRes),
+			Entry("[test_id:TODO]network policy ingress upload server from upload proxy", &networkPolicyIngressUploadServerFromProxyRes),
 			Entry("[test_id:TODO] network policy egress upload server", &networkPolicyEgressUploadServerRes),
 			Entry("[test_id:TODO] network policy egress importer", &networkPolicyEgressImporterRes),
 		)
@@ -247,7 +254,8 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:5317]view role binding", &viewRoleBinding),
 			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
-			Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy ingress upload server from clone source", &networkPolicyIngressUploadServerFromCloneRes),
+			Entry("[test_id:TODO]network policy ingress upload server from upload proxy", &networkPolicyIngressUploadServerFromProxyRes),
 			Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
 			Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 		)
@@ -267,7 +275,9 @@ var _ = Describe("DataSources", func() {
 				Entry("[test_id:5393]edit cluster role", &editClusterRole),
 				Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 				Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
-				Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+				Entry("[test_id:TODO]network policy ingress upload server from clone source", &networkPolicyIngressUploadServerFromCloneRes),
+				Entry("[test_id:TODO]network policy ingress upload server from upload proxy", &networkPolicyIngressUploadServerFromProxyRes),
+
 				Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
 				Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 			)
@@ -280,7 +290,9 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:6213] view role binding", &viewRoleBinding),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy importer metrics", &networkPolicyImporterMetricsRes),
-			Entry("[test_id:TODO] network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy ingress upload server from clone source", &networkPolicyIngressUploadServerFromCloneRes),
+			Entry("[test_id:TODO]network policy ingress upload server from upload proxy", &networkPolicyIngressUploadServerFromProxyRes),
+
 			Entry("[test_id:TODO] network policy egress upload server", &networkPolicyEgressUploadServerRes),
 			Entry("[test_id:TODO] network policy egress importer", &networkPolicyEgressImporterRes),
 		)
@@ -293,7 +305,8 @@ var _ = Describe("DataSources", func() {
 			Entry("[test_id:4771]edit cluster role", &editClusterRole),
 			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO]network policy importer metrics", &networkPolicyImporterMetricsRes),
-			Entry("[test_id:TODO]network policy ingress upload server", &networkPolicyIngressUploadServerRes),
+			Entry("[test_id:TODO]network policy ingress upload server from clone source", &networkPolicyIngressUploadServerFromCloneRes),
+			Entry("[test_id:TODO]network policy ingress upload server from upload proxy", &networkPolicyIngressUploadServerFromProxyRes),
 			Entry("[test_id:TODO]network policy egress upload server", &networkPolicyEgressUploadServerRes),
 			Entry("[test_id:TODO]network policy egress importer", &networkPolicyEgressImporterRes),
 			Entry("[test_id:4770]golden image NS", &goldenImageNS),
