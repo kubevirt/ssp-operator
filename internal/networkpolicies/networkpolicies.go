@@ -218,6 +218,43 @@ func NewIngressFromCDIUploadServerToCDICloneSource(namespace string) *networkv1.
 	)
 }
 
+func NewIngressFromCDIUploadProxyToCDIUploadServer(namespace string) *networkv1.NetworkPolicy {
+	return newNetworkPolicy(
+		namespace,
+		"ssp-operator-allow-ingress-from-cdi-upload-proxy-to-cdi-upload-server",
+		&networkv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					LabelCDIKubevirtIo: "cdi-upload-server",
+				},
+			},
+			PolicyTypes: []networkv1.PolicyType{
+				networkv1.PolicyTypeIngress,
+			},
+			Ingress: []networkv1.NetworkPolicyIngressRule{
+				{
+					From: []networkv1.NetworkPolicyPeer{
+						{
+							NamespaceSelector: &metav1.LabelSelector{},
+							PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									LabelCDIKubevirtIo: "cdi-uploadproxy",
+								},
+							},
+						},
+					},
+					Ports: []networkv1.NetworkPolicyPort{
+						{
+							Port:     ptr.To(intstr.FromInt32(8443)),
+							Protocol: ptr.To(k8sv1.ProtocolTCP),
+						},
+					},
+				},
+			},
+		},
+	)
+}
+
 func NewEgressFromCDICloneSourceToCDIUploadServer(namespace string) *networkv1.NetworkPolicy {
 	return newNetworkPolicy(
 		namespace,
