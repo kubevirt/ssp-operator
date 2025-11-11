@@ -177,6 +177,7 @@ func newNetworkPolicies(namespace string, runningOnOpenShift bool) []*networkv1.
 		g.NewEgressToKubeAPIAndDNS(namespace, networkpolicies.LabelCDIKubevirtIo, "importer", "cdi-clone-source"),
 		networkpolicies.NewIngressToImporterMetrics(namespace),
 		networkpolicies.NewIngressFromCDIUploadServerToCDICloneSource(namespace),
+		networkpolicies.NewIngressFromCDIUploadProxyToCDIUploadServer(namespace),
 		networkpolicies.NewEgressFromCDICloneSourceToCDIUploadServer(namespace),
 		networkpolicies.NewEgressFromImporterToDataSource(namespace),
 	}
