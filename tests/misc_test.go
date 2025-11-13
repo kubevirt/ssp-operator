@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"kubevirt.io/ssp-operator/internal"
 
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	apps "k8s.io/api/apps/v1"
@@ -200,7 +201,7 @@ var _ = Describe("SCC annotation", func() {
 		pods := &core.PodList{}
 		err := apiClient.List(ctx, pods,
 			client.InNamespace(strategy.GetNamespace()),
-			client.MatchingLabels{validator.KubevirtIo: validator.VirtTemplateValidator})
+			client.MatchingLabels{validator.KubevirtIo: internal.VirtTemplateValidator})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(pods.Items).ToNot(BeEmpty())
