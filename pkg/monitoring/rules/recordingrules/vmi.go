@@ -14,6 +14,6 @@ var vmiRecordingRules = []operatorrules.RecordingRule{
 		},
 		MetricType: operatormetrics.GaugeType,
 		Expr: intstr.FromString("sum(kubevirt_vmi_phase_count{phase=\"running\"}) by " +
-			"(node,os,workload,flavor,instance_type,preference,guest_os_kernel_release,guest_os_machine,guest_os_name,guest_os_version_id)"),
+			"(os,workload,flavor,instance_type,preference,guest_os_kernel_release,guest_os_machine,guest_os_name,guest_os_version_id)"),
 	},
 }
