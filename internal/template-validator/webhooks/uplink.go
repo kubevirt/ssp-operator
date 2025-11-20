@@ -32,7 +32,7 @@ func getParentTemplateForVM(vm *k6tv1.VirtualMachine, templateGetter cache.KeyGe
 
 	if !exists {
 		logger.Log.V(4).Info("Missing parent template", "key", cacheKey, "vm", vm.Name)
-		return nil, fmt.Errorf("missing parent template (key=%s) for %s", cacheKey, vm.Name)
+		return nil, nil
 	}
 
 	logger.Log.V(8).Info("found parent template for VM", "vm", vm.Name)
