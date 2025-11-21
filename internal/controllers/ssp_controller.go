@@ -61,24 +61,28 @@ const (
 
 // sspController reconciles a SSP object
 type sspController struct {
-	log              logr.Logger
-	operands         []operands.Operand
-	lastSspSpec      ssp.SSPSpec
-	subresourceCache common.VersionCache
-	topologyMode     osconfv1.TopologyMode
-	areCrdsMissing   bool
+	log                logr.Logger
+	operands           []operands.Operand
+	lastSspSpec        ssp.SSPSpec
+	subresourceCache   common.VersionCache
+	topologyMode       osconfv1.TopologyMode
+	areCrdsMissing     bool
+	olmDeployment      bool
+	sspServiceHostname string
 
 	client         client.Client
 	uncachedReader client.Reader
 	crdList        crd_watch.CrdList
 }
 
-func NewSspController(infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand) Controller {
+func NewSspController(infrastructureTopology osconfv1.TopologyMode, operands []operands.Operand, olmDeployment bool, sspServiceHostname string) Controller {
 	return &sspController{
-		log:              ctrl.Log.WithName("controllers").WithName("SSP"),
-		operands:         operands,
-		subresourceCache: common.VersionCache{},
-		topologyMode:     infrastructureTopology,
+		log:                ctrl.Log.WithName("controllers").WithName("SSP"),
+		operands:           operands,
+		subresourceCache:   common.VersionCache{},
+		topologyMode:       infrastructureTopology,
+		olmDeployment:      olmDeployment,
+		sspServiceHostname: sspServiceHostname,
 	}
 }
 
@@ -175,16 +179,18 @@ func (s *sspController) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 	sspChanged := s.clearCacheIfNeeded(instance)
 
 	sspRequest := &common.Request{
-		Request:         req,
-		Client:          s.client,
-		UncachedReader:  s.uncachedReader,
-		Context:         ctx,
-		Instance:        instance,
-		InstanceChanged: sspChanged,
-		Logger:          reqLogger,
-		VersionCache:    s.subresourceCache,
-		TopologyMode:    s.topologyMode,
-		CrdList:         s.crdList,
+		Request:            req,
+		Client:             s.client,
+		UncachedReader:     s.uncachedReader,
+		Context:            ctx,
+		Instance:           instance,
+		InstanceChanged:    sspChanged,
+		Logger:             reqLogger,
+		VersionCache:       s.subresourceCache,
+		TopologyMode:       s.topologyMode,
+		CrdList:            s.crdList,
+		OLMDeployment:      s.olmDeployment,
+		SSPServiceHostname: s.sspServiceHostname,
 	}
 
 	if !isInitialized(sspRequest.Instance) {
