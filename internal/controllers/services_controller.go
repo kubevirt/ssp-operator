@@ -26,7 +26,6 @@ import (
 
 const (
 	ServiceManagedByLabelValue = "ssp-operator-services"
-	MetricsServiceName         = "ssp-operator-metrics"
 	OperatorName               = "ssp-operator"
 	ServiceControllerName      = "service-controller"
 )
@@ -38,13 +37,14 @@ func ServiceObject(namespace string, appKubernetesPartOfValue string) *v1.Servic
 		common.AppKubernetesVersionLabel:   env.GetOperatorVersion(),
 		common.AppKubernetesComponentLabel: ServiceControllerName,
 		metrics.PrometheusLabelKey:         metrics.PrometheusLabelValue,
+		metrics.MetricsServiceKey:          common.SspOperatorMetricsServiceName,
 	}
 	if appKubernetesPartOfValue != "" {
 		labels[common.AppKubernetesPartOfLabel] = appKubernetesPartOfValue
 	}
 	return &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      MetricsServiceName,
+			Name:      common.SspOperatorMetricsServiceName,
 			Namespace: namespace,
 			Labels:    labels,
 		},
@@ -136,7 +136,7 @@ func (s *serviceReconciler) setupController(mgr ctrl.Manager) error {
 		Named("service-controller").
 		For(&v1.Service{}, builder.WithPredicates(predicate.NewPredicateFuncs(
 			func(object client.Object) bool {
-				return object.GetName() == MetricsServiceName && object.GetNamespace() == s.operatorNamespace
+				return object.GetName() == common.SspOperatorMetricsServiceName && object.GetNamespace() == s.operatorNamespace
 			}))).
 		Complete(s)
 }

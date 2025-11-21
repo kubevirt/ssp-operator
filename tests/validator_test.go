@@ -10,7 +10,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	templatev1 "github.com/openshift/api/template/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	admission "k8s.io/api/admissionregistration/v1"
@@ -155,7 +154,7 @@ var _ = Describe("Template validator operand", func() {
 			},
 		}
 		serviceMetricsRes = testResource{
-			Name:           validator.MetricsServiceName,
+			Name:           common.TemplateValidatorMetricsServiceName,
 			Namespace:      strategy.GetNamespace(),
 			Resource:       &core.Service{},
 			ExpectedLabels: validator.PrometheusServiceLabels(),
@@ -633,7 +632,7 @@ var _ = Describe("Template validator webhooks", func() {
 			}
 			eventuallyCreateVm(vm)
 
-			pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
+			pods, err := GetRunningPodsByLabel(common.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 			Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
 			Eventually(func() bool {
 				for _, pod := range pods.Items {
@@ -952,7 +951,7 @@ var _ = Describe("Template validator webhooks", func() {
 	})
 
 	It("[test_id:4375] Test refreshing of certificates", decorators.Conformance, func() {
-		pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
+		pods, err := GetRunningPodsByLabel(common.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(pods.Items).ToNot(BeEmpty(), "no pods found")
 
@@ -1052,7 +1051,7 @@ func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
 }
 
 func totalRejectedVmsMetricsValue() (int, error) {
-	pods, err := GetRunningPodsByLabel(validator.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
+	pods, err := GetRunningPodsByLabel(common.VirtTemplateValidator, validator.KubevirtIo, strategy.GetNamespace())
 	Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
 	Expect(pods.Items).ToNot(BeEmpty())
 
