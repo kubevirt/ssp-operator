@@ -19,6 +19,8 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
@@ -41,7 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -157,7 +159,7 @@ func (s *prometheusServer) NeedLeaderElection() bool {
 
 func (s *prometheusServer) Start(ctx context.Context) error {
 	setupLog.Info("Starting Prometheus metrics endpoint server with TLS")
-	handler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{})
+	handler := promhttp.HandlerFor(k8smetrics.Registry, promhttp.HandlerOpts{})
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)
 
@@ -205,20 +207,52 @@ func newPrometheusServer(metricsAddr string, cache cache.Cache) (*prometheusServ
 	}, nil
 }
 
+// due to the difference in how the certificate is issued, hostname extraction from the certificate itself is preferred
+func extractHostnameFromCert(certPath string) (string, error) {
+	certBytes, err := os.ReadFile(certPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read certificate file: %w", err)
+	}
+
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		return "", fmt.Errorf("failed to parse certificate PEM")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	if cert.Subject.CommonName != "" && cert.Subject.CommonName == cert.DNSNames[0] {
+		return cert.Subject.CommonName, nil
+	}
+
+	return "", errors.New("failed to extract common name from certificate")
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var olmDeployment bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8443", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&olmDeployment, "olm-deployment", false, "Signalize deployment via OLM")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	sspServiceHostname, err := extractHostnameFromCert(path.Join(sdkTLSDir, sdkTLSCrt))
+	if err != nil {
+		setupLog.Error(err, "Error extracting hostname from certificate")
+		os.Exit(1)
+	}
 
 	ctx := ctrl.SetupSignalHandler()
 
@@ -236,7 +270,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return controllers.CreateControllers(ctx, apiClient)
+		return controllers.CreateControllers(ctx, apiClient, olmDeployment, sspServiceHostname)
 	}()
 	if err != nil {
 		setupLog.Error(err, "error creating controllers")

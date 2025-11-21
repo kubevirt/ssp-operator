@@ -50,7 +50,8 @@ func (m *metrics) WatchClusterTypes() []operands.WatchType {
 
 func (m *metrics) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	return common.CollectResourceStatus(request,
-		reconcilePrometheusMonitor,
+		reconcileValidatorMetricsMonitor,
+		reconcileSspMetricsMonitor,
 		reconcilePrometheusRule,
 		reconcileMonitoringRbacRole,
 		reconcileMonitoringRbacRoleBinding,
@@ -75,9 +76,16 @@ const (
 	operandComponent = common.AppComponentMonitoring
 )
 
-func reconcilePrometheusMonitor(request *common.Request) (common.ReconcileResult, error) {
+func reconcileSspMetricsMonitor(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		NamespacedResource(newServiceMonitorCR(request.Namespace)).
+		NamespacedResource(newSspServiceMonitor(request)).
+		WithAppLabels(operandName, operandComponent).
+		Reconcile()
+}
+
+func reconcileValidatorMetricsMonitor(request *common.Request) (common.ReconcileResult, error) {
+	return common.CreateOrUpdate(request).
+		NamespacedResource(newValidatorServiceMonitor(request)).
 		WithAppLabels(operandName, operandComponent).
 		Reconcile()
 }

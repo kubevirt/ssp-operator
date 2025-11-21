@@ -343,6 +343,7 @@ spec:
               containers:
               - args:
                 - --leader-elect
+                - --olm-deployment
                 command:
                 - /manager
                 env:

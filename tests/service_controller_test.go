@@ -8,7 +8,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -90,7 +89,7 @@ var _ = Describe("Service Controller", func() {
 				return "", err
 			}
 			return foundService.UID, nil
-		}, env.ShortTimeout(), time.Second).ShouldNot(Equal(oldUID), fmt.Sprintf("Did not recreate the %s service", controllers.MetricsServiceName))
+		}, env.ShortTimeout(), time.Second).ShouldNot(Equal(oldUID), fmt.Sprintf("Did not recreate the %s service", common.SspOperatorMetricsServiceName))
 	})
 
 	It("[test_id:8810] Should restore ssp-operator-metrics service after update", decorators.Conformance, func() {

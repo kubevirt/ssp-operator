@@ -23,7 +23,9 @@ type Request struct {
 	VersionCache    VersionCache
 	TopologyMode    osconfv1.TopologyMode
 
-	CrdList crd_watch.CrdList
+	CrdList            crd_watch.CrdList
+	OLMDeployment      bool
+	SSPServiceHostname string
 }
 
 func (r *Request) IsSingleReplicaTopologyMode() bool {
