@@ -33,22 +33,20 @@ const (
 	webhookPortName               = "http-webhook"
 	KubevirtIo                    = "kubevirt.io"
 	SecretName                    = "virt-template-validator-certs"
-	VirtTemplateValidator         = "virt-template-validator"
 	ClusterRoleName               = "template:view"
 	ClusterRoleBindingName        = "template-validator"
-	WebhookName                   = VirtTemplateValidator
+	WebhookName                   = common.VirtTemplateValidator
 	ServiceAccountName            = "template-validator"
-	ServiceName                   = VirtTemplateValidator
-	MetricsServiceName            = "template-validator-metrics"
-	DeploymentName                = VirtTemplateValidator
-	ConfigMapName                 = VirtTemplateValidator
+	ServiceName                   = common.VirtTemplateValidator
+	DeploymentName                = common.VirtTemplateValidator
+	ConfigMapName                 = common.VirtTemplateValidator
 	PrometheusLabel               = "prometheus.ssp.kubevirt.io"
 	kubernetesHostnameTopologyKey = "kubernetes.io/hostname"
 )
 
 func CommonLabels() map[string]string {
 	return map[string]string{
-		KubevirtIo: VirtTemplateValidator,
+		KubevirtIo: common.VirtTemplateValidator,
 	}
 }
 
@@ -161,7 +159,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 	podLabels := CommonLabels()
 	podLabels[PrometheusLabel] = "true"
 	podLabels["name"] = DeploymentName
-	podAntiAffinity := newPodAntiAffinity(KubevirtIo, kubernetesHostnameTopologyKey, metav1.LabelSelectorOpIn, []string{VirtTemplateValidator})
+	podAntiAffinity := newPodAntiAffinity(KubevirtIo, kubernetesHostnameTopologyKey, metav1.LabelSelectorOpIn, []string{common.VirtTemplateValidator})
 	return &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      DeploymentName,
@@ -180,7 +178,7 @@ func newDeployment(namespace string, replicas int32, image string) *apps.Deploym
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: VirtTemplateValidator,
+					Name: common.VirtTemplateValidator,
 					Annotations: map[string]string{
 						securityv1.RequiredSCCAnnotation: common.RequiredSCCAnnotationValue,
 					},
@@ -372,6 +370,7 @@ func newValidatingWebhook(serviceNamespace string) *admission.ValidatingWebhookC
 func PrometheusServiceLabels() map[string]string {
 	return map[string]string{
 		metrics.PrometheusLabelKey: metrics.PrometheusLabelValue,
+		metrics.MetricsServiceKey:  common.TemplateValidatorMetricsServiceName,
 	}
 }
 
@@ -379,7 +378,7 @@ func newPrometheusService(namespace string) *core.Service {
 	return &core.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      MetricsServiceName,
+			Name:      common.TemplateValidatorMetricsServiceName,
 			Labels:    PrometheusServiceLabels(),
 		},
 		Spec: core.ServiceSpec{
@@ -400,7 +399,7 @@ func newPrometheusService(namespace string) *core.Service {
 func newNetworkPolicies(namespace string) []*networkv1.NetworkPolicy {
 	g := networkpolicies.NewOpenShiftGenerator()
 	return []*networkv1.NetworkPolicy{
-		g.NewEgressToKubeAPIAndDNS(namespace, KubevirtIo, VirtTemplateValidator),
+		g.NewEgressToKubeAPIAndDNS(namespace, KubevirtIo, common.VirtTemplateValidator),
 		networkpolicies.NewIngressToVirtTemplateValidatorWebhookAndMetrics(namespace),
 	}
 }
