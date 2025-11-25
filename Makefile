@@ -335,7 +335,7 @@ kubevirt-sync:
 	KUSTOMIZE=$(KUSTOMIZE) ./hack/kubevirt.sh sync
 
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
-GOLANGCI_LINT_VERSION ?= v2.3.1
+GOLANGCI_LINT_VERSION ?= v2.6.2
 
 .PHONY: lint
 lint:
