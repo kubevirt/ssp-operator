@@ -80,7 +80,7 @@ func newServiceMonitorCR(namespace string) *promv1.ServiceMonitor {
 			Endpoints: []promv1.Endpoint{
 				{
 					Port:   MetricsPortName,
-					Scheme: "https",
+					Scheme: ptr.To(promv1.Scheme("https")),
 					TLSConfig: &promv1.TLSConfig{
 						SafeTLSConfig: promv1.SafeTLSConfig{
 							InsecureSkipVerify: ptr.To(true),
