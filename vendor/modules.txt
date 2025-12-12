@@ -233,8 +233,9 @@ github.com/openshift/custom-resource-status/conditions/v1
 # github.com/openshift/library-go v0.0.0-20250203153547-76273507b614
 ## explicit; go 1.22.0
 github.com/openshift/library-go/pkg/crypto
-# github.com/operator-framework/api v0.36.0
+# github.com/operator-framework/api v0.37.0
 ## explicit; go 1.24.6
+github.com/operator-framework/api/pkg/lib/release
 github.com/operator-framework/api/pkg/lib/version
 github.com/operator-framework/api/pkg/operators
 github.com/operator-framework/api/pkg/operators/v1alpha1
@@ -246,7 +247,7 @@ github.com/operator-framework/operator-lib/internal/annotation
 # github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.87.0
+# github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.87.1
 ## explicit; go 1.24.0
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1
@@ -458,7 +459,7 @@ gopkg.in/evanphx/json-patch.v4
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# k8s.io/api v0.34.2
+# k8s.io/api v0.34.3
 ## explicit; go 1.24.0
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -520,11 +521,11 @@ k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
 k8s.io/api/storagemigration/v1alpha1
-# k8s.io/apiextensions-apiserver v0.34.2
+# k8s.io/apiextensions-apiserver v0.34.3
 ## explicit; go 1.24.0
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
-# k8s.io/apimachinery v0.34.2
+# k8s.io/apimachinery v0.34.3
 ## explicit; go 1.24.0
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -592,10 +593,10 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.34.2
+# k8s.io/apiserver v0.34.3
 ## explicit; go 1.24.0
 k8s.io/apiserver/pkg/authentication/user
-# k8s.io/client-go v0.34.2
+# k8s.io/client-go v0.34.3
 ## explicit; go 1.24.0
 k8s.io/client-go/applyconfigurations
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
@@ -889,7 +890,7 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/kube-aggregator v0.34.2
+# k8s.io/kube-aggregator v0.34.3
 ## explicit; go 1.24.0
 k8s.io/kube-aggregator/pkg/apis/apiregistration
 k8s.io/kube-aggregator/pkg/apis/apiregistration/v1
@@ -919,7 +920,7 @@ k8s.io/utils/trace
 ## explicit; go 1.24.0
 kubevirt.io/api/core
 kubevirt.io/api/core/v1
-# kubevirt.io/containerized-data-importer-api v1.63.1
+# kubevirt.io/containerized-data-importer-api v1.64.0
 ## explicit; go 1.23.0
 kubevirt.io/containerized-data-importer-api/pkg/apis/core
 kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1
