@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/internal/common"
 	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/tests/decorators"
 	"kubevirt.io/ssp-operator/tests/env"
@@ -200,7 +201,7 @@ var _ = Describe("SCC annotation", func() {
 		pods := &core.PodList{}
 		err := apiClient.List(ctx, pods,
 			client.InNamespace(strategy.GetNamespace()),
-			client.MatchingLabels{validator.KubevirtIo: validator.VirtTemplateValidator})
+			client.MatchingLabels{validator.KubevirtIo: common.VirtTemplateValidator})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(pods.Items).ToNot(BeEmpty())
