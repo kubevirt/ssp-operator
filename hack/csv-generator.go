@@ -20,15 +20,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/blang/semver/v4"
 	"github.com/operator-framework/api/pkg/lib/version"
 	csvv1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/spf13/cobra"
-	"io"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"os"
 	sigsyaml "sigs.k8s.io/yaml"
 
 	"kubevirt.io/ssp-operator/internal/env"
@@ -120,6 +121,8 @@ func runGenerator() error {
 		removeCerts(&csv)
 	}
 
+	addOLMArg(&csv)
+
 	relatedImages, err := buildRelatedImages(f)
 	if err != nil {
 		return err
@@ -142,6 +145,16 @@ func runGenerator() error {
 	}
 
 	return nil
+}
+
+func addOLMArg(csv *csvv1.ClusterServiceVersion) {
+	templateSpec := &csv.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Template.Spec
+	for i, container := range templateSpec.Containers {
+		if container.Name == "manager" {
+			templateSpec.Containers[i].Args = append(container.Args, "--olm-deployment")
+			break
+		}
+	}
 }
 
 func dumpFiles(path string) error {
