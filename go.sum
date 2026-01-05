@@ -232,12 +232,12 @@ github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAl
 github.com/onsi/gomega v1.18.1/go.mod h1:0q+aL8jAiMXy9hbwj2mr5GziHiwhAIQpFmmtT5hitRs=
 github.com/onsi/gomega v1.38.3 h1:eTX+W6dobAYfFeGC2PV6RwXRu/MyT+cQguijutvkpSM=
 github.com/onsi/gomega v1.38.3/go.mod h1:ZCU1pkQcXDO5Sl9/VVEGlDyp+zm0m1cmeG5TOzLgdh4=
-github.com/openshift/api v0.0.0-20250305013520-e7f23be12279 h1:eYvpiSNyNl7P7kmtNH0d6zAMLlrziyz370m0q1tggJE=
-github.com/openshift/api v0.0.0-20250305013520-e7f23be12279/go.mod h1:Shkl4HanLwDiiBzakv+con/aMGnVE2MAGvoKp5oyYUo=
+github.com/openshift/api v0.0.0-20251208101024-c2a41ea924bd h1:dVvuq3+RR7yEI2M8qKZqc0grAcNHog5hM2CQYZe5T3U=
+github.com/openshift/api v0.0.0-20251208101024-c2a41ea924bd/go.mod h1:d5uzF0YN2nQQFA0jIEWzzOZ+edmo6wzlGLvx5Fhz4uY=
 github.com/openshift/custom-resource-status v1.1.2 h1:C3DL44LEbvlbItfd8mT5jWrqPfHnSOQoQf/sypqA6A4=
 github.com/openshift/custom-resource-status v1.1.2/go.mod h1:DB/Mf2oTeiAmVVX1gN+NEqweonAPY0TKUwADizj8+ZA=
-github.com/openshift/library-go v0.0.0-20250203153547-76273507b614 h1:9oOFj3PIQI5+X6Yj2e7VA7i3l7P9y1xHoLvo+kU8KZ4=
-github.com/openshift/library-go v0.0.0-20250203153547-76273507b614/go.mod h1:l/3SegTa9x+ry2J213bh7+DBofXOOvdrqU4JC9ktJa0=
+github.com/openshift/library-go v0.0.0-20251205073205-ab8d51820e0b h1:Fh2PJw4DP4zylB7oOu2T1C5rxhI0G36aj1D71vwS5S4=
+github.com/openshift/library-go v0.0.0-20251205073205-ab8d51820e0b/go.mod h1:ErDfiIrPHH+menTP/B4LKd0nxFDdvCbTamAc6SWMIh8=
 github.com/operator-framework/api v0.37.0 h1:2XCMWitBnumtJTqzip6LQKUwpM2pXVlt3gkpdlkbaCE=
 github.com/operator-framework/api v0.37.0/go.mod h1:NZs4vB+Jiamyv3pdPDjZtuC4U7KX0eq4z2r5hKY5fUA=
 github.com/operator-framework/operator-lib v0.19.0 h1:az6ogYj21rtU0SF9uYctRLyKp2dtlqTsmpfehFy6Ce8=
