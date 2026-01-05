@@ -133,6 +133,11 @@ spec:
                               description: Schedule specifies in cron format when
                                 and how often to look for new imports
                               type: string
+                            serviceAccountName:
+                              description: ServiceAccountName is the name of the ServiceAccount
+                                for creating DataVolumes.
+                              minLength: 1
+                              type: string
                             template:
                               description: Template specifies template for the DVs
                                 to be created
@@ -310,7 +315,7 @@ spec:
                                         resources:
                                           description: |-
                                             resources represents the minimum resources the volume should have.
-                                            If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                            Users are allowed to specify resource requirements
                                             that are lower than previous value but must still be higher than capacity recorded in the
                                             status field of the claim.
                                             More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -497,6 +502,10 @@ spec:
                                               description: DiskID provides id of a
                                                 disk to be imported
                                               type: string
+                                            insecureSkipVerify:
+                                              description: InsecureSkipVerify is a
+                                                flag to skip certificate verification
+                                              type: boolean
                                             secretRef:
                                               description: SecretRef provides the
                                                 secret reference needed to access
@@ -1905,9 +1914,10 @@ spec:
                             operator:
                               description: |-
                                 Operator represents a key's relationship to the value.
-                                Valid operators are Exists and Equal. Defaults to Equal.
+                                Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                                 Exists is equivalent to wildcard for value, so that a pod can
                                 tolerate all taints of a particular category.
+                                Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                               type: string
                             tolerationSeconds:
                               description: |-
@@ -2301,6 +2311,11 @@ spec:
                               description: Schedule specifies in cron format when
                                 and how often to look for new imports
                               type: string
+                            serviceAccountName:
+                              description: ServiceAccountName is the name of the ServiceAccount
+                                for creating DataVolumes.
+                              minLength: 1
+                              type: string
                             template:
                               description: Template specifies template for the DVs
                                 to be created
@@ -2478,7 +2493,7 @@ spec:
                                         resources:
                                           description: |-
                                             resources represents the minimum resources the volume should have.
-                                            If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                            Users are allowed to specify resource requirements
                                             that are lower than previous value but must still be higher than capacity recorded in the
                                             status field of the claim.
                                             More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -2665,6 +2680,10 @@ spec:
                                               description: DiskID provides id of a
                                                 disk to be imported
                                               type: string
+                                            insecureSkipVerify:
+                                              description: InsecureSkipVerify is a
+                                                flag to skip certificate verification
+                                              type: boolean
                                             secretRef:
                                               description: SecretRef provides the
                                                 secret reference needed to access
@@ -4049,9 +4068,10 @@ spec:
                             operator:
                               description: |-
                                 Operator represents a key's relationship to the value.
-                                Valid operators are Exists and Equal. Defaults to Equal.
+                                Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                                 Exists is equivalent to wildcard for value, so that a pod can
                                 tolerate all taints of a particular category.
+                                Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                               type: string
                             tolerationSeconds:
                               description: |-
