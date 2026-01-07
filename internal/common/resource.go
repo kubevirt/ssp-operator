@@ -314,17 +314,26 @@ func (r *reconcileBuilder) createOrUpdateWithImmutableSpec(obj client.Object, f 
 		return OperationResultNone, existing, nil
 	}
 
+	if !r.immutableSpec {
+		if err := r.request.Client.Update(r.request.Context, obj); err != nil {
+			return OperationResultNone, existing, fmt.Errorf("failed updating object: %w", err)
+		}
+		return OperationResultUpdated, existing, nil
+	}
+
 	// If the resource is immutable and specs are not equal, delete it.
 	// It will be recreated in the next iteration.
-	if r.immutableSpec && !equality.Semantic.DeepEqual(r.specGetter(existing), r.specGetter(obj)) {
+	if !equality.Semantic.DeepEqual(r.specGetter(existing), r.specGetter(obj)) {
 		if err := r.request.Client.Delete(r.request.Context, obj); err != nil {
 			return OperationResultNone, existing, fmt.Errorf("failed deleting object: %w", err)
 		}
 		return OperationResultDeleted, existing, nil
 	}
 
-	if err := r.request.Client.Update(r.request.Context, obj); err != nil {
-		return OperationResultNone, existing, fmt.Errorf("failed updating object: %w", err)
+	// Patch metadata, if .spec is equal.
+	// Using patch instead of update to keep future compatibility, if new fields are added into the immutable .spec.
+	if err := r.request.Client.Patch(r.request.Context, obj, client.MergeFrom(existing)); err != nil {
+		return OperationResultNone, existing, fmt.Errorf("failed patching object: %w", err)
 	}
 	return OperationResultUpdated, existing, nil
 }
