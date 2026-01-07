@@ -220,8 +220,8 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift/api v0.0.0-20250305013520-e7f23be12279
-## explicit; go 1.22.0
+# github.com/openshift/api v0.0.0-20251208101024-c2a41ea924bd
+## explicit; go 1.24.0
 github.com/openshift/api/config/v1
 github.com/openshift/api/pkg/serialization
 github.com/openshift/api/route/v1
@@ -230,8 +230,8 @@ github.com/openshift/api/template/v1
 # github.com/openshift/custom-resource-status v1.1.2
 ## explicit; go 1.12
 github.com/openshift/custom-resource-status/conditions/v1
-# github.com/openshift/library-go v0.0.0-20250203153547-76273507b614
-## explicit; go 1.22.0
+# github.com/openshift/library-go v0.0.0-20251205073205-ab8d51820e0b
+## explicit; go 1.24.0
 github.com/openshift/library-go/pkg/crypto
 # github.com/operator-framework/api v0.37.0
 ## explicit; go 1.24.6
