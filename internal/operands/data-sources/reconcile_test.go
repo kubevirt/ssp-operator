@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	v1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -101,7 +102,20 @@ var _ = Describe("Data-Sources operand", func() {
 	It("should create view role", func() {
 		_, err := operand.Reconcile(&request)
 		Expect(err).ToNot(HaveOccurred())
-		ExpectResourceExists(newViewRole(internal.GoldenImagesNamespace), request)
+		role := &rbac.Role{}
+		key := client.ObjectKeyFromObject(newViewRole(internal.GoldenImagesNamespace))
+		Expect(request.Client.Get(request.Context, key, role)).ToNot(HaveOccurred())
+		Expect(role.Rules).To(ContainElements(
+			rbac.PolicyRule{
+				APIGroups: []string{v1.GroupName},
+				Resources: []string{"persistentvolumeclaims", "persistentvolumeclaims/status"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			rbac.PolicyRule{
+				APIGroups: []string{"snapshot.storage.k8s.io"},
+				Resources: []string{"volumesnapshots", "volumesnapshots/status"},
+				Verbs:     []string{"get", "list", "watch"},
+			}))
 	})
 
 	It("should create view role binding", func() {
