@@ -1118,6 +1118,25 @@ var _ = Describe("DataSources", func() {
 					return ds.GetLabels()
 				}, env.ShortTimeout(), time.Second).Should(HaveKeyWithValue(cdiLabel, cronName))
 			})
+
+			It("[test_id:TODO] should patch labels on existing DataImportCron", decorators.Conformance, func() {
+				const testVersion = "v1.99.99-test"
+
+				dic := &cdiv1beta1.DataImportCron{}
+				Expect(apiClient.Get(ctx, dataImportCron.GetKey(), dic)).To(Succeed())
+				Expect(dic.Labels[common.AppKubernetesVersionLabel]).ToNot(Equal(testVersion))
+
+				updateSsp(func(foundSsp *ssp.SSP) {
+					foundSsp.Labels[common.AppKubernetesVersionLabel] = testVersion
+				})
+				waitUntilDeployed()
+
+				Eventually(func(g Gomega) {
+					updatedDic := &cdiv1beta1.DataImportCron{}
+					g.Expect(apiClient.Get(ctx, dataImportCron.GetKey(), updatedDic)).To(Succeed())
+					g.Expect(updatedDic.Labels).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, testVersion))
+				}, env.ShortTimeout(), time.Second).Should(Succeed())
+			})
 		})
 
 		Context("without existing PVC and custom namespace", func() {
