@@ -71,6 +71,11 @@ func newViewRole(namespace string) *rbac.Role {
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
+				APIGroups: []string{"snapshot.storage.k8s.io"},
+				Resources: []string{"volumesnapshots", "volumesnapshots/status"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
 				APIGroups: []string{cdiv1beta1.SchemeGroupVersion.Group},
 				Resources: []string{"datavolumes"},
 				Verbs:     []string{"get", "list", "watch"},
