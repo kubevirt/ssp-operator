@@ -11,7 +11,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"kubevirt.io/ssp-operator/internal/architecture"
 
 	osconfv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -34,12 +33,15 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 	lifecycleapi "kubevirt.io/controller-lifecycle-operator-sdk/api"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	sspv1beta2 "kubevirt.io/ssp-operator/api/v1beta2"
 	sspv1beta3 "kubevirt.io/ssp-operator/api/v1beta3"
+	"kubevirt.io/ssp-operator/internal/architecture"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/tests/env"
 )
@@ -382,6 +384,8 @@ var _ = BeforeSuite(func() {
 		Expect(existingCrNamespace).ToNot(BeEmpty(), "Existing CR Namespace needs to be defined")
 		strategy = &existingSspStrategy{Name: existingCrName, Namespace: existingCrNamespace}
 	}
+
+	ctrl.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	fmt.Printf("timeout set to %d minutes\n", env.Timeout())
 	fmt.Printf("short timeout set to %d minutes\n", env.ShortTimeout())
