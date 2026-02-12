@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -43,10 +44,41 @@ var _ = Describe("Service Controller", func() {
 		service, serviceErr := getSspMetricsService()
 		Expect(serviceErr).ToNot(HaveOccurred(), "Failed to get ssp-operator-metrics service")
 
+		deployment := &apps.Deployment{}
+		Expect(apiClient.Get(ctx, types.NamespacedName{
+			Name:      strategy.GetSSPDeploymentName(),
+			Namespace: strategy.GetSSPDeploymentNameSpace(),
+		}, deployment)).To(Succeed())
+
+		containers := deployment.Spec.Template.Spec.Containers
+		var managerContainer *v1.Container
+		for i := range containers {
+			if containers[i].Name == "manager" {
+				managerContainer = &containers[i]
+			}
+		}
+		Expect(managerContainer).ToNot(BeNil(), "SSP deployment does not contain manager container")
+
+		var envVar *v1.EnvVar
+		for i := range managerContainer.Env {
+			if managerContainer.Env[i].Name == common.OperatorVersionKey {
+				envVar = &managerContainer.Env[i]
+			}
+		}
+		Expect(envVar).ToNot(BeNil(), "SSP manager container does not have the operator version variable")
+
+		version := envVar.Value
+		if version != "" {
+			Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, version))
+		} else {
+			// If the version env variable is not defined, then it is not simple to get the version from test code.
+			Expect(service.GetLabels()).To(HaveKey(common.AppKubernetesVersionLabel))
+		}
+
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesManagedByLabel, controllers.ServiceManagedByLabelValue))
-		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesVersionLabel, common.GetOperatorVersion()))
 		Expect(service.GetLabels()).To(HaveKeyWithValue(common.AppKubernetesComponentLabel, controllers.ServiceControllerName))
-		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(BeEmpty())
+		// Not using HaveKeyWithValue, because the label does not need to exist.
+		Expect(service.GetLabels()[common.AppKubernetesPartOfLabel]).To(Equal(deployment.Labels[common.AppKubernetesPartOfLabel]))
 	})
 
 	It("[test_id: 8808] Should re-create ssp-operator-metrics service if deleted", func() {
