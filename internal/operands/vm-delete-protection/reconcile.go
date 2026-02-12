@@ -15,9 +15,10 @@ import (
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingadmissionpolicies;validatingadmissionpolicybindings,verbs=get;list;create;watch;update;delete
 
 const (
-	operandName                              = "vm-delete-protection"
-	operandComponent                         = common.AppComponentVMDeletionProtection
-	virtualMachineDeleteProtectionPolicyName = "kubevirt-vm-deletion-protection"
+	operandName                               = "vm-delete-protection"
+	operandComponent                          = common.AppComponentVMDeletionProtection
+	virtualMachineDeleteProtectionPolicyName  = "kubevirt-vm-deletion-protection"
+	instancetypeControllerRevisionsPolicyName = "kubevirt-instancetype-controllerrevisions-protection"
 )
 
 func init() {
@@ -43,23 +44,27 @@ func (v *VMDeleteProtection) WatchClusterTypes() []operands.WatchType { return W
 
 func (v *VMDeleteProtection) Reconcile(request *common.Request) ([]common.ReconcileResult, error) {
 	return common.CollectResourceStatus(request,
-		reconcileVAP,
-		reconcileVAPB,
+		reconcileVMDeletionProtectionVAP,
+		reconcileVMDeletionProtectionVAPB,
+		reconcileInstancetypeControllerRevisionsVAP,
+		reconcileInstancetypeControllerRevisionsVAPB,
 	)
 }
 
 func (v *VMDeleteProtection) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	return common.DeleteAll(request,
-		newValidatingAdmissionPolicy(),
-		newValidatingAdmissionPolicyBinding(),
+		newVMDeletionProtectionValidatingAdmissionPolicy(),
+		newVMDeletionProtectionValidatingAdmissionPolicyBinding(),
+		newInstancetypeControllerRevisionsValidatingAdmissionPolicy(request.Instance.Namespace),
+		newInstancetypeControllerRevisionsValidatingAdmissionPolicyBinding(),
 	)
 }
 
 func (v *VMDeleteProtection) Name() string { return operandName }
 
-func reconcileVAP(request *common.Request) (common.ReconcileResult, error) {
+func reconcileVMDeletionProtectionVAP(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newValidatingAdmissionPolicy()).
+		ClusterResource(newVMDeletionProtectionValidatingAdmissionPolicy()).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(expected, found client.Object) {
 			foundVAP := found.(*admissionregistrationv1.ValidatingAdmissionPolicy)
@@ -91,9 +96,56 @@ func reconcileVAP(request *common.Request) (common.ReconcileResult, error) {
 		Reconcile()
 }
 
-func reconcileVAPB(request *common.Request) (common.ReconcileResult, error) {
+func reconcileVMDeletionProtectionVAPB(request *common.Request) (common.ReconcileResult, error) {
 	return common.CreateOrUpdate(request).
-		ClusterResource(newValidatingAdmissionPolicyBinding()).
+		ClusterResource(newVMDeletionProtectionValidatingAdmissionPolicyBinding()).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(expected, found client.Object) {
+			foundVAPB := found.(*admissionregistrationv1.ValidatingAdmissionPolicyBinding)
+			expectedVAPB := expected.(*admissionregistrationv1.ValidatingAdmissionPolicyBinding)
+
+			foundVAPB.Spec = expectedVAPB.Spec
+		}).
+		Reconcile()
+}
+
+func reconcileInstancetypeControllerRevisionsVAP(request *common.Request) (common.ReconcileResult, error) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newInstancetypeControllerRevisionsValidatingAdmissionPolicy(request.Instance.Namespace)).
+		WithAppLabels(operandName, operandComponent).
+		UpdateFunc(func(expected, found client.Object) {
+			foundVAP := found.(*admissionregistrationv1.ValidatingAdmissionPolicy)
+			expectedVAP := expected.(*admissionregistrationv1.ValidatingAdmissionPolicy)
+
+			foundVAP.Spec = expectedVAP.Spec
+		}).
+		StatusFunc(func(resource client.Object) common.ResourceStatus {
+			vap := resource.(*admissionregistrationv1.ValidatingAdmissionPolicy)
+			if vap.Status.TypeChecking == nil {
+				msg := "Instancetype controller revisions VAP type checking in progress"
+				return common.ResourceStatus{
+					Progressing:  &msg,
+					NotAvailable: &msg,
+					Degraded:     &msg,
+				}
+			}
+
+			if len(vap.Status.TypeChecking.ExpressionWarnings) != 0 {
+				msg := fmt.Sprintf("Incorrect instancetype controller revisions VAP CEL expression %v",
+					vap.Status.TypeChecking)
+				return common.ResourceStatus{
+					NotAvailable: &msg,
+					Degraded:     &msg,
+				}
+			}
+			return common.ResourceStatus{}
+		}).
+		Reconcile()
+}
+
+func reconcileInstancetypeControllerRevisionsVAPB(request *common.Request) (common.ReconcileResult, error) {
+	return common.CreateOrUpdate(request).
+		ClusterResource(newInstancetypeControllerRevisionsValidatingAdmissionPolicyBinding()).
 		WithAppLabels(operandName, operandComponent).
 		UpdateFunc(func(expected, found client.Object) {
 			foundVAPB := found.(*admissionregistrationv1.ValidatingAdmissionPolicyBinding)
