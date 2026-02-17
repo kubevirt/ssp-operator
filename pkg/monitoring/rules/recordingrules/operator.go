@@ -16,7 +16,15 @@ func operatorRecordingRules() []operatorrules.RecordingRule {
 		{
 			MetricsOpts: operatormetrics.MetricOpts{
 				Name: "kubevirt_ssp_operator_up",
-				Help: "The total number of running ssp-operator pods",
+				Help: "[Deprecated] The total number of running ssp-operator pods",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString("sum(up{pod=~'ssp-operator.*'}) OR on() vector(0)"),
+		},
+		{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "cluster:kubevirt_ssp_operator_up:sum",
+				Help: "The number of ssp-operator pods that are up",
 			},
 			MetricType: operatormetrics.GaugeType,
 			Expr:       intstr.FromString("sum(up{pod=~'ssp-operator.*'}) OR on() vector(0)"),
@@ -24,7 +32,15 @@ func operatorRecordingRules() []operatorrules.RecordingRule {
 		{
 			MetricsOpts: operatormetrics.MetricOpts{
 				Name: "kubevirt_ssp_template_validator_up",
-				Help: "The total number of running virt-template-validator pods",
+				Help: "[Deprecated] The total number of running virt-template-validator pods",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString("sum(up{pod=~'virt-template-validator.*'}) OR on() vector(0)"),
+		},
+		{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "cluster:kubevirt_ssp_template_validator_up:sum",
+				Help: "The number of virt-template-validator pods that are up",
 			},
 			MetricType: operatormetrics.GaugeType,
 			Expr:       intstr.FromString("sum(up{pod=~'virt-template-validator.*'}) OR on() vector(0)"),
@@ -32,7 +48,15 @@ func operatorRecordingRules() []operatorrules.RecordingRule {
 		{
 			MetricsOpts: operatormetrics.MetricOpts{
 				Name: "kubevirt_ssp_operator_reconcile_succeeded_aggregated",
-				Help: "The total number of ssp-operator pods reconciling with no errors",
+				Help: "[Deprecated] The total number of ssp-operator pods reconciling with no errors",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString("sum(kubevirt_ssp_operator_reconcile_succeeded)"),
+		},
+		{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "cluster:kubevirt_ssp_operator_reconcile_succeeded:sum",
+				Help: "The number of ssp-operator pods reconciling with no errors",
 			},
 			MetricType: operatormetrics.GaugeType,
 			Expr:       intstr.FromString("sum(kubevirt_ssp_operator_reconcile_succeeded)"),
@@ -40,6 +64,14 @@ func operatorRecordingRules() []operatorrules.RecordingRule {
 		{
 			MetricsOpts: operatormetrics.MetricOpts{
 				Name: "kubevirt_ssp_template_validator_rejected_increase",
+				Help: "[Deprecated] The increase in the number of rejected template validators, over the last hour",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString(TemplateValidatorRejectedIncreaseQuery + " OR on() vector(0)"),
+		},
+		{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "cluster:kubevirt_ssp_template_validator_rejected:increase1h",
 				Help: "The increase in the number of rejected template validators, over the last hour",
 			},
 			MetricType: operatormetrics.GaugeType,
@@ -48,6 +80,14 @@ func operatorRecordingRules() []operatorrules.RecordingRule {
 		{
 			MetricsOpts: operatormetrics.MetricOpts{
 				Name: "kubevirt_ssp_common_templates_restored_increase",
+				Help: "[Deprecated] The increase in the number of common templates restored by the operator back to their original state, over the last hour",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString(CommonTemplatesRestoredIncreaseQuery + " OR on() vector(0)"),
+		},
+		{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "cluster:kubevirt_ssp_common_templates_restored:increase1h",
 				Help: "The increase in the number of common templates restored by the operator back to their original state, over the last hour",
 			},
 			MetricType: operatormetrics.GaugeType,

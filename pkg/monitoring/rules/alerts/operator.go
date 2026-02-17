@@ -15,7 +15,7 @@ func operatorAlerts() []promv1.Rule {
 	return []promv1.Rule{
 		{
 			Alert: "SSPDown",
-			Expr:  intstr.FromString("kubevirt_ssp_operator_up == 0"),
+			Expr:  intstr.FromString("cluster:kubevirt_ssp_operator_up:sum == 0"),
 			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary": "All SSP operator pods are down.",
@@ -27,7 +27,7 @@ func operatorAlerts() []promv1.Rule {
 		},
 		{
 			Alert: "SSPTemplateValidatorDown",
-			Expr:  intstr.FromString("kubevirt_ssp_template_validator_up == 0"),
+			Expr:  intstr.FromString("cluster:kubevirt_ssp_template_validator_up:sum == 0"),
 			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary": "All Template Validator pods are down.",
@@ -39,7 +39,7 @@ func operatorAlerts() []promv1.Rule {
 		},
 		{
 			Alert: "SSPFailingToReconcile",
-			Expr:  intstr.FromString("(kubevirt_ssp_operator_reconcile_succeeded_aggregated == 0) and (kubevirt_ssp_operator_up > 0)"),
+			Expr:  intstr.FromString("(cluster:kubevirt_ssp_operator_reconcile_succeeded:sum == 0) and (cluster:kubevirt_ssp_operator_up:sum > 0)"),
 			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary": "The ssp-operator pod is up but failing to reconcile.",
@@ -51,7 +51,7 @@ func operatorAlerts() []promv1.Rule {
 		},
 		{
 			Alert: "SSPHighRateRejectedVms",
-			Expr:  intstr.FromString("kubevirt_ssp_template_validator_rejected_increase > 5"),
+			Expr:  intstr.FromString("cluster:kubevirt_ssp_template_validator_rejected:increase1h > 5"),
 			For:   ptr.To[promv1.Duration]("5m"),
 			Annotations: map[string]string{
 				"summary": "High rate of rejected Vms.",
@@ -63,7 +63,7 @@ func operatorAlerts() []promv1.Rule {
 		},
 		{
 			Alert: "SSPCommonTemplatesModificationReverted",
-			Expr:  intstr.FromString("kubevirt_ssp_common_templates_restored_increase > 0"),
+			Expr:  intstr.FromString("cluster:kubevirt_ssp_common_templates_restored:increase1h > 0"),
 			For:   ptr.To[promv1.Duration]("0m"),
 			Annotations: map[string]string{
 				"summary": "Common Templates manual modifications were reverted by the operator.",
