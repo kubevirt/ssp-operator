@@ -102,6 +102,10 @@ var _ = Describe("Crypto Policy", func() {
 
 	BeforeEach(func() {
 		strategy.SkipSspUpdateTestsIfNeeded()
+
+		updateSsp(func(foundSsp *ssp.SSP) {
+			foundSsp.Spec.TLSSecurityProfile = nil
+		})
 		waitUntilDeployed()
 	})
 
