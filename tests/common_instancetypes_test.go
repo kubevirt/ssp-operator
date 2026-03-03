@@ -107,10 +107,15 @@ var _ = Describe("Common Instance Types", func() {
 			triggerReconciliation()
 
 			// Assert that the mutations made above persist as the reconcile is being ignored
-			Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetypeToUpdate.Name}, instancetypeToUpdate)).To(Succeed())
-			Expect(instancetypeToUpdate.Spec.CPU.Guest).To(Equal(updatedCPUGuestCount))
-			Expect(apiClient.Get(ctx, client.ObjectKey{Name: preferenceToUpdate.Name}, preferenceToUpdate)).To(Succeed())
-			Expect(preferenceToUpdate.Spec.CPU).To(Equal(updatedPreferenceCPU))
+			Eventually(func(g Gomega) {
+				instanceType := &instancetypev1beta1.VirtualMachineClusterInstancetype{}
+				g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetypeToUpdate.Name}, instanceType)).To(Succeed())
+				g.Expect(instanceType.Spec.CPU.Guest).To(Equal(updatedCPUGuestCount))
+
+				preference := &instancetypev1beta1.VirtualMachineClusterPreference{}
+				g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: preferenceToUpdate.Name}, preference)).To(Succeed())
+				g.Expect(preference.Spec.CPU).To(Equal(updatedPreferenceCPU))
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 		It("should cleanup resources when feature gate is disabled", func() {
 			sspObj := getSsp()
