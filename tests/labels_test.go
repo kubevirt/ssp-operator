@@ -109,10 +109,10 @@ func (labels badLabels) String() string {
 	str.WriteString("labels not matching expectations:\n")
 	for label, badLabel := range labels {
 		if badLabel.missing {
-			str.WriteString(fmt.Sprintf("%s: missing\n", label))
+			_, _ = fmt.Fprintf(&str, "%s: missing\n", label)
 			continue
 		}
-		str.WriteString(fmt.Sprintf("%s: expected: '%s', got: '%s'\n", label, badLabel.expected, badLabel.got))
+		_, _ = fmt.Fprintf(&str, "%s: expected: '%s', got: '%s'\n", label, badLabel.expected, badLabel.got)
 	}
 	return str.String()
 }
