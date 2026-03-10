@@ -1001,29 +1001,9 @@ func eventuallyCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 func eventuallyFailToCreateVm(vm *kubevirtv1.VirtualMachine) bool {
 	// Using Eventually, because it can take a while until
 	// new templates propagate to template validator
-	return EventuallyWithOffset(1, func() (metav1.StatusReason, error) {
-		// Check if VM is still being deleted from previous call
-		foundVm := &kubevirtv1.VirtualMachine{}
-		err := apiClient.Get(ctx, client.ObjectKeyFromObject(vm), foundVm)
-		if err == nil {
-			if foundVm.GetDeletionTimestamp().IsZero() {
-				// This should not happen
-				return metav1.StatusReasonUnknown, fmt.Errorf("created VM is not being deleted")
-			}
-			return metav1.StatusReasonUnknown, fmt.Errorf("VM was created")
-		}
-
-		err = apiClient.Create(ctx, vm)
-		if err == nil {
-			// VM was created, but it should not have been
-			err := apiClient.Delete(ctx, vm.DeepCopy())
-			if err != nil {
-				Fail(fmt.Sprintf("Unexpected error when deleting created VM: %v", err))
-			}
-			return metav1.StatusReasonUnknown, fmt.Errorf("VM was created")
-		}
-		return k8serrors.ReasonForError(err), nil
-	}, env.ShortTimeout()).Should(Equal(metav1.StatusReasonInvalid), "Should have given the invalid error")
+	return EventuallyWithOffset(1, func(g Gomega) error {
+		return apiClient.Create(ctx, vm, client.DryRunAll)
+	}, env.ShortTimeout(), time.Second).Should(MatchError(k8serrors.IsInvalid, "errors.IsInvalid"), "Should have given the invalid error")
 }
 
 func failVmCreationToIncreaseRejectedVmsMetrics(template *templatev1.Template) {
