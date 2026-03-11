@@ -367,7 +367,6 @@ var (
 	strategy           TestSuiteStrategy
 	sspListerWatcher   cache.ListerWatcherWithContext
 	portForwarder      PortForwarder
-	deploymentTimedOut bool
 	nodeArchitecture   string
 	clusterMachineType string
 	templatesSuffix    string
@@ -493,10 +492,6 @@ func getTemplateValidatorDeployment() *apps.Deployment {
 }
 
 func waitUntilDeployed() {
-	if deploymentTimedOut {
-		Fail("Timed out waiting for SSP to be in phase Deployed.")
-	}
-
 	defer func() {
 		// If the below check fails, output the SSP object to log.
 		// Its .status.conditions can be helpful.
@@ -522,27 +517,30 @@ func waitUntilDeployed() {
 		}
 	}()
 
-	// Set to true before waiting. In case Eventually fails,
-	// it will panic and the deploymentTimedOut will be left true
-	deploymentTimedOut = true
-	EventuallyWithOffset(1, func(g Gomega) {
+	// If SSP will not be in "deployed" state in 10 minutes, we want to abort the whole test suite.
+	NewGomega(AbortSuite).EventuallyWithOffset(1, func(g Gomega) {
 		ssp := getSsp()
 		g.Expect(ssp.Status.ObservedGeneration).To(Equal(ssp.Generation))
 		g.Expect(ssp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed))
 	}, env.Timeout(), time.Second).Should(Succeed())
-	deploymentTimedOut = false
 }
 
 func waitForDeletion(key client.ObjectKey, obj client.Object) {
-	EventuallyWithOffset(1, func() bool {
-		err := apiClient.Get(ctx, key, obj)
-		return errors.IsNotFound(err)
-	}, env.Timeout(), time.Second).Should(BeTrue())
+	EventuallyWithOffset(1, func() error {
+		return apiClient.Get(ctx, key, obj)
+	}, env.Timeout(), time.Second).Should(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+}
+
+// waitForDeletionOrAbort aborts the whole test suite if object is not deleted in env.Timeout time.
+func waitForDeletionOrAbort(key client.ObjectKey, obj client.Object) {
+	NewGomega(AbortSuite).EventuallyWithOffset(1, func() error {
+		return apiClient.Get(ctx, key, obj)
+	}, env.Timeout(), time.Second).Should(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 }
 
 func waitForSspDeletionIfNeeded(sspObj *sspv1beta3.SSP) {
 	key := client.ObjectKey{Name: sspObj.Name, Namespace: sspObj.Namespace}
-	Eventually(func() error {
+	NewGomega(AbortSuite).Eventually(func() error {
 		foundSsp := &sspv1beta3.SSP{}
 		err := apiClient.Get(ctx, key, foundSsp)
 		if errors.IsNotFound(err) {
