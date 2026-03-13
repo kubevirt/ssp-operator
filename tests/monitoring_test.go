@@ -118,8 +118,8 @@ var _ = Describe("Prometheus Alerts", func() {
 		It("[test_id:8377] Should fire SSPHighRateRejectedVms", func() {
 			waitForSeriesToBeDetected(recordingrules.TemplateValidatorRejectedIncreaseQuery)
 			Expect(apiClient.Create(ctx, template)).ToNot(HaveOccurred(), "Failed to create template: %s", template.Name)
-			for range [6]int{} {
-				time.Sleep(time.Second * 5)
+			for range 15 {
+				time.Sleep(500 * time.Millisecond)
 				failVmCreationToIncreaseRejectedVmsMetrics(template)
 			}
 			waitForAlertToActivate("SSPHighRateRejectedVms")
@@ -313,7 +313,7 @@ func checkAlert(alertName string) (*promApiv1.Alert, error) {
 	if err != nil {
 		return nil, err
 	}
-	alert := getAlertByName(alerts, alertName)
+	alert := getAlertByName(alerts.Alerts, alertName)
 	return alert, nil
 }
 
@@ -323,10 +323,10 @@ func waitForAlertToActivate(alertName string) {
 		if err != nil {
 			return err
 		}
-		if alert != nil {
-			return nil
+		if alert == nil {
+			return fmt.Errorf("alert %s not found", alertName)
 		}
-		return fmt.Errorf("alert %s not found", alertName)
+		return nil
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
 }
 
@@ -351,10 +351,10 @@ func waitForSeriesToBeDetected(seriesName string) {
 	}, env.Timeout(), 10*time.Second).Should(BeTrue())
 }
 
-func getAlertByName(alerts promApiv1.AlertsResult, alertName string) *promApiv1.Alert {
-	for _, alert := range alerts.Alerts {
-		if string(alert.Labels["alertname"]) == alertName {
-			return &alert
+func getAlertByName(alerts []promApiv1.Alert, alertName string) *promApiv1.Alert {
+	for i := range alerts {
+		if string(alerts[i].Labels["alertname"]) == alertName {
+			return &alerts[i]
 		}
 	}
 	return nil
