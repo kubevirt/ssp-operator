@@ -4,9 +4,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	policy "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ssp "kubevirt.io/ssp-operator/api/v1beta3"
+	validator "kubevirt.io/ssp-operator/internal/operands/template-validator"
 	"kubevirt.io/ssp-operator/tests/env"
 )
 
@@ -80,5 +84,11 @@ var _ = Describe("Single Node Topology", func() {
 		Expect(err).ToNot(HaveOccurred())
 		deployment := getTemplateValidatorDeployment()
 		Expect(int(deployment.Status.Replicas)).Should(Equal(0), "In Single Mode Topology the number of replicas is at most 1")
+	})
+
+	It("[test_id:TODO] PodDisruptionBudget should not be created", func() {
+		key := client.ObjectKey{Name: validator.DeploymentName, Namespace: strategy.GetNamespace()}
+		pdb := &policy.PodDisruptionBudget{}
+		Expect(apiClient.Get(ctx, key, pdb)).To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 	})
 })

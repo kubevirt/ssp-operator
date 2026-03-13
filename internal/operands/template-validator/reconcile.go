@@ -72,7 +72,9 @@ func (t *templateValidator) Reconcile(request *common.Request) ([]common.Reconci
 		reconcileConfigMap,
 		reconcileDeployment,
 		reconcileValidatingWebhook,
-		reconcilePodDisruptionBudget,
+	}
+	if !request.IsSingleReplicaTopologyMode() {
+		funcs = append(funcs, reconcilePodDisruptionBudget)
 	}
 	funcs = append(funcs, reconcileNetworkPolicies(request)...)
 	return common.CollectResourceStatus(request, funcs...)

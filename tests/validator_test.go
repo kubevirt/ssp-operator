@@ -215,8 +215,13 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4912] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
-			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
+
+		It("[test_id:TODO] PodDisruptionBudget", decorators.Conformance, func() {
+			strategy.SkipUnlessHighlyAvailableTopologyMode()
+			err := apiClient.Get(ctx, podDisruptionBudgetRes.GetKey(), podDisruptionBudgetRes.NewResource())
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		DescribeTable("should set app labels", expectAppLabels,
 			Entry("[test_id:5824]cluster role", &clusterRoleRes),
@@ -229,8 +234,12 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:5828]deployment", &deploymentRes),
 			Entry("[test_id:TODO]network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO]network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
-			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
+
+		It("[test_id:TODO] should set app labels on PodDisruptionBudget", func() {
+			strategy.SkipUnlessHighlyAvailableTopologyMode()
+			expectAppLabels(&podDisruptionBudgetRes)
+		})
 	})
 
 	Context("resource deletion", func() {
@@ -245,8 +254,12 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4924] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
-			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
+
+		It("[test_id:TODO] PodDisruptionBudget recreate after delete", decorators.Conformance, func() {
+			strategy.SkipUnlessHighlyAvailableTopologyMode()
+			expectRecreateAfterDelete(&podDisruptionBudgetRes)
+		})
 	})
 
 	Context("resource change", func() {
@@ -260,8 +273,12 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:4925] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
-			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
+
+		It("[test_id:TODO] should restore modified PodDisruptionBudget", decorators.Conformance, func() {
+			strategy.SkipUnlessHighlyAvailableTopologyMode()
+			expectRestoreAfterUpdate(&podDisruptionBudgetRes)
+		})
 
 		Context("with pause", func() {
 			BeforeEach(func() {
@@ -282,8 +299,12 @@ var _ = Describe("Template validator operand", func() {
 				Entry("[test_id:5539] deployment", &deploymentRes),
 				Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 				Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
-				Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 			)
+
+			It("[test_id:TODO] should restore modified PodDisruptionBudget with pause", decorators.Conformance, func() {
+				strategy.SkipUnlessHighlyAvailableTopologyMode()
+				expectRestoreAfterUpdateWithPause(&podDisruptionBudgetRes)
+			})
 		})
 
 		DescribeTable("should restore modified app labels", expectAppLabelsRestoreAfterUpdate,
@@ -296,8 +317,12 @@ var _ = Describe("Template validator operand", func() {
 			Entry("[test_id:6209] deployment", &deploymentRes),
 			Entry("[test_id:TODO] network policy kube api and dns", &networkPolicyKubeAPIAndDNSRes),
 			Entry("[test_id:TODO] network policy webhook and metrics", &networkPolicyWebhookAndMetricsRes),
-			Entry("[test_id:TODO] PodDisruptionBudget", &podDisruptionBudgetRes),
 		)
+
+		It("[test_id:TODO] should restore modified app labels on PodDisruptionBudget", func() {
+			strategy.SkipUnlessHighlyAvailableTopologyMode()
+			expectAppLabelsRestoreAfterUpdate(&podDisruptionBudgetRes)
+		})
 	})
 
 	It("[test_id:4913] should successfully start template-validator pod", decorators.Conformance, func() {
