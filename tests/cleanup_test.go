@@ -48,7 +48,7 @@ var _ = Describe("Cleanup", func() {
 		sspObj := getSsp()
 
 		Expect(apiClient.Delete(ctx, sspObj)).To(Succeed())
-		waitForDeletion(client.ObjectKeyFromObject(sspObj), &ssp.SSP{})
+		waitForDeletionOrAbort(client.ObjectKeyFromObject(sspObj), &ssp.SSP{})
 
 		// Check that all deployed resources were deleted
 		for _, watchType := range allWatchTypes {
