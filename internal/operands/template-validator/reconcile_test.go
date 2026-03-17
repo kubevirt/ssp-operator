@@ -6,8 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	securityv1 "github.com/openshift/api/security/v1"
 
+	osconfv1 "github.com/openshift/api/config/v1"
+	securityv1 "github.com/openshift/api/security/v1"
 	admission "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -93,6 +94,15 @@ var _ = Describe("Template validator operand", func() {
 		for _, policy := range newNetworkPolicies(namespace) {
 			ExpectResourceExists(policy, request)
 		}
+	})
+
+	It("should not create PodDisruptionBudget when SingleReplicaTopologyMode is used", func() {
+		request.TopologyMode = osconfv1.SingleReplicaTopologyMode
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		ExpectResourceNotExists(newPodDisruptionBudget(namespace), request)
 	})
 
 	It("should not update webhook CA bundle", func() {
