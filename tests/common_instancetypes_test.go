@@ -1,12 +1,15 @@
 package tests
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"k8s.io/utils/ptr"
 	virtv1 "kubevirt.io/api/core/v1"
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
+	"kubevirt.io/ssp-operator/tests/env"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kustomize/api/krusty"
 
@@ -32,13 +35,15 @@ var _ = Describe("Common Instance Types", func() {
 			virtualMachineClusterPreferences, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundle)
 			Expect(err).ToNot(HaveOccurred())
 
-			for _, instancetype := range virtualMachineClusterInstancetypes {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).To(Succeed())
-			}
+			Eventually(func(g Gomega) {
+				for _, instancetype := range virtualMachineClusterInstancetypes {
+					g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).To(Succeed())
+				}
 
-			for _, preference := range virtualMachineClusterPreferences {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).To(Succeed())
-			}
+				for _, preference := range virtualMachineClusterPreferences {
+					g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).To(Succeed())
+				}
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 		It("should reconcile from URL when provided", func() {
 			URL := "https://github.com/kubevirt/common-instancetypes//VirtualMachineClusterPreferences?ref=v0.3.3"
@@ -57,13 +62,15 @@ var _ = Describe("Common Instance Types", func() {
 			virtualMachineClusterInstancetypes, virtualMachineClusterPreferences, err := c.FetchResourcesFromURL(URL)
 			Expect(err).ToNot(HaveOccurred())
 
-			for _, instancetype := range virtualMachineClusterInstancetypes {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).To(Succeed())
-			}
+			Eventually(func(g Gomega) {
+				for _, instancetype := range virtualMachineClusterInstancetypes {
+					g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).To(Succeed())
+				}
 
-			for _, preference := range virtualMachineClusterPreferences {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).To(Succeed())
-			}
+				for _, preference := range virtualMachineClusterPreferences {
+					g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).To(Succeed())
+				}
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 		It("should ignore resources owned by virt-operator", func() {
 			virtualMachineClusterInstancetypes, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterInstancetype]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterInstancetypesBundle)
@@ -119,13 +126,15 @@ var _ = Describe("Common Instance Types", func() {
 			virtualMachineClusterPreferences, err := common_instancetypes.FetchBundleResource[instancetypev1beta1.VirtualMachineClusterPreference]("../" + common_instancetypes.BundleDir + common_instancetypes.ClusterPreferencesBundle)
 			Expect(err).ToNot(HaveOccurred())
 
-			for _, instancetype := range virtualMachineClusterInstancetypes {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).ToNot(Succeed())
-			}
+			Eventually(func(g Gomega) {
+				for _, instancetype := range virtualMachineClusterInstancetypes {
+					g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: instancetype.Name}, &instancetypev1beta1.VirtualMachineClusterInstancetype{})).ToNot(Succeed())
+				}
 
-			for _, preference := range virtualMachineClusterPreferences {
-				Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).ToNot(Succeed())
-			}
+				for _, preference := range virtualMachineClusterPreferences {
+					g.Expect(apiClient.Get(ctx, client.ObjectKey{Name: preference.Name}, &instancetypev1beta1.VirtualMachineClusterPreference{})).ToNot(Succeed())
+				}
+			}, env.ShortTimeout(), time.Second).Should(Succeed())
 		})
 	})
 	Context("webhook", func() {
