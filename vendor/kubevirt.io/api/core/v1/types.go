@@ -1203,6 +1203,8 @@ const (
 	EphemeralBackupObject = "kubevirt.io/ephemeral-backup-object"
 	// This annotation represents that the annotated object is for temporary use during pod/volume provisioning
 	EphemeralProvisioningObject string = "kubevirt.io/ephemeral-provisioning"
+	// This annotation indicates the VMI contains an ephemeral hotplug volume
+	EphemeralHotplugAnnotation string = "kubevirt.io/ephemeral-hotplug-volumes"
 
 	// This label indicates the object is a part of the install strategy retrieval process.
 	InstallStrategyLabel = "kubevirt.io/install-strategy"
@@ -1221,6 +1223,22 @@ const (
 	// Used on VirtualMachineInstance.
 	IgnitionAnnotation           string = "kubevirt.io/ignitiondata"
 	PlacePCIDevicesOnRootComplex string = "kubevirt.io/placePCIDevicesOnRootComplex"
+
+	// PciTopologyVersionAnnotation documents which PCI topology scheme was used to
+	// define the domain. Used to preserve PCI device addresses across reboots and upgrades.
+	PciTopologyVersionAnnotation string = "kubevirt.io/pci-topology-version"
+	// PciInterfaceSlotCountAnnotation stores the frozen total of placeholder interfaces
+	// plus boot-time non-hotplug interfaces. Set by virt-handler on detected v2 VMs.
+	// On subsequent boots, the placeholder count is derived as
+	// max(0, slotTotal - currentInterfaceCount), absorbing interface additions/removals
+	// while stopped without shifting PCI addresses.
+	PciInterfaceSlotCountAnnotation string = "kubevirt.io/pci-interface-slot-count"
+	// PciTopologyVersionV2 indicates the VM was created with the v2 hotplug port formula
+	// from PR #14754, which is unstable across spec changes.
+	PciTopologyVersionV2 string = "v2"
+	// PciTopologyVersionV3 indicates the VM uses v1 placeholders (for address stability)
+	// plus direct pcie-root-port controllers (for hotplug capacity).
+	PciTopologyVersionV3 string = "v3"
 
 	// This label represents supported cpu features on the node
 	CPUFeatureLabel = "cpu-feature.node.kubevirt.io/"
@@ -1917,19 +1935,12 @@ type VirtualMachineRunStrategy string
 // These are the valid VMI run strategies
 const (
 	// Placeholder. Not a valid RunStrategy.
-	RunStrategyUnknown VirtualMachineRunStrategy = ""
-	// VMI should always be running.
-	RunStrategyAlways VirtualMachineRunStrategy = "Always"
-	// VMI should never be running.
-	RunStrategyHalted VirtualMachineRunStrategy = "Halted"
-	// VMI can be started/stopped using API endpoints.
-	RunStrategyManual VirtualMachineRunStrategy = "Manual"
-	// VMI will initially be running--and restarted if a failure occurs.
-	// It will not be restarted upon successful completion.
+	RunStrategyUnknown        VirtualMachineRunStrategy = ""
+	RunStrategyAlways         VirtualMachineRunStrategy = "Always"
+	RunStrategyHalted         VirtualMachineRunStrategy = "Halted"
+	RunStrategyManual         VirtualMachineRunStrategy = "Manual"
 	RunStrategyRerunOnFailure VirtualMachineRunStrategy = "RerunOnFailure"
-	// VMI will run once and not be restarted upon completion regardless
-	// if the completion is of phase Failure or Success
-	RunStrategyOnce VirtualMachineRunStrategy = "Once"
+	RunStrategyOnce           VirtualMachineRunStrategy = "Once"
 	// Receiver pod will be created waiting for an incoming migration. Switch after to expected
 	// RunStrategy.
 	RunStrategyWaitAsReceiver VirtualMachineRunStrategy = "WaitAsReceiver"
@@ -1952,6 +1963,12 @@ type VirtualMachineSpec struct {
 
 	// Running state indicates the requested running state of the VirtualMachineInstance
 	// mutually exclusive with Running
+	// Following are allowed values:
+	// - "Always": VMI should always be running.
+	// - "Halted": VMI should never be running.
+	// - "Manual": VMI can be started/stopped using API endpoints.
+	// - "RerunOnFailure": VMI will initially be running and restarted if a failure occurs, but will not be restarted upon successful completion.
+	// - "Once": VMI will run once and not be restarted upon completion regardless if the completion is of phase Failure or Success.
 	RunStrategy *VirtualMachineRunStrategy `json:"runStrategy,omitempty" optional:"true"`
 
 	// InstancetypeMatcher references a instancetype that is used to fill fields in Template
