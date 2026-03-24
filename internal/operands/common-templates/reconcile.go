@@ -146,7 +146,12 @@ func incrementTemplatesRestoredMetric(reconcileResults []common.ReconcileResult,
 			oldVersion := reconcileResult.InitialResource.GetLabels()[TemplateVersionLabel]
 			newVersion := reconcileResult.Resource.GetLabels()[TemplateVersionLabel]
 
-			if reconcileResult.OperationResult == common.OperationResultUpdated && oldVersion == newVersion {
+			oldAppVersion := reconcileResult.InitialResource.GetLabels()[common.AppKubernetesVersionLabel]
+			newAppVersion := reconcileResult.Resource.GetLabels()[common.AppKubernetesVersionLabel]
+
+			if reconcileResult.OperationResult == common.OperationResultUpdated &&
+				oldVersion == newVersion &&
+				oldAppVersion == newAppVersion {
 				logger.Info(fmt.Sprintf("Changes reverted in common template: %s", reconcileResult.Resource.GetName()))
 				metrics.IncCommonTemplatesRestored()
 			}
