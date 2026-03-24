@@ -118,6 +118,8 @@ var _ = Describe("Common-Templates operand", func() {
 			template.Namespace = namespace
 			template.Labels[defaultOsLabel] = "true"
 			template.Labels[testLabel] = "test"
+			template.Labels[common.AppKubernetesPartOfLabel] = request.Instance.Labels[common.AppKubernetesPartOfLabel]
+			template.Labels[common.AppKubernetesVersionLabel] = request.Instance.Labels[common.AppKubernetesVersionLabel]
 			Expect(request.Client.Create(request.Context, &template)).To(Succeed())
 		}
 
@@ -333,14 +335,16 @@ var _ = Describe("Common-Templates operand", func() {
 		})
 
 		It("should not increase when SSP CR is changed", func() {
+			_, err := operand.Reconcile(&request)
+			Expect(err).ToNot(HaveOccurred())
+
 			const updatedPartOf = "updated-part-of"
 			const updatedVersion = "v2.0.0"
 
 			request.Instance.Labels[common.AppKubernetesPartOfLabel] = updatedPartOf
 			request.Instance.Labels[common.AppKubernetesVersionLabel] = updatedVersion
-			request.InstanceChanged = true
 
-			_, err := operand.Reconcile(&request)
+			_, err = operand.Reconcile(&request)
 			Expect(err).ToNot(HaveOccurred())
 
 			updatedTemplate := getTemplate(request, template)
