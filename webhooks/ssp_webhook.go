@@ -23,7 +23,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"kubevirt.io/controller-lifecycle-operator-sdk/api"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -43,16 +42,14 @@ import (
 var ssplog = logf.Log.WithName("ssp-resource")
 
 func Setup(mgr ctrl.Manager) error {
-	err := ctrl.NewWebhookManagedBy(mgr).
-		For(&sspv1beta2.SSP{}).
-		WithValidator(newSspValidator(mgr.GetClient())).
+	err := ctrl.NewWebhookManagedBy(mgr, &sspv1beta2.SSP{}).
+		WithValidator(newSspValidatorV1beta2(mgr.GetClient())).
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to create webhook for v1beta2.SSP")
 	}
 
-	err = ctrl.NewWebhookManagedBy(mgr).
-		For(&sspv1beta3.SSP{}).
+	err = ctrl.NewWebhookManagedBy(mgr, &sspv1beta3.SSP{}).
 		WithValidator(newSspValidator(mgr.GetClient())).
 		Complete()
 	if err != nil {
@@ -66,19 +63,14 @@ type sspValidator struct {
 	apiClient client.Client
 }
 
-var _ admission.CustomValidator = &sspValidator{}
+var _ admission.Validator[*sspv1beta3.SSP] = &sspValidator{}
 
-func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	sspObj, err := getSsp(obj)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *sspValidator) ValidateCreate(ctx context.Context, obj *sspv1beta3.SSP) (admission.Warnings, error) {
 	var ssps sspv1beta3.SSPList
 
 	// Check if no other SSP resources are present in the cluster
-	ssplog.Info("validate create", "name", sspObj.Name)
-	err = s.apiClient.List(ctx, &ssps, &client.ListOptions{})
+	ssplog.Info("validate create", "name", obj.Name)
+	err := s.apiClient.List(ctx, &ssps, &client.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not list SSPs for validation, please try again: %v", err)
 	}
@@ -86,21 +78,16 @@ func (s *sspValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (
 		return nil, fmt.Errorf("creation failed, an SSP CR already exists in namespace %v: %v", ssps.Items[0].Namespace, ssps.Items[0].Name)
 	}
 
-	return s.validateSspObject(ctx, sspObj)
+	return s.validateSspObject(ctx, obj)
 }
 
-func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj runtime.Object) (admission.Warnings, error) {
-	newSsp, err := getSsp(newObj)
-	if err != nil {
-		return nil, err
-	}
+func (s *sspValidator) ValidateUpdate(ctx context.Context, _, newObj *sspv1beta3.SSP) (admission.Warnings, error) {
+	ssplog.Info("validate update", "name", newObj.Name)
 
-	ssplog.Info("validate update", "name", newSsp.Name)
-
-	return s.validateSspObject(ctx, newSsp)
+	return s.validateSspObject(ctx, newObj)
 }
 
-func (s *sspValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
+func (s *sspValidator) ValidateDelete(_ context.Context, _ *sspv1beta3.SSP) (admission.Warnings, error) {
 	return nil, nil
 }
 
@@ -219,13 +206,24 @@ func newSspValidator(clt client.Client) *sspValidator {
 	return &sspValidator{apiClient: clt}
 }
 
-func getSsp(obj runtime.Object) (*sspv1beta3.SSP, error) {
-	switch sspObj := obj.(type) {
-	case *sspv1beta3.SSP:
-		return sspObj, nil
-	case *sspv1beta2.SSP:
-		return convert.ConvertSSP(sspObj), nil
-	default:
-		return nil, fmt.Errorf("unexpected type: %T", obj)
-	}
+func newSspValidatorV1beta2(clt client.Client) *sspValidatorV1beta2 {
+	return &sspValidatorV1beta2{newSspValidator(clt)}
 }
+
+type sspValidatorV1beta2 struct {
+	admission.Validator[*sspv1beta3.SSP]
+}
+
+func (s *sspValidatorV1beta2) ValidateCreate(ctx context.Context, obj *sspv1beta2.SSP) (warnings admission.Warnings, err error) {
+	return s.Validator.ValidateCreate(ctx, convert.ConvertSSP(obj))
+}
+
+func (s *sspValidatorV1beta2) ValidateUpdate(ctx context.Context, oldObj, newObj *sspv1beta2.SSP) (warnings admission.Warnings, err error) {
+	return s.Validator.ValidateUpdate(ctx, convert.ConvertSSP(oldObj), convert.ConvertSSP(newObj))
+}
+
+func (s *sspValidatorV1beta2) ValidateDelete(ctx context.Context, obj *sspv1beta2.SSP) (warnings admission.Warnings, err error) {
+	return s.Validator.ValidateDelete(ctx, convert.ConvertSSP(obj))
+}
+
+var _ admission.Validator[*sspv1beta2.SSP] = &sspValidatorV1beta2{}
