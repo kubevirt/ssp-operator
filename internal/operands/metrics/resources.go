@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -145,8 +146,12 @@ func newServiceMonitor(name,
 				{
 					Port:        MetricsPortName,
 					Scheme:      ptr.To(promv1.Scheme("https")),
-					TLSConfig:   tlsConfig,
 					HonorLabels: true,
+					HTTPConfigWithProxyAndTLSFiles: promv1.HTTPConfigWithProxyAndTLSFiles{
+						HTTPConfigWithTLSFiles: promv1.HTTPConfigWithTLSFiles{
+							TLSConfig: tlsConfig,
+						},
+					},
 				},
 			},
 		},

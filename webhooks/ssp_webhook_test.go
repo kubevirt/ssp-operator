@@ -45,9 +45,7 @@ var _ = Describe("SSP Validation", func() {
 	var (
 		apiClient       client.Client
 		createIntercept func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error
-
-		validator admission.CustomValidator
-		ctx       context.Context
+		ctx             context.Context
 	)
 
 	BeforeEach(func() {
@@ -63,8 +61,6 @@ var _ = Describe("SSP Validation", func() {
 				},
 			}).
 			Build()
-
-		validator = newSspValidator(apiClient)
 	})
 
 	Context("creating SSP CR", func() {
@@ -88,7 +84,7 @@ var _ = Describe("SSP Validation", func() {
 				Spec: sspv1beta2.SSPSpec{},
 			}
 
-			_, err := validator.ValidateCreate(ctx, ssp)
+			_, err := newSspValidatorV1beta2(apiClient).ValidateCreate(ctx, ssp)
 			Expect(err).To(MatchError(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp")))
 		})
 
@@ -101,12 +97,18 @@ var _ = Describe("SSP Validation", func() {
 				Spec: sspv1beta3.SSPSpec{},
 			}
 
-			_, err := validator.ValidateCreate(ctx, ssp)
+			_, err := newSspValidator(apiClient).ValidateCreate(ctx, ssp)
 			Expect(err).To(MatchError(ContainSubstring("creation failed, an SSP CR already exists in namespace test-ns: test-ssp")))
 		})
 	})
 
 	Context("v1beta2", func() {
+		var validator admission.Validator[*sspv1beta2.SSP]
+
+		BeforeEach(func() {
+			validator = newSspValidatorV1beta2(apiClient)
+		})
+
 		Context("DataImportCronTemplates", func() {
 			var (
 				oldSSP *sspv1beta2.SSP
@@ -248,6 +250,12 @@ var _ = Describe("SSP Validation", func() {
 	})
 
 	Context("v1beta3", func() {
+		var validator admission.Validator[*sspv1beta3.SSP]
+
+		BeforeEach(func() {
+			validator = newSspValidator(apiClient)
+		})
+
 		Context("DataImportCronTemplates", func() {
 			var (
 				oldSSP *sspv1beta3.SSP
