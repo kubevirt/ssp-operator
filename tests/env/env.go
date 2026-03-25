@@ -13,6 +13,7 @@ const (
 	envExistingCrNamespace    = "TEST_EXISTING_CR_NAMESPACE"
 	envSkipUpdateSspTests     = "SKIP_UPDATE_SSP_TESTS"
 	envSkipCleanupAfterTests  = "SKIP_CLEANUP_AFTER_TESTS"
+	envSkipTektonTests        = "SKIP_TEKTON_TESTS"
 	envTimeout                = "TIMEOUT_MINUTES"
 	envShortTimeout           = "SHORT_TIMEOUT_MINUTES"
 	envTopologyMode           = "TOPOLOGY_MODE"
@@ -45,6 +46,10 @@ func SkipUpdateSspTests() bool {
 
 func ShouldSkipCleanupAfterTests() bool {
 	return getBoolEnv(envSkipCleanupAfterTests)
+}
+
+func SkipTektonTests() bool {
+	return getBoolEnv(envSkipTektonTests)
 }
 
 var timeout time.Duration
