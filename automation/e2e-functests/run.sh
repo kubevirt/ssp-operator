@@ -14,4 +14,7 @@ export VALIDATOR_IMG=${CI_VALIDATOR_IMG}
 export IMG=${CI_OPERATOR_IMG}
 export SKIP_CLEANUP_AFTER_TESTS=true
 
+# Skipping tekton tests, because the upstream container image of tekton operator v0.67 was removed from the repository.
+export SKIP_TEKTON_TESTS="true"
+
 make deploy functest

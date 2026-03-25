@@ -18,6 +18,10 @@ import (
 )
 
 var _ = Describe("Tekton Tasks Operand", func() {
+	BeforeEach(func() {
+		strategy.SkipTektonTestsIfNeeded()
+	})
+
 	Context("resource creation when DeployTektonTaskResources is set to true", func() {
 		BeforeEach(func() {
 			strategy.SkipSspUpdateTestsIfNeeded()

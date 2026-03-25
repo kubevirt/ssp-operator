@@ -73,6 +73,7 @@ type TestSuiteStrategy interface {
 
 	RevertToOriginalSspCr()
 	SkipSspUpdateTestsIfNeeded()
+	SkipTektonTestsIfNeeded()
 	SkipUnlessHighlyAvailableTopologyMode()
 	SkipUnlessSingleReplicaTopologyMode()
 	SkipIfUpgradeLane()
@@ -212,6 +213,12 @@ func (s *newSspStrategy) SkipSspUpdateTestsIfNeeded() {
 	// Do not skip SSP update tests in this strategy
 }
 
+func (s *newSspStrategy) SkipTektonTestsIfNeeded() {
+	if env.SkipTektonTests() {
+		Skip("Tekton tests are disabled", 1)
+	}
+}
+
 func (s *newSspStrategy) SkipUnlessSingleReplicaTopologyMode() {
 	if topologyMode != osconfv1.SingleReplicaTopologyMode {
 		Skip("Tests that are specific for SingleReplicaTopologyMode are disabled", 1)
@@ -342,6 +349,12 @@ func (s *existingSspStrategy) RevertToOriginalSspCr() {
 func (s *existingSspStrategy) SkipSspUpdateTestsIfNeeded() {
 	if s.sspModificationDisabled() {
 		Skip("Tests that update SSP CR are disabled", 1)
+	}
+}
+
+func (s *existingSspStrategy) SkipTektonTestsIfNeeded() {
+	if env.SkipTektonTests() {
+		Skip("Tekton tests are disabled", 1)
 	}
 }
 
