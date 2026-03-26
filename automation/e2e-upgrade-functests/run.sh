@@ -69,4 +69,7 @@ export TEST_EXISTING_CR_NAME="${SSP_NAME}"
 export TEST_EXISTING_CR_NAMESPACE="${SSP_NAMESPACE}"
 export IS_UPGRADE_LANE="true"
 
+# Skipping tekton tests, because the upstream container image of tekton operator v0.67 was removed from the repository.
+export SKIP_TEKTON_TESTS="true"
+
 make deploy functest
