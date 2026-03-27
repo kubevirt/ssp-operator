@@ -16,6 +16,10 @@ import (
 )
 
 var _ = Describe("Tekton Pipelines Operand", func() {
+	BeforeEach(func() {
+		strategy.SkipTektonTestsIfNeeded()
+	})
+
 	Context("resource creation when DeployTektonTaskResources is set to true", func() {
 		BeforeEach(func() {
 			strategy.SkipSspUpdateTestsIfNeeded()
