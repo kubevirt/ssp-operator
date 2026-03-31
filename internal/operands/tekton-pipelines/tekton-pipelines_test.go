@@ -313,12 +313,12 @@ func getMockedRequest() *common.Request {
 			Kind:       "CustomResourceDefinition",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: tektonCrd,
+			Name: tektonPipelinesCrd,
 		},
 	}
 	Expect(client.Create(context.Background(), tektonCrdObj)).To(Succeed())
 
-	crdWatch := crd_watch.New(tektonCrd)
+	crdWatch := crd_watch.New(tektonPipelinesCrd)
 	Expect(crdWatch.Init(context.Background(), client)).To(Succeed())
 
 	return &common.Request{

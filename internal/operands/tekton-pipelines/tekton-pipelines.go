@@ -24,7 +24,7 @@ const (
 	namespacePattern           = "^(openshift|kube)-"
 	operandName                = "tekton-pipelines"
 	operandComponent           = common.AppComponentTektonPipelines
-	tektonCrd                  = "tasks.tekton.dev"
+	tektonPipelinesCrd         = "pipelines.tekton.dev"
 	deployNamespaceAnnotation  = "kubevirt.io/tekton-piplines-deploy-namespace"
 	pipelineServiceAccountName = "pipeline"
 	kubevirtNamespace          = "kubevirt"
@@ -40,7 +40,7 @@ func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
 		// Solution to optional Tekton CRD is not implemented yet.
 		// Until then, do not watch to Tekton CRD.
-		// {Object: &pipeline.Pipeline{}, Crd: tektonCrd, WatchFullObject: true},
+		// {Object: &pipeline.Pipeline{}, Crd: tektonPipelinesCrd, WatchFullObject: true},
 		{Object: &v1.ConfigMap{}},
 		{Object: &rbac.RoleBinding{}},
 		{Object: &v1.ServiceAccount{}},
@@ -89,8 +89,8 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 		request.Logger.V(1).Info("Tekton Pipelines resources were not deployed, because spec.featureGates.deployTektonTaskResources is set to false")
 		return nil, nil
 	}
-	if !request.CrdList.CrdExists(tektonCrd) {
-		return nil, fmt.Errorf("tekton CRD %s does not exist", tektonCrd)
+	if !request.CrdList.CrdExists(tektonPipelinesCrd) {
+		return nil, fmt.Errorf("tekton CRD %s does not exist", tektonPipelinesCrd)
 	}
 
 	var reconcileFunc []common.ReconcileFunc
@@ -116,7 +116,7 @@ func (t *tektonPipelines) Reconcile(request *common.Request) ([]common.Reconcile
 
 func (t *tektonPipelines) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
-	if request.CrdList.CrdExists(tektonCrd) {
+	if request.CrdList.CrdExists(tektonPipelinesCrd) {
 		for _, p := range t.pipelines {
 			o := p.DeepCopy()
 			objects = append(objects, o)

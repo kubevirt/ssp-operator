@@ -30,9 +30,10 @@ import (
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;create;patch;delete
 
 const (
-	operandName      = "tekton-tasks"
-	operandComponent = common.AppComponentTektonTasks
-	tektonCrd        = "tasks.tekton.dev"
+	operandName           = "tekton-tasks"
+	operandComponent      = common.AppComponentTektonTasks
+	tektonTasksCrd        = "tasks.tekton.dev"
+	tektonClusterTasksCrd = "clustertasks.tekton.dev"
 
 	cleanVMTaskName              = "cleanup-vm"
 	copyTemplateTaskName         = "copy-template"
@@ -71,7 +72,7 @@ func WatchClusterTypes() []operands.WatchType {
 	return []operands.WatchType{
 		// Solution to optional Tekton CRD is not implemented yet.
 		// Until then, do not watch to Tekton CRD.
-		// {Object: &pipeline.Task{}, Crd: tektonCrd, WatchFullObject: true},
+		// {Object: &pipeline.Task{}, Crd: tektonTasksCrd, WatchFullObject: true},
 		{Object: &rbac.ClusterRole{}},
 		{Object: &rbac.RoleBinding{}},
 		{Object: &v1.ServiceAccount{}},
@@ -149,8 +150,8 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 		request.Logger.V(1).Info("Tekton Tasks resources were not deployed, because spec.featureGates.deployTektonTaskResources is set to false")
 		return nil, nil
 	}
-	if !request.CrdList.CrdExists(tektonCrd) {
-		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonCrd)
+	if !request.CrdList.CrdExists(tektonTasksCrd) {
+		return nil, fmt.Errorf("Tekton CRD %s does not exist", tektonTasksCrd)
 	}
 
 	var reconcileFunc []common.ReconcileFunc
@@ -175,7 +176,7 @@ func (t *tektonTasks) Reconcile(request *common.Request) ([]common.ReconcileResu
 
 func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, error) {
 	var objects []client.Object
-	if request.CrdList.CrdExists(tektonCrd) {
+	if request.CrdList.CrdExists(tektonTasksCrd) {
 		for _, t := range t.tasks {
 			o := t.DeepCopy()
 			objects = append(objects, o)
@@ -199,7 +200,7 @@ func (t *tektonTasks) Cleanup(request *common.Request) ([]common.CleanupResult, 
 		objects = append(objects, o)
 	}
 
-	if request.CrdList.CrdExists(tektonCrd) {
+	if request.CrdList.CrdExists(tektonClusterTasksCrd) {
 		clusterTasks, err := listDeprecatedClusterTasks(request)
 		if err != nil {
 			return nil, err
