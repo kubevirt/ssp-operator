@@ -31,7 +31,7 @@ require (
 	k8s.io/kube-aggregator v0.35.3
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 	kubevirt.io/api v1.8.1
-	kubevirt.io/containerized-data-importer-api v1.64.0
+	kubevirt.io/containerized-data-importer-api v1.65.0
 	kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 	kubevirt.io/ssp-operator/api v0.0.0
 	kubevirt.io/vm-console-proxy/api v0.8.1
