@@ -42,6 +42,14 @@ oc patch -n $NAMESPACE kubevirt kubevirt --type='json' -p '[{
   },
 }]'
 
+if [[ "${USE_EMULATION:-false}" == "true" ]]; then
+  oc patch -n $NAMESPACE kubevirt kubevirt --type='json' -p '[{
+    "op": "add",
+    "path": "/spec/configuration/developerConfiguration/useEmulation",
+    "value": true
+  }]'
+fi
+
 echo "Waiting for Kubevirt to be ready..."
 oc wait --for=condition=Available --timeout=600s -n $NAMESPACE kv/kubevirt
 

@@ -8,7 +8,7 @@ set -e
 # CI_OPERATOR_IMG - path of the operator image in the local repository accessible on the CI
 # CI_VALIDATOR_IMG - path of the validator image in the local repository accessible on the CI
 
-./automation/common/deploy-kubevirt-and-cdi.sh
+USE_EMULATION=true ./automation/common/deploy-kubevirt-and-cdi.sh
 
 # Install network policy to block traffic to/from SSP and its components by default
 KUBECTL=oc ./hack/install-network-policy.sh

@@ -12,7 +12,7 @@ set -e
 SOURCE_DIR=$(dirname "$0")
 
 # Deploy KubeVirt and CDI
-./automation/common/deploy-kubevirt-and-cdi.sh
+USE_EMULATION=true ./automation/common/deploy-kubevirt-and-cdi.sh
 
 # Deploy latest released SSP operator
 NAMESPACE=${1:-kubevirt}
