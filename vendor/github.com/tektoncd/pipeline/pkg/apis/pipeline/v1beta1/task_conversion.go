@@ -89,7 +89,7 @@ func (ts *TaskSpec) ConvertTo(ctx context.Context, sink *v1.TaskSpec, meta *meta
 		s.convertTo(ctx, &new)
 		sink.Steps = append(sink.Steps, new)
 	}
-	sink.Volumes = ts.Volumes
+	sink.Volumes = v1.Volumes(ts.Volumes)
 	if ts.StepTemplate != nil {
 		new := v1.StepTemplate{}
 		ts.StepTemplate.convertTo(ctx, &new)
@@ -149,7 +149,7 @@ func (ts *TaskSpec) ConvertFrom(ctx context.Context, source *v1.TaskSpec, meta *
 		new.convertFrom(ctx, s)
 		ts.Steps = append(ts.Steps, new)
 	}
-	ts.Volumes = source.Volumes
+	ts.Volumes = Volumes(source.Volumes)
 	if source.StepTemplate != nil {
 		new := StepTemplate{}
 		new.convertFrom(ctx, source.StepTemplate)
@@ -212,7 +212,7 @@ func serializeTaskDeprecations(meta *metav1.ObjectMeta, spec *TaskSpec, taskName
 	existingDeprecations := taskDeprecations{}
 	if str, ok := meta.Annotations[TaskDeprecationsAnnotationKey]; ok {
 		if err := json.Unmarshal([]byte(str), &existingDeprecations); err != nil {
-			return fmt.Errorf("error deserializing key %s from metadata: %w", TaskDeprecationsAnnotationKey, err)
+			return fmt.Errorf("error serializing key %s from metadata: %w", TaskDeprecationsAnnotationKey, err)
 		}
 	}
 	if taskDeprecation != nil {
@@ -238,7 +238,7 @@ func deserializeTaskDeprecations(meta *metav1.ObjectMeta, spec *TaskSpec, taskNa
 		if len(spec.Steps) != len(td.DeprecatedSteps) {
 			return errors.New("length of deserialized steps mismatch the length of target steps")
 		}
-		for i := 0; i < len(spec.Steps); i++ {
+		for i := range len(spec.Steps) {
 			spec.Steps[i].DeprecatedPorts = td.DeprecatedSteps[i].DeprecatedPorts
 			spec.Steps[i].DeprecatedLivenessProbe = td.DeprecatedSteps[i].DeprecatedLivenessProbe
 			spec.Steps[i].DeprecatedReadinessProbe = td.DeprecatedSteps[i].DeprecatedReadinessProbe
