@@ -18,9 +18,8 @@ package result
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -35,6 +34,12 @@ const (
 	UnknownResultType = 10
 	// StepResultType default step result value
 	StepResultType ResultType = 4
+
+	// StepArtifactsResultType default step artifacts result value
+	StepArtifactsResultType ResultType = 5
+
+	// TaskRunArtifactsResultType default taskRun artifacts result value
+	TaskRunArtifactsResultType ResultType = 6
 )
 
 // RunResult is used to write key/value pairs to TaskRun pod termination messages.
@@ -78,7 +83,7 @@ func (r *ResultType) UnmarshalJSON(data []byte) error {
 	var asString string
 
 	if err := json.Unmarshal(data, &asString); err != nil {
-		return fmt.Errorf("unsupported value type, neither int nor string: %w", multierror.Append(intErr, err).ErrorOrNil())
+		return fmt.Errorf("unsupported value type, neither int nor string: %w", errors.Join(intErr, err))
 	}
 
 	switch asString {
@@ -88,6 +93,10 @@ func (r *ResultType) UnmarshalJSON(data []byte) error {
 		*r = TaskRunResultType
 	case "InternalTektonResult":
 		*r = InternalTektonResultType
+	case "StepArtifactsResult":
+		*r = StepArtifactsResultType
+	case "TaskRunArtifactsResult":
+		*r = TaskRunArtifactsResultType
 	default:
 		*r = UnknownResultType
 	}

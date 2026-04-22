@@ -89,6 +89,15 @@ type SourceStatus struct {
 	// according to https://www.rfc-editor.org/rfc/rfc7468.
 	// +optional
 	SinkCACerts *string `json:"sinkCACerts,omitempty"`
+
+	// SinkAudience is the OIDC audience of the sink.
+	// +optional
+	SinkAudience *string `json:"sinkAudience,omitempty"`
+
+	// Auth defines the attributes that provide the generated service account
+	// name in the resource status.
+	// +optional
+	Auth *AuthStatus `json:"auth,omitempty"`
 }
 
 // CloudEventAttributes specifies the attributes that a Source
@@ -149,7 +158,7 @@ func (s *Source) Populate() {
 		// Populate ALL fields
 		Type:               SourceConditionSinkProvided,
 		Status:             corev1.ConditionTrue,
-		LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Date(1984, 02, 28, 18, 52, 00, 00, time.UTC))},
+		LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Date(1984, 2, 28, 18, 52, 0, 0, time.UTC))},
 	}}
 	s.Status.SinkURI = &apis.URL{
 		Scheme:   "https",
@@ -214,6 +223,7 @@ func validateExtensionName(key string) *apis.FieldError {
 	}
 
 	for _, c := range key {
+		//nolint:staticcheck
 		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
 			return apis.ErrInvalidKeyName(
 				key,

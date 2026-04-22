@@ -15,17 +15,18 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -36,14 +37,18 @@ type TaskRunSpec struct {
 	// +optional
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
+	// Specifying TaskSpec can be disabled by setting
+	// `disable-inline-spec` feature flag.
+	// See Task.spec (API version: tekton.dev/v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 	// Used for cancelling a TaskRun (and maybe more later on)
 	// +optional
@@ -80,6 +85,12 @@ type TaskRunSpec struct {
 	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	// ManagedBy indicates which controller is responsible for reconciling
+	// this resource. If unset or set to "tekton.dev/pipeline", the default
+	// Tekton controller will manage this resource.
+	// This field is immutable.
+	// +optional
+	ManagedBy *string `json:"managedBy,omitempty"`
 }
 
 // TaskRunSpecStatus defines the TaskRun spec status the user can provide
@@ -89,6 +100,9 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+	// TaskRunSpecStatusPending indicates that the user wants to postpone starting the task.
+	// When pending, no Pod is created and StartTime is not set.
+	TaskRunSpecStatusPending = "TaskRunPending"
 )
 
 // TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.
@@ -119,6 +133,9 @@ type TaskBreakpoints struct {
 	// failed step will not exit
 	// +optional
 	OnFailure string `json:"onFailure,omitempty"`
+	// +optional
+	// +listType=atomic
+	BeforeSteps []string `json:"beforeSteps,omitempty"`
 }
 
 // NeedsDebugOnFailure return true if the TaskRun is configured to debug on failure
@@ -129,14 +146,28 @@ func (trd *TaskRunDebug) NeedsDebugOnFailure() bool {
 	return trd.Breakpoints.OnFailure == EnabledOnFailureBreakpoint
 }
 
+// NeedsDebugBeforeStep return true if the step is configured to debug before execution
+func (trd *TaskRunDebug) NeedsDebugBeforeStep(stepName string) bool {
+	if trd.Breakpoints == nil {
+		return false
+	}
+	beforeStepSets := sets.NewString(trd.Breakpoints.BeforeSteps...)
+	return beforeStepSets.Has(stepName)
+}
+
 // StepNeedsDebug return true if the step is configured to debug
 func (trd *TaskRunDebug) StepNeedsDebug(stepName string) bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || trd.NeedsDebugBeforeStep(stepName)
 }
 
 // NeedsDebug return true if defined onfailure or have any before, after steps
 func (trd *TaskRunDebug) NeedsDebug() bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || trd.HaveBeforeSteps()
+}
+
+// HaveBeforeSteps return true if have any before steps
+func (trd *TaskRunDebug) HaveBeforeSteps() bool {
+	return trd.Breakpoints != nil && len(trd.Breakpoints.BeforeSteps) > 0
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -184,12 +215,33 @@ const (
 	TaskRunReasonResolvingStepActionRef = "ResolvingStepActionRef"
 	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
 	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
+	// TaskRunReasonCreateContainerConfigError is the reason set when the step of a task fails due to config error (e.g., missing ConfigMap or Secret)
+	TaskRunReasonCreateContainerConfigError TaskRunReason = "CreateContainerConfigError"
+	// TaskRunReasonPodCreationFailed is the reason set when the pod backing the TaskRun fails to be created (e.g., CreateContainerError)
+	TaskRunReasonPodCreationFailed TaskRunReason = "PodCreationFailed"
 	// TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
-	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
+	TaskRunReasonStopSidecarFailed TaskRunReason = "TaskRunStopSidecarFailed"
 	// TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.
-	TaskRunReasonInvalidParamValue = "InvalidParamValue"
+	TaskRunReasonInvalidParamValue TaskRunReason = "InvalidParamValue"
+	// TaskRunReasonFailedResolution indicated that the reason for failure status is
+	// that references within the TaskRun could not be resolved
+	TaskRunReasonFailedResolution TaskRunReason = "TaskRunResolutionFailed"
+	// TaskRunReasonFailedValidation indicated that the reason for failure status is
+	// that taskrun failed runtime validation
+	TaskRunReasonFailedValidation TaskRunReason = "TaskRunValidationFailed"
+	// TaskRunReasonTaskFailedValidation indicated that the reason for failure status is
+	// that task failed runtime validation
+	TaskRunReasonTaskFailedValidation TaskRunReason = "TaskValidationFailed"
+	// TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
+	// it could be the content has changed, signature is invalid or public key is invalid
+	TaskRunReasonResourceVerificationFailed TaskRunReason = "ResourceVerificationFailed"
+	// TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.
+	// TaskRuns failed due to reconciler/validation error should not use this reason.
+	TaskRunReasonFailureIgnored TaskRunReason = "FailureIgnored"
+	// TaskRunReasonPending is the reason set when the TaskRun is in the pending state
+	TaskRunReasonPending TaskRunReason = "TaskRunPending"
 )
 
 func (t TaskRunReason) String() string {
@@ -227,11 +279,14 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  reason.String(),
-		Message: err.Error(),
+		Message: pipelineErrors.GetErrorMessage(err),
 	})
 	succeeded := trs.GetCondition(apis.ConditionSucceeded)
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
+
+// +listType=atomic
+type RetriesStatus []TaskRunStatus
 
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
@@ -254,13 +309,18 @@ type TaskRunStatusFields struct {
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// +optional
-	// +listType=atomic
-	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
 
 	// Results are the list of results written out by the task's containers
 	// +optional
 	// +listType=atomic
 	Results []TaskRunResult `json:"results,omitempty"`
+
+	// Artifacts are the list of artifacts written out by the task's containers
+	// +optional
+	Artifacts *Artifacts `json:"artifacts,omitempty"`
 
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
@@ -338,10 +398,14 @@ func (trs *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 // StepState reports the results of running a step in a Task.
 type StepState struct {
 	corev1.ContainerState `json:",inline"`
-	Name                  string              `json:"name,omitempty"`
-	Container             string              `json:"container,omitempty"`
-	ImageID               string              `json:"imageID,omitempty"`
-	Results               []TaskRunStepResult `json:"results,omitempty"`
+	Name                  string                `json:"name,omitempty"`
+	Container             string                `json:"container,omitempty"`
+	ImageID               string                `json:"imageID,omitempty"`
+	Results               []TaskRunStepResult   `json:"results,omitempty"`
+	Provenance            *Provenance           `json:"provenance,omitempty"`
+	TerminationReason     string                `json:"terminationReason,omitempty"`
+	Inputs                []TaskRunStepArtifact `json:"inputs,omitempty"`
+	Outputs               []TaskRunStepArtifact `json:"outputs,omitempty"`
 }
 
 // SidecarState reports the results of running a sidecar in a Task.
@@ -361,6 +425,7 @@ type SidecarState struct {
 // used to run the steps in a Task.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type TaskRun struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -389,7 +454,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	}
 	for _, ref := range tr.GetOwnerReferences() {
 		if ref.Kind == pipeline.PipelineRunControllerName {
-			return fmt.Sprintf("%s-pvc", ref.Name)
+			return ref.Name + "-pvc"
 		}
 	}
 	return ""
@@ -429,6 +494,11 @@ func (tr *TaskRun) IsFailure() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// IsPending returns true if the TaskRun's spec status is set to Pending state.
+func (tr *TaskRun) IsPending() bool {
+	return tr.Spec.Status == TaskRunSpecStatusPending
 }
 
 // IsRetriable returns true if the TaskRun's Retries is not exhausted.

@@ -20,16 +20,19 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/internal/artifactref"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -49,16 +52,20 @@ const (
 	objectVariableNameFormat = "^[_a-zA-Z][_a-zA-Z0-9-]*$"
 )
 
-var _ apis.Validatable = (*Task)(nil)
-var _ resourcesemantics.VerbLimited = (*Task)(nil)
+var (
+	_ apis.Validatable              = (*Task)(nil)
+	_ resourcesemantics.VerbLimited = (*Task)(nil)
+)
 
 // SupportedVerbs returns the operations that validation should be called for
 func (t *Task) SupportedVerbs() []admissionregistrationv1.OperationType {
 	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
 }
 
-var stringAndArrayVariableNameFormatRegex = regexp.MustCompile(stringAndArrayVariableNameFormat)
-var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
+var (
+	stringAndArrayVariableNameFormatRegex = regexp.MustCompile(stringAndArrayVariableNameFormat)
+	objectVariableNameFormatRegex         = regexp.MustCompile(objectVariableNameFormat)
+)
 
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
@@ -71,7 +78,6 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
-	errs = errs.Also(ts.ValidateBetaFields(ctx))
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
@@ -101,35 +107,6 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
-// ValidateBetaFields returns an error if the TaskSpec uses beta specifications governed by
-// `enable-api-fields` but does not have "enable-api-fields" set to "alpha" or "beta".
-func (ts *TaskSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
-	var errs *apis.FieldError
-	// Object parameters
-	for i, p := range ts.Params {
-		if p.Type == ParamTypeObject {
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
-		}
-	}
-	// Indexing into array parameters
-	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
-	if len(arrayIndexParamRefs) != 0 {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
-	}
-	// Array and object results
-	for i, result := range ts.Results {
-		switch result.Type {
-		case ResultsTypeObject:
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
-		case ResultsTypeArray:
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
-		case ResultsTypeString:
-		default:
-		}
-	}
-	return errs
-}
-
 // ValidateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
 func ValidateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
@@ -146,7 +123,7 @@ func validateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) 
 	var errs *apis.FieldError
 	for _, p := range params {
 		if p.Type == ParamTypeObject && p.Properties == nil {
-			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name)))
+			errs = errs.Also(apis.ErrMissingField(p.Name + ".properties"))
 		}
 	}
 	return errs
@@ -271,51 +248,101 @@ func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
 			errs = errs.Also(v1.ValidateStepResultsVariables(ctx, s.Results, s.Script).ViaIndex(idx))
 			errs = errs.Also(v1.ValidateStepResults(ctx, s.Results).ViaIndex(idx).ViaField("results"))
 		}
+		if len(s.When) > 0 {
+			errs = errs.Also(s.When.validate(ctx).ViaIndex(idx))
+		}
 	}
 	return errs
 }
 
-// isCreateOrUpdateAndDiverged checks if the webhook event was create or update
-// if create, it returns true.
-// if update, it checks if the step results have diverged and returns if diverged.
-// if neither, it returns false.
-func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
-	if apis.IsInCreate(ctx) {
-		return true
+func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.FieldError) {
+	matches := resultref.StepResultRegex.FindAllStringSubmatch(value, -1)
+	if len(matches) > 0 {
+		errs = errs.Also(&apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{fieldName},
+		})
 	}
-	if apis.IsInUpdate(ctx) {
-		baseline := apis.GetBaseline(ctx)
-		var baselineStep Step
-		switch o := baseline.(type) {
-		case *TaskRun:
-			if o.Spec.TaskSpec != nil {
-				for _, step := range o.Spec.TaskSpec.Steps {
-					if s.Name == step.Name {
-						baselineStep = step
-						break
-					}
-				}
-			}
-		default:
-			// the baseline is not a taskrun.
-			// return true so that the validation can happen
-			return true
+	return errs
+}
+
+func stepArtifactReferenceExists(src string) bool {
+	return len(artifactref.StepArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.StepArtifactPathPattern+")")
+}
+
+func taskArtifactReferenceExists(src string) bool {
+	return len(artifactref.TaskArtifactRegex.FindAllStringSubmatch(src, -1)) > 0 || strings.Contains(src, "$("+artifactref.TaskArtifactPathPattern+")")
+}
+
+func errorIfStepArtifactReferencedInField(value, fieldName string) (errs *apis.FieldError) {
+	if stepArtifactReferenceExists(value) {
+		errs = errs.Also(&apis.FieldError{
+			Message: "stepArtifact substitutions are only allowed in env, command, args and script. Found usage in",
+			Paths:   []string{fieldName},
+		})
+	}
+	return errs
+}
+
+func validateStepArtifactsReference(s Step) (errs *apis.FieldError) {
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Name, "name"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.Image, "image"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(string(s.ImagePullPolicy), "imagePullPolicy"))
+	errs = errs.Also(errorIfStepArtifactReferencedInField(s.WorkingDir, "workingDir"))
+	for _, e := range s.EnvFrom {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(e.Prefix, "envFrom.prefix"))
+		if e.ConfigMapRef != nil {
+			errs = errs.Also(errorIfStepArtifactReferencedInField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
 		}
-		// If an update event, check if the results have diverged from the baseline
-		// this way, the feature flag check wont happen.
-		// This will avoid issues like https://github.com/tektoncd/pipeline/issues/5203
-		// when the feature is turned off mid-run.
-		diverged := !reflect.DeepEqual(s.Results, baselineStep.Results)
-		return diverged
+		if e.SecretRef != nil {
+			errs = errs.Also(errorIfStepArtifactReferencedInField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
+		}
 	}
-	return false
+	for _, v := range s.VolumeMounts {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.Name, "volumeMounts.name"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.MountPath, "volumeMounts.mountPath"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.SubPath, "volumeMounts.subPath"))
+	}
+	for _, v := range s.VolumeDevices {
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.Name, "volumeDevices.name"))
+		errs = errs.Also(errorIfStepArtifactReferencedInField(v.DevicePath, "volumeDevices.devicePath"))
+	}
+	return errs
+}
+
+func validateStepResultReference(s Step) (errs *apis.FieldError) {
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Name, "name"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Image, "image"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Script, "script"))
+	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPolicy"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.WorkingDir, "workingDir"))
+	for _, e := range s.EnvFrom {
+		errs = errs.Also(errorIfStepResultReferenceinField(e.Prefix, "envFrom.prefix"))
+		if e.ConfigMapRef != nil {
+			errs = errs.Also(errorIfStepResultReferenceinField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
+		}
+		if e.SecretRef != nil {
+			errs = errs.Also(errorIfStepResultReferenceinField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
+		}
+	}
+	for _, v := range s.VolumeMounts {
+		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeMounts.name"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.MountPath, "volumeMounts.mountPath"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.SubPath, "volumeMounts.subPath"))
+	}
+	for _, v := range s.VolumeDevices {
+		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeDevices.name"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.DevicePath, "volumeDevices.devicePath"))
+	}
+	return errs
 }
 
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
+	if err := validateArtifactsReferencesInStep(ctx, s); err != nil {
+		return err
+	}
+
 	if s.Ref != nil {
-		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-			return apis.ErrGeneric("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions)
-		}
 		errs = errs.Also(s.Ref.Validate(ctx))
 		if s.Image != "" {
 			errs = errs.Also(&apis.FieldError{
@@ -339,6 +366,12 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			errs = errs.Also(&apis.FieldError{
 				Message: "script cannot be used with Ref",
 				Paths:   []string{"script"},
+			})
+		}
+		if s.WorkingDir != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "working dir cannot be used with Ref",
+				Paths:   []string{"workingDir"},
 			})
 		}
 		if s.Env != nil {
@@ -365,11 +398,6 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 				Message: "params cannot be used without Ref",
 				Paths:   []string{"params"},
 			})
-		}
-		if len(s.Results) > 0 {
-			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-				return apis.ErrGeneric("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions)
-			}
 		}
 		if s.Image == "" {
 			errs = errs.Also(apis.ErrMissingField("Image"))
@@ -406,8 +434,9 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	for j, vm := range s.VolumeMounts {
-		if strings.HasPrefix(vm.MountPath, "/tekton/") &&
-			!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+		cleanMountPath := filepath.Clean(vm.MountPath)
+		if strings.HasPrefix(cleanMountPath, "/tekton/") &&
+			!strings.HasPrefix(cleanMountPath, "/tekton/home") {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", vm.Name, vm.MountPath), "mountPath").ViaFieldIndex("volumeMounts", j))
 		}
 		if strings.HasPrefix(vm.Name, "tekton-internal-") {
@@ -442,7 +471,32 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.StderrConfig != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "step stderr stream support", config.AlphaAPIFields).ViaField("stderrconfig"))
 	}
+
+	// Validate usage of step result reference.
+	// Referencing previous step's results are only allowed in `env`, `command` and `args`.
+	errs = errs.Also(validateStepResultReference(s))
+
+	// Validate usage of step artifacts output reference
+	// Referencing previous step's results are only allowed in `env`, `command` and `args`, `script`.
+	errs = errs.Also(validateStepArtifactsReference(s))
+
 	return errs
+}
+
+func validateArtifactsReferencesInStep(ctx context.Context, s Step) *apis.FieldError {
+	if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableArtifacts {
+		var t []string
+		t = append(t, s.Script)
+		t = append(t, s.Command...)
+		t = append(t, s.Args...)
+		for _, e := range s.Env {
+			t = append(t, e.Value)
+		}
+		if slices.ContainsFunc(t, stepArtifactReferenceExists) || slices.ContainsFunc(t, taskArtifactReferenceExists) {
+			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to use artifacts feature.", config.EnableArtifacts), "")
+		}
+	}
+	return nil
 }
 
 // ValidateParameterTypes validates all the types within a slice of ParamSpecs
@@ -463,7 +517,7 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 		}
 	}
 	if !validType {
-		return apis.ErrInvalidValue(p.Type, fmt.Sprintf("%s.type", p.Name))
+		return apis.ErrInvalidValue(p.Type, p.Name+".type")
 	}
 
 	// If a default value is provided, ensure its type matches param's declared type.
@@ -472,8 +526,8 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 			Message: fmt.Sprintf(
 				"\"%v\" type does not match default value's type: \"%v\"", p.Type, p.Default.Type),
 			Paths: []string{
-				fmt.Sprintf("%s.type", p.Name),
-				fmt.Sprintf("%s.default.type", p.Name),
+				p.Name + ".type",
+				p.Name + ".default.type",
 			},
 		}
 	}
@@ -496,7 +550,7 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 	if len(invalidKeys) != 0 {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("The value type specified for these keys %v is invalid", invalidKeys),
-			Paths:   []string{fmt.Sprintf("%s.properties", p.Name)},
+			Paths:   []string{p.Name + ".properties"},
 		}
 	}
 
@@ -537,7 +591,7 @@ func validateTaskResultsVariables(ctx context.Context, steps []Step, results []T
 		resultsNames.Insert(r.Name)
 	}
 	for idx, step := range steps {
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariablesWithDetail(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
 	}
 	return errs
 }
@@ -556,7 +610,7 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 		}
 
 		// check if the object's key names are referenced correctly i.e. param.objectParam.key1
-		errs = errs.Also(validateVariables(ctx, steps, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
+		errs = errs.Also(validateVariables(ctx, steps, "params\\."+p.Name, objectKeys))
 	}
 
 	return errs.Also(validateObjectUsageAsWhole(steps, "params", objectParameterNames))
@@ -687,7 +741,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 	errs := substitution.ValidateNoReferencesToUnknownVariables(step.Name, prefix, vars).ViaField("name")
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Image, prefix, vars).ViaField("image"))
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Script, prefix, vars).ViaField("script"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariablesWithDetail(step.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range step.Command {
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
 	}

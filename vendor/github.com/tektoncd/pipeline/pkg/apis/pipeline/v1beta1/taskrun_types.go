@@ -18,7 +18,6 @@ package v1beta1
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -29,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -39,7 +39,6 @@ type TaskRunSpec struct {
 	// +optional
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// Deprecated: Unused, preserved only for backwards compatibility
 	// +optional
@@ -49,7 +48,12 @@ type TaskRunSpec struct {
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
+	// Specifying TaskSpec can be disabled by setting
+	// `disable-inline-spec` feature flag.
+	// See Task.spec (API version: tekton.dev/v1beta1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 	// Used for cancelling a TaskRun (and maybe more later on)
 	// +optional
@@ -86,6 +90,12 @@ type TaskRunSpec struct {
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	// ManagedBy indicates which controller is responsible for reconciling
+	// this resource. If unset or set to "tekton.dev/pipeline", the default
+	// Tekton controller will manage this resource.
+	// This field is immutable.
+	// +optional
+	ManagedBy *string `json:"managedBy,omitempty"`
 }
 
 // TaskRunSpecStatus defines the TaskRun spec status the user can provide
@@ -95,6 +105,9 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+	// TaskRunSpecStatusPending indicates that the user wants to postpone starting the task.
+	// When pending, no Pod is created and StartTime is not set.
+	TaskRunSpecStatusPending = "TaskRunPending"
 )
 
 // TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.
@@ -125,6 +138,9 @@ type TaskBreakpoints struct {
 	// failed step will not exit
 	// +optional
 	OnFailure string `json:"onFailure,omitempty"`
+	// +optional
+	// +listType=atomic
+	BeforeSteps []string `json:"beforeSteps,omitempty"`
 }
 
 // NeedsDebugOnFailure return true if the TaskRun is configured to debug on failure
@@ -135,14 +151,28 @@ func (trd *TaskRunDebug) NeedsDebugOnFailure() bool {
 	return trd.Breakpoints.OnFailure == EnabledOnFailureBreakpoint
 }
 
+// NeedsDebugBeforeStep return true if the step is configured to debug before execution
+func (trd *TaskRunDebug) NeedsDebugBeforeStep(stepName string) bool {
+	if trd.Breakpoints == nil {
+		return false
+	}
+	beforeStepSets := sets.NewString(trd.Breakpoints.BeforeSteps...)
+	return beforeStepSets.Has(stepName)
+}
+
 // StepNeedsDebug return true if the step is configured to debug
 func (trd *TaskRunDebug) StepNeedsDebug(stepName string) bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || trd.NeedsDebugBeforeStep(stepName)
+}
+
+// HaveBeforeSteps return true if have any before steps
+func (trd *TaskRunDebug) HaveBeforeSteps() bool {
+	return trd.Breakpoints != nil && len(trd.Breakpoints.BeforeSteps) > 0
 }
 
 // NeedsDebug return true if defined onfailure or have any before, after steps
 func (trd *TaskRunDebug) NeedsDebug() bool {
-	return trd.NeedsDebugOnFailure()
+	return trd.NeedsDebugOnFailure() || trd.HaveBeforeSteps()
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()
@@ -203,6 +233,8 @@ const (
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
 	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
+	// TaskRunReasonPending is the reason set when the TaskRun is in the pending state
+	TaskRunReasonPending TaskRunReason = "TaskRunPending"
 )
 
 func (t TaskRunReason) String() string {
@@ -246,6 +278,9 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
+// +listType=atomic
+type RetriesStatus []TaskRunStatus
+
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
@@ -275,9 +310,11 @@ type TaskRunStatusFields struct {
 
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
+	// See TaskRun.status (API version: tekton.dev/v1beta1)
 	// +optional
-	// +listType=atomic
-	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
 
 	// Results from Resources built during the TaskRun.
 	// This is tomb-stoned along with the removal of pipelineResources
@@ -297,6 +334,9 @@ type TaskRunStatusFields struct {
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
 
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
+	// See Task.spec (API version tekton.dev/v1beta1)
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
@@ -367,10 +407,13 @@ func (trs *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 // StepState reports the results of running a step in a Task.
 type StepState struct {
 	corev1.ContainerState `json:",inline"`
-	Name                  string              `json:"name,omitempty"`
-	ContainerName         string              `json:"container,omitempty"`
-	ImageID               string              `json:"imageID,omitempty"`
-	Results               []TaskRunStepResult `json:"results,omitempty"`
+	Name                  string                `json:"name,omitempty"`
+	ContainerName         string                `json:"container,omitempty"`
+	ImageID               string                `json:"imageID,omitempty"`
+	Results               []TaskRunStepResult   `json:"results,omitempty"`
+	Provenance            *Provenance           `json:"provenance,omitempty"`
+	Inputs                []TaskRunStepArtifact `json:"inputs,omitempty"`
+	Outputs               []TaskRunStepArtifact `json:"outputs,omitempty"`
 }
 
 // SidecarState reports the results of running a sidecar in a Task.
@@ -454,7 +497,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	}
 	for _, ref := range tr.GetOwnerReferences() {
 		if ref.Kind == pipeline.PipelineRunControllerName {
-			return fmt.Sprintf("%s-pvc", ref.Name)
+			return ref.Name + "-pvc"
 		}
 	}
 	return ""
@@ -494,6 +537,11 @@ func (tr *TaskRun) IsFailure() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// IsPending returns true if the TaskRun's spec status is set to Pending state.
+func (tr *TaskRun) IsPending() bool {
+	return tr.Spec.Status == TaskRunSpecStatusPending
 }
 
 // IsTaskRunResultVerified returns true if the TaskRun's results have been validated by spire.
