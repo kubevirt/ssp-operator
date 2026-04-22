@@ -189,6 +189,7 @@ func (ptrs PipelineTaskRunSpec) convertTo(ctx context.Context, sink *v1.Pipeline
 		ptrs.Metadata.convertTo(ctx, sink.Metadata)
 	}
 	sink.ComputeResources = ptrs.ComputeResources
+	sink.Timeout = ptrs.Timeout
 }
 
 func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.PipelineTaskRunSpec) {
@@ -213,6 +214,7 @@ func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.Pipe
 		ptrs.Metadata = &newMetadata
 	}
 	ptrs.ComputeResources = source.ComputeResources
+	ptrs.Timeout = source.Timeout
 }
 
 func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRunStatus, meta *metav1.ObjectMeta) error {
@@ -332,6 +334,7 @@ func (st *SkippedTask) convertFrom(ctx context.Context, source v1.SkippedTask) {
 func (csr ChildStatusReference) convertTo(ctx context.Context, sink *v1.ChildStatusReference) {
 	sink.TypeMeta = csr.TypeMeta
 	sink.Name = csr.Name
+	sink.DisplayName = csr.DisplayName
 	sink.PipelineTaskName = csr.PipelineTaskName
 	sink.WhenExpressions = nil
 	for _, we := range csr.WhenExpressions {
@@ -344,6 +347,7 @@ func (csr ChildStatusReference) convertTo(ctx context.Context, sink *v1.ChildSta
 func (csr *ChildStatusReference) convertFrom(ctx context.Context, source v1.ChildStatusReference) {
 	csr.TypeMeta = source.TypeMeta
 	csr.Name = source.Name
+	csr.DisplayName = source.DisplayName
 	csr.PipelineTaskName = source.PipelineTaskName
 	csr.WhenExpressions = nil
 	for _, we := range source.WhenExpressions {

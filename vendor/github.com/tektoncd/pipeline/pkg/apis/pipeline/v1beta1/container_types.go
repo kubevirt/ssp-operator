@@ -27,6 +27,10 @@ type Step struct {
 	// Name of the Step specified as a DNS_LABEL.
 	// Each Step in a Task must have a unique name.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// DisplayName is a user-facing name of the step that may be
+	// used to populate a UI.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
 	// Image reference name to run for this Step.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
 	// +optional
@@ -75,7 +79,7 @@ type Step struct {
 	// +listType=map
 	// +listMapKey=containerPort
 	// +listMapKey=protocol
-	DeprecatedPorts []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
+	DeprecatedPorts []corev1.ContainerPort `json:"ports,omitempty" patchMergeKey:"containerPort" patchStrategy:"merge" protobuf:"bytes,6,rep,name=ports"`
 	// List of sources to populate environment variables in the container.
 	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 	// will be reported as an event when the container is starting. When a key exists in multiple
@@ -91,7 +95,7 @@ type Step struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	// +listType=atomic
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 	// Compute Resources required by this Step.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -103,13 +107,13 @@ type Step struct {
 	// +patchMergeKey=mountPath
 	// +patchStrategy=merge
 	// +listType=atomic
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchMergeKey:"mountPath" patchStrategy:"merge" protobuf:"bytes,9,rep,name=volumeMounts"`
 	// volumeDevices is the list of block devices to be used by the Step.
 	// +patchMergeKey=devicePath
 	// +patchStrategy=merge
 	// +optional
 	// +listType=atomic
-	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchMergeKey:"devicePath" patchStrategy:"merge" protobuf:"bytes,21,rep,name=volumeDevices"`
 	// Periodic probe of container liveness.
 	// Step will be restarted if the probe fails.
 	// Cannot be updated.
@@ -235,11 +239,8 @@ type Step struct {
 	Ref *Ref `json:"ref,omitempty"`
 	// Params declares parameters passed to this step action.
 	// +optional
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// Results declares StepResults produced by the Step.
-	//
-	// This is field is at an ALPHA stability level and gated by "enable-step-actions" feature flag.
 	//
 	// It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
 	// It cannot be used when referencing StepActions using [v1beta1.Step.Ref].
@@ -247,6 +248,8 @@ type Step struct {
 	// +optional
 	// +listType=atomic
 	Results []v1.StepResult `json:"results,omitempty"`
+
+	When StepWhenExpressions `json:"when,omitempty"`
 }
 
 // Ref can be used to refer to a specific instance of a StepAction.
@@ -389,7 +392,7 @@ type StepTemplate struct {
 	// +listType=map
 	// +listMapKey=containerPort
 	// +listMapKey=protocol
-	DeprecatedPorts []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
+	DeprecatedPorts []corev1.ContainerPort `json:"ports,omitempty" patchMergeKey:"containerPort" patchStrategy:"merge" protobuf:"bytes,6,rep,name=ports"`
 	// List of sources to populate environment variables in the Step.
 	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 	// will be reported as an event when the container is starting. When a key exists in multiple
@@ -405,7 +408,7 @@ type StepTemplate struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	// +listType=atomic
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 	// Compute Resources required by this Step.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -417,13 +420,13 @@ type StepTemplate struct {
 	// +patchMergeKey=mountPath
 	// +patchStrategy=merge
 	// +listType=atomic
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchMergeKey:"mountPath" patchStrategy:"merge" protobuf:"bytes,9,rep,name=volumeMounts"`
 	// volumeDevices is the list of block devices to be used by the Step.
 	// +patchMergeKey=devicePath
 	// +patchStrategy=merge
 	// +optional
 	// +listType=atomic
-	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchMergeKey:"devicePath" patchStrategy:"merge" protobuf:"bytes,21,rep,name=volumeDevices"`
 	// Periodic probe of container liveness.
 	// Container will be restarted if the probe fails.
 	// Cannot be updated.
@@ -616,7 +619,7 @@ type Sidecar struct {
 	// +listType=map
 	// +listMapKey=containerPort
 	// +listMapKey=protocol
-	Ports []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
+	Ports []corev1.ContainerPort `json:"ports,omitempty" patchMergeKey:"containerPort" patchStrategy:"merge" protobuf:"bytes,6,rep,name=ports"`
 	// List of sources to populate environment variables in the Sidecar.
 	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 	// will be reported as an event when the Sidecar is starting. When a key exists in multiple
@@ -632,7 +635,7 @@ type Sidecar struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	// +listType=atomic
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 	// Compute Resources required by this Sidecar.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -644,13 +647,13 @@ type Sidecar struct {
 	// +patchMergeKey=mountPath
 	// +patchStrategy=merge
 	// +listType=atomic
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchStrategy:"merge" patchMergeKey:"mountPath" protobuf:"bytes,9,rep,name=volumeMounts"`
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty" patchMergeKey:"mountPath" patchStrategy:"merge" protobuf:"bytes,9,rep,name=volumeMounts"`
 	// volumeDevices is the list of block devices to be used by the Sidecar.
 	// +patchMergeKey=devicePath
 	// +patchStrategy=merge
 	// +optional
 	// +listType=atomic
-	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchMergeKey:"devicePath" patchStrategy:"merge" protobuf:"bytes,21,rep,name=volumeDevices"`
 	// Periodic probe of Sidecar liveness.
 	// Container will be restarted if the probe fails.
 	// Cannot be updated.
@@ -745,10 +748,43 @@ type Sidecar struct {
 	// +optional
 	// +listType=atomic
 	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
+
+	// RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an
+	// initContainer and must have it's policy set to "Always". It is currently
+	// left optional to help support Kubernetes versions prior to 1.29 when this feature
+	// was introduced.
+	// +optional
+	RestartPolicy *corev1.ContainerRestartPolicy `json:"restartPolicy,omitempty"`
 }
 
 // ToK8sContainer converts the Sidecar to a Kubernetes Container struct
 func (s *Sidecar) ToK8sContainer() *corev1.Container {
+	if s.RestartPolicy == nil {
+		return &corev1.Container{
+			Name:                     s.Name,
+			Image:                    s.Image,
+			Command:                  s.Command,
+			Args:                     s.Args,
+			WorkingDir:               s.WorkingDir,
+			Ports:                    s.Ports,
+			EnvFrom:                  s.EnvFrom,
+			Env:                      s.Env,
+			Resources:                s.Resources,
+			VolumeMounts:             s.VolumeMounts,
+			VolumeDevices:            s.VolumeDevices,
+			LivenessProbe:            s.LivenessProbe,
+			ReadinessProbe:           s.ReadinessProbe,
+			StartupProbe:             s.StartupProbe,
+			Lifecycle:                s.Lifecycle,
+			TerminationMessagePath:   s.TerminationMessagePath,
+			TerminationMessagePolicy: s.TerminationMessagePolicy,
+			ImagePullPolicy:          s.ImagePullPolicy,
+			SecurityContext:          s.SecurityContext,
+			Stdin:                    s.Stdin,
+			StdinOnce:                s.StdinOnce,
+			TTY:                      s.TTY,
+		}
+	}
 	return &corev1.Container{
 		Name:                     s.Name,
 		Image:                    s.Image,
@@ -763,6 +799,7 @@ func (s *Sidecar) ToK8sContainer() *corev1.Container {
 		VolumeDevices:            s.VolumeDevices,
 		LivenessProbe:            s.LivenessProbe,
 		ReadinessProbe:           s.ReadinessProbe,
+		RestartPolicy:            s.RestartPolicy,
 		StartupProbe:             s.StartupProbe,
 		Lifecycle:                s.Lifecycle,
 		TerminationMessagePath:   s.TerminationMessagePath,
@@ -799,4 +836,5 @@ func (s *Sidecar) SetContainerFields(c corev1.Container) {
 	s.Stdin = c.Stdin
 	s.StdinOnce = c.StdinOnce
 	s.TTY = c.TTY
+	s.RestartPolicy = c.RestartPolicy
 }

@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +47,7 @@ import (
 // PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.
 //
 // +k8s:openapi-gen=true
+// +kubebuilder:storageversion
 type PipelineRun struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -80,6 +82,16 @@ func (pr *PipelineRun) IsDone() bool {
 // HasStarted function check whether pipelinerun has valid start time set in its status
 func (pr *PipelineRun) HasStarted() bool {
 	return pr.Status.StartTime != nil && !pr.Status.StartTime.IsZero()
+}
+
+// IsSuccessful returns true if the PipelineRun's status indicates that it has succeeded.
+func (pr *PipelineRun) IsSuccessful() bool {
+	return pr != nil && pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+}
+
+// IsFailure returns true if the PipelineRun's status indicates that it has failed.
+func (pr *PipelineRun) IsFailure() bool {
+	return pr != nil && pr.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
 }
 
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
@@ -248,10 +260,14 @@ func (pr *PipelineRun) HasVolumeClaimTemplate() bool {
 type PipelineRunSpec struct {
 	// +optional
 	PipelineRef *PipelineRef `json:"pipelineRef,omitempty"`
+	// Specifying PipelineSpec can be disabled by setting
+	// `disable-inline-spec` feature flag.
+	// See Pipeline.spec (API version: tekton.dev/v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Params is a list of parameter names and values.
-	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 
 	// Used for cancelling a pipelinerun (and maybe more later on)
@@ -277,6 +293,12 @@ type PipelineRunSpec struct {
 	// +optional
 	// +listType=atomic
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+	// ManagedBy indicates which controller is responsible for reconciling
+	// this resource. If unset or set to "tekton.dev/pipeline", the default
+	// Tekton controller will manage this resource.
+	// This field is immutable.
+	// +optional
+	ManagedBy *string `json:"managedBy,omitempty"`
 }
 
 // TimeoutFields allows granular specification of pipeline, task, and finally timeouts
@@ -369,8 +391,7 @@ const (
 	// ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
 	// misses some keys required for the object param declared in Pipeline spec.
 	PipelineRunReasonObjectParameterMissKeys PipelineRunReason = "ObjectParameterMissKeys"
-	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
-	// or the array is out of bound.
+	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is out of bound.
 	PipelineRunReasonParamArrayIndexingInvalid PipelineRunReason = "ParamArrayIndexingInvalid"
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
@@ -381,6 +402,10 @@ const (
 	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	PipelineRunReasonFailedValidation PipelineRunReason = "PipelineValidationFailed"
+	// PipelineRunReasonCouldntGetPipelineResult indicates that the pipeline fails to retrieve the
+	// referenced result. This could be due to failed TaskRuns or Runs that were supposed to produce
+	// the results
+	PipelineRunReasonCouldntGetPipelineResult PipelineRunReason = "CouldntGetPipelineResult"
 	// ReasonInvalidGraph indicates that the reason for the failure status is that the
 	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
 	PipelineRunReasonInvalidGraph PipelineRunReason = "PipelineInvalidGraph"
@@ -395,6 +420,9 @@ const (
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	PipelineRunReasonInvalidTaskResultReference PipelineRunReason = "InvalidTaskResultReference"
+	// PipelineRunReasonInvalidPipelineResultReference indicates a pipeline result was declared
+	// by the pipeline but not initialized in the pipelineTask
+	PipelineRunReasonInvalidPipelineResultReference PipelineRunReason = "InvalidPipelineResultReference"
 	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
 	// has been passed to a Task that is expecting a non-optional workspace
 	PipelineRunReasonRequiredWorkspaceMarkedOptional PipelineRunReason = "RequiredWorkspaceMarkedOptional"
@@ -411,6 +439,9 @@ const (
 	// PipelineRunReasonInvalidParamValue indicates that the PipelineRun Param input value is not allowed.
 	PipelineRunReasonInvalidParamValue PipelineRunReason = "InvalidParamValue"
 )
+
+// PipelineTaskOnErrorAnnotation is used to pass the failure strategy to TaskRun pods from PipelineTask OnError field
+const PipelineTaskOnErrorAnnotation = "pipeline.tekton.dev/pipeline-task-on-error"
 
 func (t PipelineRunReason) String() string {
 	return string(t)
@@ -458,6 +489,7 @@ func (pr *PipelineRunStatus) MarkSucceeded(reason, messageFormat string, message
 
 // MarkFailed changes the Succeeded condition to False with the provided reason and message.
 func (pr *PipelineRunStatus) MarkFailed(reason, messageFormat string, messageA ...interface{}) {
+	messageFormat = pipelineErrors.LabelUserError(messageFormat, messageA)
 	pipelineRunCondSet.Manage(pr).MarkFalse(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 	succeeded := pr.GetCondition(apis.ConditionSucceeded)
 	pr.CompletionTime = &succeeded.LastTransitionTime.Inner
@@ -473,6 +505,9 @@ type ChildStatusReference struct {
 	runtime.TypeMeta `json:",inline"`
 	// Name is the name of the TaskRun or Run this is referencing.
 	Name string `json:"name,omitempty"`
+	// DisplayName is a user-facing name of the pipelineTask that may be
+	// used to populate a UI.
+	DisplayName string `json:"displayName,omitempty"`
 	// PipelineTaskName is the name of the PipelineTask this is referencing.
 	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
 
@@ -497,7 +532,10 @@ type PipelineRunStatusFields struct {
 	// +listType=atomic
 	Results []PipelineRunResult `json:"results,omitempty"`
 
-	// PipelineRunSpec contains the exact spec used to instantiate the run
+	// PipelineSpec contains the exact spec used to instantiate the run.
+	// See Pipeline.spec (API version: tekton.dev/v1)
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 
 	// list of tasks that were skipped due to when expressions evaluating to false
@@ -570,6 +608,8 @@ type PipelineRunResult struct {
 	Name string `json:"name"`
 
 	// Value is the result returned from the execution of this PipelineRun
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Value ResultValue `json:"value"`
 }
 
@@ -606,7 +646,7 @@ type PipelineRunList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PipelineRun `json:"items,omitempty"`
+	Items           []PipelineRun `json:"items"`
 }
 
 // PipelineTaskRun reports the results of running a step in the Task. Each
@@ -632,6 +672,13 @@ type PipelineTaskRunSpec struct {
 
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+
+	// Duration after which the TaskRun times out. Overrides the timeout specified
+	// on the Task's spec if specified. Takes lower precedence to PipelineRun's
+	// `spec.timeouts.tasks`
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given
@@ -654,6 +701,7 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			s.SidecarSpecs = task.SidecarSpecs
 			s.Metadata = task.Metadata
 			s.ComputeResources = task.ComputeResources
+			s.Timeout = task.Timeout
 		}
 	}
 	return s

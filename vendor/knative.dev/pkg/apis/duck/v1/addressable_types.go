@@ -48,12 +48,14 @@ type Addressable struct {
 	// according to https://www.rfc-editor.org/rfc/rfc7468.
 	// +optional
 	CACerts *string `json:"CACerts,omitempty"`
+
+	// Audience is the OIDC audience for this address.
+	// +optional
+	Audience *string `json:"audience,omitempty"`
 }
 
-var (
-	// Addressable is a Convertible type.
-	_ apis.Convertible = (*Addressable)(nil)
-)
+// Addressable is a Convertible type.
+var _ apis.Convertible = (*Addressable)(nil)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

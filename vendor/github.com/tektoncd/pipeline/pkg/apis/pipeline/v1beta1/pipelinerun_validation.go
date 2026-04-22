@@ -19,19 +19,25 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
-var _ apis.Validatable = (*PipelineRun)(nil)
-var _ resourcesemantics.VerbLimited
+var (
+	_ apis.Validatable = (*PipelineRun)(nil)
+	_ resourcesemantics.VerbLimited
+)
 
 // SupportedVerbs returns the operations that validation should be called for
 func (pr *PipelineRun) SupportedVerbs() []admissionregistrationv1.OperationType {
@@ -55,6 +61,9 @@ func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate pipelinerun spec
 func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	// Validate the spec changes
+	errs = errs.Also(ps.ValidateUpdate(ctx))
+
 	// Must have exactly one of pipelineRef and pipelineSpec.
 	if ps.PipelineRef == nil && ps.PipelineSpec == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("pipelineRef", "pipelineSpec"))
@@ -70,6 +79,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipelinerun") {
+			errs = errs.Also(apis.ErrDisallowedFields("pipelineSpec"))
+		}
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
 	}
 
@@ -84,7 +97,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	if ps.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ps.Timeout.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeout.Duration.String()), "timeout"))
+			errs = errs.Also(apis.ErrInvalidValue(ps.Timeout.Duration.String()+" should be >= 0", "timeout"))
 		}
 	}
 
@@ -124,7 +137,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 	for idx, trs := range ps.TaskRunSpecs {
-		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
+		errs = errs.Also(validateTaskRunSpec(ctx, trs, ps.Timeouts).ViaIndex(idx).ViaField("taskRunSpecs"))
 	}
 	if ps.PodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *ps.PodTemplate))
@@ -134,6 +147,52 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	}
 
 	return errs
+}
+
+// ValidateUpdate validates the update of a PipelineRunSpec
+func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldError) {
+	if !apis.IsInUpdate(ctx) {
+		return
+	}
+	oldObj, ok := apis.GetBaseline(ctx).(*PipelineRun)
+	if !ok || oldObj == nil {
+		return
+	}
+
+	if (oldObj.Spec.ManagedBy == nil) != (ps.ManagedBy == nil) || (oldObj.Spec.ManagedBy != nil && *oldObj.Spec.ManagedBy != *ps.ManagedBy) {
+		errs = errs.Also(apis.ErrInvalidValue("managedBy is immutable", "spec.managedBy"))
+	}
+
+	if oldObj.IsDone() {
+		// try comparing without any copying first
+		// this handles the common case where only finalizers changed
+		if equality.Semantic.DeepEqual(&oldObj.Spec, ps) {
+			return nil // Specs identical, allow update
+		}
+
+		// Specs differ, this could be due to different defaults after upgrade
+		// Apply current defaults to old spec to normalize
+		oldCopy := oldObj.Spec.DeepCopy()
+		oldCopy.SetDefaults(ctx)
+
+		if equality.Semantic.DeepEqual(oldCopy, ps) {
+			return nil // Difference was only defaults, allow update
+		}
+
+		// Real spec changes detected, reject update
+		errs = errs.Also(apis.ErrInvalidValue("Once the PipelineRun is complete, no updates are allowed", ""))
+		return errs
+	}
+
+	// Handle started but not done case
+	old := oldObj.Spec.DeepCopy()
+	old.Status = ps.Status
+	old.ManagedBy = ps.ManagedBy // Already tested before
+	if !equality.Semantic.DeepEqual(old, ps) {
+		errs = errs.Also(apis.ErrInvalidValue("Once the PipelineRun has started, only status updates are allowed", ""))
+	}
+
+	return
 }
 
 func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (errs *apis.FieldError) {
@@ -149,7 +208,7 @@ func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (e
 		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
 		if ok {
 			if LooksLikeContainsResultRefs(expressions) {
-				expressions = filter(expressions, looksLikeResultRef)
+				expressions = filter(expressions, resultref.LooksLikeResultRef)
 				resultRefs := NewResultRefs(expressions)
 				if len(resultRefs) > 0 {
 					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("cannot use result expressions in %v as PipelineRun parameter values", expressions),
@@ -278,8 +337,8 @@ func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {
 
 func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.FieldError) {
 	if d != nil && d.Duration < 0 {
-		fieldPath := fmt.Sprintf("timeouts.%s", field)
-		return errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", d.Duration.String()), fieldPath))
+		fieldPath := "timeouts." + field
+		return errs.Also(apis.ErrInvalidValue(d.Duration.String()+" should be >= 0", fieldPath))
 	}
 	return nil
 }
@@ -324,13 +383,13 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 	return errs
 }
 
-func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
+func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec, pipelineTimeouts *TimeoutFields) (errs *apis.FieldError) {
 	if trs.StepOverrides != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.BetaAPIFields).ViaField("stepOverrides"))
 		errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
 	}
 	if trs.SidecarOverrides != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.BetaAPIFields).ViaField("sidecarOverrides"))
 		errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
 	}
 	if trs.ComputeResources != nil {
@@ -340,5 +399,79 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	if trs.TaskPodTemplate != nil {
 		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.TaskPodTemplate))
 	}
+
+	// Check taskRunSpec timeout against pipeline limits
+	errs = errs.Also(validateTaskRunSpecTimeout(ctx, trs.Timeout, pipelineTimeouts))
+
 	return errs
+}
+
+// validateTaskRunSpecTimeout validates a TaskRunSpec's timeout against pipeline timeouts.
+// This function works in isolation and doesn't rely on previous validation steps.
+func validateTaskRunSpecTimeout(ctx context.Context, timeout *metav1.Duration, pipelineTimeouts *TimeoutFields) *apis.FieldError {
+	if timeout == nil {
+		return nil
+	}
+
+	cfg := config.FromContextOrDefaults(ctx)
+	var errs *apis.FieldError
+
+	// Validate basic timeout (negative values)
+	_, err := validateTimeout(timeout, cfg.Defaults.DefaultTimeoutMinutes)
+	if err != nil {
+		errs = errs.Also(err)
+	}
+
+	// Validate timeout against effective pipeline timeout (explicit or default)
+	if err == nil {
+		// Find applicable timeout limit: Tasks -> Pipeline -> Default (60min)
+		var maxTimeout *metav1.Duration
+		var timeoutSource string
+
+		switch {
+		case pipelineTimeouts != nil && pipelineTimeouts.Tasks != nil:
+			if validatedTimeout, err := validateTimeout(pipelineTimeouts.Tasks, cfg.Defaults.DefaultTimeoutMinutes); err != nil {
+				// Add error if Tasks timeout is invalid (prevents silent failures)
+				errs = errs.Also(err)
+			} else {
+				maxTimeout = validatedTimeout
+				timeoutSource = "pipeline tasks duration"
+			}
+		case pipelineTimeouts != nil && pipelineTimeouts.Pipeline != nil:
+			if validatedTimeout, err := validateTimeout(pipelineTimeouts.Pipeline, cfg.Defaults.DefaultTimeoutMinutes); err != nil {
+				// Add error if Pipeline timeout is invalid (prevents silent failures)
+				errs = errs.Also(err)
+			} else {
+				maxTimeout = validatedTimeout
+				timeoutSource = "pipeline duration"
+			}
+		default:
+			maxTimeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+			timeoutSource = "default pipeline duration"
+		}
+
+		// Always check against max timeout if it's not "no timeout"
+		if maxTimeout != nil && maxTimeout.Duration != config.NoTimeoutDuration {
+			taskRunTimeout, _ := validateTimeout(timeout, cfg.Defaults.DefaultTimeoutMinutes) // We know this won't error from above
+			if taskRunTimeout.Duration > maxTimeout.Duration {
+				errs = errs.Also(apis.ErrInvalidValue(
+					fmt.Sprintf("%s should be <= %s %s", taskRunTimeout.Duration, timeoutSource, maxTimeout.Duration),
+					"timeout"))
+			}
+		}
+	}
+
+	return errs
+}
+
+// validateTimeout validates a timeout field and returns the validated timeout with defaults applied.
+// If timeout is nil, returns default timeout. If timeout is negative, returns an error.
+func validateTimeout(timeout *metav1.Duration, defaultTimeoutMinutes int) (*metav1.Duration, *apis.FieldError) {
+	if timeout == nil {
+		return &metav1.Duration{Duration: time.Duration(defaultTimeoutMinutes) * time.Minute}, nil
+	}
+	if timeout.Duration < 0 {
+		return nil, apis.ErrInvalidValue(timeout.Duration.String()+" should be >= 0", "timeout")
+	}
+	return timeout, nil
 }

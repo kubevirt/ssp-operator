@@ -42,6 +42,27 @@ type AffinityAssistantTemplate struct {
 	// +optional
 	// +listType=atomic
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// SecurityContext sets the security context for the pod
+	// +optional
+	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
+
+	// If specified, indicates the pod's priority. "system-node-critical" and
+	// "system-cluster-critical" are two special keywords which indicate the
+	// highest priorities with the former being the highest priority. Any other
+	// name must be defined by creating a PriorityClass object with that name.
+	// If not specified, the pod priority will be default or zero if there is no
+	// default.
+	// +optional
+	PriorityClassName *string `json:"priorityClassName,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use for the affinity assistant pod.
+	// If not specified, the affinity assistant will inherit the serviceAccountName from the
+	// PipelineRun's taskRunTemplate. If that is also not specified, the pod will use the
+	// namespace's default ServiceAccount.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // Equals checks if this Template is identical to the given Template.

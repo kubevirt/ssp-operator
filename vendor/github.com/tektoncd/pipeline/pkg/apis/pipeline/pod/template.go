@@ -22,6 +22,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// +listType=atomic
+type Volumes []corev1.Volume
+
 // Template holds pod specific configuration
 // +k8s:deepcopy-gen=true
 // +k8s:openapi-gen=true
@@ -37,29 +40,37 @@ type Template struct {
 	// +patchMergeKey=name
 	// +patchStrategy=merge
 	// +listType=atomic
-	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 
 	// If specified, the pod's tolerations.
 	// +optional
 	// +listType=atomic
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
-	// If specified, the pod's scheduling constraints
+	// If specified, the pod's scheduling constraints.
+	// See Pod.spec.affinity (API version: v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// Optional: Defaults to empty.  See type description for default values of each field.
+	// See Pod.spec.securityContext (API version: v1)
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
 
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
+	// See Pod.spec.volumes (API version: v1)
 	// +optional
 	// +patchMergeKey=name
 	// +patchStrategy=merge,retainKeys
-	// +listType=atomic
-	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Volumes Volumes `json:"volumes,omitempty" patchMergeKey:"name" patchStrategy:"merge,retainKeys" protobuf:"bytes,1,rep,name=volumes"`
 
 	// RuntimeClassName refers to a RuntimeClass object in the node.k8s.io
 	// group, which should be used to run this pod. If no RuntimeClass resource
@@ -101,7 +112,7 @@ type Template struct {
 	// If not specified, the pod priority will be default or zero if there is no
 	// default.
 	// +optional
-	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,7,opt,name=priorityClassName"`
+	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,8,opt,name=priorityClassName"`
 	// SchedulerName specifies the scheduler to be used to dispatch the Pod
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
@@ -120,6 +131,18 @@ type Template struct {
 	// HostNetwork specifies whether the pod may use the node network namespace
 	// +optional
 	HostNetwork bool `json:"hostNetwork,omitempty"`
+
+	// HostUsers indicates whether the pod will use the host's user namespace.
+	// Optional: Default to true.
+	// If set to true or not present, the pod will be run in the host user namespace, useful
+	// for when the pod needs a feature only available to the host user namespace, such as
+	// loading a kernel module with CAP_SYS_MODULE.
+	// When set to false, a new user namespace is created for the pod. Setting false
+	// is useful to mitigating container breakout vulnerabilities such as allowing
+	// containers to run as root without their user having root privileges on the host.
+	// This field depends on the kubernetes feature gate UserNamespacesSupport being enabled.
+	// +optional
+	HostUsers *bool `json:"hostUsers,omitempty"`
 
 	// TopologySpreadConstraints controls how Pods are spread across your cluster among
 	// failure-domains such as regions, zones, nodes, and other user-defined topology domains.
@@ -148,9 +171,11 @@ func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
 	}
 
 	return &AffinityAssistantTemplate{
-		NodeSelector:     tpl.NodeSelector,
-		Tolerations:      tpl.Tolerations,
-		ImagePullSecrets: tpl.ImagePullSecrets,
+		NodeSelector:      tpl.NodeSelector,
+		Tolerations:       tpl.Tolerations,
+		ImagePullSecrets:  tpl.ImagePullSecrets,
+		SecurityContext:   tpl.SecurityContext,
+		PriorityClassName: tpl.PriorityClassName,
 	}
 }
 
@@ -172,12 +197,10 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		return defaultTpl
 	default:
 		// Otherwise, merge fields
-		if tpl.Env == nil {
-			tpl.Env = defaultTpl.Env
-		}
 		if tpl.NodeSelector == nil {
 			tpl.NodeSelector = defaultTpl.NodeSelector
 		}
+		tpl.Env = mergeByName(defaultTpl.Env, tpl.Env)
 		if tpl.Tolerations == nil {
 			tpl.Tolerations = defaultTpl.Tolerations
 		}
@@ -187,9 +210,7 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		if tpl.SecurityContext == nil {
 			tpl.SecurityContext = defaultTpl.SecurityContext
 		}
-		if tpl.Volumes == nil {
-			tpl.Volumes = defaultTpl.Volumes
-		}
+		tpl.Volumes = mergeByName(defaultTpl.Volumes, tpl.Volumes)
 		if tpl.RuntimeClassName == nil {
 			tpl.RuntimeClassName = defaultTpl.RuntimeClassName
 		}
@@ -219,6 +240,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		}
 		if !tpl.HostNetwork && defaultTpl.HostNetwork {
 			tpl.HostNetwork = true
+		}
+		if tpl.HostUsers == nil {
+			tpl.HostUsers = defaultTpl.HostUsers
 		}
 		if tpl.TopologySpreadConstraints == nil {
 			tpl.TopologySpreadConstraints = defaultTpl.TopologySpreadConstraints
@@ -251,6 +275,62 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		if tpl.ImagePullSecrets == nil {
 			tpl.ImagePullSecrets = defaultTpl.ImagePullSecrets
 		}
+		if tpl.SecurityContext == nil {
+			tpl.SecurityContext = defaultTpl.SecurityContext
+		}
+		if tpl.PriorityClassName == nil {
+			tpl.PriorityClassName = defaultTpl.PriorityClassName
+		}
+		if tpl.ServiceAccountName == "" {
+			tpl.ServiceAccountName = defaultTpl.ServiceAccountName
+		}
+
 		return tpl
+	}
+}
+
+// mergeByName merges two slices of items with names based on the getName
+// function, giving priority to the items in the override slice.
+func mergeByName[T any](base, overrides []T) []T {
+	if len(overrides) == 0 {
+		return base
+	}
+
+	// create a map to store the exist names in the override slice
+	exists := make(map[string]struct{})
+	merged := make([]T, 0, len(base)+len(overrides))
+
+	// append the items in the override slice
+	for _, item := range overrides {
+		name := getName(item)
+		if name != "" { // name should not be empty, if empty, ignore
+			merged = append(merged, item)
+			exists[name] = struct{}{}
+		}
+	}
+
+	// append the items in the base slice if they have a different name
+	for _, item := range base {
+		name := getName(item)
+		if name != "" { // name should not be empty, if empty, ignore
+			if _, found := exists[name]; !found {
+				merged = append(merged, item)
+			}
+		}
+	}
+
+	return merged
+}
+
+// getName returns the name of the given item, or an empty string if the item
+// is not a supported type.
+func getName(item interface{}) string {
+	switch item := item.(type) {
+	case corev1.EnvVar:
+		return item.Name
+	case corev1.Volume:
+		return item.Name
+	default:
+		return ""
 	}
 }
