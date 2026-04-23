@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -106,6 +107,9 @@ var _ = Describe("Crypto Policy", func() {
 
 		updateSsp(func(foundSsp *ssp.SSP) {
 			foundSsp.Spec.TLSSecurityProfile = nil
+			foundSsp.Spec.TokenGenerationService = &ssp.TokenGenerationService{
+				Enabled: true,
+			}
 		})
 		waitUntilDeployed()
 	})
@@ -118,6 +122,7 @@ var _ = Describe("Crypto Policy", func() {
 		DescribeTable("Adhere to defined TLSConfig", decorators.Conformance, func(tlsConfigTestPermutation tlsConfigTestPermutation) {
 			pod := operatorPod()
 			validatorPod := templateValidatorPod()
+			vmProxyPod := vmConsoleProxyPod()
 
 			applyTLSConfig(tlsConfigTestPermutation.openshiftTLSPolicy)
 			Expect(testMetricsEndpoint(pod, tlsConfigTestPermutation)).To(Succeed())
@@ -127,6 +132,10 @@ var _ = Describe("Crypto Policy", func() {
 			// for the ConfigMap to be propagated to the pod.
 			Eventually(func() error {
 				return testValidatorEndpoint(validatorPod, tlsConfigTestPermutation)
+			}, env.Timeout(), time.Second).Should(Succeed())
+
+			Eventually(func() error {
+				return testVmConsoleProxyEndpoint(vmProxyPod, tlsConfigTestPermutation)
 			}, env.Timeout(), time.Second).Should(Succeed())
 		},
 			Entry("[test_id:9360] old", oldPermutation),
@@ -151,6 +160,17 @@ func templateValidatorPod() core.Pod {
 	err := apiClient.List(context.TODO(), pods, client.MatchingLabels{
 		common.AppKubernetesNameLabel:      "template-validator",
 		common.AppKubernetesComponentLabel: string(common.AppComponentTemplating),
+	})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(pods.Items).ToNot(BeEmpty())
+	return pods.Items[0]
+}
+
+func vmConsoleProxyPod() core.Pod {
+	pods := &core.PodList{}
+	err := apiClient.List(context.TODO(), pods, client.MatchingLabels{
+		common.AppKubernetesNameLabel:      "vm-console-proxy",
+		common.AppKubernetesComponentLabel: "vm-console-proxy",
 	})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pods.Items).ToNot(BeEmpty())
@@ -232,9 +252,30 @@ func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port 
 	return attemptedUrl, err
 }
 
-func (c tlsConfigTestPermutation) testTLSEndpointAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool) error {
+// isClientCertError returns true if the error is due to missing or invalid client certificate.
+// These errors happen after successful TLS handshake (cipher/version negotiation),
+// so they indicate the TLS configuration is working correctly.
+func isClientCertError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// The error from http.Client is wrapped in *url.Error, so we check if it contains
+	// the TLS alert message. These error strings come from crypto/tls/alert.go alertText map.
+	errStr := err.Error()
+	return strings.Contains(errStr, "remote error: tls: bad certificate") ||
+		strings.Contains(errStr, "remote error: tls: certificate required") ||
+		strings.Contains(errStr, "remote error: tls: internal error")
+}
+
+func (c tlsConfigTestPermutation) testTLSEndpointAccessible(pod core.Pod, serviceName string, subpath string, port uint16, tlsConfig clientTLSOptions, insecure bool, requiresClientCert bool) error {
 	_, err := tryToAccessEndpoint(pod, serviceName, subpath, port, tlsConfig, insecure)
 	if err != nil {
+		// For endpoints requiring client certs, accept client cert errors as success
+		// because they indicate the TLS handshake (cipher/version negotiation) succeeded
+		if requiresClientCert && isClientCertError(err) {
+			return nil
+		}
 		return fmt.Errorf("can't access pod %s, at port %d, with tlsConfig %#v: %w", pod.Name, port, tlsConfig, err)
 	}
 	return nil
@@ -254,9 +295,9 @@ func (c tlsConfigTestPermutation) testTLSEndpointNotAccessible(pod core.Pod, ser
 	return fmt.Errorf("unexpected error when accessing endpoint: %w", err)
 }
 
-func (c tlsConfigTestPermutation) testEndpointAccessibilityWithTLS(pod core.Pod, serviceName string, subpath string, port uint16, insecure bool) error {
+func (c tlsConfigTestPermutation) testEndpointAccessibilityWithTLS(pod core.Pod, serviceName string, subpath string, port uint16, insecure bool, requiresClientCert bool) error {
 	for _, config := range c.allowedConfigs {
-		err := c.testTLSEndpointAccessible(pod, serviceName, subpath, port, config, insecure)
+		err := c.testTLSEndpointAccessible(pod, serviceName, subpath, port, config, insecure, requiresClientCert)
 		if err != nil {
 			return fmt.Errorf("failed accessing endpoint with allowed config: %w", err)
 		}
@@ -273,15 +314,19 @@ func (c tlsConfigTestPermutation) testEndpointAccessibilityWithTLS(pod core.Pod,
 func testMetricsEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
 	// webhook service name is used here for the metrics for simplicity, as it is the CN in the ca_cert
 	// and the metrics just sit on a different port on the same pod.
-	return tlsConfig.testEndpointAccessibilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "metrics", 8443, false)
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "metrics", 8443, false, false)
 }
 
 func testWebhookEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
-	return tlsConfig.testEndpointAccessibilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "", 9443, false)
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, strategy.GetSSPWebhookServiceName(), "", 9443, false, false)
 }
 
 func testValidatorEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
-	return tlsConfig.testEndpointAccessibilityWithTLS(pod, template_validator.ServiceName, "", 8443, true)
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, template_validator.ServiceName, "", 8443, true, false)
+}
+
+func testVmConsoleProxyEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, "vm-console-proxy", "", 8768, true, true)
 }
 
 func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {
