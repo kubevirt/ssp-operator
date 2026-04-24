@@ -106,6 +106,9 @@ var _ = Describe("Crypto Policy", func() {
 
 		updateSsp(func(foundSsp *ssp.SSP) {
 			foundSsp.Spec.TLSSecurityProfile = nil
+			foundSsp.Spec.TokenGenerationService = &ssp.TokenGenerationService{
+				Enabled: true,
+			}
 		})
 		waitUntilDeployed()
 	})
@@ -118,6 +121,7 @@ var _ = Describe("Crypto Policy", func() {
 		DescribeTable("Adhere to defined TLSConfig", decorators.Conformance, func(tlsConfigTestPermutation tlsConfigTestPermutation) {
 			pod := operatorPod()
 			validatorPod := templateValidatorPod()
+			vmProxyPod := vmConsoleProxyPod()
 
 			applyTLSConfig(tlsConfigTestPermutation.openshiftTLSPolicy)
 			Expect(testMetricsEndpoint(pod, tlsConfigTestPermutation)).To(Succeed())
@@ -127,6 +131,10 @@ var _ = Describe("Crypto Policy", func() {
 			// for the ConfigMap to be propagated to the pod.
 			Eventually(func() error {
 				return testValidatorEndpoint(validatorPod, tlsConfigTestPermutation)
+			}, env.Timeout(), time.Second).Should(Succeed())
+
+			Eventually(func() error {
+				return testVmConsoleProxyEndpoint(vmProxyPod, tlsConfigTestPermutation)
 			}, env.Timeout(), time.Second).Should(Succeed())
 		},
 			Entry("[test_id:9360] old", oldPermutation),
@@ -151,6 +159,17 @@ func templateValidatorPod() core.Pod {
 	err := apiClient.List(context.TODO(), pods, client.MatchingLabels{
 		common.AppKubernetesNameLabel:      "template-validator",
 		common.AppKubernetesComponentLabel: string(common.AppComponentTemplating),
+	})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(pods.Items).ToNot(BeEmpty())
+	return pods.Items[0]
+}
+
+func vmConsoleProxyPod() core.Pod {
+	pods := &core.PodList{}
+	err := apiClient.List(context.TODO(), pods, client.MatchingLabels{
+		common.AppKubernetesNameLabel:      "vm-console-proxy",
+		common.AppKubernetesComponentLabel: "vm-console-proxy",
 	})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pods.Items).ToNot(BeEmpty())
@@ -282,6 +301,10 @@ func testWebhookEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error
 
 func testValidatorEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
 	return tlsConfig.testEndpointAccessibilityWithTLS(pod, template_validator.ServiceName, "", 8443, true)
+}
+
+func testVmConsoleProxyEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, "vm-console-proxy", "", 8768, true)
 }
 
 func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {
