@@ -289,11 +289,15 @@ func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {
 	Expect(err).ToNot(HaveOccurred())
 	defer watch.Stop()
 
+	var previousGeneration int64
 	updateSsp(func(foundSsp *ssp.SSP) {
+		previousGeneration = foundSsp.Generation
 		foundSsp.Spec.TLSSecurityProfile = tlsSecurityProfile
 	})
-	err = WatchChangesUntil(watch, isStatusDeploying, env.Timeout())
-	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
-	err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
-	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
+
+	Eventually(func(g Gomega) {
+		sspObj := getSsp()
+		g.Expect(sspObj.Generation).To(BeNumerically(">", previousGeneration))
+		g.Expect(sspObj.Status.ObservedGeneration).To(Equal(sspObj.Generation))
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
 }

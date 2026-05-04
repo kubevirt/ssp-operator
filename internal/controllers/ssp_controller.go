@@ -215,7 +215,6 @@ func (s *sspController) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		}
 		reqLogger.Info(fmt.Sprintf("Pausing SSP operator on resource: %v/%v", instance.Namespace, instance.Name))
 		instance.Status.Paused = true
-		instance.Status.ObservedGeneration = instance.Generation
 		err := s.client.Status().Update(ctx, instance)
 		return ctrl.Result{}, err
 	}
@@ -225,13 +224,16 @@ func (s *sspController) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 		return ctrl.Result{}, err
 	}
 
-	sspRequest.Logger.V(1).Info("Updating CR status prior to operand reconciliation...")
-	err = preUpdateStatus(sspRequest)
-	if err != nil {
-		return handleError(sspRequest, err, sspRequest.Logger)
+	if sspRequest.Instance.Status.ObservedGeneration == 0 ||
+		sspRequest.Instance.Status.ObservedGeneration != sspRequest.Instance.Generation {
+		// Only set conditions when SSP object was changed.
+		sspRequest.Logger.V(1).Info("Updating CR status prior to operand reconciliation...")
+		err = preUpdateStatus(sspRequest)
+		if err != nil {
+			return handleError(sspRequest, err, sspRequest.Logger)
+		}
+		sspRequest.Logger.V(1).Info("CR status updated")
 	}
-
-	sspRequest.Logger.V(1).Info("CR status updated")
 
 	sspRequest.Logger.Info("Reconciling operands...")
 	reconcileResults, err := s.reconcileOperands(sspRequest)
@@ -422,11 +424,6 @@ func preUpdateStatus(request *common.Request) error {
 	sspStatus.ObservedGeneration = request.Instance.Generation
 	sspStatus.OperatorVersion = operatorVersion
 	sspStatus.TargetVersion = operatorVersion
-
-	if sspStatus.Paused {
-		request.Logger.Info(fmt.Sprintf("Unpausing SSP operator on resource: %v/%v",
-			request.Instance.Namespace, request.Instance.Name))
-	}
 	sspStatus.Paused = false
 
 	if !conditionsv1.IsStatusConditionPresentAndEqual(sspStatus.Conditions, conditionsv1.ConditionAvailable, v1.ConditionFalse) {
@@ -551,6 +548,7 @@ func updateStatus(request *common.Request, reconcileResults []common.ReconcileRe
 		})
 	}
 
+	sspStatus.Paused = false
 	sspStatus.ObservedGeneration = request.Instance.Generation
 	if len(notAvailable) == 0 && len(progressing) == 0 && len(degraded) == 0 {
 		sspStatus.Phase = lifecycleapi.PhaseDeployed
