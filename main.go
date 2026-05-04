@@ -231,6 +231,8 @@ func extractHostnameFromCert(certPath string) (string, error) {
 	return "", errors.New("failed to extract common name from certificate")
 }
 
+// Adding commet just to check CI.
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
