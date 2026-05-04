@@ -3,6 +3,7 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -95,6 +96,114 @@ var _ = Describe("Observed generation", func() {
 				updatedSsp.Generation == updatedSsp.Status.ObservedGeneration
 		}, env.ShortTimeout())
 		Expect(err).ToNot(HaveOccurred())
+	})
+})
+
+var _ = Describe("Status change before reconciliation", func() {
+	BeforeEach(func() {
+		strategy.SkipSspUpdateTestsIfNeeded()
+		waitUntilDeployed()
+	})
+
+	AfterEach(func() {
+		strategy.RevertToOriginalSspCr()
+		waitUntilDeployed()
+	})
+
+	It("[test_id:TODO] should change .status before reconciliation, when CR was changed", func() {
+		watch, err := StartWatch(sspListerWatcher)
+		Expect(err).ToNot(HaveOccurred())
+		defer watch.Stop()
+
+		var previousGeneration int64
+		var newValidatorReplicas int32 = 0
+		updateSsp(func(foundSsp *ssp.SSP) {
+			previousGeneration = foundSsp.Generation
+			foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
+				Replicas: &newValidatorReplicas,
+			}
+		})
+
+		err = WatchChangesUntil(watch, func(updatedSsp *ssp.SSP) bool {
+			return updatedSsp.Generation > previousGeneration &&
+				isStatusDeploying(updatedSsp)
+		}, env.ShortTimeout())
+		Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying after CR change.")
+
+		err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
+		Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
+
+		Eventually(func(g Gomega) {
+			sspObj := getSsp()
+			g.Expect(sspObj.Generation).To(BeNumerically(">", previousGeneration))
+			g.Expect(sspObj.Status.ObservedGeneration).To(Equal(sspObj.Generation))
+		}, env.ShortTimeout(), time.Second).Should(Succeed())
+	})
+
+	It("[test_id:TODO] should not change .status before reconciliation, when CR was not changed", func() {
+		serviceRes := testResource{
+			Name:      validator.ServiceName,
+			Namespace: strategy.GetNamespace(),
+			Resource:  &core.Service{},
+			UpdateFunc: func(service *core.Service) {
+				service.Spec.Ports[0].Port = 44331
+				service.Spec.Ports[0].TargetPort = intstr.FromInt32(44331)
+			},
+			EqualsFunc: func(old *core.Service, new *core.Service) bool {
+				return reflect.DeepEqual(old.Spec, new.Spec)
+			},
+		}
+
+		initialSsp := getSsp()
+		Expect(initialSsp.Status.ObservedGeneration).To(Equal(initialSsp.Generation),
+			"ObservedGeneration should equal Generation before test")
+		Expect(isStatusDeployed(initialSsp)).To(BeTrue(),
+			"SSP should be in Deployed state before test")
+
+		watch, err := StartWatch(sspListerWatcher)
+		Expect(err).ToNot(HaveOccurred())
+		defer watch.Stop()
+
+		done := make(chan struct{})
+		statusChanged := make(chan bool, 1)
+		go func() {
+			defer GinkgoRecover()
+			defer close(statusChanged)
+			for {
+				select {
+				case updatedSsp, ok := <-watch.Updates():
+					if !ok {
+						return
+					}
+					if isStatusDeploying(updatedSsp) ||
+						updatedSsp.Status.ObservedGeneration != initialSsp.Generation ||
+						updatedSsp.Generation != initialSsp.Generation {
+						// Found one unexpected event
+						statusChanged <- true
+						return
+					}
+				case <-done:
+					// This case is the last, so all events in the watch channel are processed before exiting.
+					return
+				}
+			}
+		}()
+
+		expectRestoreAfterUpdate(&serviceRes)
+
+		close(done)
+		changed := <-statusChanged
+
+		Expect(changed).To(BeFalse(),
+			"SSP status should not change when CR was not changed")
+
+		finalSsp := getSsp()
+		Expect(finalSsp.Generation).To(Equal(initialSsp.Generation),
+			"Generation should remain unchanged")
+		Expect(finalSsp.Status.ObservedGeneration).To(Equal(initialSsp.Generation),
+			"ObservedGeneration should remain unchanged")
+		Expect(isStatusDeployed(finalSsp)).To(BeTrue(),
+			"SSP should remain in Deployed state")
 	})
 })
 
