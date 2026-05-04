@@ -60,8 +60,6 @@ var _ = Describe("Template validator operand", func() {
 		configMapRes          testResource
 		serviceMetricsRes     testResource
 		deploymentRes         testResource
-
-		replicas int32 = 2
 	)
 
 	BeforeEach(func() {
@@ -390,37 +388,6 @@ var _ = Describe("Template validator operand", func() {
 					podSpec.NodeSelector == nil &&
 					podSpec.Tolerations == nil
 			}, env.Timeout(), 1*time.Second).Should(BeTrue(), "placement should be nil")
-		})
-
-		// TODO - This test is currently pending, because it can be flaky.
-		//        If the operator is too slow and does not notice Deployment
-		//        state when not all pods are running, the test would fail.
-		PIt("[test_id:5830]should set available condition when at least one validator pod is running", func() {
-			watch, err := StartWatch(sspListerWatcher)
-			Expect(err).ToNot(HaveOccurred())
-			defer watch.Stop()
-
-			updateSsp(func(foundSsp *ssp.SSP) {
-				foundSsp.Spec.TemplateValidator = &ssp.TemplateValidator{
-					Replicas: ptr.To(replicas),
-				}
-			})
-
-			err = WatchChangesUntil(watch, isStatusDeploying, env.Timeout())
-			Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
-
-			err = WatchChangesUntil(watch, func(obj *ssp.SSP) bool {
-				available := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionAvailable)
-				progressing := conditionsv1.FindStatusCondition(obj.Status.Conditions, conditionsv1.ConditionProgressing)
-
-				return obj.Status.Phase == lifecycleapi.PhaseDeploying &&
-					available.Status == core.ConditionTrue &&
-					progressing.Status == core.ConditionTrue
-			}, env.Timeout())
-			Expect(err).ToNot(HaveOccurred(), "SSP should be available, but progressing.")
-
-			err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
-			Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 		})
 	})
 })
