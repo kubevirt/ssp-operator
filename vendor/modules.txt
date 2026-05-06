@@ -164,7 +164,7 @@ github.com/json-iterator/go
 # github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251113100301-4dc32c58c379
 ## explicit; go 1.20
 github.com/kubevirt/monitoring/pkg/metrics/parser
-# github.com/moby/spdystream v0.5.0
+# github.com/moby/spdystream v0.5.1
 ## explicit; go 1.13
 github.com/moby/spdystream
 github.com/moby/spdystream/spdy
