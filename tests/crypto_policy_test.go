@@ -121,8 +121,6 @@ var _ = Describe("Crypto Policy", func() {
 	Context("setting Crypto Policy", func() {
 		DescribeTable("Adhere to defined TLSConfig", decorators.Conformance, func(tlsConfigTestPermutation tlsConfigTestPermutation) {
 			pod := operatorPod()
-			validatorPod := templateValidatorPod()
-			vmProxyPod := vmConsoleProxyPod()
 
 			applyTLSConfig(tlsConfigTestPermutation.openshiftTLSPolicy)
 			Expect(testMetricsEndpoint(pod, tlsConfigTestPermutation)).To(Succeed())
@@ -130,12 +128,18 @@ var _ = Describe("Crypto Policy", func() {
 
 			// Using larger timeout, because it usually takes more than a minute
 			// for the ConfigMap to be propagated to the pod.
-			Eventually(func() error {
-				return testValidatorEndpoint(validatorPod, tlsConfigTestPermutation)
+			Eventually(func(g Gomega) {
+				validatorPod, err := templateValidatorPod()
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(validatorPod).ToNot(BeNil())
+				g.Expect(testValidatorEndpoint(*validatorPod, tlsConfigTestPermutation)).To(Succeed())
 			}, env.Timeout(), time.Second).Should(Succeed())
 
-			Eventually(func() error {
-				return testVmConsoleProxyEndpoint(vmProxyPod, tlsConfigTestPermutation)
+			Eventually(func(g Gomega) {
+				vmProxyPod, err := vmConsoleProxyPod()
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(vmProxyPod).ToNot(BeNil())
+				g.Expect(testVmConsoleProxyEndpoint(*vmProxyPod, tlsConfigTestPermutation)).To(Succeed())
 			}, env.Timeout(), time.Second).Should(Succeed())
 		},
 			Entry("[test_id:9360] old", oldPermutation),
@@ -155,26 +159,38 @@ func operatorPod() core.Pod {
 	return pods.Items[0]
 }
 
-func templateValidatorPod() core.Pod {
+func templateValidatorPod() (*core.Pod, error) {
 	pods := &core.PodList{}
 	err := apiClient.List(context.TODO(), pods, client.MatchingLabels{
 		common.AppKubernetesNameLabel:      "template-validator",
 		common.AppKubernetesComponentLabel: string(common.AppComponentTemplating),
 	})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(pods.Items).ToNot(BeEmpty())
-	return pods.Items[0]
+	if err != nil {
+		return nil, err
+	}
+	for i := range pods.Items {
+		if pods.Items[i].DeletionTimestamp.IsZero() {
+			return &pods.Items[i], nil
+		}
+	}
+	return nil, fmt.Errorf("no valid template-validator pod exists")
 }
 
-func vmConsoleProxyPod() core.Pod {
+func vmConsoleProxyPod() (*core.Pod, error) {
 	pods := &core.PodList{}
 	err := apiClient.List(context.TODO(), pods, client.MatchingLabels{
 		common.AppKubernetesNameLabel:      "vm-console-proxy",
 		common.AppKubernetesComponentLabel: "vm-console-proxy",
 	})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(pods.Items).ToNot(BeEmpty())
-	return pods.Items[0]
+	if err != nil {
+		return nil, err
+	}
+	for i := range pods.Items {
+		if pods.Items[i].DeletionTimestamp.IsZero() {
+			return &pods.Items[i], nil
+		}
+	}
+	return nil, fmt.Errorf("no valid vm-console-proxy pod exists")
 }
 
 type tlsConfigTestPermutation struct {
