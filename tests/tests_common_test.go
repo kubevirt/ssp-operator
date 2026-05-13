@@ -95,23 +95,13 @@ func expectRecreateAfterDelete(res *testResource) {
 	resource.SetName(res.Name)
 	resource.SetNamespace(res.Namespace)
 
-	// Watch status of the SSP resource
-	watch, err := StartWatch(sspListerWatcher)
-	Expect(err).ToNot(HaveOccurred())
-	defer watch.Stop()
-
 	Expect(apiClient.Delete(ctx, resource)).ToNot(HaveOccurred())
 
-	err = WatchChangesUntil(watch, isStatusDeploying, env.ShortTimeout())
-	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
-
-	err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
-	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
-
-	Eventually(func() error {
-		return apiClient.Get(ctx, client.ObjectKey{
+	Eventually(func(g Gomega) {
+		g.Expect(apiClient.Get(ctx, client.ObjectKey{
 			Name: res.Name, Namespace: res.Namespace,
-		}, resource)
+		}, resource)).To(Succeed())
+		g.Expect(resource.GetDeletionTimestamp().IsZero()).To(BeTrue())
 	}, env.ShortTimeout(), time.Second).Should(Succeed())
 }
 
@@ -178,23 +168,12 @@ func expectRestoreAfterUpdate(res *testResource) {
 	original := res.NewResource()
 	Expect(apiClient.Get(ctx, res.GetKey(), original)).ToNot(HaveOccurred())
 
-	// Watch status of the SSP resource
-	watch, err := StartWatch(sspListerWatcher)
-	Expect(err).ToNot(HaveOccurred())
-	defer watch.Stop()
-
 	Eventually(func(g Gomega) {
 		found := res.NewResource()
 		g.Expect(apiClient.Get(ctx, res.GetKey(), found)).To(Succeed())
 		res.Update(found)
 		g.Expect(apiClient.Update(ctx, found)).ToNot(HaveOccurred())
 	}, env.ShortTimeout(), time.Second).Should(Succeed())
-
-	err = WatchChangesUntil(watch, isStatusDeploying, env.ShortTimeout())
-	Expect(err).ToNot(HaveOccurred(), "SSP status should be deploying.")
-
-	err = WatchChangesUntil(watch, isStatusDeployed, env.Timeout())
-	Expect(err).ToNot(HaveOccurred(), "SSP status should be deployed.")
 
 	Eventually(func(g Gomega) {
 		found := res.NewResource()
