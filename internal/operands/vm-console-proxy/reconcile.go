@@ -2,6 +2,7 @@ package vm_console_proxy
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 
 	ocpv1 "github.com/openshift/api/config/v1"
@@ -443,11 +444,20 @@ func createTlsConfigFile(tlsProfile *ocpv1.TLSSecurityProfile) (string, error) {
 		return "", fmt.Errorf("unsupported TLS version: %s", profileSpec.MinTLSVersion)
 	}
 
-	result.Ciphers = crypto.OpenSSLToIANACipherSuites(profileSpec.Ciphers)
+	secureCiphers := make(map[string]struct{})
+	for _, suite := range tls.CipherSuites() {
+		secureCiphers[suite.Name] = struct{}{}
+	}
+
+	for _, cipher := range crypto.OpenSSLToIANACipherSuites(profileSpec.Ciphers) {
+		if _, ok := secureCiphers[cipher]; ok {
+			result.Ciphers = append(result.Ciphers, cipher)
+		}
+	}
 
 	yamlBytes, err := yaml.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal TLS profile cofing to yaml: %w", err)
+		return "", fmt.Errorf("failed to marshal TLS profile confing to yaml: %w", err)
 	}
 
 	return string(yamlBytes), nil
