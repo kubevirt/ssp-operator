@@ -2,6 +2,7 @@ package vm_console_proxy
 
 import (
 	"context"
+	"crypto/tls"
 	"os"
 	"testing"
 
@@ -169,6 +170,46 @@ var _ = Describe("VM Console Proxy Operand", func() {
 		Expect(yaml.Unmarshal([]byte(tlsConfig), proxyProfile)).To(Succeed())
 
 		Expect(proxyProfile.MinTLSVersion).To(Equal(proxyv1.VersionTLS12))
+
+		var secureCiphers []string
+		for _, suite := range tls.CipherSuites() {
+			secureCiphers = append(secureCiphers, suite.Name)
+		}
+		Expect(secureCiphers).To(ContainElements(proxyProfile.Ciphers))
+	})
+
+	It("should filter out insecure ciphers from Old TLS profile", func() {
+		request.Instance.Spec.TLSSecurityProfile = &ocpv1.TLSSecurityProfile{
+			Type: ocpv1.TLSProfileOldType,
+			Old:  &ocpv1.OldTLSProfile{},
+		}
+
+		_, err := operand.Reconcile(&request)
+		Expect(err).ToNot(HaveOccurred())
+
+		configMapKey := client.ObjectKeyFromObject(bundle.ConfigMap)
+
+		configMap := &core.ConfigMap{}
+		Expect(request.Client.Get(request.Context, configMapKey, configMap)).To(Succeed())
+
+		const tlsConfigFilename = "tls-profile-v1.yaml"
+		tlsConfig, exists := configMap.Data[tlsConfigFilename]
+		Expect(exists).To(BeTrue(), "ConfigMap should have TLS configuration file: "+tlsConfigFilename)
+
+		proxyProfile := &proxyv1.TlsProfile{}
+		Expect(yaml.Unmarshal([]byte(tlsConfig), proxyProfile)).To(Succeed())
+
+		Expect(proxyProfile.MinTLSVersion).To(Equal(proxyv1.VersionTLS10))
+
+		var secureCiphers []string
+		for _, suite := range tls.CipherSuites() {
+			secureCiphers = append(secureCiphers, suite.Name)
+		}
+		Expect(secureCiphers).To(ContainElements(proxyProfile.Ciphers))
+
+		oldProfile := ocpv1.TLSProfiles[ocpv1.TLSProfileOldType]
+		Expect(len(proxyProfile.Ciphers)).To(BeNumerically("<", len(oldProfile.Ciphers)),
+			"filtered cipher list should be smaller than original Old profile")
 	})
 
 	It("should remove cluster resources on cleanup", func() {
