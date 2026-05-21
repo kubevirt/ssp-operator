@@ -303,9 +303,8 @@ func expectUserCannot(sars *authv1.SubjectAccessReviewSpec) {
 			sars.ResourceAttributes.Version, sars.ResourceAttributes.Namespace))
 }
 
-func GetPodLogs(name, namespace string) (string, error) {
-	RawLogs, err := coreClient.CoreV1().Pods(namespace).
-		GetLogs(name, &core.PodLogOptions{}).DoRaw(ctx)
+func GetPodLogs(name, namespace string, params core.PodLogOptions) (string, error) {
+	RawLogs, err := coreClient.CoreV1().Pods(namespace).GetLogs(name, &params).DoRaw(ctx)
 	return string(RawLogs), err
 }
 

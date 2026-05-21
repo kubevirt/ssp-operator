@@ -638,7 +638,7 @@ var _ = Describe("Template validator webhooks", func() {
 			Expect(err).ToNot(HaveOccurred(), "Could not find the validator pods")
 			Eventually(func() bool {
 				for _, pod := range pods.Items {
-					logs, err := GetPodLogs(pod.Name, pod.Namespace)
+					logs, err := GetPodLogs(pod.Name, pod.Namespace, core.PodLogOptions{})
 					Expect(err).ToNot(HaveOccurred())
 					if strings.Contains(logs, "Memory size not within range") {
 						return true
