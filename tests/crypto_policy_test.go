@@ -12,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 
 	ocpv1 "github.com/openshift/api/config/v1"
 	openshiftcrypto "github.com/openshift/library-go/pkg/crypto"
@@ -100,6 +101,8 @@ var _ = Describe("Crypto Policy", func() {
 				},
 			},
 		}
+
+		lastVmProxyPod *core.Pod
 	)
 
 	BeforeEach(func() {
@@ -112,9 +115,24 @@ var _ = Describe("Crypto Policy", func() {
 			}
 		})
 		waitUntilDeployed()
+
+		lastVmProxyPod = nil
 	})
 
 	AfterEach(func() {
+		// Print logs from vm-console-proxy, so we know why the tests failed.
+		if CurrentSpecReport().Failed() && lastVmProxyPod != nil {
+			const tailLines int64 = 64
+			logs, err := GetPodLogs(lastVmProxyPod.Name, lastVmProxyPod.Namespace, core.PodLogOptions{
+				TailLines: ptr.To(tailLines),
+			})
+			if err != nil {
+				GinkgoWriter.Printf("Failed to get vm-console-proxy logs: %v\n", err)
+			} else {
+				GinkgoWriter.Printf("Last %d lines of vm-console-proxy pod %q logs:\n%s\n", tailLines, lastVmProxyPod.Name, logs)
+			}
+		}
+
 		strategy.RevertToOriginalSspCr()
 	})
 
@@ -141,6 +159,7 @@ var _ = Describe("Crypto Policy", func() {
 				vmProxyPod, err := vmConsoleProxyPod()
 				g.Expect(err).ToNot(HaveOccurred())
 				g.Expect(vmProxyPod).ToNot(BeNil())
+				lastVmProxyPod = vmProxyPod
 				g.Expect(testVmConsoleProxyEndpoint(*vmProxyPod, tlsConfigTestPermutation, clientCert)).To(Succeed())
 			}, env.Timeout(), time.Second).Should(Succeed())
 		},
