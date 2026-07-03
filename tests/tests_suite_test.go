@@ -492,30 +492,7 @@ func getTemplateValidatorDeployment() *apps.Deployment {
 }
 
 func waitUntilDeployed() {
-	defer func() {
-		// If the below check fails, output the SSP object to log.
-		// Its .status.conditions can be helpful.
-		if rec := recover(); rec != nil {
-			ssp := &sspv1beta3.SSP{}
-			err := apiClient.Get(ctx, client.ObjectKey{
-				Name:      strategy.GetName(),
-				Namespace: strategy.GetNamespace(),
-			}, ssp)
-			if err != nil {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Could not get SSP object: %s\n", err.Error())
-				panic(rec)
-			}
-
-			sspJson, err := json.MarshalIndent(ssp, "", "    ")
-			if err != nil {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Could not convert SSP to JSON: %s\n", err.Error())
-				panic(rec)
-			}
-
-			_, _ = fmt.Fprintf(GinkgoWriter, "SSP object:\n%s\n", sspJson)
-			panic(rec)
-		}
-	}()
+	defer logSSPPanicHandler()
 
 	// If SSP will not be in "deployed" state in 10 minutes, we want to abort the whole test suite.
 	NewGomega(AbortSuite).EventuallyWithOffset(1, func(g Gomega) {
@@ -531,14 +508,19 @@ func waitForDeletion(key client.ObjectKey, obj client.Object) {
 	}, env.Timeout(), time.Second).Should(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 }
 
-// waitForDeletionOrAbort aborts the whole test suite if object is not deleted in env.Timeout time.
-func waitForDeletionOrAbort(key client.ObjectKey, obj client.Object) {
+// waitForSspDeletionOrAbort aborts the whole test suite if object is not deleted in env.Timeout time.
+func waitForSspDeletionOrAbort(sspObj *sspv1beta3.SSP) {
+	defer logSSPPanicHandler()
+
+	key := client.ObjectKey{Name: sspObj.Name, Namespace: sspObj.Namespace}
 	NewGomega(AbortSuite).EventuallyWithOffset(1, func() error {
-		return apiClient.Get(ctx, key, obj)
+		return apiClient.Get(ctx, key, &sspv1beta3.SSP{})
 	}, env.Timeout(), time.Second).Should(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 }
 
 func waitForSspDeletionIfNeeded(sspObj *sspv1beta3.SSP) {
+	defer logSSPPanicHandler()
+
 	key := client.ObjectKey{Name: sspObj.Name, Namespace: sspObj.Namespace}
 	NewGomega(AbortSuite).Eventually(func() error {
 		foundSsp := &sspv1beta3.SSP{}
@@ -554,6 +536,35 @@ func waitForSspDeletionIfNeeded(sspObj *sspv1beta3.SSP) {
 		}
 		return nil
 	}, env.Timeout(), time.Second).ShouldNot(HaveOccurred())
+}
+
+func logSSPPanicHandler() {
+	// If the below check fails, output the SSP object to log.
+	// Its .status.conditions can be helpful.
+
+	rec := recover()
+	if rec == nil {
+		return
+	}
+
+	ssp := &sspv1beta3.SSP{}
+	err := apiClient.Get(ctx, client.ObjectKey{
+		Name:      strategy.GetName(),
+		Namespace: strategy.GetNamespace(),
+	}, ssp)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Could not get SSP object: %s\n", err.Error())
+		panic(rec)
+	}
+
+	sspJson, err := json.MarshalIndent(ssp, "", "    ")
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Could not convert SSP to JSON: %s\n", err.Error())
+		panic(rec)
+	}
+
+	_, _ = fmt.Fprintf(GinkgoWriter, "SSP object:\n%s\n", sspJson)
+	panic(rec)
 }
 
 func validateDeploymentExists() {
