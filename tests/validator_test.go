@@ -343,20 +343,22 @@ var _ = Describe("Template validator operand", func() {
 	})
 
 	It("[test_id:6204]should set Deployed phase and conditions when validator pods are running", decorators.Conformance, func() {
-		foundSsp := getSsp()
+		Eventually(func(g Gomega) {
+			foundSsp := getSsp()
 
-		Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed), "SSP should be in phase Deployed")
+			g.Expect(foundSsp.Status.Phase).To(Equal(lifecycleapi.PhaseDeployed), "SSP should be in phase Deployed")
 
-		conditions := foundSsp.Status.Conditions
-		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionAvailable).Status).To(Equal(core.ConditionTrue),
-			fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionAvailable, core.ConditionTrue),
-		)
-		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionProgressing).Status).To(Equal(core.ConditionFalse),
-			fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionProgressing, core.ConditionFalse),
-		)
-		Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionDegraded).Status).To(Equal(core.ConditionFalse),
-			fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionDegraded, core.ConditionFalse),
-		)
+			conditions := foundSsp.Status.Conditions
+			g.Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionAvailable).Status).To(Equal(core.ConditionTrue),
+				fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionAvailable, core.ConditionTrue),
+			)
+			g.Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionProgressing).Status).To(Equal(core.ConditionFalse),
+				fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionProgressing, core.ConditionFalse),
+			)
+			g.Expect(conditionsv1.FindStatusCondition(conditions, conditionsv1.ConditionDegraded).Status).To(Equal(core.ConditionFalse),
+				fmt.Sprintf("Condition '%s' should be '%s'.", conditionsv1.ConditionDegraded, core.ConditionFalse),
+			)
+		}, env.Timeout(), time.Second).Should(Succeed())
 
 		deployment := &apps.Deployment{}
 		Expect(apiClient.Get(ctx, deploymentRes.GetKey(), deployment)).ToNot(HaveOccurred())
