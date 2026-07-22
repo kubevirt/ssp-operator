@@ -505,6 +505,7 @@ func getDataSourceInfosMultiArch(sourceCollection template_bundle.DataSourceColl
 }
 
 const dataImportCronLabel = "cdi.kubevirt.io/dataImportCron"
+const dataImportCronCleanupLabel = "cdi.kubevirt.io/dataImportCron.cleanup"
 
 func dataSourceAutoUpdateEnabled(dataSource *cdiv1beta1.DataSource, cronByDataSource map[client.ObjectKey]*cdiv1beta1.DataImportCron, request *common.Request) (bool, error) {
 	objectKey := client.ObjectKeyFromObject(dataSource)
@@ -688,6 +689,7 @@ func reconcileDataSource(dsInfo dataSourceInfo, request *common.Request) (common
 			// Only set app labels if DIC does not exist
 			common.AddAppLabels(request.Instance, operandName, operandComponent, foundRes)
 			delete(foundRes.GetLabels(), dataImportCronLabel)
+			delete(foundRes.GetLabels(), dataImportCronCleanupLabel)
 
 			foundRes.(*cdiv1beta1.DataSource).Spec = newRes.(*cdiv1beta1.DataSource).Spec
 		}).
