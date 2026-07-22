@@ -1103,6 +1103,102 @@ var _ = Describe("DataSources", func() {
 				})
 			})
 
+			Context("with DataVolume created after DataImportCron is removed", func() {
+				var dataVolume *cdiv1beta1.DataVolume
+
+				AfterEach(func() {
+					if dataVolume != nil {
+						pvc := &core.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: dataVolume.Name, Namespace: dataVolume.Namespace}}
+						Expect(apiClient.Delete(ctx, dataVolume)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+						Expect(apiClient.Delete(ctx, pvc)).To(Or(Succeed(), MatchError(errors.IsNotFound, "errors.IsNotFound")))
+						waitForDeletion(client.ObjectKeyFromObject(dataVolume), &cdiv1beta1.DataVolume{})
+						waitForDeletion(client.ObjectKeyFromObject(pvc), &core.PersistentVolumeClaim{})
+						dataVolume = nil
+					}
+				})
+
+				It("[test_id:TODO] should create DataImportCron after user enables auto-update on DataSource with cleanup label", func() {
+					// Remove the template. SSP deletes the DataImportCron, but keeps the DataSource it was managing.
+					updateSsp(func(foundSsp *ssp.SSP) {
+						foundSsp.Spec.CommonTemplates.DataImportCronTemplates = nil
+					})
+					waitUntilDeployed()
+
+					// Make sure the DataImportCron is deleted, and DataSource remains.
+					waitForDeletion(dataImportCron.GetKey(), &cdiv1beta1.DataImportCron{})
+					Expect(apiClient.Get(ctx, dataSource.GetKey(), dataSource.NewResource())).To(Succeed(), "DataSource should not have been removed.")
+
+					// Create a new DataVolume, that will be referenced by the DataSource.
+					dataVolume = &cdiv1beta1.DataVolume{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        dataSourceName,
+							Namespace:   internal.GoldenImagesNamespace,
+							Annotations: commonAnnotations,
+						},
+						Spec: cdiv1beta1.DataVolumeSpec{
+							Source: &cdiv1beta1.DataVolumeSource{
+								Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+									URL:        ptr.To(registryURL),
+									PullMethod: ptr.To(cdiv1beta1.RegistryPullNode),
+								},
+							},
+							Storage: &cdiv1beta1.StorageSpec{
+								Resources: core.VolumeResourceRequirements{
+									Requests: core.ResourceList{
+										core.ResourceStorage: resource.MustParse("128Mi"),
+									},
+								},
+							},
+						},
+					}
+					Expect(apiClient.Create(ctx, dataVolume)).To(Succeed())
+
+					// Wait until DataVolume import is done.
+					Eventually(func(g Gomega) {
+						foundDv := &cdiv1beta1.DataVolume{}
+						getErr := apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), foundDv)
+
+						// When DataVolume succeeds importing, CDI may remove it and leave only PVC.
+						if errors.IsNotFound(getErr) {
+							g.Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(dataVolume), &core.PersistentVolumeClaim{})).To(Succeed())
+							return
+						}
+
+						g.Expect(getErr).ToNot(HaveOccurred())
+						g.Expect(foundDv.Status.Phase).To(Equal(cdiv1beta1.Succeeded))
+					}, env.Timeout(), time.Second).Should(Succeed(), "DataVolume should successfully import.")
+
+					// Add DataImportCron template back to SSP.
+					updateSsp(func(foundSsp *ssp.SSP) {
+						foundSsp.Spec.CommonTemplates.DataImportCronTemplates = append(foundSsp.Spec.CommonTemplates.DataImportCronTemplates,
+							cronTemplate,
+						)
+					})
+					waitUntilDeployed()
+
+					// DataImportCron should not be created.
+					err := apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+					Expect(err).To(MatchError(errors.IsNotFound, "errors.IsNotFound"), "DataImportCron should not exist.")
+
+					// Enable auto-update by adding the "cdi.kubevirt.io/dataImportCron=true" label to the DataSource.
+					Eventually(func(g Gomega) error {
+						ds := &cdiv1beta1.DataSource{}
+						g.Expect(apiClient.Get(ctx, dataSource.GetKey(), ds)).To(Succeed())
+
+						if ds.GetLabels() == nil {
+							ds.SetLabels(map[string]string{})
+						}
+						ds.GetLabels()[cdiLabel] = "true"
+
+						return apiClient.Update(ctx, ds)
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
+
+					Eventually(func() error {
+						return apiClient.Get(ctx, dataImportCron.GetKey(), dataImportCron.NewResource())
+					}, env.ShortTimeout(), time.Second).Should(Succeed())
+				})
+			})
+
 			It("[test_id:8296] should restore CDI label on DataSource, if user removes it", decorators.Conformance, func() {
 				Eventually(func(g Gomega) error {
 					ds := &cdiv1beta1.DataSource{}

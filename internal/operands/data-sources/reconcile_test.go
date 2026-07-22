@@ -368,6 +368,34 @@ var _ = Describe("Data-Sources operand", func() {
 
 				ExpectResourceExists(&cron, request)
 			})
+
+			It("should remove the cleanup label from DataSource that is not using auto-update", func() {
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cron := cronTemplate.AsDataImportCron()
+				cron.Namespace = internal.GoldenImagesNamespace
+				ExpectResourceNotExists(&cron, request)
+
+				// Simulate CDI adding the cleanup label to the DataSource,
+				// after the owning DataImportCron with retentionPolicy "None" was deleted.
+				foundDs := &cdiv1beta1.DataSource{}
+				dsKey := client.ObjectKeyFromObject(testDataSource(centos8))
+				Expect(request.Client.Get(request.Context, dsKey, foundDs)).To(Succeed())
+
+				if foundDs.GetLabels() == nil {
+					foundDs.SetLabels(map[string]string{})
+				}
+				foundDs.GetLabels()[dataImportCronCleanupLabel] = "true"
+
+				Expect(request.Client.Update(request.Context, foundDs)).To(Succeed())
+
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(request.Client.Get(request.Context, dsKey, foundDs)).To(Succeed())
+				Expect(foundDs.GetLabels()).ToNot(HaveKey(dataImportCronCleanupLabel))
+			})
 		})
 
 		It("should keep DataImportCron, if not owned by SSP CR", func() {
