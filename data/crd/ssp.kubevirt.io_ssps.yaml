@@ -317,7 +317,7 @@ spec:
                                         resources:
                                           description: |-
                                             resources represents the minimum resources the volume should have.
-                                            If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                            Users are allowed to specify resource requirements
                                             that are lower than previous value but must still be higher than capacity recorded in the
                                             status field of the claim.
                                             More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -424,6 +424,10 @@ spec:
                                             to the PersistentVolume backing this claim.
                                           type: string
                                       type: object
+                                    serviceAccountName:
+                                      description: ServiceAccountName for Importer
+                                        and Uploader pod
+                                      type: string
                                     source:
                                       description: Source is the src of the data for
                                         the requested DataVolume
@@ -462,6 +466,12 @@ spec:
                                                 reference, containing a Certificate
                                                 Authority(CA) public key, and a base64
                                                 encoded pem certificate
+                                              type: string
+                                            checksum:
+                                              description: |-
+                                                Checksum is the expected checksum of the file. Format: "algorithm:hash", e.g., "sha256:1234abcd..." or "md5:5678efgh..."
+                                                Supported algorithms: md5, sha1, sha256, sha512
+                                                If specified, the importer will verify the downloaded content matches this checksum
                                               type: string
                                             extraHeaders:
                                               description: ExtraHeaders is a list
@@ -1916,9 +1926,10 @@ spec:
                             operator:
                               description: |-
                                 Operator represents a key's relationship to the value.
-                                Valid operators are Exists and Equal. Defaults to Equal.
+                                Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                                 Exists is equivalent to wildcard for value, so that a pod can
                                 tolerate all taints of a particular category.
+                                Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                               type: string
                             tolerationSeconds:
                               description: |-
@@ -2494,7 +2505,7 @@ spec:
                                         resources:
                                           description: |-
                                             resources represents the minimum resources the volume should have.
-                                            If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                            Users are allowed to specify resource requirements
                                             that are lower than previous value but must still be higher than capacity recorded in the
                                             status field of the claim.
                                             More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -2601,6 +2612,10 @@ spec:
                                             to the PersistentVolume backing this claim.
                                           type: string
                                       type: object
+                                    serviceAccountName:
+                                      description: ServiceAccountName for Importer
+                                        and Uploader pod
+                                      type: string
                                     source:
                                       description: Source is the src of the data for
                                         the requested DataVolume
@@ -2639,6 +2654,12 @@ spec:
                                                 reference, containing a Certificate
                                                 Authority(CA) public key, and a base64
                                                 encoded pem certificate
+                                              type: string
+                                            checksum:
+                                              description: |-
+                                                Checksum is the expected checksum of the file. Format: "algorithm:hash", e.g., "sha256:1234abcd..." or "md5:5678efgh..."
+                                                Supported algorithms: md5, sha1, sha256, sha512
+                                                If specified, the importer will verify the downloaded content matches this checksum
                                               type: string
                                             extraHeaders:
                                               description: ExtraHeaders is a list
@@ -4069,9 +4090,10 @@ spec:
                             operator:
                               description: |-
                                 Operator represents a key's relationship to the value.
-                                Valid operators are Exists and Equal. Defaults to Equal.
+                                Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                                 Exists is equivalent to wildcard for value, so that a pod can
                                 tolerate all taints of a particular category.
+                                Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                               type: string
                             tolerationSeconds:
                               description: |-
