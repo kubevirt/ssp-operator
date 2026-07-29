@@ -1278,10 +1278,6 @@ func getWebhookServerCertificates(validatorPod *core.Pod) ([]*x509.Certificate, 
 
 	tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true})
 	defer func() {
-		// This Close() always returns an error: i/o timeout.
-		// I was not able to find out why the connection cannot be closed cleanly.
-		// It is acceptable to ignore this error, because error during close
-		// has no effect on the test result.
 		_ = tlsConn.Close()
 	}()
 

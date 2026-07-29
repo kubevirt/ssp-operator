@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
+	"k8s.io/streaming/pkg/httpstream"
 )
 
 type PortForwarder interface {
@@ -28,14 +29,44 @@ type portForwarderImpl struct {
 
 var _ PortForwarder = &portForwarderImpl{}
 
+// portForwardConn adapts httpstream.Stream to net.Conn.
+// The stream is not backed by an actual network socket, so address and
+// deadline related methods are unsupported.
 type portForwardConn struct {
-	net.Conn
+	httpstream.Stream
 	streamConnCloser io.Closer
 }
 
+var _ net.Conn = &portForwardConn{}
+
 func (p *portForwardConn) Close() error {
-	return errors.Join(p.Conn.Close(), p.streamConnCloser.Close())
+	return errors.Join(p.Stream.Close(), p.streamConnCloser.Close())
 }
+
+func (p *portForwardConn) LocalAddr() net.Addr {
+	return portForwardAddr{}
+}
+
+func (p *portForwardConn) RemoteAddr() net.Addr {
+	return portForwardAddr{}
+}
+
+func (p *portForwardConn) SetDeadline(t time.Time) error {
+	return nil
+}
+
+func (p *portForwardConn) SetReadDeadline(t time.Time) error {
+	return nil
+}
+
+func (p *portForwardConn) SetWriteDeadline(t time.Time) error {
+	return nil
+}
+
+type portForwardAddr struct{}
+
+func (portForwardAddr) Network() string { return "portforward" }
+func (portForwardAddr) String() string  { return "portforward" }
 
 func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (conn net.Conn, err error) {
 	streamConnection, err := p.createStreamConnection(pod)
@@ -78,7 +109,7 @@ func (p *portForwarderImpl) Connect(pod *core.Pod, remotePort uint16) (conn net.
 
 	runCleanup = false
 	return &portForwardConn{
-		Conn:             dataStream.(net.Conn),
+		Stream:           dataStream,
 		streamConnCloser: streamConnection,
 	}, nil
 }
@@ -95,7 +126,7 @@ func (p *portForwarderImpl) createStreamConnection(pod *core.Pod) (httpstream.Co
 		Name(pod.Name).
 		SubResource("portforward")
 
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
+	dialer := spdy.NewDialerForStreaming(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
 	streamConn, _, err := dialer.Dial(portforward.PortForwardProtocolV1Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %w", err)
