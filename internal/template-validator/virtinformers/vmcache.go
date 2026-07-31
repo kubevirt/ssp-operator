@@ -240,8 +240,14 @@ func (v *vmCache) Replace(list []interface{}, _ string) error {
 }
 
 func (v *vmCache) Resync() error {
-	// No-op
 	return nil
+}
+
+func (v *vmCache) Bookmark(_ string) {
+}
+
+func (v *vmCache) LastStoreSyncResourceVersion() string {
+	return ""
 }
 
 func (v *vmCache) HasSynced() bool {
