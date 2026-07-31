@@ -34,6 +34,7 @@ var _ = Describe("TlsInfo", func() {
 
 		expectedVersion      uint16
 		expectedCipherSuites []uint16
+		expectedCurveIDs     []tls.CurveID
 
 		tlsInfo *TLSInfo
 	)
@@ -64,6 +65,12 @@ var _ = Describe("TlsInfo", func() {
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
 			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+		}
+		expectedCurveIDs = []tls.CurveID{
+			tls.X25519MLKEM768,
+			tls.X25519,
+			tls.CurveP256,
+			tls.CurveP384,
 		}
 
 		tlsInfo = &TLSInfo{
@@ -164,6 +171,7 @@ var _ = Describe("TlsInfo", func() {
 				g.Expect(err).ToNot(HaveOccurred())
 				g.Expect(tlsConfig.CipherSuites).To(ContainElements(expectedCipherSuites))
 				g.Expect(tlsConfig.MinVersion).To(Equal(expectedVersion))
+				g.Expect(tlsConfig.CurvePreferences).To(Equal(expectedCurveIDs))
 			}, time.Second).Should(Succeed())
 		})
 
@@ -185,6 +193,7 @@ var _ = Describe("TlsInfo", func() {
 				g.Expect(err).ToNot(HaveOccurred())
 				g.Expect(tlsConfig.CipherSuites).To(ContainElements(expectedCipherSuites))
 				g.Expect(tlsConfig.MinVersion).To(Equal(expectedVersion))
+				g.Expect(tlsConfig.CurvePreferences).To(Equal(expectedCurveIDs))
 			}, time.Second).Should(Succeed())
 		})
 
@@ -197,6 +206,7 @@ var _ = Describe("TlsInfo", func() {
 				g.Expect(err).ToNot(HaveOccurred())
 				g.Expect(tlsConfig.CipherSuites).To(ContainElements(expectedCipherSuites))
 				g.Expect(tlsConfig.MinVersion).To(Equal(expectedVersion))
+				g.Expect(tlsConfig.CurvePreferences).To(Equal(expectedCurveIDs))
 			}, time.Second).Should(Succeed())
 
 			writeTLSOptions(tlsOptionsDir, &common.SSPTLSOptions{
@@ -210,6 +220,41 @@ var _ = Describe("TlsInfo", func() {
 			}, time.Second).Should(MatchError(ContainSubstring(
 				"error getting TLS options: TLS Configuration broken, min version misconfigured:",
 			)))
+		})
+
+		It("should load TLS curve groups from a custom profile", func() {
+			customCurveIDs := []tls.CurveID{tls.X25519, tls.CurveP256}
+			writeTLSOptions(tlsOptionsDir, &common.SSPTLSOptions{
+				MinTLSVersion:      "1.2",
+				OpenSSLCipherNames: tlsOptions.OpenSSLCipherNames,
+				TLSGroups:          []ocpconfigv1.TLSGroup{ocpconfigv1.TLSGroupX25519, ocpconfigv1.TLSGroupSecP256r1},
+			})
+
+			Expect(tlsInfo.Init()).To(Succeed())
+			defer tlsInfo.Clean()
+
+			Eventually(func(g Gomega) {
+				tlsConfig, err := tlsInfo.CreateTlsConfig()
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(tlsConfig.CurvePreferences).To(Equal(customCurveIDs))
+			}, time.Second).Should(Succeed())
+		})
+
+		It("should ignore unsupported TLS group names", func() {
+			writeTLSOptions(tlsOptionsDir, &common.SSPTLSOptions{
+				MinTLSVersion:      "1.2",
+				OpenSSLCipherNames: tlsOptions.OpenSSLCipherNames,
+				TLSGroups:          []ocpconfigv1.TLSGroup{ocpconfigv1.TLSGroupX25519, "unsupported-group"},
+			})
+
+			Expect(tlsInfo.Init()).To(Succeed())
+			defer tlsInfo.Clean()
+
+			Eventually(func(g Gomega) {
+				tlsConfig, err := tlsInfo.CreateTlsConfig()
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(tlsConfig.CurvePreferences).To(Equal([]tls.CurveID{tls.X25519}))
+			}, time.Second).Should(Succeed())
 		})
 	})
 })
