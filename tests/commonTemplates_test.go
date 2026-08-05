@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -357,5 +358,9 @@ var _ = Describe("Common templates", func() {
 func expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate testResource) {
 	restoredCountBefore := totalRestoredTemplatesCount()
 	expectRestoreAfterUpdate(&testTemplate)
-	Expect(totalRestoredTemplatesCount() - restoredCountBefore).To(Equal(1))
+
+	// There can be a race when the template has already been updated in API server,
+	// but the metric endpoint was not yet updated.
+	Eventually(totalRestoredTemplatesCount, env.ShortTimeout(), time.Second).
+		Should(BeNumerically(">", restoredCountBefore))
 }
