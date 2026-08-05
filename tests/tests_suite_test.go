@@ -506,6 +506,22 @@ func waitUntilDeployed() {
 	}, env.Timeout(), time.Second).Should(Succeed())
 }
 
+// createVmWithWebhookRetry tries to create the VM, and retires if the webhook is not reachable.
+// Webhook may not be reachable for a short time during running tests, when template-validator pods
+// are recreated.
+func createVmWithWebhookRetry(vm *kubevirtv1.VirtualMachine, createOpts ...client.CreateOption) {
+	EventuallyWithOffset(1, func() error {
+		err := apiClient.Create(ctx, vm, createOpts...)
+		// When the API server can't reach a webhook, it returns InternalError.
+		if errors.IsInternalError(err) {
+			return err
+		}
+		// Intentionally using Expect() in Eventually() to fail the whole loop.
+		Expect(err).ToNot(HaveOccurred(), "Failed to create VM: %s", vm.Name)
+		return nil
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
+}
+
 func waitForDeletion(key client.ObjectKey, obj client.Object) {
 	EventuallyWithOffset(1, func() error {
 		return apiClient.Get(ctx, key, obj)
