@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -360,7 +361,11 @@ func expectTemplateUpdateToIncreaseTotalRestoredTemplatesCount(testTemplate test
 
 	expectRestoreAfterUpdate(&testTemplate)
 
-	restoredCountAfter, err := totalRestoredTemplatesCount()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(restoredCountAfter - restoredCountBefore).To(Equal(1))
+	// There can be a race when the template has already been updated in API server,
+	// but the metric endpoint was not yet updated.
+	Eventually(func(g Gomega) {
+		restoredCountAfter, err := totalRestoredTemplatesCount()
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(restoredCountAfter).To(BeNumerically(">", restoredCountBefore))
+	}, env.ShortTimeout(), time.Second).Should(Succeed())
 }
