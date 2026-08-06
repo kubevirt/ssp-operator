@@ -515,7 +515,7 @@ var _ = Describe("Template validator webhooks", func() {
 	Context("Validation defined on template", func() {
 		It("[test_id:5584]should create VM without template", func() {
 			vm = NewVirtualMachine(vmi)
-			Expect(apiClient.Create(ctx, vm)).ToNot(HaveOccurred(), "Failed to create VM")
+			createVmWithWebhookRetry(vm)
 		})
 
 		It("[test_id:TODO] should create VM if template does not exist", func() {
@@ -524,7 +524,7 @@ var _ = Describe("Template validator webhooks", func() {
 				TemplateNameAnnotation:      "non-existing-template",
 				TemplateNamespaceAnnotation: strategy.GetNamespace(),
 			}
-			Expect(apiClient.Create(ctx, vm, client.DryRunAll)).To(Succeed())
+			createVmWithWebhookRetry(vm, client.DryRunAll)
 		})
 
 		It("[test_id:5585]be created from template with no rules", decorators.Conformance, func() {
