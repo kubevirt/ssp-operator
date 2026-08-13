@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-logr/logr v1.4.3
-	github.com/google/cel-go v0.27.0
+	github.com/google/cel-go v0.29.0
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251113100301-4dc32c58c379
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
