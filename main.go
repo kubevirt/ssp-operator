@@ -88,27 +88,32 @@ func getConfigForClient(ctx context.Context, cfg *tls.Config, cache cache.Cache)
 	if len(sspList.Items) == 0 || sspList.Items[0].Spec.TLSSecurityProfile == nil {
 		cfg.MinVersion = crypto.DefaultTLSVersion()
 		cfg.CipherSuites = nil
+		cfg.CurvePreferences = nil
 		return cfg, nil
 	}
 
 	tlsProfile := sspList.Items[0].Spec.TLSSecurityProfile
+
+	var tlsProfileSpec *ocpconfigv1.TLSProfileSpec
 	if tlsProfile.Type == ocpconfigv1.TLSProfileCustomType {
-		minVersion, err := crypto.TLSVersion(string(tlsProfile.Custom.MinTLSVersion))
-		if err != nil {
-			return nil, err
-		}
-		cfg.MinVersion = minVersion
-		cfg.CipherSuites = common.CipherIDs(tlsProfile.Custom.Ciphers, &ctrl.Log)
-		return cfg, nil
+		tlsProfileSpec = tlsProfile.Custom.TLSProfileSpec.DeepCopy()
+	} else {
+		tlsProfileSpec = ocpconfigv1.TLSProfiles[tlsProfile.Type].DeepCopy()
 	}
 
-	minVersion, err := crypto.TLSVersion(string(ocpconfigv1.TLSProfiles[tlsProfile.Type].MinTLSVersion))
+	minVersion, err := crypto.TLSVersion(string(tlsProfileSpec.MinTLSVersion))
 	if err != nil {
 		return nil, err
 	}
-	cfg.MinVersion = minVersion
-	cfg.CipherSuites = common.CipherIDs(ocpconfigv1.TLSProfiles[tlsProfile.Type].Ciphers, &ctrl.Log)
 
+	curveIDs, err := common.CurveIDs(tlsProfileSpec.Groups, &ctrl.Log)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.MinVersion = minVersion
+	cfg.CipherSuites = common.CipherIDs(tlsProfileSpec.Ciphers, &ctrl.Log)
+	cfg.CurvePreferences = curveIDs
 	return cfg, nil
 }
 

@@ -35,6 +35,7 @@ type TLSInfo struct {
 
 	cipherSuites    []uint16
 	minTLSVersion   uint16
+	curveIDs        []tls.CurveID
 	tlsOptionsError error
 }
 
@@ -168,6 +169,7 @@ func (ti *TLSInfo) updateTLSOptions(directory string) {
 	if err != nil {
 		ti.minTLSVersion = 0
 		ti.cipherSuites = nil
+		ti.curveIDs = nil
 		ti.tlsOptionsError = err
 		logger.Log.Error(err, "failed to load TLS options",
 			"directory", directory)
@@ -178,6 +180,7 @@ func (ti *TLSInfo) updateTLSOptions(directory string) {
 		// Using default configuration
 		ti.minTLSVersion = 0
 		ti.cipherSuites = nil
+		ti.curveIDs = nil
 		ti.tlsOptionsError = nil
 		logger.Log.Info("TLS options are empty, using default configuration")
 		return
@@ -187,7 +190,19 @@ func (ti *TLSInfo) updateTLSOptions(directory string) {
 	if err != nil {
 		ti.minTLSVersion = 0
 		ti.cipherSuites = nil
+		ti.curveIDs = nil
 		ti.tlsOptionsError = fmt.Errorf("TLS Configuration broken, min version misconfigured: %w", err)
+		logger.Log.Error(ti.tlsOptionsError, "TLS options are not valid",
+			"directory", directory)
+		return
+	}
+
+	curveIDs, err := common.CurveIDs(tlsOptions.TLSGroups, &logger.Log)
+	if err != nil {
+		ti.minTLSVersion = 0
+		ti.cipherSuites = nil
+		ti.curveIDs = nil
+		ti.tlsOptionsError = fmt.Errorf("TLS Configuration broken: %w", err)
 		logger.Log.Error(ti.tlsOptionsError, "TLS options are not valid",
 			"directory", directory)
 		return
@@ -195,6 +210,7 @@ func (ti *TLSInfo) updateTLSOptions(directory string) {
 
 	ti.minTLSVersion = minVersion
 	ti.cipherSuites = common.CipherIDs(tlsOptions.OpenSSLCipherNames, nil)
+	ti.curveIDs = curveIDs
 	ti.tlsOptionsError = nil
 	logger.Log.Info("TLS options retrieved", "directory", directory)
 }
@@ -231,9 +247,10 @@ func (ti *TLSInfo) CreateTlsConfig() (*tls.Config, error) {
 	}
 
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{*ti.cert},
-		MinVersion:   ti.minTLSVersion,
-		CipherSuites: ti.cipherSuites,
+		Certificates:     []tls.Certificate{*ti.cert},
+		MinVersion:       ti.minTLSVersion,
+		CipherSuites:     ti.cipherSuites,
+		CurvePreferences: ti.curveIDs,
 	}
 
 	return tlsConfig, nil

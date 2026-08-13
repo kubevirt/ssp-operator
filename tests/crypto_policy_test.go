@@ -29,6 +29,11 @@ import (
 
 var _ = Describe("Crypto Policy", func() {
 	const tls10AllowedCipher = "ECDHE-ECDSA-AES128-SHA"
+	// ecdheOnlyCipher is used together with a Groups restriction to test the negotiated TLS
+	// curve/group, forcing an ECDHE key exchange so that a curve mismatch cannot be masked
+	// by falling back to a non-ECDHE cipher suite. It is included in the Old and Intermediate
+	// predefined TLS profiles.
+	const ecdheOnlyCipher = "ECDHE-RSA-AES128-GCM-SHA256"
 	var (
 		old          = ocpv1.TLSSecurityProfile{Type: "Old", Old: &ocpv1.OldTLSProfile{}}
 		intermediate = ocpv1.TLSSecurityProfile{Type: "Intermediate", Intermediate: &ocpv1.IntermediateTLSProfile{}}
@@ -38,9 +43,16 @@ var _ = Describe("Crypto Policy", func() {
 				TLSProfileSpec: ocpv1.TLSProfileSpec{
 					Ciphers:       []string{"TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"},
 					MinTLSVersion: ocpv1.VersionTLS13,
+					Groups:        []ocpv1.TLSGroup{ocpv1.TLSGroupX25519},
 				},
 			},
 		}
+
+		// Old, Intermediate and Modern predefined profiles all restrict TLS groups to
+		// [X25519MLKEM768, X25519, secp256r1, secp384r1]. secp521r1 is not part of that
+		// list, so a client restricted to it should fail to negotiate a common group.
+		predefinedAllowedGroup    = ocpv1.TLSGroupX25519
+		predefinedDisallowedGroup = ocpv1.TLSGroupSecP521r1
 
 		// Note that "crypto/tls" does not support setting max tls version to anything below 1.2
 		oldPermutation = tlsConfigTestPermutation{
@@ -50,8 +62,19 @@ var _ = Describe("Crypto Policy", func() {
 					MaxTLSVersion:      tls.VersionTLS12,
 					OpenSSLCipherNames: []string{},
 				},
+				{
+					MaxTLSVersion:      tls.VersionTLS12,
+					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					Groups:             []ocpv1.TLSGroup{predefinedAllowedGroup},
+				},
 			},
-			disallowedConfigs: []clientTLSOptions{},
+			disallowedConfigs: []clientTLSOptions{
+				{
+					MaxTLSVersion:      tls.VersionTLS12,
+					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					Groups:             []ocpv1.TLSGroup{predefinedDisallowedGroup},
+				},
+			},
 		}
 
 		intermediatePermutation = tlsConfigTestPermutation{
@@ -61,11 +84,21 @@ var _ = Describe("Crypto Policy", func() {
 					MaxTLSVersion:      tls.VersionTLS12,
 					OpenSSLCipherNames: []string{},
 				},
+				{
+					MaxTLSVersion:      tls.VersionTLS12,
+					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					Groups:             []ocpv1.TLSGroup{predefinedAllowedGroup},
+				},
 			},
 			disallowedConfigs: []clientTLSOptions{
 				{
 					MaxTLSVersion:      tls.VersionTLS12,
 					OpenSSLCipherNames: []string{tls10AllowedCipher},
+				},
+				{
+					MaxTLSVersion:      tls.VersionTLS12,
+					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					Groups:             []ocpv1.TLSGroup{predefinedDisallowedGroup},
 				},
 			},
 		}
@@ -77,11 +110,19 @@ var _ = Describe("Crypto Policy", func() {
 					MaxTLSVersion:      tls.VersionTLS13,
 					OpenSSLCipherNames: []string{},
 				},
+				{
+					MaxTLSVersion: tls.VersionTLS13,
+					Groups:        []ocpv1.TLSGroup{predefinedAllowedGroup},
+				},
 			},
 			disallowedConfigs: []clientTLSOptions{
 				{
 					MaxTLSVersion:      tls.VersionTLS12,
 					OpenSSLCipherNames: []string{},
+				},
+				{
+					MaxTLSVersion: tls.VersionTLS13,
+					Groups:        []ocpv1.TLSGroup{predefinedDisallowedGroup},
 				},
 			},
 		}
@@ -93,11 +134,19 @@ var _ = Describe("Crypto Policy", func() {
 					MaxTLSVersion:      tls.VersionTLS13,
 					OpenSSLCipherNames: []string{},
 				},
+				{
+					MaxTLSVersion: tls.VersionTLS13,
+					Groups:        []ocpv1.TLSGroup{ocpv1.TLSGroupX25519},
+				},
 			},
 			disallowedConfigs: []clientTLSOptions{
 				{
 					MaxTLSVersion:      tls.VersionTLS12,
 					OpenSSLCipherNames: []string{},
+				},
+				{
+					MaxTLSVersion: tls.VersionTLS13,
+					Groups:        []ocpv1.TLSGroup{ocpv1.TLSGroupSecP384r1},
 				},
 			},
 		}
@@ -223,6 +272,7 @@ type tlsConfigTestPermutation struct {
 type clientTLSOptions struct {
 	OpenSSLCipherNames []string
 	MaxTLSVersion      uint16
+	Groups             []ocpv1.TLSGroup
 }
 
 func (s *clientTLSOptions) CipherIDs() []uint16 {
@@ -235,6 +285,17 @@ func (s *clientTLSOptions) CipherIDs() []uint16 {
 		cipherSuites = append(cipherSuites, id)
 	}
 	return cipherSuites
+}
+
+func (s *clientTLSOptions) CurveIDs() []tls.CurveID {
+	curveIDs, err := common.CurveIDs(s.Groups, nil)
+	Expect(err).ToNot(HaveOccurred())
+
+	if len(curveIDs) != len(s.Groups) {
+		Fail("Provided unrecognizable TLS group in clientTLSOptions")
+	}
+
+	return curveIDs
 }
 
 func getCaCertificate() []byte {
@@ -297,6 +358,7 @@ func tryToAccessEndpoint(pod core.Pod, serviceName string, subpath string, port 
 
 	tlsCfg := &tls.Config{
 		CipherSuites:       tlsConfig.CipherIDs(),
+		CurvePreferences:   tlsConfig.CurveIDs(),
 		MaxVersion:         tlsConfig.MaxTLSVersion,
 		RootCAs:            certPool,
 		InsecureSkipVerify: insecure,
@@ -364,6 +426,23 @@ func (c tlsConfigTestPermutation) testEndpointAccessibilityWithTLS(pod core.Pod,
 	return nil
 }
 
+// withoutGroupConfigs drops configs that restrict the TLS curve/group preferences.
+// It is used for endpoints that do not yet support restricting TLS groups, like vm-console-proxy.
+func (c tlsConfigTestPermutation) withoutGroupConfigs() tlsConfigTestPermutation {
+	result := tlsConfigTestPermutation{openshiftTLSPolicy: c.openshiftTLSPolicy}
+	for _, config := range c.allowedConfigs {
+		if len(config.Groups) == 0 {
+			result.allowedConfigs = append(result.allowedConfigs, config)
+		}
+	}
+	for _, config := range c.disallowedConfigs {
+		if len(config.Groups) == 0 {
+			result.disallowedConfigs = append(result.disallowedConfigs, config)
+		}
+	}
+	return result
+}
+
 func testMetricsEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
 	// webhook service name is used here for the metrics for simplicity, as it is the CN in the ca_cert
 	// and the metrics just sit on a different port on the same pod.
@@ -379,7 +458,9 @@ func testValidatorEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) err
 }
 
 func testVmConsoleProxyEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation, clientCert *tls.Certificate) error {
-	return tlsConfig.testEndpointAccessibilityWithTLS(pod, "vm-console-proxy", "", 8768, true, clientCert)
+	// vm-console-proxy does not yet support restricting TLS curve/group preferences.
+	// TODO: once it does, drop the withoutGroupConfigs() call to also verify group restrictions here.
+	return tlsConfig.withoutGroupConfigs().testEndpointAccessibilityWithTLS(pod, "vm-console-proxy", "", 8768, true, clientCert)
 }
 
 func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {

@@ -10,12 +10,13 @@ import (
 )
 
 type SSPTLSOptions struct {
-	MinTLSVersion      string   `json:"minTLSVersion,omitempty"`
-	OpenSSLCipherNames []string `json:"openSSLCipherNames,omitempty"`
+	MinTLSVersion      string           `json:"minTLSVersion,omitempty"`
+	OpenSSLCipherNames []string         `json:"openSSLCipherNames,omitempty"`
+	TLSGroups          []ocpv1.TLSGroup `json:"tlsGroups,omitempty"`
 }
 
 func (s *SSPTLSOptions) IsEmpty() bool {
-	return len(s.OpenSSLCipherNames) == 0 && s.MinTLSVersion == ""
+	return len(s.OpenSSLCipherNames) == 0 && s.MinTLSVersion == "" && len(s.TLSGroups) == 0
 }
 
 func (s *SSPTLSOptions) MinTLSVersionId() (uint16, error) {
@@ -36,19 +37,26 @@ func (s *SSPTLSOptions) MinTLSVersionId() (uint16, error) {
 }
 
 func NewSSPTLSOptions(tlsSecurityProfile *ocpv1.TLSSecurityProfile, logger *logr.Logger) (*SSPTLSOptions, error) {
-	ciphers, tlsProfile := selectCipherSuitesAndMinTLSVersion(tlsSecurityProfile)
-
-	if logger != nil {
-		logger.Info("Got Ciphers and tlsProfile:", "ciphers: ", ciphers, "tlsProfile: ", tlsProfile)
+	tlsProfileSpec := selectTLSProfileSpec(tlsSecurityProfile)
+	if tlsProfileSpec == nil {
+		return &SSPTLSOptions{}, nil
 	}
 
-	minVersion, err := tlsVersionToHumanReadable(tlsProfile)
+	if logger != nil {
+		logger.Info("Got tlsProfileSpec:",
+			"ciphers: ", tlsProfileSpec.Ciphers,
+			"groups: ", tlsProfileSpec.Groups,
+			"minVersion: ", tlsProfileSpec.MinTLSVersion)
+	}
+
+	minVersion, err := tlsVersionToHumanReadable(tlsProfileSpec.MinTLSVersion)
 	if err != nil {
 		return nil, err
 	}
 	return &SSPTLSOptions{
 		MinTLSVersion:      minVersion,
-		OpenSSLCipherNames: ciphers,
+		OpenSSLCipherNames: tlsProfileSpec.Ciphers,
+		TLSGroups:          tlsProfileSpec.Groups,
 	}, nil
 }
 
@@ -74,15 +82,15 @@ func CipherIDs(names []string, logger *logr.Logger) (cipherSuites []uint16) {
 	return
 }
 
-func selectCipherSuitesAndMinTLSVersion(profile *ocpv1.TLSSecurityProfile) ([]string, ocpv1.TLSProtocolVersion) {
+func selectTLSProfileSpec(profile *ocpv1.TLSSecurityProfile) *ocpv1.TLSProfileSpec {
 	if profile == nil {
-		return nil, ""
+		return nil
 	}
 	if profile.Custom != nil {
-		return profile.Custom.Ciphers, profile.Custom.MinTLSVersion
+		return profile.Custom.TLSProfileSpec.DeepCopy()
 	}
-	tlsProfileSpec := ocpv1.TLSProfiles[profile.Type]
-	return tlsProfileSpec.Ciphers, tlsProfileSpec.MinTLSVersion
+
+	return ocpv1.TLSProfiles[profile.Type].DeepCopy()
 }
 
 func tlsVersionToHumanReadable(version ocpv1.TLSProtocolVersion) (string, error) {
@@ -100,4 +108,39 @@ func tlsVersionToHumanReadable(version ocpv1.TLSProtocolVersion) (string, error)
 	default:
 		return "", fmt.Errorf("invalid ocpv1.VersionTLS %v", version)
 	}
+}
+
+// TODO: This can be replaced when https://github.com/openshift/library-go/pull/2347 is merged.
+var tlsGroupToCurveID = map[ocpv1.TLSGroup]tls.CurveID{
+	ocpv1.TLSGroupX25519:             tls.X25519,
+	ocpv1.TLSGroupSecP256r1:          tls.CurveP256,
+	ocpv1.TLSGroupSecP384r1:          tls.CurveP384,
+	ocpv1.TLSGroupSecP521r1:          tls.CurveP521,
+	ocpv1.TLSGroupX25519MLKEM768:     tls.X25519MLKEM768,
+	ocpv1.TLSGroupSecP256r1MLKEM768:  tls.SecP256r1MLKEM768,
+	ocpv1.TLSGroupSecP384r1MLKEM1024: tls.SecP384r1MLKEM1024,
+}
+
+func CurveIDs(groups []ocpv1.TLSGroup, logger *logr.Logger) ([]tls.CurveID, error) {
+	if len(groups) == 0 {
+		return nil, nil
+	}
+
+	var curveIDs []tls.CurveID
+	var unsupported []ocpv1.TLSGroup
+	for _, group := range groups {
+		if curveID, ok := tlsGroupToCurveID[group]; ok {
+			curveIDs = append(curveIDs, curveID)
+		} else {
+			if logger != nil {
+				logger.WithName("TLSSecurityProfile").Info("Unsupported TLS group name: ", "TLS group name", group)
+			}
+			unsupported = append(unsupported, group)
+		}
+	}
+	if len(curveIDs) == 0 {
+		return nil, fmt.Errorf("all passed TLS groups are unsupported: %v", unsupported)
+	}
+
+	return curveIDs, nil
 }

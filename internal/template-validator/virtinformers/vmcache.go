@@ -86,6 +86,7 @@ type vmCache struct {
 	store          map[string]VmCacheValue
 	vmsForTemplate templateMap
 	hasSynced      bool
+	rv             string
 
 	filter Predicate
 }
@@ -118,6 +119,8 @@ func (v *vmCache) Add(obj interface{}) error {
 
 	v.store[key] = *val
 	v.vmsForTemplate.Add(val.Template, val.Vm)
+	v.rv = metaObj.GetResourceVersion()
+
 	return nil
 }
 
@@ -136,6 +139,8 @@ func (v *vmCache) Update(obj interface{}) error {
 
 	v.lock.Lock()
 	defer v.lock.Unlock()
+
+	v.rv = newObjMeta.GetResourceVersion()
 
 	oldVal, exists := v.store[key]
 	if !exists {
@@ -163,6 +168,8 @@ func (v *vmCache) Delete(obj interface{}) error {
 
 	v.lock.Lock()
 	defer v.lock.Unlock()
+
+	v.rv = objMeta.GetResourceVersion()
 
 	key := vmCacheKey(objMeta)
 	val, exists := v.store[key]
@@ -197,6 +204,18 @@ func (v *vmCache) ListKeys() []string {
 	return list
 }
 
+func (v *vmCache) LastStoreSyncResourceVersion() string {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	return v.rv
+}
+
+func (v *vmCache) Bookmark(rv string) {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	v.rv = rv
+}
+
 func (v *vmCache) Get(obj interface{}) (item interface{}, exists bool, err error) {
 	metaObj, err := meta.Accessor(obj)
 	if err != nil {
@@ -214,7 +233,7 @@ func (v *vmCache) GetByKey(key string) (item interface{}, exists bool, err error
 	return res, exists, nil
 }
 
-func (v *vmCache) Replace(list []interface{}, _ string) error {
+func (v *vmCache) Replace(list []interface{}, resourceVersion string) error {
 	newStore := make(map[string]VmCacheValue, len(list))
 	newVmsForTemplate := templateMap{}
 	for _, obj := range list {
@@ -236,6 +255,8 @@ func (v *vmCache) Replace(list []interface{}, _ string) error {
 	v.store = newStore
 	v.vmsForTemplate = newVmsForTemplate
 	v.hasSynced = true
+	v.rv = resourceVersion
+
 	return nil
 }
 
