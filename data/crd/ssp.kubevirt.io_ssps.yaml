@@ -129,7 +129,7 @@ spec:
                             retentionPolicy:
                               description: RetentionPolicy specifies whether the created
                                 DataVolumes and DataSources are retained when their
-                                DataImportCron is deleted. Default is RatainAll.
+                                DataImportCron is deleted. Default is RetainAll.
                               type: string
                             schedule:
                               description: Schedule specifies in cron format when
@@ -424,6 +424,10 @@ spec:
                                             to the PersistentVolume backing this claim.
                                           type: string
                                       type: object
+                                    serviceAccountName:
+                                      description: ServiceAccountName for Importer
+                                        and Uploader pod
+                                      type: string
                                     source:
                                       description: Source is the src of the data for
                                         the requested DataVolume
@@ -463,6 +467,12 @@ spec:
                                                 Authority(CA) public key, and a base64
                                                 encoded pem certificate
                                               type: string
+                                            checksum:
+                                              description: |-
+                                                Checksum is the expected checksum of the file. Format: "algorithm:hash", e.g., "sha256:1234abcd..." or "md5:5678efgh..."
+                                                Supported algorithms: md5, sha1, sha256, sha512
+                                                If specified, the importer will verify the downloaded content matches this checksum
+                                              type: string
                                             extraHeaders:
                                               description: ExtraHeaders is a list
                                                 of strings containing extra headers
@@ -470,6 +480,11 @@ spec:
                                               items:
                                                 type: string
                                               type: array
+                                            insecureSkipVerify:
+                                              description: InsecureSkipVerify is a
+                                                flag to skip certificate verification
+                                                for the HTTP endpoint
+                                              type: boolean
                                             secretExtraHeaders:
                                               description: SecretExtraHeaders is a
                                                 list of Secret references, each containing
@@ -630,6 +645,12 @@ spec:
                                               description: BackingFile is the path
                                                 to the virtual hard disk to migrate
                                                 from vCenter/ESXi
+                                              type: string
+                                            certConfigMap:
+                                              description: CertConfigMap provides
+                                                a reference to a ConfigMap containing
+                                                the certificate authority (CA) certificate
+                                                for the vCenter or ESXi host
                                               type: string
                                             extraArgs:
                                               description: ExtraArgs is a reference
@@ -2303,7 +2324,7 @@ spec:
                             retentionPolicy:
                               description: RetentionPolicy specifies whether the created
                                 DataVolumes and DataSources are retained when their
-                                DataImportCron is deleted. Default is RatainAll.
+                                DataImportCron is deleted. Default is RetainAll.
                               type: string
                             schedule:
                               description: Schedule specifies in cron format when
@@ -2598,6 +2619,10 @@ spec:
                                             to the PersistentVolume backing this claim.
                                           type: string
                                       type: object
+                                    serviceAccountName:
+                                      description: ServiceAccountName for Importer
+                                        and Uploader pod
+                                      type: string
                                     source:
                                       description: Source is the src of the data for
                                         the requested DataVolume
@@ -2637,6 +2662,12 @@ spec:
                                                 Authority(CA) public key, and a base64
                                                 encoded pem certificate
                                               type: string
+                                            checksum:
+                                              description: |-
+                                                Checksum is the expected checksum of the file. Format: "algorithm:hash", e.g., "sha256:1234abcd..." or "md5:5678efgh..."
+                                                Supported algorithms: md5, sha1, sha256, sha512
+                                                If specified, the importer will verify the downloaded content matches this checksum
+                                              type: string
                                             extraHeaders:
                                               description: ExtraHeaders is a list
                                                 of strings containing extra headers
@@ -2644,6 +2675,11 @@ spec:
                                               items:
                                                 type: string
                                               type: array
+                                            insecureSkipVerify:
+                                              description: InsecureSkipVerify is a
+                                                flag to skip certificate verification
+                                                for the HTTP endpoint
+                                              type: boolean
                                             secretExtraHeaders:
                                               description: SecretExtraHeaders is a
                                                 list of Secret references, each containing
@@ -2804,6 +2840,12 @@ spec:
                                               description: BackingFile is the path
                                                 to the virtual hard disk to migrate
                                                 from vCenter/ESXi
+                                              type: string
+                                            certConfigMap:
+                                              description: CertConfigMap provides
+                                                a reference to a ConfigMap containing
+                                                the certificate authority (CA) certificate
+                                                for the vCenter or ESXi host
                                               type: string
                                             extraArgs:
                                               description: ExtraArgs is a reference
