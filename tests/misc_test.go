@@ -446,7 +446,7 @@ var _ = Describe("RHEL VM creation", func() {
 			},
 		}
 
-		Expect(apiClient.Create(ctx, vm)).To(Succeed())
+		createVmWithWebhookRetry(vm)
 
 		// Wait for DataVolume to finish importing
 		dvName := vm.Spec.DataVolumeTemplates[0].Name
