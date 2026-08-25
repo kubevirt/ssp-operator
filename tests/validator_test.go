@@ -59,7 +59,10 @@ func testNetworkPolicyResource(name, namespace string, expectedLabels map[string
 		Resource:       &networkv1.NetworkPolicy{},
 		ExpectedLabels: expectedLabels,
 		UpdateFunc: func(policy *networkv1.NetworkPolicy) {
-			policy.Spec.PodSelector = metav1.LabelSelector{}
+			if policy.Spec.PodSelector.MatchLabels == nil {
+				policy.Spec.PodSelector.MatchLabels = map[string]string{}
+			}
+			policy.Spec.PodSelector.MatchLabels["ssp.kubevirt.io/test-mutated"] = "true"
 		},
 		EqualsFunc: func(old *networkv1.NetworkPolicy, new *networkv1.NetworkPolicy) bool {
 			return reflect.DeepEqual(old.Spec, new.Spec)
