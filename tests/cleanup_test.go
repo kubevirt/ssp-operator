@@ -8,7 +8,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	ssp "kubevirt.io/ssp-operator/api/v1beta2"
 	"kubevirt.io/ssp-operator/internal/common"
 	"kubevirt.io/ssp-operator/internal/operands"
 	common_instancetypes "kubevirt.io/ssp-operator/internal/operands/common-instancetypes"
@@ -48,7 +47,7 @@ var _ = Describe("Cleanup", func() {
 		sspObj := getSsp()
 
 		Expect(apiClient.Delete(ctx, sspObj)).To(Succeed())
-		waitForDeletionOrAbort(client.ObjectKeyFromObject(sspObj), &ssp.SSP{})
+		waitForSspDeletionOrAbort(sspObj)
 
 		// Check that all deployed resources were deleted
 		for _, watchType := range allWatchTypes {
