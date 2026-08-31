@@ -50,6 +50,7 @@ type Config struct {
 	Functions       []*Function      `yaml:"functions,omitempty"`
 	Validators      []*Validator     `yaml:"validators,omitempty"`
 	Features        []*Feature       `yaml:"features,omitempty"`
+	Limits          []*Limit         `yaml:"limits,omitempty"`
 }
 
 // Validate validates the whole configuration is well-formed.
@@ -92,6 +93,11 @@ func (c *Config) Validate() error {
 			errs = append(errs, err)
 		}
 	}
+	for _, limit := range c.Limits {
+		if err := limit.Validate(); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	for _, val := range c.Validators {
 		if err := val.Validate(); err != nil {
 			errs = append(errs, err)
@@ -115,12 +121,14 @@ func (c *Config) AddVariableDecls(vars ...*decls.VariableDecl) *Config {
 		if v == nil {
 			continue
 		}
-		convVars[i] = NewVariable(v.Name(), serializeTypeDesc(v.Type()))
+		cv := NewVariable(v.Name(), SerializeTypeDesc(v.Type()))
+		cv.Description = v.Description()
+		convVars[i] = cv
 	}
 	return c.AddVariables(convVars...)
 }
 
-// AddVariables adds one or more vairables to the config.
+// AddVariables adds one or more variables to the config.
 func (c *Config) AddVariables(vars ...*Variable) *Config {
 	c.Variables = append(c.Variables, vars...)
 	return c
@@ -146,16 +154,24 @@ func (c *Config) AddFunctionDecls(funcs ...*decls.FunctionDecl) *Config {
 			overloadID := o.ID()
 			args := make([]*TypeDesc, 0, len(o.ArgTypes()))
 			for _, a := range o.ArgTypes() {
-				args = append(args, serializeTypeDesc(a))
+				args = append(args, SerializeTypeDesc(a))
 			}
-			ret := serializeTypeDesc(o.ResultType())
+			ret := SerializeTypeDesc(o.ResultType())
+			var overload *Overload
 			if o.IsMemberFunction() {
-				overloads = append(overloads, NewMemberOverload(overloadID, args[0], args[1:], ret))
+				overload = NewMemberOverload(overloadID, args[0], args[1:], ret)
 			} else {
-				overloads = append(overloads, NewOverload(overloadID, args, ret))
+				overload = NewOverload(overloadID, args, ret)
 			}
+			exampleCount := len(o.Examples())
+			if exampleCount > 0 {
+				overload.Examples = o.Examples()
+			}
+			overloads = append(overloads, overload)
 		}
-		convFuncs[i] = NewFunction(fn.Name(), overloads...)
+		cf := NewFunction(fn.Name(), overloads...)
+		cf.Description = fn.Description()
+		convFuncs[i] = cf
 	}
 	return c.AddFunctions(convFuncs...)
 }
@@ -196,6 +212,12 @@ func (c *Config) AddFeatures(feats ...*Feature) *Config {
 	return c
 }
 
+// AddLimits appends one or more limits to the config.
+func (c *Config) AddLimits(limits ...*Limit) *Config {
+	c.Limits = append(c.Limits, limits...)
+	return c
+}
+
 // NewImport returns a serializable import value from the qualified type name.
 func NewImport(name string) *Import {
 	return &Import{Name: name}
@@ -220,7 +242,12 @@ func (imp *Import) Validate() error {
 
 // NewVariable returns a serializable variable from a name and type definition
 func NewVariable(name string, t *TypeDesc) *Variable {
-	return &Variable{Name: name, TypeDesc: t}
+	return NewVariableWithDoc(name, t, "")
+}
+
+// NewVariableWithDoc returns a serializable variable from a name, type definition, and doc string.
+func NewVariableWithDoc(name string, t *TypeDesc, doc string) *Variable {
+	return &Variable{Name: name, TypeDesc: t, Description: doc}
 }
 
 // Variable represents a typed variable declaration which will be published via the
@@ -231,7 +258,9 @@ type Variable struct {
 
 	// Type represents the type declaration for the variable.
 	//
-	// Deprecated: use the embedded *TypeDesc fields directly.
+	// When serialized, 'type' is used for shorthand specifier string.
+	//
+	// Use GetType() for getting the effective type.
 	Type *TypeDesc `yaml:"type,omitempty"`
 
 	// TypeDesc is an embedded set of fields allowing for the specification of the Variable type.
@@ -248,6 +277,9 @@ func (v *Variable) Validate() error {
 	}
 	if err := v.GetType().Validate(); err != nil {
 		return fmt.Errorf("invalid variable %q: %w", v.Name, err)
+	}
+	if v.GetType().IsTypeParam {
+		return fmt.Errorf("invalid variable %q: variables cannot be type parameters", v.Name)
 	}
 	return nil
 }
@@ -278,7 +310,7 @@ func (v *Variable) AsCELVariable(tp types.Provider) (*decls.VariableDecl, error)
 	if err != nil {
 		return nil, fmt.Errorf("invalid variable %q: %w", v.Name, err)
 	}
-	return decls.NewVariable(v.Name, t), nil
+	return decls.NewVariableWithDoc(v.Name, t, v.Description), nil
 }
 
 // NewContextVariable returns a serializable context variable with a specific type name.
@@ -308,6 +340,11 @@ func (ctx *ContextVariable) Validate() error {
 // NewFunction creates a serializable function and overload set.
 func NewFunction(name string, overloads ...*Overload) *Function {
 	return &Function{Name: name, Overloads: overloads}
+}
+
+// NewFunctionWithDoc creates a serializable function and overload set.
+func NewFunctionWithDoc(name, doc string, overloads ...*Overload) *Function {
+	return &Function{Name: name, Description: doc, Overloads: overloads}
 }
 
 // Function represents the serializable format of a function and its overloads.
@@ -342,34 +379,37 @@ func (fn *Function) AsCELFunction(tp types.Provider) (*decls.FunctionDecl, error
 	if err := fn.Validate(); err != nil {
 		return nil, err
 	}
-	var err error
-	overloads := make([]decls.FunctionOpt, len(fn.Overloads))
-	for i, o := range fn.Overloads {
-		overloads[i], err = o.AsFunctionOption(tp)
+	opts := make([]decls.FunctionOpt, 0, len(fn.Overloads)+1)
+	for _, o := range fn.Overloads {
+		opt, err := o.AsFunctionOption(tp)
+		opts = append(opts, opt)
 		if err != nil {
 			return nil, fmt.Errorf("invalid function %q: %w", fn.Name, err)
 		}
 	}
-	return decls.NewFunction(fn.Name, overloads...)
+	if len(fn.Description) != 0 {
+		opts = append(opts, decls.FunctionDocs(fn.Description))
+	}
+	return decls.NewFunction(fn.Name, opts...)
 }
 
 // NewOverload returns a new serializable representation of a global overload.
-func NewOverload(id string, args []*TypeDesc, ret *TypeDesc) *Overload {
-	return &Overload{ID: id, Args: args, Return: ret}
+func NewOverload(id string, args []*TypeDesc, ret *TypeDesc, examples ...string) *Overload {
+	return &Overload{ID: id, Args: args, Return: ret, Examples: examples}
 }
 
 // NewMemberOverload returns a new serializable representation of a member (receiver) overload.
-func NewMemberOverload(id string, target *TypeDesc, args []*TypeDesc, ret *TypeDesc) *Overload {
-	return &Overload{ID: id, Target: target, Args: args, Return: ret}
+func NewMemberOverload(id string, target *TypeDesc, args []*TypeDesc, ret *TypeDesc, examples ...string) *Overload {
+	return &Overload{ID: id, Target: target, Args: args, Return: ret, Examples: examples}
 }
 
 // Overload represents the serializable format of a function overload.
 type Overload struct {
-	ID          string      `yaml:"id"`
-	Description string      `yaml:"description,omitempty"`
-	Target      *TypeDesc   `yaml:"target,omitempty"`
-	Args        []*TypeDesc `yaml:"args,omitempty"`
-	Return      *TypeDesc   `yaml:"return,omitempty"`
+	ID       string      `yaml:"id"`
+	Examples []string    `yaml:"examples,omitempty"`
+	Target   *TypeDesc   `yaml:"target,omitempty"`
+	Args     []*TypeDesc `yaml:"args,omitempty"`
+	Return   *TypeDesc   `yaml:"return,omitempty"`
 }
 
 // Validate validates the overload configuration is well-formed.
@@ -426,7 +466,7 @@ func (od *Overload) AsFunctionOption(tp types.Provider) (decls.FunctionOpt, erro
 	if len(errs) != 0 {
 		return nil, errors.Join(errs...)
 	}
-	return decls.Overload(od.ID, args, result), nil
+	return decls.Overload(od.ID, args, result, decls.OverloadExamples(od.Examples...)), nil
 }
 
 // NewExtension creates a serializable Extension from a name and version string.
@@ -711,6 +751,29 @@ func (feat *Feature) Validate() error {
 	return nil
 }
 
+// Limit represents a named limit in the CEL environment. This is used to control
+// the complexity tolerated before failing parsing, type checking, or planning.
+type Limit struct {
+	Name  string `yaml:"name"`
+	Value int    `yaml:"value"`
+}
+
+// NewLimit creates a new limit.
+func NewLimit(name string, value int) *Limit {
+	return &Limit{name, value}
+}
+
+// Validate validates a limit.
+func (l *Limit) Validate() error {
+	if l == nil {
+		return errors.New("invalid limit: nil")
+	}
+	if l.Name == "" {
+		return errors.New("invalid limit: missing name")
+	}
+	return nil
+}
+
 // NewTypeDesc describes a simple or complex type with parameters.
 func NewTypeDesc(typeName string, params ...*TypeDesc) *TypeDesc {
 	return &TypeDesc{TypeName: typeName, Params: params}
@@ -773,9 +836,45 @@ func (td *TypeDesc) Validate() error {
 			return fmt.Errorf("invalid type: optional_type expects 1 parameter, got %d", len(td.Params))
 		}
 		return td.Params[0].Validate()
+	case "type":
+		if len(td.Params) == 0 {
+			return nil
+		}
+		if len(td.Params) != 1 {
+			return fmt.Errorf("invalid type: type expects 0 or 1 parameters, got %d", len(td.Params))
+		}
+		return td.Params[0].Validate()
 	default:
 	}
 	return nil
+}
+
+func formatSpecifierImpl(td *TypeDesc, sb *strings.Builder) {
+	if td.IsTypeParam {
+		sb.WriteRune('~')
+		sb.WriteString(td.TypeName)
+		return
+	}
+	sb.WriteString(td.TypeName)
+	l := len(td.Params)
+	if l < 1 {
+		return
+	}
+	sb.WriteRune('<')
+	for i, p := range td.Params {
+		formatSpecifierImpl(p, sb)
+		if i < l-1 {
+			sb.WriteString(", ")
+		}
+	}
+	sb.WriteRune('>')
+}
+
+// SpecifierFormat returns the short text representation of the type. e.g. "map<string, int>"
+func (td *TypeDesc) SpecifierFormat() string {
+	var sb strings.Builder
+	formatSpecifierImpl(td, &sb)
+	return sb.String()
 }
 
 // AsCELType converts the serializable object to a *types.Type value.
@@ -787,6 +886,27 @@ func (td *TypeDesc) AsCELType(tp types.Provider) (*types.Type, error) {
 	switch td.TypeName {
 	case "dyn":
 		return types.DynType, nil
+	// short aliases for WKTs
+	case "duration":
+		return types.DurationType, nil
+	case "timestamp":
+		return types.TimestampType, nil
+	case "any":
+		return types.AnyType, nil
+	case "null", "null_type":
+		return types.NullType, nil
+	case "bool_wrapper":
+		return types.NewNullableType(types.BoolType), nil
+	case "bytes_wrapper":
+		return types.NewNullableType(types.BytesType), nil
+	case "double_wrapper":
+		return types.NewNullableType(types.DoubleType), nil
+	case "int_wrapper":
+		return types.NewNullableType(types.IntType), nil
+	case "uint_wrapper":
+		return types.NewNullableType(types.UintType), nil
+	case "string_wrapper":
+		return types.NewNullableType(types.StringType), nil
 	case "map":
 		kt, err := td.Params[0].AsCELType(tp)
 		if err != nil {
@@ -809,6 +929,15 @@ func (td *TypeDesc) AsCELType(tp types.Provider) (*types.Type, error) {
 			return nil, err
 		}
 		return types.NewOptionalType(et), nil
+	case "type":
+		if len(td.Params) == 0 {
+			return types.TypeType, nil
+		}
+		pt, err := td.Params[0].AsCELType(tp)
+		if err != nil {
+			return nil, err
+		}
+		return types.NewTypeTypeWithParam(pt), nil
 	default:
 		if td.IsTypeParam {
 			return types.NewTypeParamType(td.TypeName), nil
@@ -836,7 +965,8 @@ func (td *TypeDesc) AsCELType(tp types.Provider) (*types.Type, error) {
 	}
 }
 
-func serializeTypeDesc(t *types.Type) *TypeDesc {
+// SerializeTypeDesc converts a CEL native *types.Type to a serializable TypeDesc.
+func SerializeTypeDesc(t *types.Type) *TypeDesc {
 	typeName := t.TypeName()
 	if t.Kind() == types.TypeParamKind {
 		return NewTypeParam(typeName)
@@ -848,7 +978,16 @@ func serializeTypeDesc(t *types.Type) *TypeDesc {
 	}
 	var params []*TypeDesc
 	for _, p := range t.Parameters() {
-		params = append(params, serializeTypeDesc(p))
+		params = append(params, SerializeTypeDesc(p))
+	}
+	// Special types, these aren't useful for describing environments.
+	switch t.Kind() {
+	case types.ErrorKind:
+		typeName = "*error*"
+	case types.UnknownKind:
+		typeName = "*unknown*"
+	case types.UnspecifiedKind:
+		typeName = "*unspecified type*"
 	}
 	return NewTypeDesc(typeName, params...)
 }
