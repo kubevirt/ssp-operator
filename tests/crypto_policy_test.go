@@ -43,7 +43,7 @@ var _ = Describe("Crypto Policy", func() {
 				TLSProfileSpec: ocpv1.TLSProfileSpec{
 					Ciphers:       []string{"TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"},
 					MinTLSVersion: ocpv1.VersionTLS13,
-					Groups:        []ocpv1.TLSGroup{ocpv1.TLSGroupX25519},
+					Groups:        []ocpv1.TLSGroup{ocpv1.TLSGroupSecP256r1},
 				},
 			},
 		}
@@ -51,7 +51,10 @@ var _ = Describe("Crypto Policy", func() {
 		// Old, Intermediate and Modern predefined profiles all restrict TLS groups to
 		// [X25519MLKEM768, X25519, secp256r1, secp384r1]. secp521r1 is not part of that
 		// list, so a client restricted to it should fail to negotiate a common group.
-		predefinedAllowedGroup    = ocpv1.TLSGroupX25519
+		//
+		// NIST curves (secp256r1/secp384r1) are used because they are supported
+		// in FIPS mode.
+		predefinedAllowedGroup    = ocpv1.TLSGroupSecP256r1
 		predefinedDisallowedGroup = ocpv1.TLSGroupSecP521r1
 
 		// Note that "crypto/tls" does not support setting max tls version to anything below 1.2
@@ -136,7 +139,7 @@ var _ = Describe("Crypto Policy", func() {
 				},
 				{
 					MaxTLSVersion: tls.VersionTLS13,
-					Groups:        []ocpv1.TLSGroup{ocpv1.TLSGroupX25519},
+					Groups:        []ocpv1.TLSGroup{ocpv1.TLSGroupSecP256r1},
 				},
 			},
 			disallowedConfigs: []clientTLSOptions{
