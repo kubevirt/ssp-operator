@@ -8,8 +8,8 @@ require (
 	github.com/go-logr/logr v1.4.4
 	github.com/google/cel-go v0.31.0
 	github.com/kubevirt/monitoring/pkg/metrics/parser v0.0.0-20251113100301-4dc32c58c379
-	github.com/onsi/ginkgo/v2 v2.32.2
-	github.com/onsi/gomega v1.43.0
+	github.com/onsi/ginkgo/v2 v2.33.0
+	github.com/onsi/gomega v1.43.1
 	github.com/openshift/api v0.0.0-20260729135743-72624b98ff3d // release-5.0
 	github.com/openshift/custom-resource-status v1.1.2
 	github.com/openshift/library-go v0.0.0-20260729082949-ed1b43415e01 // release-5.0
