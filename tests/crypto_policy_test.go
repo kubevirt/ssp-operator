@@ -29,11 +29,16 @@ import (
 
 var _ = Describe("Crypto Policy", func() {
 	const tls10AllowedCipher = "ECDHE-ECDSA-AES128-SHA"
-	// ecdheOnlyCipher is used together with a Groups restriction to test the negotiated TLS
-	// curve/group, forcing an ECDHE key exchange so that a curve mismatch cannot be masked
-	// by falling back to a non-ECDHE cipher suite. It is included in the Old and Intermediate
-	// predefined TLS profiles.
-	const ecdheOnlyCipher = "ECDHE-RSA-AES128-GCM-SHA256"
+	// ecdheOnlyCiphers force an ECDHE key exchange so that a curve/group mismatch cannot be
+	// masked by falling back to a non-ECDHE cipher suite. Both the RSA and ECDSA variants are
+	// offered so the test does not assume the server certificate's key type: the server
+	// negotiates whichever matches its serving certificate (an ECDSA cert cannot use
+	// ECDHE-RSA-* suites, and vice versa). Both variants are included in the Old and
+	// Intermediate predefined TLS profiles.
+	ecdheOnlyCiphers := []string{
+		"ECDHE-RSA-AES128-GCM-SHA256",
+		"ECDHE-ECDSA-AES128-GCM-SHA256",
+	}
 	var (
 		old          = ocpv1.TLSSecurityProfile{Type: "Old", Old: &ocpv1.OldTLSProfile{}}
 		intermediate = ocpv1.TLSSecurityProfile{Type: "Intermediate", Intermediate: &ocpv1.IntermediateTLSProfile{}}
@@ -67,14 +72,14 @@ var _ = Describe("Crypto Policy", func() {
 				},
 				{
 					MaxTLSVersion:      tls.VersionTLS12,
-					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					OpenSSLCipherNames: ecdheOnlyCiphers,
 					Groups:             []ocpv1.TLSGroup{predefinedAllowedGroup},
 				},
 			},
 			disallowedConfigs: []clientTLSOptions{
 				{
 					MaxTLSVersion:      tls.VersionTLS12,
-					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					OpenSSLCipherNames: ecdheOnlyCiphers,
 					Groups:             []ocpv1.TLSGroup{predefinedDisallowedGroup},
 				},
 			},
@@ -89,7 +94,7 @@ var _ = Describe("Crypto Policy", func() {
 				},
 				{
 					MaxTLSVersion:      tls.VersionTLS12,
-					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					OpenSSLCipherNames: ecdheOnlyCiphers,
 					Groups:             []ocpv1.TLSGroup{predefinedAllowedGroup},
 				},
 			},
@@ -100,7 +105,7 @@ var _ = Describe("Crypto Policy", func() {
 				},
 				{
 					MaxTLSVersion:      tls.VersionTLS12,
-					OpenSSLCipherNames: []string{ecdheOnlyCipher},
+					OpenSSLCipherNames: ecdheOnlyCiphers,
 					Groups:             []ocpv1.TLSGroup{predefinedDisallowedGroup},
 				},
 			},
