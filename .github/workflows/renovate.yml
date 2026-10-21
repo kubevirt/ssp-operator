@@ -1,0 +1,43 @@
+# Scheduled and manually triggered Renovate workflow for security updates.
+# Run this as the only Renovate scheduler for the repository to avoid duplicate PRs.
+#
+# The GitHub App must be installed on this repository with contents:write,
+# pull-requests:write, issues:write, workflows:write, and
+# dependabot-alerts:read permissions. Configure RENOVATE_APP_ID and
+# RENOVATE_APP_PRIVATE_KEY as Actions secrets.
+
+name: Renovate
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+
+      - name: Run Renovate
+        uses: renovatebot/github-action@v46.3.6
+        with:
+          configurationFile: renovate.json
+          token: ${{ steps.app-token.outputs.token }}
+        env:
+          LOG_LEVEL: info
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ALLOWED_COMMANDS: '["^make vendor$", "^make generate$", "^make manifests$"]'
