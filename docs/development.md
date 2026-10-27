@@ -9,6 +9,7 @@
 - [Controllers](#controllers)
 - [Golang CI Linter](#golang-ci-linter)
 - [Pre-commit Hooks](#pre-commit-hooks)
+- [Dependency Updates](#dependency-updates)
 
 ## Running Locally
 
@@ -188,3 +189,14 @@ pip install --user pre-commit
 pre-commit install
 git commit -s
 ```
+
+## Dependency Updates
+
+Dependabot retains its scheduled Go module and GitHub Actions version updates
+on `main`. Renovate runs daily at 06:00 UTC and can also be started from the
+Actions tab. It proposes vulnerability fixes on `main` and supported
+`release-vX.Y` branches, but does not open routine version update PRs.
+
+For Renovate PRs, the Go version report workflow comments on changes to `go`
+and `toolchain` directives in `go.mod` and `go.work` files. Review these changes
+against the build and release environments before merging.
