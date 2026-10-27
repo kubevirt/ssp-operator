@@ -434,23 +434,6 @@ func (c tlsConfigTestPermutation) testEndpointAccessibilityWithTLS(pod core.Pod,
 	return nil
 }
 
-// withoutGroupConfigs drops configs that restrict the TLS curve/group preferences.
-// It is used for endpoints that do not yet support restricting TLS groups, like vm-console-proxy.
-func (c tlsConfigTestPermutation) withoutGroupConfigs() tlsConfigTestPermutation {
-	result := tlsConfigTestPermutation{openshiftTLSPolicy: c.openshiftTLSPolicy}
-	for _, config := range c.allowedConfigs {
-		if len(config.Groups) == 0 {
-			result.allowedConfigs = append(result.allowedConfigs, config)
-		}
-	}
-	for _, config := range c.disallowedConfigs {
-		if len(config.Groups) == 0 {
-			result.disallowedConfigs = append(result.disallowedConfigs, config)
-		}
-	}
-	return result
-}
-
 func testMetricsEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) error {
 	// webhook service name is used here for the metrics for simplicity, as it is the CN in the ca_cert
 	// and the metrics just sit on a different port on the same pod.
@@ -466,9 +449,7 @@ func testValidatorEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation) err
 }
 
 func testVmConsoleProxyEndpoint(pod core.Pod, tlsConfig tlsConfigTestPermutation, clientCert *tls.Certificate) error {
-	// vm-console-proxy does not yet support restricting TLS curve/group preferences.
-	// TODO: once it does, drop the withoutGroupConfigs() call to also verify group restrictions here.
-	return tlsConfig.withoutGroupConfigs().testEndpointAccessibilityWithTLS(pod, "vm-console-proxy", "", 8768, true, clientCert)
+	return tlsConfig.testEndpointAccessibilityWithTLS(pod, "vm-console-proxy", "", 8768, true, clientCert)
 }
 
 func applyTLSConfig(tlsSecurityProfile *ocpv1.TLSSecurityProfile) {

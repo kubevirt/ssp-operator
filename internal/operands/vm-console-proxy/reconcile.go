@@ -455,6 +455,11 @@ func createTlsConfigFile(tlsProfile *ocpv1.TLSSecurityProfile) (string, error) {
 		}
 	}
 
+	curvePreferences, _ := crypto.TLSGroupsToCurvePreferences(crypto.GetSecurityProfileGroups(profileSpec))
+	for _, curvePreference := range curvePreferences {
+		result.Groups = append(result.Groups, uint16(curvePreference))
+	}
+
 	yamlBytes, err := yaml.Marshal(result)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal TLS profile confing to yaml: %w", err)

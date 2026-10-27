@@ -8,16 +8,17 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	securityv1 "github.com/openshift/api/security/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	ocpv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	securityv1 "github.com/openshift/api/security/v1"
+	"github.com/openshift/library-go/pkg/crypto"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	apps "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -176,6 +177,15 @@ var _ = Describe("VM Console Proxy Operand", func() {
 			secureCiphers = append(secureCiphers, suite.Name)
 		}
 		Expect(secureCiphers).To(ContainElements(proxyProfile.Ciphers))
+
+		intermediateProfile := ocpv1.TLSProfiles[ocpv1.TLSProfileIntermediateType]
+		expectedCurvePreferences, _ := crypto.TLSGroupsToCurvePreferences(crypto.GetSecurityProfileGroups(intermediateProfile))
+
+		var expectedGroups []uint16
+		for _, curvePreference := range expectedCurvePreferences {
+			expectedGroups = append(expectedGroups, uint16(curvePreference))
+		}
+		Expect(proxyProfile.Groups).To(Equal(expectedGroups))
 	})
 
 	It("should filter out insecure ciphers from Old TLS profile", func() {
