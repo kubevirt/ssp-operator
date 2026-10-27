@@ -1,4 +1,4 @@
-# github.com/fxamacker/cbor/v2 v2.9.2
+# github.com/fxamacker/cbor/v2 v2.9.4
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
 # github.com/go-logr/logr v1.4.4
@@ -25,16 +25,16 @@ github.com/x448/float16
 # go.yaml.in/yaml/v2 v2.4.4
 ## explicit; go 1.15
 go.yaml.in/yaml/v2
-# golang.org/x/net v0.58.0
-## explicit; go 1.25.0
+# golang.org/x/net v0.59.0
+## explicit; go 1.26.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/httpcommon
 golang.org/x/net/internal/httpsfv
-# golang.org/x/text v0.41.0
-## explicit; go 1.25.0
+# golang.org/x/text v0.42.0
+## explicit; go 1.26.0
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
@@ -42,12 +42,12 @@ golang.org/x/text/unicode/norm
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# k8s.io/api v0.36.3
+# k8s.io/api v0.37.0
 ## explicit; go 1.26.0
 k8s.io/api/authentication/v1
 k8s.io/api/authorization/v1
 k8s.io/api/core/v1
-# k8s.io/apimachinery v0.36.3
+# k8s.io/apimachinery v0.37.0
 ## explicit; go 1.26.0
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/operation
@@ -87,22 +87,22 @@ k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
 k8s.io/klog/v2/internal/verbosity
 k8s.io/klog/v2/textlogger
-# k8s.io/kube-openapi v0.0.0-20260519202549-bbf5c5577288
-## explicit; go 1.24.0
+# k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad
+## explicit; go 1.25.0
 k8s.io/kube-openapi/pkg/util
-# k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
+# k8s.io/utils v0.0.0-20260626114624-be93311217bd
 ## explicit; go 1.23
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/ptr
-# kubevirt.io/containerized-data-importer-api v1.66.0
+# kubevirt.io/containerized-data-importer-api v1.66.1
 ## explicit; go 1.24.0
 kubevirt.io/containerized-data-importer-api/pkg/apis/core
 kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1
 # kubevirt.io/controller-lifecycle-operator-sdk/api v0.2.4
 ## explicit; go 1.17
 kubevirt.io/controller-lifecycle-operator-sdk/api
-# sigs.k8s.io/controller-runtime v0.24.1
+# sigs.k8s.io/controller-runtime v0.25.1
 ## explicit; go 1.26.0
 sigs.k8s.io/controller-runtime/pkg/scheme
 # sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730
