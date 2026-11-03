@@ -10,6 +10,7 @@ import (
 	core "k8s.io/api/core/v1"
 	networkv1 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/utils/ptr"
@@ -607,6 +608,13 @@ func handleDefaultDataSource(dataSource *cdiv1beta1.DataSource, autoUpdate bool,
 
 	dsReadyCondition := getDataSourceReadyCondition(foundDataSource)
 	if dsReadyCondition == nil {
+		// If the source already matches, dataSourceAutoUpdateEnabled has checked
+		// the expected PVC directly. There is no legacy source to preserve while
+		// waiting for CDI, so keep that auto-update decision.
+		if equality.Semantic.DeepEqual(foundDataSource.Spec.Source, dataSource.Spec.Source) {
+			return dataSource, autoUpdate, nil
+		}
+
 		// CDI has not yet seen this DataSource, so it is left unchanged.
 		dataSource.Spec = foundDataSource.Spec
 		return dataSource, false, nil

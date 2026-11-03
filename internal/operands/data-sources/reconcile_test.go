@@ -689,6 +689,64 @@ var _ = Describe("Data-Sources operand", func() {
 					To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
 			})
 
+			DescribeTable("should create the default architecture's DataImportCron before CDI updates the DataSource", func(annotation string) {
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				dsKey := client.ObjectKey{Name: centos8 + "-amd64", Namespace: internal.GoldenImagesNamespace}
+				dataSource := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, dsKey, dataSource)).To(Succeed())
+				Expect(dataSource.Status.Conditions).To(BeEmpty())
+
+				cronTemplate.Annotations[DataImportCronArchsAnnotation] = annotation
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(request.Client.Get(request.Context, client.ObjectKey{
+					Name:      cronTemplate.Name + "-amd64",
+					Namespace: internal.GoldenImagesNamespace,
+				}, &cdiv1beta1.DataImportCron{})).To(Succeed())
+
+				Expect(request.Client.Get(request.Context, dsKey, dataSource)).To(Succeed())
+				Expect(dataSource.Labels).To(HaveKeyWithValue(dataImportCronLabel, cronTemplate.Name+"-amd64"))
+			},
+				Entry("with a valid architecture", "amd64"),
+				Entry("with valid and invalid architectures", "amd64,invalid-ignored-arch"),
+			)
+
+			DescribeTable("should preserve an existing PVC before CDI updates the default DataSource", func(pvcName string) {
+				pvc := &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{Name: pvcName, Namespace: internal.GoldenImagesNamespace},
+				}
+				Expect(request.Client.Create(request.Context, pvc)).To(Succeed())
+
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = nil
+				_, err := operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				cronTemplate.Annotations[DataImportCronArchsAnnotation] = "amd64,invalid-ignored-arch"
+				request.Instance.Spec.CommonTemplates.DataImportCronTemplates = []ssp.DataImportCronTemplate{cronTemplate}
+				_, err = operand.Reconcile(&request)
+				Expect(err).ToNot(HaveOccurred())
+
+				key := client.ObjectKey{Name: centos8 + "-amd64", Namespace: internal.GoldenImagesNamespace}
+				Expect(request.Client.Get(request.Context, key, &cdiv1beta1.DataImportCron{})).
+					To(MatchError(errors.IsNotFound, "errors.IsNotFound"))
+
+				dataSource := &cdiv1beta1.DataSource{}
+				Expect(request.Client.Get(request.Context, key, dataSource)).To(Succeed())
+				Expect(dataSource.Status.Conditions).To(BeEmpty())
+				Expect(dataSource.Spec.Source.PVC).To(Equal(&cdiv1beta1.DataVolumeSourcePVC{
+					Name: pvcName, Namespace: internal.GoldenImagesNamespace,
+				}))
+				Expect(dataSource.Labels).ToNot(HaveKey(dataImportCronLabel))
+			},
+				Entry("with a legacy PVC", centos8),
+				Entry("with an architecture-specific PVC", centos8+"-amd64"),
+			)
+
 			It("should remove DataImportCron when multi-arch is disabled", func() {
 				_, err := operand.Reconcile(&request)
 				Expect(err).ToNot(HaveOccurred())
