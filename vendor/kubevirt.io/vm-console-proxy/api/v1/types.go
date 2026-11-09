@@ -16,6 +16,11 @@ type TokenResponse struct {
 type TlsProfile struct {
 	Ciphers       []string           `json:"ciphers,omitempty"`
 	MinTLSVersion TLSProtocolVersion `json:"minTLSVersion,omitempty"`
+
+	// Groups is a list of key exchange groups used for TLS connections.
+	// The values are the IANA-assigned codes, matching the tls.CurveID
+	// constants from the standard library "crypto/tls" package.
+	Groups []uint16 `json:"groups,omitempty"`
 }
 
 // TLSProtocolVersion is a way to specify the protocol version used for TLS connections.
