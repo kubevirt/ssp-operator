@@ -28,6 +28,7 @@ import (
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	libhandler "github.com/operator-framework/operator-lib/handler"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -264,7 +265,7 @@ func (s *sspController) Reconcile(ctx context.Context, req ctrl.Request) (res ct
 }
 
 func (s *sspController) clearCacheIfNeeded(sspObj *ssp.SSP) bool {
-	if !reflect.DeepEqual(s.lastSspSpec, sspObj.Spec) {
+	if !equality.Semantic.DeepEqual(s.lastSspSpec, sspObj.Spec) {
 		s.subresourceCache = common.VersionCache{}
 		s.lastSspSpec = sspObj.Spec
 		return true
