@@ -127,7 +127,7 @@ metadata:
 spec:
   ports:
   - port: 443
-    targetPort: api
+    targetPort: http-api
   selector:
     vm-console-proxy.kubevirt.io: vm-console-proxy
 ---
@@ -154,13 +154,27 @@ spec:
       - args: []
         command:
         - /console
-        image: quay.io/kubevirt/vm-console-proxy:v0.9.0
-        imagePullPolicy: Always
+        image: quay.io/kubevirt/vm-console-proxy:v0.10.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /readyz
+            port: 8769
+          initialDelaySeconds: 15
+          periodSeconds: 10
         name: console
         ports:
         - containerPort: 8768
-          name: api
+          name: http-api
           protocol: TCP
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /readyz
+            port: 8769
+          initialDelaySeconds: 5
+          periodSeconds: 10
         resources:
           requests:
             cpu: 100m
@@ -170,6 +184,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /config
