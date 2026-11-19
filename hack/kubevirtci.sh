@@ -42,8 +42,8 @@ function kubevirtci::up() {
   | xargs -r ${_kubectl} patch --type merge -p '{"spec": {"config": {"insecureRegistries": ["registry:5000"]}}}'
   echo "installing kubevirt..."
   LATEST=$(curl -L https://storage.googleapis.com/kubevirt-prow/devel/release/kubevirt/kubevirt/stable.txt)
-  ${_kubectl} apply -f "https://github.com/kubevirt/kubevirt/releases/download/${LATEST}/kubevirt-operator.yaml"
-  ${_kubectl} apply -f "https://github.com/kubevirt/kubevirt/releases/download/${LATEST}/kubevirt-cr.yaml"
+  ${_kubectl} create -f "https://github.com/kubevirt/kubevirt/releases/download/${LATEST}/kubevirt-operator.yaml"
+  ${_kubectl} create -f "https://github.com/kubevirt/kubevirt/releases/download/${LATEST}/kubevirt-cr.yaml"
   echo "waiting for kubevirt to become ready, this can take a few minutes..."
   ${_kubectl} -n kubevirt wait kv kubevirt --for condition=Available --timeout=15m
 }
