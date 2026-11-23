@@ -1,6 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "baseBranchPatterns": ["main", "/^release-v(([1-9]+\\.([0-9]+))|(0\\.([1-9][0-9]{2,}|[2-9][0-9]|1[6-9])))$/"],
+  "enabledManagers": ["gomod", "github-actions"],
   "prConcurrentLimit": 3,
   "lockFileMaintenance": {
     "enabled": false
@@ -10,10 +11,27 @@
   "extends": [":gitSignOff"],
   "packageRules": [
     {
-      "groupName": "all dependencies",
-      "groupSlug": "all",
+      "description": "Disable routine dependency updates outside main; vulnerability alerts remain enabled",
+      "matchBaseBranches": ["!/^main$/"],
       "matchPackageNames": ["*"],
       "enabled": false
+    },
+    {
+      "matchManagers": ["gomod"],
+      "postUpgradeTasks": {
+        "commands": [
+          "make vendor",
+          "make generate",
+          "make manifests",
+          "make bundle",
+          "make generate-doc"
+        ],
+        "executionMode": "branch",
+        "fileFilters": ["**/*"],
+        "installTools": {
+          "golang": {}
+        }
+      }
     }
   ],
   "vulnerabilityAlerts": {
