@@ -192,10 +192,13 @@ git commit -s
 
 ## Dependency Updates
 
-Dependabot retains its scheduled Go module and GitHub Actions version updates
-on `main`. Renovate runs daily at 06:00 UTC and can also be started from the
-Actions tab. It proposes vulnerability fixes on `main` and supported
-`release-vX.Y` branches, but does not open routine version update PRs.
+Renovate runs daily at 06:00 UTC and can also be started from the Actions tab.
+It proposes routine Go module and GitHub Actions updates on `main`, with
+vulnerability fixes also enabled on supported `release-vX.Y` branches.
+For Go module updates, Renovate runs `make vendor`, `make generate`,
+`make manifests`, `make bundle`, and `make generate-doc` before committing the
+PR so vendored code, generated manifests, bundle files, and metrics docs stay
+in sync.
 
 For Renovate PRs, the Go version report workflow comments on changes to `go`
 and `toolchain` directives in `go.mod` and `go.work` files. Review these changes
