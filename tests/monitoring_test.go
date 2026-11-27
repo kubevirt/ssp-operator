@@ -345,7 +345,7 @@ func alertShouldNotBeActive(alertName string) {
 
 func waitForSeriesToBeDetected(seriesName string) {
 	EventuallyWithOffset(1, func() bool {
-		results, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
+		results, _, _, err := getPrometheusClient().Query(context.TODO(), seriesName, time.Now())
 		Expect(err).ShouldNot(HaveOccurred())
 		return results.String() != ""
 	}, env.Timeout(), 10*time.Second).Should(BeTrue())
